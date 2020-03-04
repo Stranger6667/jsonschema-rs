@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "features": {
+      "items": {
+        "properties": {
+          "geometry": {
+            "properties": {
+              "coordinates": {
+                "items": {
+                  "anyOf": [
+                    {
+                      "items": {
+                        "anyOf": [
+                          {
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            },
+                            "type": "array"
+                          },
+                          {
+                            "items": {
+                              "type": "number"
+                            },
+                            "type": "array"
+                          }
+                        ]
+                      },
+                      "type": "array"
+                    },
+                    {
+                      "items": {
+                        "items": {
+                          "type": "number"
+                        },
+                        "type": "array"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "coordinates",
+              "type"
+            ],
+            "type": "object"
+          },
+          "properties": {
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "geometry",
+          "properties",
+          "type"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "type": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "features",
+    "type"
+  ],
+  "type": "object"
+}

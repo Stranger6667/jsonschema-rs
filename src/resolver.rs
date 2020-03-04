@@ -1,0 +1,315 @@
+use crate::error::CompilationError;
+use crate::helpers::pointer;
+use crate::schemas::{id_of, Draft};
+use crate::validator::DOCUMENT_PROTOCOL;
+use crate::ValidationError;
+use serde_json::Value;
+use std::borrow::Cow;
+use std::collections::HashMap;
+use url::Url;
+
+pub(crate) struct Resolver<'a> {
+    schemas: HashMap<String, &'a Value>,
+}
+
+impl<'a> Resolver<'a> {
+    pub(crate) fn new(
+        draft: Draft,
+        scope: &Url,
+        schema: &'a Value,
+    ) -> Result<Resolver<'a>, CompilationError> {
+        let mut schemas = HashMap::new();
+        find_schemas(draft, schema, &scope, &mut |id, schema| {
+            schemas.insert(id, schema);
+            None
+        })?;
+        Ok(Resolver { schemas })
+    }
+
+    fn resolve_url(&self, url: &Url, schema: &'a Value) -> Result<Cow<'a, Value>, ValidationError> {
+        match url.as_str() {
+            DOCUMENT_PROTOCOL => Ok(Cow::Borrowed(&schema)),
+            url_str => match self.schemas.get(url_str) {
+                Some(value) => Ok(Cow::Borrowed(value)),
+                None => match url.scheme() {
+                    "http" | "https" => {
+                        let response = reqwest::blocking::get(url.as_str()).unwrap();
+                        let document: Value = response.json().unwrap();
+                        Ok(Cow::Owned(document))
+                    }
+                    scheme => Err(ValidationError::unknown_reference_scheme(scheme.to_owned())),
+                },
+            },
+        }
+    }
+    pub(crate) fn resolve_fragment(
+        &self,
+        draft: Draft,
+        url: &Url,
+        schema: &'a Value,
+    ) -> Result<(Url, Cow<'a, Value>), ValidationError> {
+        let mut resource = url.clone();
+        resource.set_fragment(None);
+        let fragment = percent_encoding::percent_decode_str(url.fragment().unwrap_or_else(|| ""))
+            .decode_utf8()
+            .unwrap();
+
+        if let Some(x) = find_schemas(
+            draft,
+            schema,
+            &Url::parse(DOCUMENT_PROTOCOL).unwrap(),
+            &mut |id, x| {
+                if id == url.as_str() {
+                    Some(x)
+                } else {
+                    None
+                }
+            },
+        )
+        .unwrap()
+        {
+            return Ok((resource, Cow::Borrowed(x)));
+        }
+
+        match self.resolve_url(&resource, schema)? {
+            Cow::Borrowed(document) => match pointer(draft, document, fragment.as_ref()) {
+                Some((folders, resolved)) => {
+                    if folders.len() > 1 {
+                        for i in folders.iter().skip(1) {
+                            resource = resource.join(i).unwrap();
+                        }
+                    }
+                    Ok((resource, Cow::Borrowed(resolved)))
+                }
+                None => Err(ValidationError::invalid_reference(url.as_str().to_string())),
+            },
+            Cow::Owned(document) => match pointer(draft, &document, fragment.as_ref()) {
+                Some((folders, x)) => {
+                    if folders.len() > 1 {
+                        for i in folders.iter().skip(1) {
+                            resource = resource.join(i).unwrap();
+                        }
+                    }
+                    Ok((resource, Cow::Owned(x.clone())))
+                }
+                None => Err(ValidationError::invalid_reference(url.as_str().to_string())),
+            },
+        }
+    }
+}
+
+/// Find all sub-schemas in the document and execute callback on each of them.
+fn find_schemas<'a, F>(
+    draft: Draft,
+    schema: &'a Value,
+    base_url: &Url,
+    callback: &mut F,
+) -> Result<Option<&'a Value>, url::ParseError>
+where
+    F: FnMut(String, &'a Value) -> Option<&'a Value>,
+{
+    match schema {
+        Value::Object(item) => {
+            if let Some(url) = id_of(draft, schema) {
+                let new_url = base_url.join(url)?;
+                if let Some(x) = callback(new_url.to_string(), schema) {
+                    return Ok(Some(x));
+                }
+                for (_, subschema) in item {
+                    let result = find_schemas(draft, subschema, &new_url, callback)?;
+                    if result.is_some() {
+                        return Ok(result);
+                    }
+                }
+            } else {
+                for (_, subschema) in item {
+                    let result = find_schemas(draft, subschema, base_url, callback)?;
+                    if result.is_some() {
+                        return Ok(result);
+                    }
+                }
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                let result = find_schemas(draft, item, base_url, callback)?;
+                if result.is_some() {
+                    return Ok(result);
+                }
+            }
+        }
+        _ => {}
+    }
+    Ok(None)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::*;
+    use std::borrow::Cow;
+    use std::fs::File;
+    use std::io::Read;
+    use std::path::Path;
+    use url::Url;
+
+    fn load(path: &str, idx: usize) -> Value {
+        let path = Path::new(path);
+        let mut file = File::open(&path).unwrap();
+        let mut content = String::new();
+        file.read_to_string(&mut content).ok().unwrap();
+        let data: Value = from_str(&content).unwrap();
+        let case = &data.as_array().unwrap()[idx];
+        case.get("schema").unwrap().clone()
+    }
+
+    fn make_resolver(schema: &Value) -> Resolver {
+        Resolver::new(
+            Draft::Draft7,
+            &Url::parse("json-schema:///").unwrap(),
+            &schema,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn only_keyword() {
+        // When only one keyword is specified
+        let schema = json!({"type": "string"});
+        let resolver = make_resolver(&schema);
+        // Then in the resolver schema there should be no schemas
+        assert_eq!(resolver.schemas.len(), 0);
+    }
+
+    #[test]
+    fn sub_schema_in_object() {
+        // When only one sub-schema is specified inside an object
+        let schema = load("tests/suite/tests/draft7/ref.json", 12);
+        let resolver = make_resolver(&schema);
+        // Then in the resolver schema there should be only this schema
+        assert_eq!(resolver.schemas.len(), 1);
+        assert_eq!(
+            resolver.schemas.get("json-schema:///#foo"),
+            schema.pointer("/definitions/A").as_ref()
+        );
+    }
+
+    #[test]
+    fn sub_schemas_in_array() {
+        // When sub-schemas are specified inside an array
+        let schema = json!({
+            "definitions": {
+                "A": [
+                    {"$id": "#foo", "type": "integer"},
+                    {"$id": "#bar", "type": "string"},
+                ]
+            }
+        });
+        let resolver = make_resolver(&schema);
+        // Then in the resolver schema there should be only these schemas
+        assert_eq!(resolver.schemas.len(), 2);
+        assert_eq!(
+            resolver.schemas.get("json-schema:///#foo"),
+            schema.pointer("/definitions/A/0").as_ref()
+        );
+        assert_eq!(
+            resolver.schemas.get("json-schema:///#bar"),
+            schema.pointer("/definitions/A/1").as_ref()
+        );
+    }
+
+    #[test]
+    fn root_schema_id() {
+        // When the root schema has an ID
+        let schema = load("tests/suite/tests/draft7/ref.json", 10);
+        let resolver = make_resolver(&schema);
+        // Then in the resolver schema there should be root & sub-schema
+        assert_eq!(resolver.schemas.len(), 2);
+        assert_eq!(
+            resolver.schemas.get("http://localhost:1234/tree"),
+            schema.pointer("").as_ref()
+        );
+        assert_eq!(
+            resolver.schemas.get("http://localhost:1234/node"),
+            schema.pointer("/definitions/node").as_ref()
+        );
+    }
+
+    #[test]
+    fn location_independent_with_absolute_uri() {
+        let schema = load("tests/suite/tests/draft7/ref.json", 13);
+        let resolver = make_resolver(&schema);
+        assert_eq!(resolver.schemas.len(), 1);
+        assert_eq!(
+            resolver.schemas.get("http://localhost:1234/bar#foo"),
+            schema.pointer("/definitions/A").as_ref()
+        );
+    }
+
+    #[test]
+    fn location_independent_with_absolute_uri_base_change() {
+        let schema = load("tests/suite/tests/draft7/ref.json", 14);
+        let resolver = make_resolver(&schema);
+        assert_eq!(resolver.schemas.len(), 3);
+        assert_eq!(
+            resolver.schemas.get("http://localhost:1234/root"),
+            schema.pointer("").as_ref()
+        );
+        assert_eq!(
+            resolver.schemas.get("http://localhost:1234/nested.json"),
+            schema.pointer("/definitions/A").as_ref()
+        );
+        assert_eq!(
+            resolver
+                .schemas
+                .get("http://localhost:1234/nested.json#foo"),
+            schema.pointer("/definitions/A/definitions/B").as_ref()
+        );
+    }
+
+    #[test]
+    fn base_uri_change() {
+        let schema = load("tests/suite/tests/draft7/refRemote.json", 3);
+        let resolver = make_resolver(&schema);
+        assert_eq!(resolver.schemas.len(), 2);
+        assert_eq!(
+            resolver.schemas.get("http://localhost:1234/"),
+            schema.pointer("").as_ref()
+        );
+        assert_eq!(
+            resolver.schemas.get("http://localhost:1234/folder/"),
+            schema.pointer("/items").as_ref()
+        );
+    }
+
+    #[test]
+    fn base_uri_change_folder() {
+        let schema = load("tests/suite/tests/draft7/refRemote.json", 4);
+        let resolver = make_resolver(&schema);
+        assert_eq!(resolver.schemas.len(), 2);
+        assert_eq!(
+            resolver
+                .schemas
+                .get("http://localhost:1234/scope_change_defs1.json"),
+            schema.pointer("").as_ref()
+        );
+        assert_eq!(
+            resolver.schemas.get("http://localhost:1234/folder/"),
+            schema.pointer("/definitions/baz").as_ref()
+        );
+    }
+
+    #[test]
+    fn resolve_ref() {
+        let schema = load("tests/suite/tests/draft7/ref.json", 4);
+        let resolver = make_resolver(&schema);
+        let url = Url::parse("json-schema:///#/definitions/a").unwrap();
+        if let (resource, Cow::Borrowed(resolved)) = resolver
+            .resolve_fragment(Draft::Draft7, &url, &schema)
+            .unwrap()
+        {
+            assert_eq!(resource, Url::parse("json-schema:///").unwrap());
+            assert_eq!(resolved, schema.pointer("/definitions/a").unwrap());
+        }
+    }
+}
