@@ -34,7 +34,7 @@ impl<'a> DependenciesValidator<'a> {
 }
 
 impl<'a> Validate<'a> for DependenciesValidator<'a> {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
         if let Value::Object(item) = instance {
             for (property, validators) in self.dependencies.iter() {
                 if !item.contains_key(*property) {
@@ -42,7 +42,7 @@ impl<'a> Validate<'a> for DependenciesValidator<'a> {
                 }
                 // TODO. custom error message for "required" case
                 for validator in validators.iter() {
-                    validator.validate(config, instance)?
+                    validator.validate(schema, instance)?
                 }
             }
         }

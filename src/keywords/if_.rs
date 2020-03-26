@@ -24,14 +24,14 @@ impl<'a> IfThenValidator<'a> {
 }
 
 impl<'a> Validate<'a> for IfThenValidator<'a> {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
         if self
             .schema
             .iter()
-            .all(|validator| validator.is_valid(config, instance))
+            .all(|validator| validator.is_valid(schema, instance))
         {
             for validator in self.then_schema.iter() {
-                validator.validate(config, instance)?
+                validator.validate(schema, instance)?
             }
         }
         Ok(())
@@ -60,14 +60,14 @@ impl<'a> IfElseValidator<'a> {
 }
 
 impl<'a> Validate<'a> for IfElseValidator<'a> {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
         if self
             .schema
             .iter()
-            .any(|validator| !validator.is_valid(config, instance))
+            .any(|validator| !validator.is_valid(schema, instance))
         {
             for validator in self.else_schema.iter() {
-                validator.validate(config, instance)?
+                validator.validate(schema, instance)?
             }
         }
         Ok(())
@@ -99,18 +99,18 @@ impl<'a> IfThenElseValidator<'a> {
 }
 
 impl<'a> Validate<'a> for IfThenElseValidator<'a> {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
         if self
             .schema
             .iter()
-            .all(|validator| validator.is_valid(config, instance))
+            .all(|validator| validator.is_valid(schema, instance))
         {
             for validator in self.then_schema.iter() {
-                validator.validate(config, instance)?
+                validator.validate(schema, instance)?
             }
         } else {
             for validator in self.else_schema.iter() {
-                validator.validate(config, instance)?
+                validator.validate(schema, instance)?
             }
         }
         Ok(())

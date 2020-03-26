@@ -36,11 +36,11 @@ impl<'a> AdditionalItemsBooleanValidator {
 }
 
 impl<'a> Validate<'a> for AdditionalItemsObjectValidator<'a> {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
         if let Value::Array(items) = instance {
             for item in items.iter().skip(self.items_count) {
                 for validator in self.validators.iter() {
-                    validator.validate(config, item)?
+                    validator.validate(schema, item)?
                 }
             }
         }

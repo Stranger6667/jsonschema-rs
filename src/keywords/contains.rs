@@ -22,13 +22,13 @@ impl<'a> ContainsValidator<'a> {
 }
 
 impl<'a> Validate<'a> for ContainsValidator<'a> {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
         if let Value::Array(items) = instance {
             for item in items {
                 if self
                     .validators
                     .iter()
-                    .all(|validator| validator.validate(config, item).is_ok())
+                    .all(|validator| validator.validate(schema, item).is_ok())
                 {
                     return Ok(());
                 }

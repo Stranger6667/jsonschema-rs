@@ -29,11 +29,11 @@ impl<'a> ItemsArrayValidator<'a> {
 }
 
 impl<'a> Validate<'a> for ItemsArrayValidator<'a> {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
         if let Value::Array(items) = instance {
             for (item, validators) in items.iter().zip(self.items.iter()) {
                 for validator in validators {
-                    validator.validate(config, item)?
+                    validator.validate(schema, item)?
                 }
             }
         }
@@ -59,12 +59,12 @@ impl<'a> ItemsObjectValidator<'a> {
 }
 
 impl<'a> Validate<'a> for ItemsObjectValidator<'a> {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
         if let Value::Array(items) = instance {
             if items.len() > PARALLEL_ITEMS_THRESHOLD {
                 let validate = |item| {
                     for validator in self.validators.iter() {
-                        match validator.validate(config, item) {
+                        match validator.validate(schema, item) {
                             Ok(_) => continue,
                             Err(e) => return Err(e),
                         }
@@ -78,7 +78,7 @@ impl<'a> Validate<'a> for ItemsObjectValidator<'a> {
             } else {
                 for item in items {
                     for validator in self.validators.iter() {
-                        validator.validate(config, item)?
+                        validator.validate(schema, item)?
                     }
                 }
             }

@@ -23,11 +23,11 @@ impl<'a> AdditionalPropertiesValidator<'a> {
 }
 
 impl<'a> Validate<'a> for AdditionalPropertiesValidator<'a> {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
         if let Value::Object(item) = instance {
             for value in item.values() {
                 for validator in self.validators.iter() {
-                    validator.validate(config, value)?
+                    validator.validate(schema, value)?
                 }
             }
         }
@@ -115,12 +115,12 @@ impl<'a> AdditionalPropertiesNotEmptyValidator<'a> {
 }
 
 impl<'a> Validate<'a> for AdditionalPropertiesNotEmptyValidator<'a> {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
         if let Value::Object(item) = instance {
             for (property, value) in item {
                 if !self.properties.contains_key(property) {
                     for validator in self.validators.iter() {
-                        validator.validate(config, value)?
+                        validator.validate(schema, value)?
                     }
                 }
             }
@@ -151,12 +151,12 @@ impl<'a> AdditionalPropertiesWithPatternsValidator<'a> {
 }
 
 impl<'a> Validate<'a> for AdditionalPropertiesWithPatternsValidator<'a> {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
         if let Value::Object(item) = instance {
             for (property, value) in item {
                 if !self.pattern.is_match(property) {
                     for validator in self.validators.iter() {
-                        validator.validate(config, value)?
+                        validator.validate(schema, value)?
                     }
                 }
             }
@@ -225,12 +225,12 @@ impl<'a> AdditionalPropertiesWithPatternsNotEmptyValidator<'a> {
 }
 
 impl<'a> Validate<'a> for AdditionalPropertiesWithPatternsNotEmptyValidator<'a> {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
         if let Value::Object(item) = instance {
             for (property, value) in item {
                 if !self.properties.contains_key(property) && !self.pattern.is_match(property) {
                     for validator in self.validators.iter() {
-                        validator.validate(config, value)?
+                        validator.validate(schema, value)?
                     }
                 }
             }

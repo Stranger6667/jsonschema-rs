@@ -15,8 +15,8 @@ impl UniqueItemsValidator {
 }
 
 impl<'a> Validate<'a> for UniqueItemsValidator {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
-        if !self.is_valid(config, instance) {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+        if !self.is_valid(schema, instance) {
             return Err(ValidationError::unique_items(instance.clone()));
         }
         Ok(())

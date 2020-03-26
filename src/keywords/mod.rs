@@ -38,12 +38,12 @@ use serde_json::Value;
 use std::fmt::{Debug, Error, Formatter};
 
 pub trait Validate<'a>: Send + Sync + 'a {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult;
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult;
     // The same as above, but does not construct Result.
     // It is faster for cases when the result is not needed (like anyOf), since errors are
     // not constructed
-    fn is_valid(&self, config: &JSONSchema, instance: &Value) -> bool {
-        self.validate(config, instance).is_ok() // TODO. remove it and implement everywhere
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        self.validate(schema, instance).is_ok() // TODO. remove it and implement everywhere
     }
     fn name(&self) -> String {
         "<validator>".to_string()

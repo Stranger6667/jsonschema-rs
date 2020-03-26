@@ -32,8 +32,8 @@ impl MultipleTypesValidator {
 }
 
 impl<'a> Validate<'a> for MultipleTypesValidator {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
-        if !self.is_valid(config, instance) {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+        if !self.is_valid(schema, instance) {
             return Err(ValidationError::multiple_type_error(
                 instance.clone(),
                 self.types.clone(),
@@ -71,8 +71,8 @@ impl NullTypeValidator {
 }
 
 impl<'a> Validate<'a> for NullTypeValidator {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
-        if !self.is_valid(config, instance) {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+        if !self.is_valid(schema, instance) {
             return Err(ValidationError::single_type_error(
                 instance.clone(),
                 PrimitiveType::Null,
@@ -98,8 +98,8 @@ impl BooleanTypeValidator {
 }
 
 impl<'a> Validate<'a> for BooleanTypeValidator {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
-        if !self.is_valid(config, instance) {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+        if !self.is_valid(schema, instance) {
             return Err(ValidationError::single_type_error(
                 instance.clone(),
                 PrimitiveType::Boolean,
@@ -125,8 +125,8 @@ impl StringTypeValidator {
 }
 
 impl<'a> Validate<'a> for StringTypeValidator {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
-        if !self.is_valid(config, instance) {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+        if !self.is_valid(schema, instance) {
             return Err(ValidationError::single_type_error(
                 instance.clone(),
                 PrimitiveType::String,
@@ -153,8 +153,8 @@ impl ArrayTypeValidator {
 }
 
 impl<'a> Validate<'a> for ArrayTypeValidator {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
-        if !self.is_valid(config, instance) {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+        if !self.is_valid(schema, instance) {
             return Err(ValidationError::single_type_error(
                 instance.clone(),
                 PrimitiveType::Array,
@@ -181,8 +181,8 @@ impl ObjectTypeValidator {
 }
 
 impl<'a> Validate<'a> for ObjectTypeValidator {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
-        if !self.is_valid(config, instance) {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+        if !self.is_valid(schema, instance) {
             return Err(ValidationError::single_type_error(
                 instance.clone(),
                 PrimitiveType::Object,
@@ -235,8 +235,8 @@ impl IntegerTypeValidator {
 }
 
 impl<'a> Validate<'a> for IntegerTypeValidator {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
-        if !self.is_valid(config, instance) {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+        if !self.is_valid(schema, instance) {
             return Err(ValidationError::single_type_error(
                 instance.clone(),
                 PrimitiveType::Integer,

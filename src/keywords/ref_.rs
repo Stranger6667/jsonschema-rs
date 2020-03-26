@@ -17,16 +17,16 @@ impl<'a> RefValidator {
 }
 
 impl<'a> Validate<'a> for RefValidator {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
-        match config
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+        match schema
             .resolver
-            .resolve_fragment(config.draft, &self.reference, config.schema)
+            .resolve_fragment(schema.draft, &self.reference, schema.schema)
         {
             Ok((scope, resolved)) => {
-                let context = CompilationContext::new(scope, config.draft);
+                let context = CompilationContext::new(scope, schema.draft);
                 let validators = compile_validators(&resolved, &context)?;
                 for v in validators.iter() {
-                    v.validate(config, instance)?
+                    v.validate(schema, instance)?
                 }
                 Ok(())
             }

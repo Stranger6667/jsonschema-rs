@@ -33,13 +33,13 @@ impl<'a> PatternPropertiesValidator<'a> {
 }
 
 impl<'a> Validate<'a> for PatternPropertiesValidator<'a> {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
         if let Value::Object(item) = instance {
             for (re, validators) in self.patterns.iter() {
                 for (key, value) in item {
                     if re.is_match(key) {
                         for validator in validators.iter() {
-                            validator.validate(config, value)?
+                            validator.validate(schema, value)?
                         }
                     }
                 }

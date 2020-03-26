@@ -22,12 +22,12 @@ impl<'a> PropertyNamesObjectValidator<'a> {
 }
 
 impl<'a> Validate<'a> for PropertyNamesObjectValidator<'a> {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
         if let Value::Object(item) = instance {
             for name in item.keys() {
                 let wrapper = Value::String(name.to_string());
                 for validator in self.validators.iter() {
-                    validator.validate(config, &wrapper)?
+                    validator.validate(schema, &wrapper)?
                 }
             }
         }

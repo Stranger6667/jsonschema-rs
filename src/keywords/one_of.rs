@@ -29,7 +29,7 @@ impl<'a> OneOfValidator<'a> {
 
     fn get_first_valid(
         &self,
-        config: &JSONSchema,
+        schema: &JSONSchema,
         instance: &Value,
     ) -> (Option<&Validators<'a>>, Option<usize>) {
         let mut first_valid = None;
@@ -37,7 +37,7 @@ impl<'a> OneOfValidator<'a> {
         for (idx, validators) in self.schemas.iter().enumerate() {
             if validators
                 .iter()
-                .all(|validator| validator.is_valid(config, instance))
+                .all(|validator| validator.is_valid(schema, instance))
             {
                 first_valid = Some(validators);
                 first_valid_idx = Some(idx);
@@ -47,11 +47,11 @@ impl<'a> OneOfValidator<'a> {
         (first_valid, first_valid_idx)
     }
 
-    fn are_others_valid(&self, config: &JSONSchema, instance: &Value, idx: Option<usize>) -> bool {
+    fn are_others_valid(&self, schema: &JSONSchema, instance: &Value, idx: Option<usize>) -> bool {
         for validators in self.schemas.iter().skip(idx.unwrap() + 1) {
             if validators
                 .iter()
-                .all(|validator| validator.is_valid(config, instance))
+                .all(|validator| validator.is_valid(schema, instance))
             {
                 return true;
             }
@@ -61,22 +61,22 @@ impl<'a> OneOfValidator<'a> {
 }
 
 impl<'a> Validate<'a> for OneOfValidator<'a> {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
-        let (first_valid, first_valid_idx) = self.get_first_valid(config, instance);
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+        let (first_valid, first_valid_idx) = self.get_first_valid(schema, instance);
         if first_valid.is_none() {
             return Err(ValidationError::one_of_not_valid(instance.clone()));
         }
-        if self.are_others_valid(config, instance, first_valid_idx) {
+        if self.are_others_valid(schema, instance, first_valid_idx) {
             return Err(ValidationError::one_of_multiple_valid(instance.clone()));
         }
         Ok(())
     }
-    fn is_valid(&self, config: &JSONSchema, instance: &Value) -> bool {
-        let (first_valid, first_valid_idx) = self.get_first_valid(config, instance);
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        let (first_valid, first_valid_idx) = self.get_first_valid(schema, instance);
         if first_valid.is_none() {
             return false;
         }
-        !self.are_others_valid(config, instance, first_valid_idx)
+        !self.are_others_valid(schema, instance, first_valid_idx)
     }
     fn name(&self) -> String {
         format!("<one of: {:?}>", self.schemas)

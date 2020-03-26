@@ -30,10 +30,10 @@ impl<'a> AllOfValidator<'a> {
 }
 
 impl<'a> Validate<'a> for AllOfValidator<'a> {
-    fn validate(&self, config: &JSONSchema, instance: &Value) -> ValidationResult {
+    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
         for validators in self.schemas.iter() {
             for validator in validators {
-                validator.validate(config, instance)?
+                validator.validate(schema, instance)?
             }
         }
         Ok(())
