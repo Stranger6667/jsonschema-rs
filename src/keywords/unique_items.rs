@@ -4,7 +4,57 @@ use crate::context::CompilationContext;
 use crate::error::ValidationError;
 use crate::validator::JSONSchema;
 use serde_json::{Map, Value};
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
+use std::hash::{Hash, Hasher};
+
+// Based on implementation proposed by Sven Marnach:
+// https://stackoverflow.com/questions/60882381/what-is-the-fastest-correct-way-to-detect-that-there-are-no-duplicates-in-a-json
+#[derive(PartialEq)]
+pub struct HashedValue<'a>(&'a Value);
+
+impl Eq for HashedValue<'_> {}
+
+impl<'a> Hash for HashedValue<'a> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self.0 {
+            Value::Null => state.write_u32(3_221_225_473), // chosen randomly
+            Value::Bool(ref item) => item.hash(state),
+            Value::Number(ref item) => {
+                if let Some(number) = item.as_u64() {
+                    number.hash(state);
+                } else if let Some(number) = item.as_i64() {
+                    number.hash(state);
+                } else if let Some(number) = item.as_f64() {
+                    number.to_bits().hash(state)
+                }
+            }
+            Value::String(ref item) => item.hash(state),
+            Value::Array(ref items) => {
+                for item in items {
+                    HashedValue(item).hash(state);
+                }
+            }
+            Value::Object(ref items) => {
+                let mut hash = 0;
+                for (key, value) in items {
+                    // We have no way of building a new hasher of type `H`, so we
+                    // hardcode using the default hasher of a hash map.
+                    let mut item_hasher = DefaultHasher::default();
+                    key.hash(&mut item_hasher);
+                    HashedValue(value).hash(&mut item_hasher);
+                    hash ^= item_hasher.finish();
+                }
+                state.write_u64(hash);
+            }
+        }
+    }
+}
+
+pub fn is_unique(items: &[Value]) -> bool {
+    let mut seen = HashSet::with_capacity(items.len());
+    items.iter().map(HashedValue).all(move |x| seen.insert(x))
+}
 
 pub struct UniqueItemsValidator {}
 
@@ -24,12 +74,8 @@ impl<'a> Validate<'a> for UniqueItemsValidator {
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::Array(items) = instance {
-            let mut seen = HashSet::with_capacity(items.len());
-            for item in items {
-                // TODO. Objects can be serialized differently, check `preserve_order` feature in serde_json
-                if !seen.insert(item.to_string()) {
-                    return false;
-                }
+            if !is_unique(items) {
+                return false;
             }
         }
         true
