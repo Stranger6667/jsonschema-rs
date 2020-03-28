@@ -1,7 +1,7 @@
+use super::CompilationResult;
 use super::Validate;
-use super::{CompilationResult, ValidationResult};
 use crate::context::CompilationContext;
-use crate::error::{CompilationError, ValidationError};
+use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
 use crate::JSONSchema;
 use serde_json::{Map, Value};
 
@@ -10,7 +10,7 @@ pub struct ExclusiveMinimumValidator {
 }
 
 impl<'a> ExclusiveMinimumValidator {
-    pub(crate) fn compile(schema: &Value) -> CompilationResult<'a> {
+    pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Value::Number(limit) = schema {
             let limit = limit.as_f64().unwrap();
             return Ok(Box::new(ExclusiveMinimumValidator { limit }));
@@ -19,24 +19,24 @@ impl<'a> ExclusiveMinimumValidator {
     }
 }
 
-impl<'a> Validate<'a> for ExclusiveMinimumValidator {
-    fn validate(&self, _: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for ExclusiveMinimumValidator {
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Number(item) = instance {
             let item = item.as_f64().unwrap();
             if item <= self.limit {
-                return Err(ValidationError::exclusive_minimum(item, self.limit));
+                return ValidationError::exclusive_minimum(item, self.limit);
             }
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         format!("<exclusive minimum: {}>", self.limit)
     }
 }
-pub(crate) fn compile<'a>(
-    _: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    _: &Map<String, Value>,
+    schema: &Value,
     _: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     Some(ExclusiveMinimumValidator::compile(schema))
 }

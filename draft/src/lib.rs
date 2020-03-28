@@ -89,36 +89,20 @@ fn make_fn_body(schema: &Value, data: &Value, description: &str, valid: bool) ->
     if valid {
         output.push_str(
             r#"
-        match result.err() {
-            Some(err) => {
-                let message = format!(
-                    "Schema: {}\nInstance: {}\nError: {}",
-                    schema, data, err
-                );
-                assert!(false, message)
-            }
-            None => {}
+        let err = result.err();
+        let errors = err.iter().collect::<Vec<_>>();
+        if !errors.is_empty() {
+            let message = format!(
+                "Schema: {}\nInstance: {}\nError: {:?}",
+                schema, data, 1
+            );
+            assert!(false, message)
         }
             "#,
         )
     } else {
-        output.push_str(
-            r#"assert!(result.is_err(), "It should be INVALID!");
-            "#,
-        )
+        output.push_str(r#"assert!(result.is_err(), "It should be INVALID!");"#)
     }
     output.push_str("}");
     output
 }
-// id: "json-schema://86de4a79-34d7-45d4-8821-a9a99dc2d7a6",
-// children: [
-//     <additional properties: {
-//         id: "json-schema://355c236a-4057-47e8-8325-4d1c6050b861",
-//         children: [<false>],
-//     }
-//     <properties: {
-//         "foo": {
-//             id: "json-schema://0dff1dfb-a85e-4b26-9abe-a8e1adbf7c8e",
-//             children: [<ref: #>]
-//     }
-// ]

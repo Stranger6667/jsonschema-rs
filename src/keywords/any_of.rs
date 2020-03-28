@@ -1,20 +1,17 @@
-use super::{CompilationResult, ValidationResult};
+use super::CompilationResult;
 use super::{Validate, Validators};
 use crate::context::CompilationContext;
-use crate::error::{CompilationError, ValidationError};
+use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
 use crate::validator::compile_validators;
 use crate::JSONSchema;
 use serde_json::{Map, Value};
 
-pub struct AnyOfValidator<'a> {
-    schemas: Vec<Validators<'a>>,
+pub struct AnyOfValidator {
+    schemas: Vec<Validators>,
 }
 
-impl<'a> AnyOfValidator<'a> {
-    pub(crate) fn compile(
-        schema: &'a Value,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+impl AnyOfValidator {
+    pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
         match schema.as_array() {
             Some(items) => {
                 let mut schemas = Vec::with_capacity(items.len());
@@ -29,27 +26,27 @@ impl<'a> AnyOfValidator<'a> {
     }
 }
 
-impl<'a> Validate<'a> for AnyOfValidator<'a> {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for AnyOfValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         for validators in self.schemas.iter() {
             if validators
                 .iter()
                 .all(|validator| validator.is_valid(schema, instance))
             {
-                return Ok(());
+                return no_error();
             }
         }
-        Err(ValidationError::any_of(instance.clone()))
+        ValidationError::any_of(instance.clone())
     }
     fn name(&self) -> String {
         format!("<any of: {:?}>", self.schemas)
     }
 }
 
-pub(crate) fn compile<'a>(
-    _: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    _: &Map<String, Value>,
+    schema: &Value,
     context: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     Some(AnyOfValidator::compile(schema, context))
 }

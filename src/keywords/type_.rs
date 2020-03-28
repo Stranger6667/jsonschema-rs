@@ -1,7 +1,7 @@
+use super::CompilationResult;
 use super::Validate;
-use super::{CompilationResult, ValidationResult};
 use crate::context::CompilationContext;
-use crate::error::{CompilationError, PrimitiveType, ValidationError};
+use crate::error::{no_error, CompilationError, ErrorIterator, PrimitiveType, ValidationError};
 use crate::validator::JSONSchema;
 use serde_json::{Map, Number, Value};
 
@@ -10,7 +10,7 @@ pub struct MultipleTypesValidator {
 }
 
 impl MultipleTypesValidator {
-    pub(crate) fn compile<'a>(items: &[Value]) -> CompilationResult<'a> {
+    pub(crate) fn compile(items: &[Value]) -> CompilationResult {
         let mut types = Vec::with_capacity(items.len());
         for item in items {
             match item {
@@ -31,15 +31,12 @@ impl MultipleTypesValidator {
     }
 }
 
-impl<'a> Validate<'a> for MultipleTypesValidator {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for MultipleTypesValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if !self.is_valid(schema, instance) {
-            return Err(ValidationError::multiple_type_error(
-                instance.clone(),
-                self.types.clone(),
-            ));
+            return ValidationError::multiple_type_error(instance.clone(), self.types.clone());
         }
-        Ok(())
+        no_error()
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         for type_ in self.types.iter() {
@@ -65,20 +62,17 @@ impl<'a> Validate<'a> for MultipleTypesValidator {
 pub struct NullTypeValidator {}
 
 impl NullTypeValidator {
-    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
+    pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(NullTypeValidator {}))
     }
 }
 
-impl<'a> Validate<'a> for NullTypeValidator {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for NullTypeValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if !self.is_valid(schema, instance) {
-            return Err(ValidationError::single_type_error(
-                instance.clone(),
-                PrimitiveType::Null,
-            ));
+            return ValidationError::single_type_error(instance.clone(), PrimitiveType::Null);
         }
-        Ok(())
+        no_error()
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         instance.is_null()
@@ -92,20 +86,17 @@ impl<'a> Validate<'a> for NullTypeValidator {
 pub struct BooleanTypeValidator {}
 
 impl BooleanTypeValidator {
-    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
+    pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(BooleanTypeValidator {}))
     }
 }
 
-impl<'a> Validate<'a> for BooleanTypeValidator {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for BooleanTypeValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if !self.is_valid(schema, instance) {
-            return Err(ValidationError::single_type_error(
-                instance.clone(),
-                PrimitiveType::Boolean,
-            ));
+            return ValidationError::single_type_error(instance.clone(), PrimitiveType::Boolean);
         }
-        Ok(())
+        no_error()
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         instance.is_boolean()
@@ -119,20 +110,17 @@ impl<'a> Validate<'a> for BooleanTypeValidator {
 pub struct StringTypeValidator {}
 
 impl StringTypeValidator {
-    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
+    pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(StringTypeValidator {}))
     }
 }
 
-impl<'a> Validate<'a> for StringTypeValidator {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for StringTypeValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if !self.is_valid(schema, instance) {
-            return Err(ValidationError::single_type_error(
-                instance.clone(),
-                PrimitiveType::String,
-            ));
+            return ValidationError::single_type_error(instance.clone(), PrimitiveType::String);
         }
-        Ok(())
+        no_error()
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
@@ -147,20 +135,17 @@ impl<'a> Validate<'a> for StringTypeValidator {
 pub struct ArrayTypeValidator {}
 
 impl ArrayTypeValidator {
-    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
+    pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(ArrayTypeValidator {}))
     }
 }
 
-impl<'a> Validate<'a> for ArrayTypeValidator {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for ArrayTypeValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if !self.is_valid(schema, instance) {
-            return Err(ValidationError::single_type_error(
-                instance.clone(),
-                PrimitiveType::Array,
-            ));
+            return ValidationError::single_type_error(instance.clone(), PrimitiveType::Array);
         }
-        Ok(())
+        no_error()
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
@@ -175,20 +160,17 @@ impl<'a> Validate<'a> for ArrayTypeValidator {
 pub struct ObjectTypeValidator {}
 
 impl ObjectTypeValidator {
-    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
+    pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(ObjectTypeValidator {}))
     }
 }
 
-impl<'a> Validate<'a> for ObjectTypeValidator {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for ObjectTypeValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if !self.is_valid(schema, instance) {
-            return Err(ValidationError::single_type_error(
-                instance.clone(),
-                PrimitiveType::Object,
-            ));
+            return ValidationError::single_type_error(instance.clone(), PrimitiveType::Object);
         }
-        Ok(())
+        no_error()
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         instance.is_object()
@@ -202,20 +184,17 @@ impl<'a> Validate<'a> for ObjectTypeValidator {
 pub struct NumberTypeValidator {}
 
 impl NumberTypeValidator {
-    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
+    pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(NumberTypeValidator {}))
     }
 }
 
-impl<'a> Validate<'a> for NumberTypeValidator {
-    fn validate(&self, _: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for NumberTypeValidator {
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if !instance.is_number() {
-            return Err(ValidationError::single_type_error(
-                instance.clone(),
-                PrimitiveType::Number,
-            ));
+            return ValidationError::single_type_error(instance.clone(), PrimitiveType::Number);
         }
-        Ok(())
+        no_error()
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         instance.is_number()
@@ -229,20 +208,17 @@ impl<'a> Validate<'a> for NumberTypeValidator {
 pub struct IntegerTypeValidator {}
 
 impl IntegerTypeValidator {
-    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
+    pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(IntegerTypeValidator {}))
     }
 }
 
-impl<'a> Validate<'a> for IntegerTypeValidator {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for IntegerTypeValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if !self.is_valid(schema, instance) {
-            return Err(ValidationError::single_type_error(
-                instance.clone(),
-                PrimitiveType::Integer,
-            ));
+            return ValidationError::single_type_error(instance.clone(), PrimitiveType::Integer);
         }
-        Ok(())
+        no_error()
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
@@ -261,11 +237,11 @@ fn is_integer(num: &Number) -> bool {
     num.is_u64() || num.is_i64() || num.as_f64().unwrap().fract() == 0.
 }
 
-pub(crate) fn compile<'a>(
-    _: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    _: &Map<String, Value>,
+    schema: &Value,
     _: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     match schema {
         Value::String(item) => compile_single_type(item.as_str()),
         Value::Array(items) => {
@@ -283,7 +259,7 @@ pub(crate) fn compile<'a>(
     }
 }
 
-fn compile_single_type<'a>(item: &str) -> Option<CompilationResult<'a>> {
+fn compile_single_type(item: &str) -> Option<CompilationResult> {
     match item {
         "integer" => Some(IntegerTypeValidator::compile()),
         "null" => Some(NullTypeValidator::compile()),

@@ -10,14 +10,11 @@ pub enum Draft {
     Draft7,
 }
 
-type CompileFunc<'a> = fn(
-    &'a Map<String, Value>,
-    &'a Value,
-    &CompilationContext,
-) -> Option<keywords::CompilationResult<'a>>;
+type CompileFunc =
+    fn(&Map<String, Value>, &Value, &CompilationContext) -> Option<keywords::CompilationResult>;
 
 impl Draft {
-    pub(crate) fn get_validator<'a>(self, keyword: &str) -> Option<CompileFunc<'a>> {
+    pub(crate) fn get_validator(self, keyword: &str) -> Option<CompileFunc> {
         match self {
             Draft::Draft7 => match keyword {
                 "additionalItems" => Some(keywords::additional_items::compile),

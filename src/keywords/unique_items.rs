@@ -1,7 +1,7 @@
+use super::CompilationResult;
 use super::Validate;
-use super::{CompilationResult, ValidationResult};
 use crate::context::CompilationContext;
-use crate::error::ValidationError;
+use crate::error::{no_error, ErrorIterator, ValidationError};
 use crate::validator::JSONSchema;
 use serde_json::{Map, Value};
 use std::collections::hash_map::DefaultHasher;
@@ -59,17 +59,17 @@ pub fn is_unique(items: &[Value]) -> bool {
 pub struct UniqueItemsValidator {}
 
 impl UniqueItemsValidator {
-    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
+    pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(UniqueItemsValidator {}))
     }
 }
 
-impl<'a> Validate<'a> for UniqueItemsValidator {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for UniqueItemsValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if !self.is_valid(schema, instance) {
-            return Err(ValidationError::unique_items(instance.clone()));
+            return ValidationError::unique_items(instance.clone());
         }
-        Ok(())
+        no_error()
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
@@ -85,11 +85,11 @@ impl<'a> Validate<'a> for UniqueItemsValidator {
         "<unique items>".to_string()
     }
 }
-pub(crate) fn compile<'a>(
-    _: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    _: &Map<String, Value>,
+    schema: &Value,
     _: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     if let Value::Bool(value) = schema {
         if *value {
             Some(UniqueItemsValidator::compile())

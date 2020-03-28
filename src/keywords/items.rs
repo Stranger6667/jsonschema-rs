@@ -1,24 +1,18 @@
-use super::{CompilationResult, ValidationResult};
+use super::CompilationResult;
 use super::{Validate, Validators};
 use crate::context::CompilationContext;
-use crate::error::ValidationError;
+use crate::error::{no_error, ErrorIterator};
 use crate::keywords::boolean::TrueValidator;
 use crate::validator::compile_validators;
 use crate::JSONSchema;
-use rayon::prelude::*;
 use serde_json::{Map, Value};
 
-static PARALLEL_ITEMS_THRESHOLD: usize = 8;
-
-pub struct ItemsArrayValidator<'a> {
-    items: Vec<Validators<'a>>,
+pub struct ItemsArrayValidator {
+    items: Vec<Validators>,
 }
 
-impl<'a> ItemsArrayValidator<'a> {
-    pub(crate) fn compile(
-        schemas: &'a [Value],
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+impl ItemsArrayValidator {
+    pub(crate) fn compile(schemas: &[Value], context: &CompilationContext) -> CompilationResult {
         let mut items = Vec::with_capacity(schemas.len());
         for item in schemas {
             let validators = compile_validators(item, context)?;
@@ -28,62 +22,54 @@ impl<'a> ItemsArrayValidator<'a> {
     }
 }
 
-impl<'a> Validate<'a> for ItemsArrayValidator<'a> {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for ItemsArrayValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
-            for (item, validators) in items.iter().zip(self.items.iter()) {
-                for validator in validators {
-                    validator.validate(schema, item)?
-                }
-            }
+            let errors: Vec<_> = items
+                .iter()
+                .zip(self.items.iter())
+                .flat_map(move |(item, validators)| {
+                    validators
+                        .iter()
+                        .flat_map(move |validator| validator.validate(schema, item))
+                })
+                .collect();
+            return Box::new(errors.into_iter());
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         format!("<items: {:?}>", self.items)
     }
 }
 
-pub struct ItemsObjectValidator<'a> {
-    validators: Validators<'a>,
+pub struct ItemsObjectValidator {
+    validators: Validators,
 }
 
-impl<'a> ItemsObjectValidator<'a> {
-    pub(crate) fn compile(
-        schema: &'a Value,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+impl ItemsObjectValidator {
+    pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
         let validators = compile_validators(schema, context)?;
         Ok(Box::new(ItemsObjectValidator { validators }))
     }
 }
 
-impl<'a> Validate<'a> for ItemsObjectValidator<'a> {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for ItemsObjectValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
-            if items.len() > PARALLEL_ITEMS_THRESHOLD {
-                let validate = |item| {
-                    for validator in self.validators.iter() {
-                        match validator.validate(schema, item) {
-                            Ok(_) => continue,
-                            Err(e) => return Err(e),
-                        }
-                    }
-                    Ok(())
-                };
-                if items.par_iter().map(validate).any(|res| res.is_err()) {
-                    // TODO. it should be propagated! not necessarily "schema" error
-                    return Err(ValidationError::schema());
-                }
-            } else {
-                for item in items {
-                    for validator in self.validators.iter() {
-                        validator.validate(schema, item)?
-                    }
-                }
-            }
+            // TODO. make parallel
+            let errors: Vec<_> = self
+                .validators
+                .iter()
+                .flat_map(move |validator| {
+                    items
+                        .iter()
+                        .flat_map(move |item| validator.validate(schema, item))
+                })
+                .collect();
+            return Box::new(errors.into_iter());
         }
-        Ok(())
+        no_error()
     }
 
     fn name(&self) -> String {
@@ -91,11 +77,11 @@ impl<'a> Validate<'a> for ItemsObjectValidator<'a> {
     }
 }
 
-pub(crate) fn compile<'a>(
-    _: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    _: &Map<String, Value>,
+    schema: &Value,
     context: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     match schema {
         Value::Array(items) => Some(ItemsArrayValidator::compile(&items, &context)),
         Value::Object(_) => Some(ItemsObjectValidator::compile(schema, &context)),

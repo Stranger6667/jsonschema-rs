@@ -1,21 +1,22 @@
-use super::{CompilationResult, ValidationResult};
+use super::CompilationResult;
 use super::{Validate, Validators};
 use crate::context::CompilationContext;
+use crate::error::{no_error, ErrorIterator};
 use crate::validator::compile_validators;
 use crate::JSONSchema;
 use serde_json::{Map, Value};
 
-pub struct IfThenValidator<'a> {
-    schema: Validators<'a>,
-    then_schema: Validators<'a>,
+pub struct IfThenValidator {
+    schema: Validators,
+    then_schema: Validators,
 }
 
-impl<'a> IfThenValidator<'a> {
+impl IfThenValidator {
     pub(crate) fn compile(
-        schema: &'a Value,
-        then_schema: &'a Value,
+        schema: &Value,
+        then_schema: &Value,
         context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+    ) -> CompilationResult {
         Ok(Box::new(IfThenValidator {
             schema: compile_validators(schema, context)?,
             then_schema: compile_validators(then_schema, context)?,
@@ -23,35 +24,38 @@ impl<'a> IfThenValidator<'a> {
     }
 }
 
-impl<'a> Validate<'a> for IfThenValidator<'a> {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for IfThenValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if self
             .schema
             .iter()
             .all(|validator| validator.is_valid(schema, instance))
         {
-            for validator in self.then_schema.iter() {
-                validator.validate(schema, instance)?
-            }
+            let errors: Vec<_> = self
+                .then_schema
+                .iter()
+                .flat_map(move |validator| validator.validate(schema, instance))
+                .collect();
+            return Box::new(errors.into_iter());
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         format!("<if-then: {:?} {:?}>", self.schema, self.then_schema)
     }
 }
 
-pub struct IfElseValidator<'a> {
-    schema: Validators<'a>,
-    else_schema: Validators<'a>,
+pub struct IfElseValidator {
+    schema: Validators,
+    else_schema: Validators,
 }
 
-impl<'a> IfElseValidator<'a> {
+impl<'a> IfElseValidator {
     pub(crate) fn compile(
         schema: &'a Value,
         else_schema: &'a Value,
         context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+    ) -> CompilationResult {
         Ok(Box::new(IfElseValidator {
             schema: compile_validators(schema, context)?,
             else_schema: compile_validators(else_schema, context)?,
@@ -59,37 +63,40 @@ impl<'a> IfElseValidator<'a> {
     }
 }
 
-impl<'a> Validate<'a> for IfElseValidator<'a> {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for IfElseValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if self
             .schema
             .iter()
             .any(|validator| !validator.is_valid(schema, instance))
         {
-            for validator in self.else_schema.iter() {
-                validator.validate(schema, instance)?
-            }
+            let errors: Vec<_> = self
+                .else_schema
+                .iter()
+                .flat_map(move |validator| validator.validate(schema, instance))
+                .collect();
+            return Box::new(errors.into_iter());
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         format!("<if-else: {:?} {:?}>", self.schema, self.else_schema)
     }
 }
 
-pub struct IfThenElseValidator<'a> {
-    schema: Validators<'a>,
-    then_schema: Validators<'a>,
-    else_schema: Validators<'a>,
+pub struct IfThenElseValidator {
+    schema: Validators,
+    then_schema: Validators,
+    else_schema: Validators,
 }
 
-impl<'a> IfThenElseValidator<'a> {
+impl IfThenElseValidator {
     pub(crate) fn compile(
-        schema: &'a Value,
-        then_schema: &'a Value,
-        else_schema: &'a Value,
+        schema: &Value,
+        then_schema: &Value,
+        else_schema: &Value,
         context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+    ) -> CompilationResult {
         Ok(Box::new(IfThenElseValidator {
             schema: compile_validators(schema, context)?,
             then_schema: compile_validators(then_schema, context)?,
@@ -98,22 +105,27 @@ impl<'a> IfThenElseValidator<'a> {
     }
 }
 
-impl<'a> Validate<'a> for IfThenElseValidator<'a> {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for IfThenElseValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if self
             .schema
             .iter()
             .all(|validator| validator.is_valid(schema, instance))
         {
-            for validator in self.then_schema.iter() {
-                validator.validate(schema, instance)?
-            }
+            let errors: Vec<_> = self
+                .then_schema
+                .iter()
+                .flat_map(move |validator| validator.validate(schema, instance))
+                .collect();
+            Box::new(errors.into_iter())
         } else {
-            for validator in self.else_schema.iter() {
-                validator.validate(schema, instance)?
-            }
+            let errors: Vec<_> = self
+                .else_schema
+                .iter()
+                .flat_map(move |validator| validator.validate(schema, instance))
+                .collect();
+            Box::new(errors.into_iter())
         }
-        Ok(())
     }
     fn name(&self) -> String {
         format!(
@@ -123,11 +135,11 @@ impl<'a> Validate<'a> for IfThenElseValidator<'a> {
     }
 }
 
-pub(crate) fn compile<'a>(
-    parent: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    parent: &Map<String, Value>,
+    schema: &Value,
     context: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     let then = parent.get("then");
     let else_ = parent.get("else");
     match (then, else_) {

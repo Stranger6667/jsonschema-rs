@@ -1,26 +1,26 @@
+use super::CompilationResult;
 use super::Validate;
-use super::{CompilationResult, ValidationResult};
 use crate::context::CompilationContext;
-use crate::error::CompilationError;
+use crate::error::{no_error, CompilationError, ErrorIterator};
 use crate::{checks, JSONSchema};
 use serde_json::{Map, Value};
 
 pub struct FormatValidator {
-    check: fn(&str) -> ValidationResult,
+    check: fn(&str) -> ErrorIterator,
 }
 
 impl<'a> FormatValidator {
-    pub(crate) fn compile(check: fn(&str) -> ValidationResult) -> CompilationResult<'a> {
+    pub(crate) fn compile(check: fn(&str) -> ErrorIterator) -> CompilationResult {
         Ok(Box::new(FormatValidator { check }))
     }
 }
 
-impl<'a> Validate<'a> for FormatValidator {
-    fn validate(&self, _: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for FormatValidator {
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             return (self.check)(item);
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         // TODO. store name
@@ -28,11 +28,11 @@ impl<'a> Validate<'a> for FormatValidator {
     }
 }
 
-pub(crate) fn compile<'a>(
-    _: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    _: &Map<String, Value>,
+    schema: &Value,
     _: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     match schema.as_str() {
         Some(format) => {
             let func = match format {

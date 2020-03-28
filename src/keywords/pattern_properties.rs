@@ -1,21 +1,18 @@
-use super::{CompilationResult, ValidationResult};
+use super::CompilationResult;
 use super::{Validate, Validators};
 use crate::context::CompilationContext;
-use crate::error::CompilationError;
+use crate::error::{no_error, CompilationError, ErrorIterator};
 use crate::validator::compile_validators;
 use crate::JSONSchema;
 use regex::Regex;
 use serde_json::{Map, Value};
 
-pub struct PatternPropertiesValidator<'a> {
-    patterns: Vec<(Regex, Validators<'a>)>,
+pub struct PatternPropertiesValidator {
+    patterns: Vec<(Regex, Validators)>,
 }
 
-impl<'a> PatternPropertiesValidator<'a> {
-    pub(crate) fn compile(
-        properties: &'a Value,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+impl PatternPropertiesValidator {
+    pub(crate) fn compile(properties: &Value, context: &CompilationContext) -> CompilationResult {
         match properties.as_object() {
             Some(map) => {
                 let mut patterns = Vec::with_capacity(map.len());
@@ -32,30 +29,35 @@ impl<'a> PatternPropertiesValidator<'a> {
     }
 }
 
-impl<'a> Validate<'a> for PatternPropertiesValidator<'a> {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for PatternPropertiesValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
-            for (re, validators) in self.patterns.iter() {
-                for (key, value) in item {
-                    if re.is_match(key) {
-                        for validator in validators.iter() {
-                            validator.validate(schema, value)?
-                        }
-                    }
-                }
-            }
+            let errors: Vec<_> = self
+                .patterns
+                .iter()
+                .flat_map(move |(re, validators)| {
+                    item.iter()
+                        .filter(move |(key, _)| re.is_match(key))
+                        .flat_map(move |(_key, value)| {
+                            validators
+                                .iter()
+                                .flat_map(move |validator| validator.validate(schema, value))
+                        })
+                })
+                .collect();
+            return Box::new(errors.into_iter());
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         format!("<pattern properties: {:?}>", self.patterns)
     }
 }
 
-pub(crate) fn compile<'a>(
-    _: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    _: &Map<String, Value>,
+    schema: &Value,
     context: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     Some(PatternPropertiesValidator::compile(schema, context))
 }

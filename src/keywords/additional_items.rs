@@ -1,26 +1,26 @@
-use super::{CompilationResult, ValidationResult};
+use super::CompilationResult;
 use super::{Validate, Validators};
 use crate::context::CompilationContext;
-use crate::error::{CompilationError, ValidationError};
+use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
 use crate::keywords::boolean::TrueValidator;
 use crate::validator::compile_validators;
 use crate::JSONSchema;
 use serde_json::{Map, Value};
 
-pub struct AdditionalItemsObjectValidator<'a> {
-    validators: Validators<'a>,
+pub struct AdditionalItemsObjectValidator {
+    validators: Validators,
     items_count: usize,
 }
 pub struct AdditionalItemsBooleanValidator {
     items_count: usize,
 }
 
-impl<'a> AdditionalItemsObjectValidator<'a> {
+impl AdditionalItemsObjectValidator {
     pub(crate) fn compile(
-        schema: &'a Value,
+        schema: &Value,
         items_count: usize,
         context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+    ) -> CompilationResult {
         let validators = compile_validators(schema, context)?;
         Ok(Box::new(AdditionalItemsObjectValidator {
             validators,
@@ -30,21 +30,26 @@ impl<'a> AdditionalItemsObjectValidator<'a> {
 }
 
 impl<'a> AdditionalItemsBooleanValidator {
-    pub(crate) fn compile(items_count: usize) -> CompilationResult<'a> {
+    pub(crate) fn compile(items_count: usize) -> CompilationResult {
         Ok(Box::new(AdditionalItemsBooleanValidator { items_count }))
     }
 }
 
-impl<'a> Validate<'a> for AdditionalItemsObjectValidator<'a> {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for AdditionalItemsObjectValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
-            for item in items.iter().skip(self.items_count) {
-                for validator in self.validators.iter() {
-                    validator.validate(schema, item)?
-                }
-            }
+            let errors: Vec<_> = items
+                .iter()
+                .skip(self.items_count)
+                .flat_map(|item| {
+                    self.validators
+                        .iter()
+                        .flat_map(move |validator| validator.validate(schema, item))
+                })
+                .collect();
+            return Box::new(errors.into_iter());
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         format!(
@@ -54,28 +59,25 @@ impl<'a> Validate<'a> for AdditionalItemsObjectValidator<'a> {
     }
 }
 
-impl<'a> Validate<'a> for AdditionalItemsBooleanValidator {
-    fn validate(&self, _: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for AdditionalItemsBooleanValidator {
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
             if items.len() > self.items_count {
-                return Err(ValidationError::additional_items(
-                    items.clone(),
-                    self.items_count,
-                ));
+                return ValidationError::additional_items(items.clone(), self.items_count);
             }
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         format!("<additional items: {}>", self.items_count)
     }
 }
 
-pub(crate) fn compile<'a>(
-    parent: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    parent: &Map<String, Value>,
+    schema: &Value,
     context: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     if let Some(items) = parent.get("items") {
         match items {
             Value::Object(_) => Some(TrueValidator::compile()),

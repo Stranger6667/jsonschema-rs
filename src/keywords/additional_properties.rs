@@ -1,37 +1,38 @@
-use super::{CompilationResult, ValidationResult};
+use super::CompilationResult;
 use super::{Validate, Validators};
 use crate::context::CompilationContext;
-use crate::error::CompilationError;
+use crate::error::{no_error, CompilationError, ErrorIterator};
 use crate::validator::compile_validators;
 use crate::{JSONSchema, ValidationError};
 use regex::Regex;
 use serde_json::{Map, Value};
 
-pub struct AdditionalPropertiesValidator<'a> {
-    validators: Validators<'a>,
+pub struct AdditionalPropertiesValidator {
+    validators: Validators,
 }
 
-impl<'a> AdditionalPropertiesValidator<'a> {
-    pub(crate) fn compile(
-        schema: &'a Value,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+impl AdditionalPropertiesValidator {
+    pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
         Ok(Box::new(AdditionalPropertiesValidator {
             validators: compile_validators(schema, context)?,
         }))
     }
 }
 
-impl<'a> Validate<'a> for AdditionalPropertiesValidator<'a> {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for AdditionalPropertiesValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
-            for value in item.values() {
-                for validator in self.validators.iter() {
-                    validator.validate(schema, value)?
-                }
-            }
+            let errors: Vec<_> = self
+                .validators
+                .iter()
+                .flat_map(move |validator| {
+                    item.values()
+                        .flat_map(move |value| validator.validate(schema, value))
+                })
+                .collect();
+            return Box::new(errors.into_iter());
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         format!("<additional properties: {:?}>", self.validators)
@@ -40,73 +41,71 @@ impl<'a> Validate<'a> for AdditionalPropertiesValidator<'a> {
 pub struct AdditionalPropertiesFalseValidator {}
 
 impl<'a> AdditionalPropertiesFalseValidator {
-    pub(crate) fn compile() -> CompilationResult<'a> {
+    pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(AdditionalPropertiesFalseValidator {}))
     }
 }
 
-impl<'a> Validate<'a> for AdditionalPropertiesFalseValidator {
-    fn validate(&self, _: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for AdditionalPropertiesFalseValidator {
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             if let Some((_, value)) = item.iter().next() {
-                return Err(ValidationError::false_schema(value.clone()));
+                return ValidationError::false_schema(value.clone());
             }
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         "<additional properties: false>".to_string()
     }
 }
 
-pub struct AdditionalPropertiesNotEmptyFalseValidator<'a> {
-    properties: &'a Map<String, Value>,
+pub struct AdditionalPropertiesNotEmptyFalseValidator {
+    properties: Map<String, Value>,
 }
 
-impl<'a> AdditionalPropertiesNotEmptyFalseValidator<'a> {
-    pub(crate) fn compile(properties: &'a Value) -> CompilationResult<'a> {
+impl AdditionalPropertiesNotEmptyFalseValidator {
+    pub(crate) fn compile(properties: &Value) -> CompilationResult {
         if let Value::Object(properties) = properties {
             return Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
-                properties,
+                properties: properties.clone(),
             }));
         }
         Err(CompilationError::SchemaError)
     }
 }
 
-impl<'a> Validate<'a> for AdditionalPropertiesNotEmptyFalseValidator<'a> {
-    fn validate(&self, _: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             for property in item.keys() {
                 if !self.properties.contains_key(property) {
                     // No extra properties are allowed
-                    return Err(ValidationError::false_schema(Value::String(
-                        property.to_string(),
-                    )));
+                    return ValidationError::false_schema(Value::String(property.to_string()));
                 }
             }
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         "<additional properties: false>".to_string()
     }
 }
 
-pub struct AdditionalPropertiesNotEmptyValidator<'a> {
-    validators: Validators<'a>,
-    properties: &'a Map<String, Value>,
+pub struct AdditionalPropertiesNotEmptyValidator {
+    validators: Validators,
+    properties: Map<String, Value>,
 }
 
-impl<'a> AdditionalPropertiesNotEmptyValidator<'a> {
+impl AdditionalPropertiesNotEmptyValidator {
     pub(crate) fn compile(
-        schema: &'a Value,
-        properties: &'a Value,
+        schema: &Value,
+        properties: &Value,
         context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+    ) -> CompilationResult {
         if let Value::Object(properties) = properties {
             return Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
-                properties,
+                properties: properties.clone(),
                 validators: compile_validators(schema, context)?,
             }));
         }
@@ -114,35 +113,38 @@ impl<'a> AdditionalPropertiesNotEmptyValidator<'a> {
     }
 }
 
-impl<'a> Validate<'a> for AdditionalPropertiesNotEmptyValidator<'a> {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
-        if let Value::Object(item) = instance {
-            for (property, value) in item {
-                if !self.properties.contains_key(property) {
-                    for validator in self.validators.iter() {
-                        validator.validate(schema, value)?
-                    }
-                }
-            }
+impl Validate for AdditionalPropertiesNotEmptyValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(ref item) = instance {
+            let errors: Vec<_> = self
+                .validators
+                .iter()
+                .flat_map(move |validator| {
+                    item.iter()
+                        .filter(move |(property, _)| !self.properties.contains_key(*property))
+                        .flat_map(move |(_, value)| validator.validate(schema, value))
+                })
+                .collect();
+            return Box::new(errors.into_iter());
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         format!("<additional properties: {:?}>", self.validators)
     }
 }
 
-pub struct AdditionalPropertiesWithPatternsValidator<'a> {
-    validators: Validators<'a>,
+pub struct AdditionalPropertiesWithPatternsValidator {
+    validators: Validators,
     pattern: Regex,
 }
 
-impl<'a> AdditionalPropertiesWithPatternsValidator<'a> {
+impl AdditionalPropertiesWithPatternsValidator {
     pub(crate) fn compile(
-        schema: &'a Value,
+        schema: &Value,
         pattern: Regex,
         context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+    ) -> CompilationResult {
         Ok(Box::new(AdditionalPropertiesWithPatternsValidator {
             validators: compile_validators(schema, context)?,
             pattern,
@@ -150,18 +152,21 @@ impl<'a> AdditionalPropertiesWithPatternsValidator<'a> {
     }
 }
 
-impl<'a> Validate<'a> for AdditionalPropertiesWithPatternsValidator<'a> {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for AdditionalPropertiesWithPatternsValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
-            for (property, value) in item {
-                if !self.pattern.is_match(property) {
-                    for validator in self.validators.iter() {
-                        validator.validate(schema, value)?
-                    }
-                }
-            }
+            let errors: Vec<_> = self
+                .validators
+                .iter()
+                .flat_map(move |validator| {
+                    item.iter()
+                        .filter(move |(property, _)| !self.pattern.is_match(property))
+                        .flat_map(move |(_, value)| validator.validate(schema, value))
+                })
+                .collect();
+            return Box::new(errors.into_iter());
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         format!("<additional properties: {:?}>", self.validators)
@@ -173,49 +178,47 @@ pub struct AdditionalPropertiesWithPatternsFalseValidator {
 }
 
 impl<'a> AdditionalPropertiesWithPatternsFalseValidator {
-    pub(crate) fn compile(pattern: Regex) -> CompilationResult<'a> {
+    pub(crate) fn compile(pattern: Regex) -> CompilationResult {
         Ok(Box::new(AdditionalPropertiesWithPatternsFalseValidator {
             pattern,
         }))
     }
 }
 
-impl<'a> Validate<'a> for AdditionalPropertiesWithPatternsFalseValidator {
-    fn validate(&self, _: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             for (property, _) in item {
                 if !self.pattern.is_match(property) {
-                    return Err(ValidationError::false_schema(Value::String(
-                        property.to_string(),
-                    )));
+                    return ValidationError::false_schema(Value::String(property.to_string()));
                 }
             }
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         "<additional properties: false>".to_string()
     }
 }
 
-pub struct AdditionalPropertiesWithPatternsNotEmptyValidator<'a> {
-    validators: Validators<'a>,
-    properties: &'a Map<String, Value>,
+pub struct AdditionalPropertiesWithPatternsNotEmptyValidator {
+    validators: Validators,
+    properties: Map<String, Value>,
     pattern: Regex,
 }
 
-impl<'a> AdditionalPropertiesWithPatternsNotEmptyValidator<'a> {
+impl AdditionalPropertiesWithPatternsNotEmptyValidator {
     pub(crate) fn compile(
-        schema: &'a Value,
-        properties: &'a Value,
+        schema: &Value,
+        properties: &Value,
         pattern: Regex,
         context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+    ) -> CompilationResult {
         if let Value::Object(properties) = properties {
             return Ok(Box::new(
                 AdditionalPropertiesWithPatternsNotEmptyValidator {
                     validators: compile_validators(schema, context)?,
-                    properties,
+                    properties: properties.clone(),
                     pattern,
                 },
             ));
@@ -224,35 +227,41 @@ impl<'a> AdditionalPropertiesWithPatternsNotEmptyValidator<'a> {
     }
 }
 
-impl<'a> Validate<'a> for AdditionalPropertiesWithPatternsNotEmptyValidator<'a> {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
-            for (property, value) in item {
-                if !self.properties.contains_key(property) && !self.pattern.is_match(property) {
-                    for validator in self.validators.iter() {
-                        validator.validate(schema, value)?
-                    }
-                }
-            }
+            let errors: Vec<_> = self
+                .validators
+                .iter()
+                .flat_map(move |validator| {
+                    item.iter()
+                        .filter(move |(property, _)| {
+                            !self.properties.contains_key(*property)
+                                && !self.pattern.is_match(property)
+                        })
+                        .flat_map(move |(_, value)| validator.validate(schema, value))
+                })
+                .collect();
+            return Box::new(errors.into_iter());
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         format!("<additional properties: {:?}>", self.validators)
     }
 }
 
-pub struct AdditionalPropertiesWithPatternsNotEmptyFalseValidator<'a> {
-    properties: &'a Map<String, Value>,
+pub struct AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
+    properties: Map<String, Value>,
     pattern: Regex,
 }
 
-impl<'a> AdditionalPropertiesWithPatternsNotEmptyFalseValidator<'a> {
-    pub(crate) fn compile(properties: &'a Value, pattern: Regex) -> CompilationResult<'a> {
+impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
+    pub(crate) fn compile(properties: &Value, pattern: Regex) -> CompilationResult {
         if let Value::Object(properties) = properties {
             return Ok(Box::new(
                 AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
-                    properties,
+                    properties: properties.clone(),
                     pattern,
                 },
             ));
@@ -261,29 +270,27 @@ impl<'a> AdditionalPropertiesWithPatternsNotEmptyFalseValidator<'a> {
     }
 }
 
-impl<'a> Validate<'a> for AdditionalPropertiesWithPatternsNotEmptyFalseValidator<'a> {
-    fn validate(&self, _: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             for property in item.keys() {
                 if !self.properties.contains_key(property) && !self.pattern.is_match(property) {
-                    return Err(ValidationError::false_schema(Value::String(
-                        property.to_string(),
-                    )));
+                    return ValidationError::false_schema(Value::String(property.to_string()));
                 }
             }
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         "<additional properties: false>".to_string()
     }
 }
 
-pub(crate) fn compile<'a>(
-    parent: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    parent: &Map<String, Value>,
+    schema: &Value,
     context: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     let properties = parent.get("properties");
     if let Some(patterns) = parent.get("patternProperties") {
         if let Value::Object(obj) = patterns {

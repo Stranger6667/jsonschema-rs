@@ -1,28 +1,29 @@
+use super::CompilationResult;
 use super::Validate;
-use super::{CompilationResult, ValidationResult};
 use crate::context::CompilationContext;
-use crate::error::{CompilationError, ValidationError};
+use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
 use crate::JSONSchema;
 use regex::{Captures, Regex};
 use serde_json::{Map, Value};
+
 use std::ops::Index;
 
 lazy_static! {
     static ref CONTROL_GROUPS_RE: Regex = Regex::new(r"\\c[A-Za-z]").unwrap();
 }
 
-pub struct PatternValidator<'a> {
-    original: &'a String,
+pub struct PatternValidator {
+    original: String,
     pattern: Regex,
 }
 
-impl<'a> PatternValidator<'a> {
-    pub(crate) fn compile(pattern: &'a Value) -> CompilationResult<'a> {
+impl PatternValidator {
+    pub(crate) fn compile(pattern: &Value) -> CompilationResult {
         match pattern {
             Value::String(item) => {
                 let pattern = convert_regex(item)?;
                 Ok(Box::new(PatternValidator {
-                    original: item,
+                    original: item.clone(),
                     pattern,
                 }))
             }
@@ -31,17 +32,14 @@ impl<'a> PatternValidator<'a> {
     }
 }
 
-impl<'a> Validate<'a> for PatternValidator<'a> {
-    fn validate(&self, _: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for PatternValidator {
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if !self.pattern.is_match(item) {
-                return Err(ValidationError::pattern(
-                    item.clone(),
-                    self.original.clone(),
-                ));
+                return ValidationError::pattern(item.clone(), self.original.clone());
             }
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         format!("<pattern: {}>", self.pattern)
@@ -74,10 +72,10 @@ fn replace_control_group(captures: &Captures) -> String {
         - 64) as char)
         .to_string()
 }
-pub(crate) fn compile<'a>(
-    _: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    _: &Map<String, Value>,
+    schema: &Value,
     _: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     Some(PatternValidator::compile(schema))
 }

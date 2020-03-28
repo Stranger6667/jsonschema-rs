@@ -1,37 +1,41 @@
-use super::{CompilationResult, ValidationResult};
+use super::CompilationResult;
 use super::{Validate, Validators};
 use crate::context::CompilationContext;
-use crate::error::ValidationError;
+use crate::error::{no_error, ErrorIterator, ValidationError};
 use crate::validator::compile_validators;
 use crate::JSONSchema;
 use serde_json::{Map, Value};
+use std::borrow::Borrow;
 
-pub struct PropertyNamesObjectValidator<'a> {
-    validators: Validators<'a>,
+pub struct PropertyNamesObjectValidator {
+    validators: Validators,
 }
 
-impl<'a> PropertyNamesObjectValidator<'a> {
-    pub(crate) fn compile(
-        schema: &'a Value,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+impl PropertyNamesObjectValidator {
+    pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
         Ok(Box::new(PropertyNamesObjectValidator {
             validators: compile_validators(schema, context)?,
         }))
     }
 }
 
-impl<'a> Validate<'a> for PropertyNamesObjectValidator<'a> {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
-        if let Value::Object(item) = instance {
-            for name in item.keys() {
-                let wrapper = Value::String(name.to_string());
-                for validator in self.validators.iter() {
-                    validator.validate(schema, &wrapper)?
-                }
-            }
+impl Validate for PropertyNamesObjectValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(item) = &instance.borrow() {
+            let errors: Vec<_> = self
+                .validators
+                .iter()
+                .flat_map(move |validator| {
+                    item.keys().flat_map(move |key| {
+                        let wrapper = Value::String(key.to_string());
+                        let errors: Vec<_> = validator.validate(schema, &wrapper).collect();
+                        errors.into_iter()
+                    })
+                })
+                .collect();
+            return Box::new(errors.into_iter());
         }
-        Ok(())
+        no_error()
     }
 
     fn name(&self) -> String {
@@ -41,20 +45,20 @@ impl<'a> Validate<'a> for PropertyNamesObjectValidator<'a> {
 
 pub struct PropertyNamesBooleanValidator {}
 
-impl<'a> PropertyNamesBooleanValidator {
-    pub(crate) fn compile() -> CompilationResult<'a> {
+impl PropertyNamesBooleanValidator {
+    pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(PropertyNamesBooleanValidator {}))
     }
 }
 
-impl<'a> Validate<'a> for PropertyNamesBooleanValidator {
-    fn validate(&self, _: &JSONSchema, instance: &Value) -> ValidationResult {
-        if let Value::Object(item) = instance {
+impl Validate for PropertyNamesBooleanValidator {
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(item) = instance.borrow() {
             if !item.is_empty() {
-                return Err(ValidationError::false_schema(instance.clone()));
+                return ValidationError::false_schema(instance.clone());
             }
         }
-        Ok(())
+        no_error()
     }
 
     fn name(&self) -> String {
@@ -62,11 +66,11 @@ impl<'a> Validate<'a> for PropertyNamesBooleanValidator {
     }
 }
 
-pub(crate) fn compile<'a>(
-    _: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    _: &Map<String, Value>,
+    schema: &Value,
     context: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     match schema {
         Value::Object(_) => Some(PropertyNamesObjectValidator::compile(schema, context)),
         Value::Bool(false) => Some(PropertyNamesBooleanValidator::compile()),

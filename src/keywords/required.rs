@@ -1,22 +1,22 @@
+use super::CompilationResult;
 use super::Validate;
-use super::{CompilationResult, ValidationResult};
 use crate::context::CompilationContext;
-use crate::error::{CompilationError, ValidationError};
+use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
 use crate::JSONSchema;
 use serde_json::{Map, Value};
 
-pub struct RequiredValidator<'a> {
-    required: Vec<&'a String>,
+pub struct RequiredValidator {
+    required: Vec<String>,
 }
 
-impl<'a> RequiredValidator<'a> {
-    pub(crate) fn compile(schema: &'a Value) -> CompilationResult<'a> {
+impl RequiredValidator {
+    pub(crate) fn compile(schema: &Value) -> CompilationResult {
         match schema {
             Value::Array(items) => {
                 let mut required = Vec::with_capacity(items.len());
                 for item in items {
                     match item {
-                        Value::String(string) => required.push(string),
+                        Value::String(string) => required.push(string.clone()),
                         _ => return Err(CompilationError::SchemaError),
                     }
                 }
@@ -27,17 +27,16 @@ impl<'a> RequiredValidator<'a> {
     }
 }
 
-impl<'a> Validate<'a> for RequiredValidator<'a> {
-    fn validate(&self, _: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for RequiredValidator {
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             for property_name in self.required.iter() {
-                let name = *property_name;
-                if !item.contains_key(name) {
-                    return Err(ValidationError::required(name.clone()));
+                if !item.contains_key(property_name) {
+                    return ValidationError::required(property_name.clone());
                 }
             }
         }
-        Ok(())
+        no_error()
     }
 
     fn name(&self) -> String {
@@ -45,10 +44,10 @@ impl<'a> Validate<'a> for RequiredValidator<'a> {
     }
 }
 
-pub(crate) fn compile<'a>(
-    _: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    _: &Map<String, Value>,
+    schema: &Value,
     _: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     Some(RequiredValidator::compile(schema))
 }
