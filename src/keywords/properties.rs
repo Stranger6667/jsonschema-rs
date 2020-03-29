@@ -1,5 +1,4 @@
-use super::CompilationResult;
-use super::{Validate, Validators};
+use super::{CompilationResult, Validate, Validators};
 use crate::compilation::CompilationContext;
 use crate::compilation::{compile_validators, JSONSchema};
 use crate::error::{no_error, CompilationError, ErrorIterator};

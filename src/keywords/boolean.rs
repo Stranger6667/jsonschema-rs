@@ -1,7 +1,6 @@
-use super::CompilationResult;
-use super::Validate;
+use super::{CompilationResult, Validate};
+use crate::compilation::JSONSchema;
 use crate::error::{no_error, ErrorIterator, ValidationError};
-use crate::JSONSchema;
 use serde_json::Value;
 
 pub struct TrueValidator {}

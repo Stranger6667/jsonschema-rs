@@ -1,10 +1,7 @@
-use super::CompilationResult;
-use super::{Validate, Validators};
-use crate::compilation::compile_validators;
-use crate::compilation::CompilationContext;
+use super::boolean::TrueValidator;
+use super::{CompilationResult, Validate, Validators};
+use crate::compilation::{compile_validators, CompilationContext, JSONSchema};
 use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
-use crate::keywords::boolean::TrueValidator;
-use crate::JSONSchema;
 use serde_json::{Map, Value};
 
 pub struct AdditionalItemsObjectValidator {

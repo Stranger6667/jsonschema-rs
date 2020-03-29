@@ -1,9 +1,7 @@
 //! Validator for `format` keyword.
-use super::CompilationResult;
-use super::Validate;
-use crate::compilation::CompilationContext;
-use crate::error::{error, no_error, CompilationError, ErrorIterator};
-use crate::{JSONSchema, ValidationError};
+use super::{CompilationResult, Validate};
+use crate::compilation::{CompilationContext, JSONSchema};
+use crate::error::{error, no_error, CompilationError, ErrorIterator, ValidationError};
 use serde_json::{Map, Value};
 
 pub struct FormatValidator {

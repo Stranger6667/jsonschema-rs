@@ -1,9 +1,6 @@
-use super::CompilationResult;
-use super::{Validate, Validators};
-use crate::compilation::compile_validators;
-use crate::compilation::CompilationContext;
+use super::{CompilationResult, Validate, Validators};
+use crate::compilation::{compile_validators, CompilationContext, JSONSchema};
 use crate::error::{no_error, ErrorIterator};
-use crate::JSONSchema;
 use serde_json::{Map, Value};
 
 pub struct IfThenValidator {

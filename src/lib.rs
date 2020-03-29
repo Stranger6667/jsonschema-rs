@@ -27,7 +27,6 @@
 //! ```
 mod compilation;
 mod error;
-mod helpers;
 mod keywords;
 mod resolver;
 mod schemas;

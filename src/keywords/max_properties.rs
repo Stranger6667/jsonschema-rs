@@ -1,8 +1,6 @@
-use super::CompilationResult;
-use super::Validate;
-use crate::compilation::CompilationContext;
+use super::{CompilationResult, Validate};
+use crate::compilation::{CompilationContext, JSONSchema};
 use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
-use crate::JSONSchema;
 use serde_json::{Map, Value};
 
 pub struct MaxPropertiesValidator {

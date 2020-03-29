@@ -164,7 +164,7 @@ pub(crate) fn compile_validators(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ValidationError;
+    use crate::error::ValidationError;
     use serde_json::*;
     use std::borrow::Cow;
     use std::fs::File;

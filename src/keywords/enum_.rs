@@ -1,8 +1,6 @@
-use super::CompilationResult;
-use super::Validate;
-use crate::compilation::CompilationContext;
+use super::{helpers, CompilationResult, Validate};
+use crate::compilation::{CompilationContext, JSONSchema};
 use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
-use crate::{helpers, JSONSchema};
 use serde_json::{Map, Value};
 
 pub struct EnumValidator {

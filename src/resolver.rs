@@ -1,9 +1,8 @@
 //! Reference resolver. Implements logic, required by `$ref` keyword.
 //! Is able to load documents from remote locations via HTTP(S).
 use crate::compilation::DEFAULT_ROOT_URL;
-use crate::error::CompilationError;
+use crate::error::{CompilationError, ValidationError};
 use crate::schemas::{id_of, Draft};
-use crate::ValidationError;
 use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::HashMap;
