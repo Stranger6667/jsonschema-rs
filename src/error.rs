@@ -9,6 +9,14 @@ pub enum CompilationError {
     SchemaError,
 }
 
+impl error::Error for CompilationError {}
+
+impl fmt::Display for CompilationError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        write!(f, "Schema compilation error")
+    }
+}
+
 impl From<regex::Error> for CompilationError {
     fn from(_: regex::Error) -> Self {
         CompilationError::SchemaError
