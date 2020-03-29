@@ -10,18 +10,20 @@
 //! ## Example:
 //!
 //! ```rust
-//! use jsonschema::{JSONSchema, Draft};
+//! use jsonschema::{JSONSchema, Draft, CompilationError};
 //! use serde_json::json;
 //!
-//!
-//! let schema = json!({"maxLength": 5});
-//! let instance = json!("foo");
-//! let compiled = JSONSchema::compile(&schema, Some(Draft::Draft7)).unwrap();
-//! let result = compiled.validate(&instance);
-//! if let Err(errors) = result {
-//!     for error in errors {
-//!         println!("Validation error: {}", error)
-//!     }   
+//!fn main() -> Result<(), CompilationError> {
+//!    let schema = json!({"maxLength": 5});
+//!    let instance = json!("foo");
+//!    let compiled = JSONSchema::compile(&schema, Some(Draft::Draft7))?;
+//!    let result = compiled.validate(&instance);
+//!    if let Err(errors) = result {
+//!        for error in errors {
+//!            println!("Validation error: {}", error)
+//!        }   
+//!    }
+//!    Ok(())
 //! }
 //!
 //! ```
