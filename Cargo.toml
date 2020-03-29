@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["dmitry.dygalo <dadygalo@gmail.com>"]
 edition = "2018"
 license = "MIT"
+readme = "README.md"
 description = "A crate for performing JSON schema validation"
 repository = "https://github.com/Stranger6667/jsonschema-rs"
 keywords = ["jsonschema", "validation"]
