@@ -230,7 +230,7 @@ mod tests {
         assert_eq!(errors.len(), 2);
         assert_eq!(
             format!("{}", errors[0]),
-            r#"'{"a":3}' does not have enough properties"#
+            r#"{"a":3} does not have enough properties"#
         );
         assert_eq!(format!("{}", errors[1]), r#"'a' is too short"#);
     }

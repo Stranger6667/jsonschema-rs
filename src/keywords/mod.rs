@@ -65,7 +65,10 @@ pub type Validators = Vec<BoxedValidator>;
 #[cfg(test)]
 mod tests {
     use super::JSONSchema;
-    use serde_json::json;
+    use serde_json::{from_str, json, Value};
+    use std::fs::File;
+    use std::io::Read;
+    use std::path::Path;
 
     macro_rules! t {
         ($t:ident : $schema:tt => $expected:expr) => {
@@ -97,4 +100,53 @@ mod tests {
     t!(uri_format: {"format": "uri"} => "<format: uri>");
     t!(uri_reference_format: {"format": "uri-reference"} => "<format: uri-reference>");
     t!(uri_template_format: {"format": "uri-template"} => "<format: uri-template>");
+
+    fn load(path: &str) -> Value {
+        let full_path = format!("tests/suite/tests/draft7/{}", path);
+        let path = Path::new(&full_path);
+        let mut file = File::open(&path).unwrap();
+        let mut content = String::new();
+        file.read_to_string(&mut content).ok().unwrap();
+        let data: Value = from_str(&content).unwrap();
+        data
+    }
+
+    macro_rules! e {
+        ($t:ident : $file:expr, $case:expr, $test_id:expr, $expected:expr) => {
+            #[test]
+            fn $t() {
+                let content = load($file);
+                let case = &content.as_array().unwrap()[$case];
+                let schema = case.get("schema").unwrap();
+                let instance = case.get("tests").unwrap().as_array().unwrap()[$test_id]
+                    .get("data")
+                    .unwrap();
+                let compiled = JSONSchema::compile(&schema, None).unwrap();
+                let errors: Vec<_> = compiled.validate(&instance).unwrap_err().collect();
+                assert_eq!(format!("{}", errors[0]), $expected);
+            }
+        };
+    }
+
+    e!(e1: "additionalItems.json", 0, 1, r#"'"foo"' is not of type 'integer'"#);
+    e!(e2: "additionalItems.json", 2, 2, r#"Additional items are not allowed (4 was unexpected)"#);
+    e!(e3: "additionalProperties.json", 0, 1, r#"False schema does not allow '"quux"'"#);
+    e!(e4: "const.json", 0, 1, r#"'2' was expected"#);
+    e!(e5: "contains.json", 0, 3, r#"None of '[2,3,4]' are valid under the given schema"#);
+    e!(e6: "enum.json", 0, 1, r#"'4' is not one of '[1,2,3]'"#);
+    e!(e7: "exclusiveMaximum.json", 0, 1, r#"3 is greater than or equal to the maximum of 3"#);
+    e!(e8: "exclusiveMinimum.json", 0, 1, r#"1.1 is less than or equal to the minimum of 1.1"#);
+    e!(e9: "maxItems.json", 0, 2, r#"[1,2,3] is too long"#);
+    e!(e10: "maxLength.json", 0, 2, r#"'foo' is too long"#);
+    e!(e11: "maxProperties.json", 0, 2, r#"{"bar":2,"baz":3,"foo":1} has too many properties"#);
+    e!(e12: "minimum.json", 0, 2, r#"0.6 is less than the minimum of 1.1"#);
+    e!(e13: "minItems.json", 0, 2, r#"[] is too short"#);
+    e!(e14: "minLength.json", 0, 2, r#"'f' is too short"#);
+    e!(e15: "minProperties.json", 0, 2, r#"{} does not have enough properties"#);
+    e!(e16: "multipleOf.json", 0, 1, r#"7 is not a multiple of 2"#);
+    e!(e17: "not.json", 0, 1, r#"{"type":"integer"} is not allowed for 1"#);
+    e!(e18: "pattern.json", 0, 1, r#"'abc' does not match '^a*$'"#);
+    e!(e19: "required.json", 0, 1, r#"'foo' is a required property"#);
+    e!(e20: "type.json", 0, 1, r#"'1.1' is not of type 'integer'"#);
+    e!(e21: "uniqueItems.json", 0, 1, r#"'[1,1]' has non-unique elements"#);
 }

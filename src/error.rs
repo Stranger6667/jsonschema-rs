@@ -388,41 +388,42 @@ impl fmt::Display for ValidationError {
             } => write!(f, "'{}' is not one of '{}'", instance, options),
             ValidationErrorKind::ExclusiveMaximum { instance, limit } => write!(
                 f,
-                "'{}' is greater than or equal to the maximum of '{}'",
+                "{} is greater than or equal to the maximum of {}",
                 instance, limit
             ),
             ValidationErrorKind::ExclusiveMinimum { instance, limit } => write!(
                 f,
-                "'{}' is less than or equal to the minimum of '{}'",
+                "{} is less than or equal to the minimum of {}",
                 instance, limit
             ),
-            ValidationErrorKind::Maximum { instance, limit } => write!(
-                f,
-                "'{}' is greater than the maximum of '{}'",
-                instance, limit
-            ),
+            ValidationErrorKind::FalseSchema(ref instance) => {
+                write!(f, "False schema does not allow '{}'", instance)
+            }
+            ValidationErrorKind::InvalidReference(ref path) => {
+                write!(f, "Invalid reference: {}", path)
+            }
+            ValidationErrorKind::Maximum { instance, limit } => {
+                write!(f, "{} is greater than the maximum of {}", instance, limit)
+            }
             ValidationErrorKind::Minimum { instance, limit } => {
-                write!(f, "'{}' is less than the minimum of '{}'", instance, limit)
+                write!(f, "{} is less than the minimum of {}", instance, limit)
             }
             ValidationErrorKind::MaxLength(ref instance) => write!(f, "'{}' is too long", instance),
             ValidationErrorKind::MinLength(ref instance) => {
                 write!(f, "'{}' is too short", instance)
             }
-            ValidationErrorKind::MaxItems(ref instance) => write!(f, "'{}' is too long", instance),
-            ValidationErrorKind::MinItems(ref instance) => write!(f, "'{}' is too short", instance),
-            ValidationErrorKind::InvalidReference(ref path) => {
-                write!(f, "Invalid reference: {}", path)
-            }
+            ValidationErrorKind::MaxItems(ref instance) => write!(f, "{} is too long", instance),
+            ValidationErrorKind::MinItems(ref instance) => write!(f, "{} is too short", instance),
             ValidationErrorKind::MaxProperties(ref instance) => {
-                write!(f, "'{}' has too many properties", instance)
+                write!(f, "{} has too many properties", instance)
             }
             ValidationErrorKind::MinProperties(ref instance) => {
-                write!(f, "'{}' does not have enough properties", instance)
+                write!(f, "{} does not have enough properties", instance)
             }
             ValidationErrorKind::Not {
                 ref instance,
                 ref schema,
-            } => write!(f, "'{}' is not allowed for '{}'", instance, schema),
+            } => write!(f, "{} is not allowed for {}", schema, instance),
             ValidationErrorKind::OneOfNotValid(ref instance) => write!(
                 f,
                 "'{}' is not valid under any of the given schemas",
@@ -433,9 +434,6 @@ impl fmt::Display for ValidationError {
                 "'{}' is valid under more than one of the given schemas",
                 instance
             ),
-            ValidationErrorKind::FalseSchema(ref instance) => {
-                write!(f, "False schema does not allow '{}'", instance)
-            }
             ValidationErrorKind::Pattern {
                 ref instance,
                 ref pattern,
@@ -446,7 +444,7 @@ impl fmt::Display for ValidationError {
             ValidationErrorKind::MultipleOf {
                 instance,
                 multiple_of,
-            } => write!(f, "'{}' is not a multiple of '{}'", instance, multiple_of),
+            } => write!(f, "{} is not a multiple of {}", instance, multiple_of),
             ValidationErrorKind::UniqueItems(ref instance) => {
                 write!(f, "'{}' has non-unique elements", instance)
             }
