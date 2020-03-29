@@ -1,7 +1,7 @@
+use super::CompilationResult;
 use super::Validate;
-use super::{CompilationResult, ValidationResult};
 use crate::context::CompilationContext;
-use crate::error::{CompilationError, ValidationError};
+use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
 use crate::JSONSchema;
 use serde_json::{Map, Value};
 
@@ -19,25 +19,25 @@ impl MinimumValidator {
     }
 }
 
-impl<'a> Validate<'a> for MinimumValidator {
-    fn validate(&self, _: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for MinimumValidator {
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Number(item) = instance {
             let item = item.as_f64().unwrap();
             if item < self.limit {
-                return Err(ValidationError::minimum(item, self.limit));
+                return ValidationError::minimum(item, self.limit);
             }
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         format!("<minimum: {}>", self.limit)
     }
 }
 
-pub(crate) fn compile<'a>(
-    _: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    _: &Map<String, Value>,
+    schema: &Value,
     _: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     Some(MinimumValidator::compile(schema))
 }

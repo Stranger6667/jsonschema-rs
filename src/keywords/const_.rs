@@ -1,39 +1,39 @@
+use super::CompilationResult;
 use super::Validate;
-use super::{CompilationResult, ValidationResult};
 use crate::context::CompilationContext;
-use crate::error::ValidationError;
+use crate::error::{no_error, ErrorIterator, ValidationError};
 use crate::{helpers, JSONSchema};
 use serde_json::{Map, Value};
 
-pub struct ConstValidator<'a> {
+pub struct ConstValidator {
     error_message: String,
-    value: &'a Value,
+    value: Value,
 }
 
-impl<'a> ConstValidator<'a> {
-    pub(crate) fn compile(value: &'a Value) -> CompilationResult<'a> {
+impl ConstValidator {
+    pub(crate) fn compile(value: &Value) -> CompilationResult {
         Ok(Box::new(ConstValidator {
             error_message: format!("'{}' was expected", value),
-            value,
+            value: value.clone(),
         }))
     }
 }
 
-impl<'a> Validate<'a> for ConstValidator<'a> {
-    fn validate(&self, _: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for ConstValidator {
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if !helpers::equal(instance, &self.value) {
-            return Err(ValidationError::constant(self.error_message.clone()));
+            return ValidationError::constant(self.error_message.clone());
         };
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         format!("<const: {}>", self.value)
     }
 }
-pub(crate) fn compile<'a>(
-    _: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    _: &Map<String, Value>,
+    schema: &Value,
     _: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     Some(ConstValidator::compile(schema))
 }

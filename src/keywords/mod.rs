@@ -33,30 +33,30 @@ pub(crate) mod required;
 pub(crate) mod type_;
 pub(crate) mod unique_items;
 use crate::error;
+use crate::error::ErrorIterator;
 use crate::validator::JSONSchema;
 use serde_json::Value;
 use std::fmt::{Debug, Error, Formatter};
 
-pub trait Validate<'a>: Send + Sync + 'a {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult;
-    // The same as above, but does not construct Result.
+pub trait Validate: Send + Sync {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a>;
+    // The same as above, but does not construct ErrorIterator.
     // It is faster for cases when the result is not needed (like anyOf), since errors are
     // not constructed
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        self.validate(schema, instance).is_ok() // TODO. remove it and implement everywhere
+        self.validate(schema, instance).next().is_none()
     }
     fn name(&self) -> String {
         "<validator>".to_string()
     }
 }
 
-impl<'a> Debug for dyn Validate<'a> + Send + Sync + 'a {
+impl Debug for dyn Validate + Send + Sync {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         f.write_str(&self.name())
     }
 }
 
-pub type ValidationResult = Result<(), error::ValidationError>;
-pub type CompilationResult<'a> = Result<BoxedValidator<'a>, error::CompilationError>;
-pub type BoxedValidator<'a> = Box<dyn Validate<'a> + Send + Sync + 'a>;
-pub type Validators<'a> = Vec<BoxedValidator<'a>>;
+pub type CompilationResult = Result<BoxedValidator, error::CompilationError>;
+pub type BoxedValidator = Box<dyn Validate + Send + Sync>;
+pub type Validators = Vec<BoxedValidator>;

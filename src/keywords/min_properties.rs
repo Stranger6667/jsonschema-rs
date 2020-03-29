@@ -1,7 +1,7 @@
+use super::CompilationResult;
 use super::Validate;
-use super::{CompilationResult, ValidationResult};
 use crate::context::CompilationContext;
-use crate::error::{CompilationError, ValidationError};
+use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
 use crate::JSONSchema;
 use serde_json::{Map, Value};
 
@@ -10,7 +10,7 @@ pub struct MinPropertiesValidator {
 }
 
 impl<'a> MinPropertiesValidator {
-    pub(crate) fn compile(schema: &Value) -> CompilationResult<'a> {
+    pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Value::Number(limit) = schema {
             let limit = limit.as_u64().unwrap() as usize;
             return Ok(Box::new(MinPropertiesValidator { limit }));
@@ -19,24 +19,24 @@ impl<'a> MinPropertiesValidator {
     }
 }
 
-impl<'a> Validate<'a> for MinPropertiesValidator {
-    fn validate(&self, _: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for MinPropertiesValidator {
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             if item.len() < self.limit {
-                return Err(ValidationError::min_properties(instance.clone()));
+                return ValidationError::min_properties(instance.clone());
             }
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         format!("<min properties: {}>", self.limit)
     }
 }
 
-pub(crate) fn compile<'a>(
-    _: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    _: &Map<String, Value>,
+    schema: &Value,
     _: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     Some(MinPropertiesValidator::compile(schema))
 }

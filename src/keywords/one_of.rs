@@ -1,20 +1,17 @@
-use super::{CompilationResult, ValidationResult};
+use super::CompilationResult;
 use super::{Validate, Validators};
 use crate::context::CompilationContext;
-use crate::error::{CompilationError, ValidationError};
+use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
 use crate::validator::compile_validators;
 use crate::JSONSchema;
 use serde_json::{Map, Value};
 
-pub struct OneOfValidator<'a> {
-    schemas: Vec<Validators<'a>>,
+pub struct OneOfValidator {
+    schemas: Vec<Validators>,
 }
 
-impl<'a> OneOfValidator<'a> {
-    pub(crate) fn compile(
-        schema: &'a Value,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+impl OneOfValidator {
+    pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
         match schema.as_array() {
             Some(items) => {
                 let mut schemas = Vec::with_capacity(items.len());
@@ -31,7 +28,7 @@ impl<'a> OneOfValidator<'a> {
         &self,
         schema: &JSONSchema,
         instance: &Value,
-    ) -> (Option<&Validators<'a>>, Option<usize>) {
+    ) -> (Option<&Validators>, Option<usize>) {
         let mut first_valid = None;
         let mut first_valid_idx = None;
         for (idx, validators) in self.schemas.iter().enumerate() {
@@ -60,16 +57,16 @@ impl<'a> OneOfValidator<'a> {
     }
 }
 
-impl<'a> Validate<'a> for OneOfValidator<'a> {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for OneOfValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         let (first_valid, first_valid_idx) = self.get_first_valid(schema, instance);
         if first_valid.is_none() {
-            return Err(ValidationError::one_of_not_valid(instance.clone()));
+            return ValidationError::one_of_not_valid(instance.clone());
         }
         if self.are_others_valid(schema, instance, first_valid_idx) {
-            return Err(ValidationError::one_of_multiple_valid(instance.clone()));
+            return ValidationError::one_of_multiple_valid(instance.clone());
         }
-        Ok(())
+        no_error()
     }
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
         let (first_valid, first_valid_idx) = self.get_first_valid(schema, instance);
@@ -83,10 +80,10 @@ impl<'a> Validate<'a> for OneOfValidator<'a> {
     }
 }
 
-pub(crate) fn compile<'a>(
-    _: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    _: &Map<String, Value>,
+    schema: &Value,
     context: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     Some(OneOfValidator::compile(schema, context))
 }

@@ -1,5 +1,6 @@
 use serde_json::Value;
 use std::fmt::{Error, Formatter};
+use std::iter::{empty, once};
 use std::string::FromUtf8Error;
 use std::{error, fmt, io};
 
@@ -23,6 +24,17 @@ impl From<url::ParseError> for CompilationError {
 #[derive(Debug)]
 pub struct ValidationError {
     kind: ValidationErrorKind,
+}
+
+pub type ErrorIterator<'a> = Box<dyn Iterator<Item = ValidationError> + 'a>;
+
+// Empty iterator means no error happened
+pub(crate) fn no_error<'a>() -> ErrorIterator<'a> {
+    Box::new(empty())
+}
+// A wrapper for one error
+pub(crate) fn error<'a>(instance: ValidationError) -> ErrorIterator<'a> {
+    Box::new(once(instance))
 }
 
 /// Kinds of errors that may happen during validation
@@ -129,46 +141,46 @@ pub enum TypeKind {
 }
 
 /// Shortcuts for creation of specific error kinds.
-impl ValidationError {
-    pub(crate) fn additional_items(items: Vec<Value>, limit: usize) -> ValidationError {
-        ValidationError {
+impl<'a> ValidationError {
+    pub(crate) fn additional_items(items: Vec<Value>, limit: usize) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::AdditionalItems { items, limit },
-        }
+        })
     }
-    pub(crate) fn any_of(instance: Value) -> ValidationError {
-        ValidationError {
+    pub(crate) fn any_of(instance: Value) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::AnyOf(instance),
-        }
+        })
     }
-    pub(crate) fn constant(message: String) -> ValidationError {
-        ValidationError {
+    pub(crate) fn constant(message: String) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::Constant(message),
-        }
+        })
     }
-    pub(crate) fn contains(instance: Value) -> ValidationError {
-        ValidationError {
+    pub(crate) fn contains(instance: Value) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::Contains(instance),
-        }
+        })
     }
-    pub(crate) fn enumeration(instance: Value, options: Value) -> ValidationError {
-        ValidationError {
+    pub(crate) fn enumeration(instance: Value, options: Value) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::Enum { instance, options },
-        }
+        })
     }
-    pub(crate) fn exclusive_maximum(instance: f64, limit: f64) -> ValidationError {
-        ValidationError {
+    pub(crate) fn exclusive_maximum(instance: f64, limit: f64) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::ExclusiveMaximum { instance, limit },
-        }
+        })
     }
-    pub(crate) fn exclusive_minimum(instance: f64, limit: f64) -> ValidationError {
-        ValidationError {
+    pub(crate) fn exclusive_minimum(instance: f64, limit: f64) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::ExclusiveMinimum { instance, limit },
-        }
+        })
     }
-    pub(crate) fn false_schema(instance: Value) -> ValidationError {
-        ValidationError {
+    pub(crate) fn false_schema(instance: Value) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::FalseSchema(instance),
-        }
+        })
     }
     pub(crate) fn file_not_found(err: io::Error) -> ValidationError {
         ValidationError {
@@ -195,107 +207,110 @@ impl ValidationError {
             kind: ValidationErrorKind::InvalidReference(reference),
         }
     }
-    pub(crate) fn max_items(instance: Value) -> ValidationError {
-        ValidationError {
+    pub(crate) fn max_items(instance: Value) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::MaxItems(instance),
-        }
+        })
     }
-    pub(crate) fn maximum(instance: f64, limit: f64) -> ValidationError {
-        ValidationError {
+    pub(crate) fn maximum(instance: f64, limit: f64) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::Maximum { instance, limit },
-        }
+        })
     }
-    pub(crate) fn max_length(instance: String) -> ValidationError {
-        ValidationError {
+    pub(crate) fn max_length(instance: String) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::MaxLength(instance),
-        }
+        })
     }
-    pub(crate) fn max_properties(instance: Value) -> ValidationError {
-        ValidationError {
+    pub(crate) fn max_properties(instance: Value) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::MaxProperties(instance),
-        }
+        })
     }
-    pub(crate) fn min_items(instance: Value) -> ValidationError {
-        ValidationError {
+    pub(crate) fn min_items(instance: Value) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::MinItems(instance),
-        }
+        })
     }
-    pub(crate) fn minimum(instance: f64, limit: f64) -> ValidationError {
-        ValidationError {
+    pub(crate) fn minimum(instance: f64, limit: f64) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::Minimum { instance, limit },
-        }
+        })
     }
-    pub(crate) fn min_length(instance: String) -> ValidationError {
-        ValidationError {
+    pub(crate) fn min_length(instance: String) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::MinLength(instance),
-        }
+        })
     }
-    pub(crate) fn min_properties(instance: Value) -> ValidationError {
-        ValidationError {
+    pub(crate) fn min_properties(instance: Value) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::MinProperties(instance),
-        }
+        })
     }
-    pub(crate) fn multiple_of(instance: f64, multiple_of: f64) -> ValidationError {
-        ValidationError {
+    pub(crate) fn multiple_of(instance: f64, multiple_of: f64) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::MultipleOf {
                 instance,
                 multiple_of,
             },
-        }
+        })
     }
-    pub(crate) fn not(instance: Value, schema: Value) -> ValidationError {
-        ValidationError {
+    pub(crate) fn not(instance: Value, schema: Value) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::Not { instance, schema },
-        }
+        })
     }
-    pub(crate) fn one_of_multiple_valid(instance: Value) -> ValidationError {
-        ValidationError {
+    pub(crate) fn one_of_multiple_valid(instance: Value) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::OneOfMultipleValid(instance),
-        }
+        })
     }
-    pub(crate) fn one_of_not_valid(instance: Value) -> ValidationError {
-        ValidationError {
+    pub(crate) fn one_of_not_valid(instance: Value) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::OneOfNotValid(instance),
-        }
+        })
     }
-    pub(crate) fn pattern(instance: String, pattern: String) -> ValidationError {
-        ValidationError {
+    pub(crate) fn pattern(instance: String, pattern: String) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::Pattern { instance, pattern },
-        }
+        })
     }
-    pub(crate) fn required(property: String) -> ValidationError {
-        ValidationError {
+    pub(crate) fn required(property: String) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::Required(property),
-        }
+        })
     }
     pub(crate) fn schema() -> ValidationError {
         ValidationError {
             kind: ValidationErrorKind::Schema,
         }
     }
-    pub(crate) fn single_type_error(instance: Value, type_name: PrimitiveType) -> ValidationError {
-        ValidationError {
+    pub(crate) fn single_type_error(
+        instance: Value,
+        type_name: PrimitiveType,
+    ) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::Type {
                 instance,
                 kind: TypeKind::Single(type_name),
             },
-        }
+        })
     }
     pub(crate) fn multiple_type_error(
         instance: Value,
         types: Vec<PrimitiveType>,
-    ) -> ValidationError {
-        ValidationError {
+    ) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::Type {
                 instance,
                 kind: TypeKind::Multiple(types),
             },
-        }
+        })
     }
-    pub(crate) fn unique_items(instance: Value) -> ValidationError {
-        ValidationError {
+    pub(crate) fn unique_items(instance: Value) -> ErrorIterator<'a> {
+        error(ValidationError {
             kind: ValidationErrorKind::UniqueItems(instance),
-        }
+        })
     }
     pub(crate) fn unknown_reference_scheme(scheme: String) -> ValidationError {
         ValidationError {
@@ -468,7 +483,9 @@ mod tests {
     #[test]
     fn type_error() {
         let instance = json!(42);
-        let err = ValidationError::single_type_error(instance, PrimitiveType::String);
+        let err = ValidationError::single_type_error(instance, PrimitiveType::String)
+            .next()
+            .unwrap();
         let repr = format!("{}", err);
         assert_eq!(repr, "'42' is not of type 'string'")
     }

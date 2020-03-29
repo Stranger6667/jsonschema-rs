@@ -85,20 +85,6 @@ fn fastjsonschema_invalid_benchmark(c: &mut Criterion) {
     });
 }
 
-fn format_time_benchmark(c: &mut Criterion) {
-    let schema = black_box(json!({"type": "string", "format": "time"}));
-    let validator = JSONSchema::compile(&schema, None).unwrap();
-    let data = black_box(json!("10:00:00Z"));
-    c.bench_function("format time", |b| b.iter(|| validator.validate(&data)));
-}
-
-fn max_length_benchmark(c: &mut Criterion) {
-    let schema = json!({"maxLength": 5});
-    let validator = JSONSchema::compile(&schema, None).unwrap();
-    let data = black_box(json!("abc"));
-    c.bench_function("max length", |b| b.iter(|| validator.validate(&data)));
-}
-
 bench_validate!(
     additional_items_valid,
     "additional items valid",
@@ -287,12 +273,12 @@ bench_compile!(c_aproperties6, "compile additional properties 6", {"properties":
 
 criterion_group!(
     benches,
-    //    canada_benchmark,
+    canada_benchmark,
     //    canada_benchmark_alternative,
-    //    canada_compile_benchmark,
-    //    fastjsonschema_compile,
-    //    fastjsonschema_valid_benchmark,
-    //    fastjsonschema_invalid_benchmark,
+    canada_compile_benchmark,
+    fastjsonschema_compile,
+    fastjsonschema_valid_benchmark,
+    fastjsonschema_invalid_benchmark,
     //    type_string_valid,
     //    type_string_invalid,
     //    false_schema,
@@ -349,10 +335,10 @@ criterion_group!(
     //    additional_properties_invalid6,
     //    type_integer_valid1,
     //    type_integer_invalid1,
-    type_integer_valid2,
-    type_integer_invalid2,
-    type_multiple_valid3,
-    type_multiple_invalid3,
+    //    type_integer_valid2,
+    //    type_integer_invalid2,
+    //    type_multiple_valid3,
+    //    type_multiple_invalid3,
     //    unique_items_valid,
     //    unique_items_invalid,
     //    multiple_of_integer_valid,
@@ -370,9 +356,9 @@ criterion_group!(
     //    format_time_benchmark,
     //    max_length_benchmark,
     //    ref_valid,
-    //    c_required,
     //    properties_valid,
     //    properties_invalid,
+    //    c_required,
     //    c_properties,
     //    c_dependencies,
     //    c_enum,

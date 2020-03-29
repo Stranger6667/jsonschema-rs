@@ -1,24 +1,21 @@
-use super::{CompilationResult, ValidationResult};
+use super::CompilationResult;
 use super::{Validate, Validators};
 use crate::context::CompilationContext;
-use crate::error::CompilationError;
+use crate::error::{no_error, CompilationError, ErrorIterator};
 use crate::validator::{compile_validators, JSONSchema};
 use serde_json::{Map, Value};
 
-pub struct PropertiesValidator<'a> {
-    properties: Vec<(&'a String, Validators<'a>)>,
+pub struct PropertiesValidator {
+    properties: Vec<(String, Validators)>,
 }
 
-impl<'a> PropertiesValidator<'a> {
-    pub(crate) fn compile(
-        schema: &'a Value,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+impl PropertiesValidator {
+    pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
         match schema {
             Value::Object(map) => {
                 let mut properties = Vec::with_capacity(map.len());
                 for (key, subschema) in map {
-                    properties.push((key, compile_validators(subschema, context)?));
+                    properties.push((key.clone(), compile_validators(subschema, context)?));
                 }
                 Ok(Box::new(PropertiesValidator { properties }))
             }
@@ -27,29 +24,34 @@ impl<'a> PropertiesValidator<'a> {
     }
 }
 
-impl<'a> Validate<'a> for PropertiesValidator<'a> {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for PropertiesValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
-            for (name, validators) in self.properties.iter() {
-                if let Some(item) = item.get(*name) {
-                    for validator in validators {
-                        validator.validate(schema, item)?
-                    }
-                }
-            }
+            let errors: Vec<_> = self
+                .properties
+                .iter()
+                .flat_map(move |(name, validators)| {
+                    let option = item.get(name);
+                    option.into_iter().flat_map(move |item| {
+                        validators
+                            .iter()
+                            .flat_map(move |validator| validator.validate(schema, item))
+                    })
+                })
+                .collect();
+            return Box::new(errors.into_iter());
         }
-        Ok(())
+        no_error()
     }
 
     fn name(&self) -> String {
-        //        "".to_string()
         format!("<properties: {:?}>", self.properties)
     }
 }
-pub(crate) fn compile<'a>(
-    _: &'a Map<String, Value>,
-    schema: &'a Value,
+pub(crate) fn compile(
+    _: &Map<String, Value>,
+    schema: &Value,
     context: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     Some(PropertiesValidator::compile(schema, context))
 }

@@ -1,6 +1,6 @@
 use crate::context::CompilationContext;
-use crate::error::CompilationError;
-use crate::keywords::{ValidationResult, Validators};
+use crate::error::{CompilationError, ErrorIterator};
+use crate::keywords::Validators;
 use crate::resolver::Resolver;
 use crate::schemas::{id_of, Draft};
 use crate::{keywords, schemas};
@@ -11,7 +11,7 @@ pub(crate) const DOCUMENT_PROTOCOL: &str = "json-schema:///";
 pub struct JSONSchema<'a> {
     pub(crate) draft: Draft,
     pub(crate) schema: &'a Value,
-    pub(crate) validators: Validators<'a>,
+    pub(crate) validators: Validators,
     pub(crate) resolver: Resolver<'a>,
 }
 
@@ -39,11 +39,17 @@ impl<'a> JSONSchema<'a> {
         })
     }
 
-    pub fn validate(&self, instance: &Value) -> ValidationResult {
-        for v in self.validators.iter() {
-            v.validate(self, instance)?
+    pub fn validate(&'a self, instance: &'a Value) -> Result<(), ErrorIterator<'a>> {
+        let mut errors = self
+            .validators
+            .iter()
+            .flat_map(move |validator| validator.validate(self, instance))
+            .peekable();
+        if errors.peek().is_none() {
+            Ok(())
+        } else {
+            Err(Box::new(errors))
         }
-        Ok(())
     }
 
     pub fn is_valid(&self, instance: &Value) -> bool {
@@ -53,10 +59,10 @@ impl<'a> JSONSchema<'a> {
     }
 }
 
-pub(crate) fn compile_validators<'a>(
-    schema: &'a Value,
+pub(crate) fn compile_validators(
+    schema: &Value,
     context: &CompilationContext,
-) -> Result<Validators<'a>, CompilationError> {
+) -> Result<Validators, CompilationError> {
     let context = context.push(schema);
     match schema {
         Value::Bool(value) => {
@@ -96,6 +102,7 @@ pub(crate) fn compile_validators<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ValidationError;
     use serde_json::*;
     use std::borrow::Cow;
     use std::fs::File;
@@ -117,9 +124,9 @@ mod tests {
     fn only_keyword() {
         // When only one keyword is specified
         let schema = json!({"type": "string"});
+        let compiled = JSONSchema::compile(&schema, None).unwrap();
         let value1 = json!("AB");
         let value2 = json!(1);
-        let compiled = JSONSchema::compile(&schema, None).unwrap();
         // And only this validator
         assert_eq!(compiled.validators.len(), 1);
         assert!(compiled.validate(&value1).is_ok());
@@ -149,5 +156,20 @@ mod tests {
         assert!(compiled.validate(&value).is_ok());
         let value = json!({"bar": true});
         assert!(compiled.validate(&value).is_err());
+    }
+
+    #[test]
+    fn multiple_errors() {
+        let schema = json!({"minProperties": 2, "propertyNames": {"minLength": 3}});
+        let value = json!({"a": 3});
+        let compiled = JSONSchema::compile(&schema, None).unwrap();
+        let result = compiled.validate(&value);
+        let errors: Vec<ValidationError> = result.unwrap_err().collect();
+        assert_eq!(errors.len(), 2);
+        assert_eq!(
+            format!("{}", errors[0]),
+            r#"'{"a":3}' does not have enough properties"#
+        );
+        assert_eq!(format!("{}", errors[1]), r#"'a' is too short"#);
     }
 }

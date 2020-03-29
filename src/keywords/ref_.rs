@@ -1,6 +1,7 @@
+use super::CompilationResult;
 use super::Validate;
-use super::{CompilationResult, ValidationResult};
 use crate::context::CompilationContext;
+use crate::error::{error, ErrorIterator};
 use crate::validator::{compile_validators, JSONSchema};
 use serde_json::Value;
 use url::Url;
@@ -9,28 +10,31 @@ pub struct RefValidator {
     reference: Url,
 }
 
-impl<'a> RefValidator {
-    pub(crate) fn compile(reference: &str, context: &CompilationContext) -> CompilationResult<'a> {
+impl RefValidator {
+    pub(crate) fn compile(reference: &str, context: &CompilationContext) -> CompilationResult {
         let reference = context.build_url(reference)?;
         Ok(Box::new(RefValidator { reference }))
     }
 }
 
-impl<'a> Validate<'a> for RefValidator {
-    fn validate(&self, schema: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for RefValidator {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         match schema
             .resolver
             .resolve_fragment(schema.draft, &self.reference, schema.schema)
         {
             Ok((scope, resolved)) => {
                 let context = CompilationContext::new(scope, schema.draft);
-                let validators = compile_validators(&resolved, &context)?;
-                for v in validators.iter() {
-                    v.validate(schema, instance)?
+                match compile_validators(&resolved, &context) {
+                    Ok(validators) => Box::new(
+                        validators
+                            .into_iter()
+                            .flat_map(move |validator| validator.validate(schema, instance)),
+                    ),
+                    Err(e) => error(e.into()),
                 }
-                Ok(())
             }
-            Err(e) => Err(e),
+            Err(e) => error(e),
         }
     }
 
@@ -38,10 +42,10 @@ impl<'a> Validate<'a> for RefValidator {
         format!("<ref: {}>", self.reference)
     }
 }
-pub(crate) fn compile<'a>(
-    _: &'a Value,
+pub(crate) fn compile(
+    _: &Value,
     reference: &str,
     context: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     Some(RefValidator::compile(reference, &context))
 }

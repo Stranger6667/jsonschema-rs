@@ -1,26 +1,26 @@
 use super::Validate;
-use super::{CompilationResult, ValidationResult};
+use super::{CompilationResult, ErrorIterator};
 use crate::context::CompilationContext;
-use crate::error::{CompilationError, ValidationError};
+use crate::error::{error, no_error, CompilationError, ValidationError};
 use crate::JSONSchema;
 use serde_json::{from_str, Map, Value};
 
 pub struct ContentMediaTypeValidator {
-    func: fn(&str) -> ValidationResult,
+    func: fn(&str) -> ErrorIterator,
 }
 
-impl<'a> ContentMediaTypeValidator {
-    pub(crate) fn compile(func: fn(&str) -> ValidationResult) -> CompilationResult<'a> {
+impl ContentMediaTypeValidator {
+    pub(crate) fn compile(func: fn(&str) -> ErrorIterator) -> CompilationResult {
         Ok(Box::new(ContentMediaTypeValidator { func }))
     }
 }
 
-impl<'a> Validate<'a> for ContentMediaTypeValidator {
-    fn validate(&self, _: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for ContentMediaTypeValidator {
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             return (self.func)(item);
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         // TODO. store media type
@@ -29,21 +29,21 @@ impl<'a> Validate<'a> for ContentMediaTypeValidator {
 }
 
 pub struct ContentEncodingValidator {
-    func: fn(&str) -> ValidationResult,
+    func: fn(&str) -> ErrorIterator,
 }
 
-impl<'a> ContentEncodingValidator {
-    pub(crate) fn compile(func: fn(&str) -> ValidationResult) -> CompilationResult<'a> {
+impl ContentEncodingValidator {
+    pub(crate) fn compile(func: fn(&str) -> ErrorIterator) -> CompilationResult {
         Ok(Box::new(ContentEncodingValidator { func }))
     }
 }
 
-impl<'a> Validate<'a> for ContentEncodingValidator {
-    fn validate(&self, _: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for ContentEncodingValidator {
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             return (self.func)(item);
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         // TODO. store encoding
@@ -52,15 +52,15 @@ impl<'a> Validate<'a> for ContentEncodingValidator {
 }
 
 pub struct ContentMediaTypeAndEncodingValidator {
-    func: fn(&str) -> ValidationResult,
+    func: fn(&str) -> ErrorIterator,
     converter: fn(&str) -> Result<String, ValidationError>,
 }
 
 impl<'a> ContentMediaTypeAndEncodingValidator {
     pub(crate) fn compile(
-        func: fn(&str) -> ValidationResult,
+        func: fn(&str) -> ErrorIterator,
         converter: fn(&str) -> Result<String, ValidationError>,
-    ) -> CompilationResult<'a> {
+    ) -> CompilationResult {
         Ok(Box::new(ContentMediaTypeAndEncodingValidator {
             func,
             converter,
@@ -68,13 +68,18 @@ impl<'a> ContentMediaTypeAndEncodingValidator {
     }
 }
 
-impl<'a> Validate<'a> for ContentMediaTypeAndEncodingValidator {
-    fn validate(&self, _: &JSONSchema, instance: &Value) -> ValidationResult {
+impl Validate for ContentMediaTypeAndEncodingValidator {
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
-            let converted = (self.converter)(item)?;
-            return (self.func)(&converted);
+            return match (self.converter)(item) {
+                Ok(converted) => {
+                    let errors: Vec<_> = (self.func)(&converted).collect();
+                    Box::new(errors.into_iter())
+                }
+                Err(e) => error(e),
+            };
         }
-        Ok(())
+        no_error()
     }
     fn name(&self) -> String {
         // TODO. store encoding
@@ -82,21 +87,21 @@ impl<'a> Validate<'a> for ContentMediaTypeAndEncodingValidator {
     }
 }
 
-pub(crate) fn is_json(instance: &str) -> ValidationResult {
+pub(crate) fn is_json(instance: &str) -> ErrorIterator {
     if from_str::<Value>(instance).is_err() {
-        return Err(ValidationError::format(
+        return error(ValidationError::format(
             instance.to_owned(),
             "application/json",
         ));
     }
-    Ok(())
+    no_error()
 }
 
-pub(crate) fn is_base64(instance: &str) -> ValidationResult {
+pub(crate) fn is_base64(instance: &str) -> ErrorIterator {
     if base64::decode(instance).is_err() {
-        return Err(ValidationError::format(instance.to_owned(), "base64"));
+        return error(ValidationError::format(instance.to_owned(), "base64"));
     }
-    Ok(())
+    no_error()
 }
 
 pub(crate) fn from_base64(instance: &str) -> Result<String, ValidationError> {
@@ -106,11 +111,11 @@ pub(crate) fn from_base64(instance: &str) -> Result<String, ValidationError> {
     }
 }
 
-pub(crate) fn compile_media_type<'a>(
-    schema: &'a Map<String, Value>,
-    subschema: &'a Value,
+pub(crate) fn compile_media_type(
+    schema: &Map<String, Value>,
+    subschema: &Value,
     _: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     match subschema {
         Value::String(content_type) => {
             let func = match content_type.as_str() {
@@ -138,11 +143,11 @@ pub(crate) fn compile_media_type<'a>(
     }
 }
 
-pub(crate) fn compile_content_encoding<'a>(
-    schema: &'a Map<String, Value>,
-    subschema: &'a Value,
+pub(crate) fn compile_content_encoding(
+    schema: &Map<String, Value>,
+    subschema: &Value,
     _: &CompilationContext,
-) -> Option<CompilationResult<'a>> {
+) -> Option<CompilationResult> {
     // Performed during media type validation
     if schema.get("contentMediaType").is_some() {
         // TODO. what if media type is not supported?
