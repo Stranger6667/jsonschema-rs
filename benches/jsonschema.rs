@@ -6,6 +6,7 @@ use serde_json::{from_str, json, Value};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use valico::json_schema;
 
 fn read_json(filepath: &str) -> Value {
     let path = Path::new(filepath);
@@ -43,12 +44,22 @@ fn canada_benchmark(c: &mut Criterion) {
     c.bench_function("canada bench", |b| b.iter(|| validator.is_valid(&data)));
 }
 
-fn canada_benchmark_alternative(c: &mut Criterion) {
+fn canada_benchmark_jsonschema_valid(c: &mut Criterion) {
     let schema = black_box(read_json("benches/canada_schema.json"));
     let data = black_box(read_json("benches/canada.json"));
     let cfg = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap();
     c.bench_function("canada bench alternative", |b| {
         b.iter(|| jsonschema_valid::validate(&cfg, &data))
+    });
+}
+
+fn canada_benchmark_valico(c: &mut Criterion) {
+    let schema = black_box(read_json("benches/canada_schema.json"));
+    let data = black_box(read_json("benches/canada.json"));
+    let mut scope = json_schema::Scope::new();
+    let schema = scope.compile_and_return(schema.clone(), false).unwrap();
+    c.bench_function("canada bench alternative", |b| {
+        b.iter(|| schema.validate(&data).is_valid())
     });
 }
 
@@ -65,7 +76,7 @@ fn fastjsonschema_compile(c: &mut Criterion) {
         b.iter(|| JSONSchema::compile(&schema, None).unwrap())
     });
 }
-fn fastjsonschema_valid_benchmark(c: &mut Criterion) {
+fn fastjsonschema_valid(c: &mut Criterion) {
     let schema = black_box(read_json("benches/fast_schema.json"));
     let validator = JSONSchema::compile(&schema, None).unwrap();
     let data =
@@ -74,14 +85,53 @@ fn fastjsonschema_valid_benchmark(c: &mut Criterion) {
         b.iter(|| validator.is_valid(&data))
     });
 }
+fn fastjsonschema_valid_jsonschema_valid(c: &mut Criterion) {
+    let schema = black_box(read_json("benches/fast_schema.json"));
+    let cfg = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap();
+    let data =
+        black_box(json!([9, "hello", [1, "a", true], {"a": "a", "b": "b", "d": "d"}, 42, 3]));
+    c.bench_function("fastjsonschema valid jsonschema_valid", |b| {
+        b.iter(|| jsonschema_valid::validate(&cfg, &data))
+    });
+}
+fn fastjsonschema_valid_valico(c: &mut Criterion) {
+    let schema = black_box(read_json("benches/fast_schema.json"));
+    let mut scope = json_schema::Scope::new();
+    let schema = scope.compile_and_return(schema.clone(), false).unwrap();
+    let data =
+        black_box(json!([9, "hello", [1, "a", true], {"a": "a", "b": "b", "d": "d"}, 42, 3]));
+    c.bench_function("fastjsonschema valid valico", |b| {
+        b.iter(|| schema.validate(&data).is_valid())
+    });
+}
 
-fn fastjsonschema_invalid_benchmark(c: &mut Criterion) {
+fn fastjsonschema_invalid(c: &mut Criterion) {
     let schema = black_box(read_json("benches/fast_schema.json"));
     let validator = JSONSchema::compile(&schema, None).unwrap();
     let data =
         black_box(json!([10, "world", [1, "a", true], {"a": "a", "b": "b", "c": "xy"}, "str", 5]));
     c.bench_function("fastjsonschema invalid", |b| {
         b.iter(|| validator.is_valid(&data))
+    });
+}
+
+fn fastjsonschema_invalid_jsonschema_valid(c: &mut Criterion) {
+    let schema = black_box(read_json("benches/fast_schema.json"));
+    let cfg = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap();
+    let data =
+        black_box(json!([10, "world", [1, "a", true], {"a": "a", "b": "b", "c": "xy"}, "str", 5]));
+    c.bench_function("fastjsonschema invalid jsonschema_valid", |b| {
+        b.iter(|| jsonschema_valid::validate(&cfg, &data))
+    });
+}
+fn fastjsonschema_invalid_valico(c: &mut Criterion) {
+    let schema = black_box(read_json("benches/fast_schema.json"));
+    let mut scope = json_schema::Scope::new();
+    let schema = scope.compile_and_return(schema.clone(), false).unwrap();
+    let data =
+        black_box(json!([10, "world", [1, "a", true], {"a": "a", "b": "b", "c": "xy"}, "str", 5]));
+    c.bench_function("fastjsonschema invalid valico", |b| {
+        b.iter(|| schema.validate(&data).is_valid())
     });
 }
 
@@ -274,11 +324,16 @@ bench_compile!(c_aproperties6, "compile additional properties 6", {"properties":
 criterion_group!(
     benches,
     canada_benchmark,
-    //    canada_benchmark_alternative,
-    canada_compile_benchmark,
-    fastjsonschema_compile,
-    fastjsonschema_valid_benchmark,
-    fastjsonschema_invalid_benchmark,
+    canada_benchmark_jsonschema_valid,
+    canada_benchmark_valico,
+    //    canada_compile_benchmark,
+    //    fastjsonschema_compile,
+    //    fastjsonschema_valid,
+    //    fastjsonschema_valid_jsonschema_valid,
+    //    fastjsonschema_valid_valico,
+    //    fastjsonschema_invalid,
+    //    fastjsonschema_invalid_jsonschema_valid,
+    //    fastjsonschema_invalid_valico,
     //    type_string_valid,
     //    type_string_invalid,
     //    false_schema,
