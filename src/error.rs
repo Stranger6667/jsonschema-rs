@@ -34,7 +34,7 @@ pub struct ValidationError {
     kind: ValidationErrorKind,
 }
 
-pub type ErrorIterator<'a> = Box<dyn Iterator<Item = ValidationError> + 'a>;
+pub type ErrorIterator<'a> = Box<dyn Iterator<Item = ValidationError> + Sync + Send + 'a>;
 
 // Empty iterator means no error happened
 pub(crate) fn no_error<'a>() -> ErrorIterator<'a> {
