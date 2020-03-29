@@ -31,7 +31,7 @@ mod keywords;
 mod resolver;
 mod schemas;
 pub use compilation::JSONSchema;
-pub use error::{ErrorIterator, ValidationError};
+pub use error::{CompilationError, ErrorIterator, ValidationError};
 pub use schemas::Draft;
 use serde_json::Value;
 
