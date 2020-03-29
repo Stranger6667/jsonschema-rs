@@ -60,3 +60,40 @@ impl Debug for dyn Validate + Send + Sync {
 pub type CompilationResult = Result<BoxedValidator, error::CompilationError>;
 pub type BoxedValidator = Box<dyn Validate + Send + Sync>;
 pub type Validators = Vec<BoxedValidator>;
+
+#[cfg(test)]
+mod tests {
+    use super::JSONSchema;
+    use serde_json::json;
+
+    macro_rules! t {
+        ($t:ident : $schema:tt => $expected:expr) => {
+            #[test]
+            fn $t() {
+                let schema = json!($schema);
+                let compiled = JSONSchema::compile(&schema, None).unwrap();
+                assert_eq!(format!("{:?}", compiled.validators[0]), $expected);
+            }
+        };
+    }
+    t!(content_media_type_validator: {"contentMediaType": "application/json"} => "<contentMediaType: application/json>");
+    t!(content_encoding_validator: {"contentEncoding": "base64"} => "<contentEncoding: base64>");
+    t!(combined_validator: {"contentEncoding": "base64", "contentMediaType": "application/json"} => "<contentMediaType - contentEncoding: application/json - base64>");
+    t!(date_format: {"format": "date"} => "<format: date>");
+    t!(date_time_format: {"format": "date-time"} => "<format: date-time>");
+    t!(email_format: {"format": "email"} => "<format: email>");
+    t!(hostname_format: {"format": "hostname"} => "<format: hostname>");
+    t!(idn_email_format: {"format": "idn-email"} => "<format: idn-email>");
+    t!(idn_hostname_format: {"format": "idn-hostname"} => "<format: idn-hostname>");
+    t!(ipv4_format: {"format": "ipv4"} => "<format: ipv4>");
+    t!(ipv6_format: {"format": "ipv6"} => "<format: ipv6>");
+    t!(iri_format: {"format": "iri"} => "<format: iri>");
+    t!(iri_reference_format: {"format": "iri-reference"} => "<format: iri-reference>");
+    t!(json_pointer_format: {"format": "json-pointer"} => "<format: json-pointer>");
+    t!(regex_format: {"format": "regex"} => "<format: regex>");
+    t!(relative_json_pointer_format: {"format": "relative-json-pointer"} => "<format: relative-json-pointer>");
+    t!(time_format: {"format": "time"} => "<format: time>");
+    t!(uri_format: {"format": "uri"} => "<format: uri>");
+    t!(uri_reference_format: {"format": "uri-reference"} => "<format: uri-reference>");
+    t!(uri_template_format: {"format": "uri-template"} => "<format: uri-template>");
+}

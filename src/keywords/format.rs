@@ -1,3 +1,4 @@
+//! Validator for `format` keyword.
 use super::CompilationResult;
 use super::Validate;
 use crate::context::CompilationContext;
@@ -6,12 +7,16 @@ use crate::{checks, JSONSchema};
 use serde_json::{Map, Value};
 
 pub struct FormatValidator {
+    format: String,
     check: fn(&str) -> ErrorIterator,
 }
 
 impl<'a> FormatValidator {
-    pub(crate) fn compile(check: fn(&str) -> ErrorIterator) -> CompilationResult {
-        Ok(Box::new(FormatValidator { check }))
+    pub(crate) fn compile(format: &str, check: fn(&str) -> ErrorIterator) -> CompilationResult {
+        Ok(Box::new(FormatValidator {
+            format: format.to_string(),
+            check,
+        }))
     }
 }
 
@@ -23,8 +28,7 @@ impl Validate for FormatValidator {
         no_error()
     }
     fn name(&self) -> String {
-        // TODO. store name
-        "<format: todo>".to_string()
+        format!("<format: {}>", self.format)
     }
 }
 
@@ -55,7 +59,7 @@ pub(crate) fn compile(
                 "uri-template" => checks::uri_template,
                 _ => return None,
             };
-            Some(FormatValidator::compile(func))
+            Some(FormatValidator::compile(format, func))
         }
         None => Some(Err(CompilationError::SchemaError)),
     }

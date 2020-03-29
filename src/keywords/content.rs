@@ -189,23 +189,3 @@ pub(crate) fn compile_content_encoding(
         _ => Some(Err(CompilationError::SchemaError)),
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::JSONSchema;
-    use serde_json::{json, Value};
-
-    macro_rules! t {
-        ($t:ident : $schema:tt => $expected:expr) => {
-            #[test]
-            fn $t() {
-                let schema = json!($schema);
-                let compiled = JSONSchema::compile(&schema, None).unwrap();
-                assert_eq!(format!("{:?}", compiled.validators[0]), $expected);
-            }
-        };
-    }
-    t!(content_media_type_validator: {"contentMediaType": "application/json"} => "<contentMediaType: application/json>");
-    t!(content_encoding_validator: {"contentEncoding": "base64"} => "<contentEncoding: base64>");
-    t!(combined_validator: {"contentEncoding": "base64", "contentMediaType": "application/json"} => "<contentMediaType - contentEncoding: application/json - base64>");
-}
