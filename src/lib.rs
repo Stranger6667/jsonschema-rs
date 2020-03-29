@@ -13,17 +13,17 @@
 //! use jsonschema::{JSONSchema, Draft};
 //! use serde_json::json;
 //!
-//! fn main() {
-//!     let schema = json!({"maxLength": 5});
-//!     let instance = json!("foo");
-//!     let compiled = JSONSchema::compile(&schema, Some(Draft::Draft7));
-//!     let result = compiled.validate(&instance);
-//!     if let Err(errors) = result {
-//!         for error in errors {
-//!             println!("Validation error: {}", error)
-//!         }   
-//!     }
+//!
+//! let schema = json!({"maxLength": 5});
+//! let instance = json!("foo");
+//! let compiled = JSONSchema::compile(&schema, Some(Draft::Draft7));
+//! let result = compiled.validate(&instance);
+//! if let Err(errors) = result {
+//!     for error in errors {
+//!         println!("Validation error: {}", error)
+//!     }   
 //! }
+//!
 //! ```
 mod checks;
 mod context;
@@ -46,11 +46,10 @@ extern crate lazy_static;
 /// use jsonschema::is_valid;
 /// use serde_json::json;
 ///
-/// fn main() {
-///     let schema = json!({"maxLength": 5});
-///     let instance = json!("foo");
-///     assert!(is_valid(&schema, &instance));
-/// }
+///
+/// let schema = json!({"maxLength": 5});
+/// let instance = json!("foo");
+/// assert!(is_valid(&schema, &instance));
 /// ```
 pub fn is_valid(schema: &Value, instance: &Value) -> bool {
     let compiled = JSONSchema::compile(schema, None).expect("Invalid schema");
