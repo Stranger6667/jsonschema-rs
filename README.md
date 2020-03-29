@@ -21,7 +21,7 @@ fn main() {
 }
 ``` 
 
-If you only need to know whether document is valid or not:
+If you only need to know whether document is valid or not (which is faster):
 
 ```rust
 use jsonschema::is_valid;
@@ -32,6 +32,20 @@ fn main() {
     let instance = json!("foo");
     assert!(is_valid(&schema, &instance));
 }
-```  
+```
+
+Or use a compiled schema (preferred):
+
+```rust
+use jsonschema::{JSONSchema, Draft};
+use serde_json::json;
+
+fn main() {
+    let schema = json!({"maxLength": 5});
+    let instance = json!("foo");
+    let compiled = JSONSchema::compile(&schema, None);  // Draft is detected automatically with fallback to Draft7
+    assert!(compiled.is_valid(&instance));
+}
+```
 
 **NOTE**. This library is in early development.
