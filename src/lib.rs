@@ -16,7 +16,7 @@
 //!
 //! let schema = json!({"maxLength": 5});
 //! let instance = json!("foo");
-//! let compiled = JSONSchema::compile(&schema, Some(Draft::Draft7));
+//! let compiled = JSONSchema::compile(&schema, Some(Draft::Draft7)).unwrap();
 //! let result = compiled.validate(&instance);
 //! if let Err(errors) = result {
 //!     for error in errors {
