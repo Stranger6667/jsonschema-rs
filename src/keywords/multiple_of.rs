@@ -27,6 +27,18 @@ impl Validate for MultipleOfFloatValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Number(item) = instance {
+            let item = item.as_f64().unwrap();
+            let remainder = (item / self.multiple_of) % 1.;
+            if !(remainder < EPSILON && remainder < (1. - EPSILON)) {
+                return false;
+            }
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<multiple of: {}>", self.multiple_of)
     }
@@ -58,6 +70,23 @@ impl Validate for MultipleOfIntegerValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Number(item) = instance {
+            let item = item.as_f64().unwrap();
+            let is_multiple = if item.fract() == 0. {
+                (item % self.multiple_of) == 0.
+            } else {
+                let remainder = (item / self.multiple_of) % 1.;
+                remainder < EPSILON && remainder < (1. - EPSILON)
+            };
+            if !is_multiple {
+                return false;
+            }
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<multiple of: {}>", self.multiple_of)
     }

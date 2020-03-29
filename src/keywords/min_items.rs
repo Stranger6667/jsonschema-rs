@@ -28,6 +28,16 @@ impl Validate for MinItemsValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(items) = instance {
+            if items.len() < self.limit {
+                return false;
+            }
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<min items: {}>", self.limit)
     }

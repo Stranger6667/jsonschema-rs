@@ -39,6 +39,16 @@ impl Validate for RequiredValidator {
         no_error()
     }
 
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = instance {
+            return self
+                .required
+                .iter()
+                .all(|property_name| item.contains_key(property_name));
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<required: {:?}>", self.required)
     }

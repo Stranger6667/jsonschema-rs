@@ -190,8 +190,8 @@ impl NumberTypeValidator {
 }
 
 impl Validate for NumberTypeValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if !instance.is_number() {
+    fn validate<'a>(&self, config: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if !self.is_valid(config, instance) {
             return ValidationError::single_type_error(instance.clone(), PrimitiveType::Number);
         }
         no_error()

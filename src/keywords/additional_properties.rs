@@ -34,6 +34,17 @@ impl Validate for AdditionalPropertiesValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = instance {
+            return self.validators.iter().all(move |validator| {
+                item.values()
+                    .all(move |value| validator.is_valid(schema, value))
+            });
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<additional properties: {:?}>", self.validators)
     }
@@ -55,6 +66,14 @@ impl Validate for AdditionalPropertiesFalseValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = instance {
+            return item.iter().next().is_some();
+        }
+        true
+    }
+
     fn name(&self) -> String {
         "<additional properties: false>".to_string()
     }

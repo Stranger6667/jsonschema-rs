@@ -44,6 +44,20 @@ impl Validate for PropertiesValidator {
         no_error()
     }
 
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = instance {
+            return self.properties.iter().all(move |(name, validators)| {
+                let option = item.get(name);
+                option.into_iter().all(move |item| {
+                    validators
+                        .iter()
+                        .all(move |validator| validator.is_valid(schema, item))
+                })
+            });
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<properties: {:?}>", self.properties)
     }

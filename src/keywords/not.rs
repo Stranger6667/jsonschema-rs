@@ -23,16 +23,20 @@ impl NotValidator {
 
 impl Validate for NotValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if self
-            .validators
-            .iter()
-            .all(|validator| validator.is_valid(schema, instance))
-        {
+        if !self.is_valid(schema, instance) {
             ValidationError::not(instance.clone(), self.original.clone())
         } else {
             no_error()
         }
     }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        !self
+            .validators
+            .iter()
+            .all(|validator| validator.is_valid(schema, instance))
+    }
+
     fn name(&self) -> String {
         format!("<not: {:?}>", self.validators)
     }

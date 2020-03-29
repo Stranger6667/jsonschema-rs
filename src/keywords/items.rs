@@ -38,6 +38,21 @@ impl Validate for ItemsArrayValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(items) = instance {
+            return items
+                .iter()
+                .zip(self.items.iter())
+                .all(move |(item, validators)| {
+                    validators
+                        .iter()
+                        .all(move |validator| validator.is_valid(schema, item))
+                });
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<items: {:?}>", self.items)
     }

@@ -23,12 +23,17 @@ impl EnumValidator {
 }
 
 impl Validate for EnumValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if !self.items.iter().any(|item| helpers::equal(instance, item)) {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if !self.is_valid(schema, instance) {
             return ValidationError::enumeration(instance.clone(), self.options.clone());
         }
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        self.items.iter().any(|item| helpers::equal(instance, item))
+    }
+
     fn name(&self) -> String {
         format!("<enum: {:?}>", self.items)
     }
