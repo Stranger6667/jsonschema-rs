@@ -2,17 +2,17 @@
 use super::CompilationResult;
 use super::Validate;
 use crate::context::CompilationContext;
-use crate::error::{no_error, CompilationError, ErrorIterator};
-use crate::{checks, JSONSchema};
+use crate::error::{error, no_error, CompilationError, ErrorIterator};
+use crate::{checks, JSONSchema, ValidationError};
 use serde_json::{Map, Value};
 
 pub struct FormatValidator {
     format: String,
-    check: fn(&str) -> ErrorIterator,
+    check: fn(&str) -> bool,
 }
 
-impl<'a> FormatValidator {
-    pub(crate) fn compile(format: &str, check: fn(&str) -> ErrorIterator) -> CompilationResult {
+impl FormatValidator {
+    pub(crate) fn compile(format: &str, check: fn(&str) -> bool) -> CompilationResult {
         Ok(Box::new(FormatValidator {
             format: format.to_string(),
             check,
@@ -23,10 +23,23 @@ impl<'a> FormatValidator {
 impl Validate for FormatValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
-            return (self.check)(item);
+            if !(self.check)(item) {
+                return error(ValidationError::format(
+                    item.to_owned(),
+                    self.format.clone(),
+                ));
+            }
         }
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            return (self.check)(item);
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<format: {}>", self.format)
     }
@@ -44,7 +57,7 @@ pub(crate) fn compile(
                 "date-time" => checks::datetime,
                 "email" => checks::email,
                 "hostname" => checks::hostname,
-                "idn-email" => checks::email, // TODO. should have "idn-email" in the error message
+                "idn-email" => checks::email,
                 "idn-hostname" => checks::hostname,
                 "ipv4" => checks::ipv4,
                 "ipv6" => checks::ipv6,

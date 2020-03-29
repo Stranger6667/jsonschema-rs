@@ -59,10 +59,7 @@ pub enum ValidationErrorKind {
     /// If the referenced file is not found during ref resolution.
     FileNotFound(io::Error),
     /// When the input doesn't match to the specified format.
-    Format {
-        instance: String,
-        format: &'static str,
-    },
+    Format { instance: String, format: String },
     /// May happen in `contentEncoding` validation if `base64` encoded data is invalid.
     FromUtf8(FromUtf8Error),
     /// May happen during ref resolution when remote document is not a valid JSON.
@@ -187,7 +184,7 @@ impl<'a> ValidationError {
             kind: ValidationErrorKind::FileNotFound(err),
         }
     }
-    pub(crate) fn format(instance: String, format: &'static str) -> ValidationError {
+    pub(crate) fn format(instance: String, format: String) -> ValidationError {
         ValidationError {
             kind: ValidationErrorKind::Format { instance, format },
         }
@@ -353,7 +350,7 @@ impl fmt::Display for ValidationError {
             }
             ValidationErrorKind::Format {
                 ref instance,
-                format,
+                ref format,
             } => write!(f, "'{}' is not a '{}'", instance, format),
             ValidationErrorKind::AdditionalItems { ref items, limit } => {
                 let extras: Vec<&Value> = items.iter().skip(limit).collect();

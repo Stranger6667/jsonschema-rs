@@ -113,7 +113,7 @@ pub(crate) fn is_json(instance: &str) -> ErrorIterator {
     if from_str::<Value>(instance).is_err() {
         return error(ValidationError::format(
             instance.to_owned(),
-            "application/json",
+            "application/json".to_owned(),
         ));
     }
     no_error()
@@ -121,7 +121,10 @@ pub(crate) fn is_json(instance: &str) -> ErrorIterator {
 
 pub(crate) fn is_base64(instance: &str) -> ErrorIterator {
     if base64::decode(instance).is_err() {
-        return error(ValidationError::format(instance.to_owned(), "base64"));
+        return error(ValidationError::format(
+            instance.to_owned(),
+            "base64".to_owned(),
+        ));
     }
     no_error()
 }
@@ -129,7 +132,10 @@ pub(crate) fn is_base64(instance: &str) -> ErrorIterator {
 pub(crate) fn from_base64(instance: &str) -> Result<String, ValidationError> {
     match base64::decode(instance) {
         Ok(value) => Ok(String::from_utf8(value)?),
-        Err(_) => Err(ValidationError::format(instance.to_owned(), "base64")),
+        Err(_) => Err(ValidationError::format(
+            instance.to_owned(),
+            "base64".to_owned(),
+        )),
     }
 }
 
