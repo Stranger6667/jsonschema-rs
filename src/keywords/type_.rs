@@ -1,8 +1,8 @@
 use super::CompilationResult;
 use super::Validate;
-use crate::context::CompilationContext;
+use crate::compilation::CompilationContext;
+use crate::compilation::JSONSchema;
 use crate::error::{no_error, CompilationError, ErrorIterator, PrimitiveType, ValidationError};
-use crate::validator::JSONSchema;
 use serde_json::{Map, Number, Value};
 
 pub struct MultipleTypesValidator {

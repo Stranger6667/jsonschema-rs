@@ -1,7 +1,8 @@
+//! Reference resolver. Implements logic, required by `$ref` keyword.
+//! Is able to load documents from remote locations via HTTP(S).
+use crate::compilation::DEFAULT_ROOT_URL;
 use crate::error::CompilationError;
-use crate::helpers::pointer;
 use crate::schemas::{id_of, Draft};
-use crate::validator::DOCUMENT_PROTOCOL;
 use crate::ValidationError;
 use serde_json::Value;
 use std::borrow::Cow;
@@ -9,6 +10,9 @@ use std::collections::HashMap;
 use url::Url;
 
 pub(crate) struct Resolver<'a> {
+    // canonical_id: sub-schema mapping to resolve documents by their ID
+    // canonical_id is composed with the root document id
+    // (if not specified, then `DEFAULT_ROOT_URL` is used for this purpose)
     schemas: HashMap<String, &'a Value>,
 }
 
@@ -19,6 +23,7 @@ impl<'a> Resolver<'a> {
         schema: &'a Value,
     ) -> Result<Resolver<'a>, CompilationError> {
         let mut schemas = HashMap::new();
+        // traverse the schema and store all named ones under their canonical ids
         find_schemas(draft, schema, &scope, &mut |id, schema| {
             schemas.insert(id, schema);
             None
@@ -26,9 +31,14 @@ impl<'a> Resolver<'a> {
         Ok(Resolver { schemas })
     }
 
+    /// Load a document for the given `url`.
+    /// It may be:
+    ///   - the root document (DEFAULT_ROOT_URL) case;
+    ///   - named subschema that is stored in `self.schemas`;
+    ///   - document from a remote location;
     fn resolve_url(&self, url: &Url, schema: &'a Value) -> Result<Cow<'a, Value>, ValidationError> {
         match url.as_str() {
-            DOCUMENT_PROTOCOL => Ok(Cow::Borrowed(&schema)),
+            DEFAULT_ROOT_URL => Ok(Cow::Borrowed(&schema)),
             url_str => match self.schemas.get(url_str) {
                 Some(value) => Ok(Cow::Borrowed(value)),
                 None => match url.scheme() {
@@ -54,10 +64,12 @@ impl<'a> Resolver<'a> {
             .decode_utf8()
             .unwrap();
 
+        // Location-independent identifiers are searched before trying to resolve by
+        // fragment-less url
         if let Some(x) = find_schemas(
             draft,
             schema,
-            &Url::parse(DOCUMENT_PROTOCOL).unwrap(),
+            &Url::parse(DEFAULT_ROOT_URL).unwrap(),
             &mut |id, x| {
                 if id == url.as_str() {
                     Some(x)
@@ -71,6 +83,8 @@ impl<'a> Resolver<'a> {
             return Ok((resource, Cow::Borrowed(x)));
         }
 
+        // Each resolved document may be in a changed subfolder
+        // They are tracked when JSON pointer is resolved and added to the resource
         match self.resolve_url(&resource, schema)? {
             Cow::Borrowed(document) => match pointer(draft, document, fragment.as_ref()) {
                 Some((folders, resolved)) => {
@@ -141,6 +155,52 @@ where
         _ => {}
     }
     Ok(None)
+}
+
+/// Based on `serde_json`, but tracks folders in the traversed documents.
+pub fn pointer<'a>(
+    draft: Draft,
+    document: &'a Value,
+    pointer: &str,
+) -> Option<(Vec<&'a str>, &'a Value)> {
+    if pointer == "" {
+        return Some((vec![], document));
+    }
+    if !pointer.starts_with('/') {
+        return None;
+    }
+    let tokens = pointer
+        .split('/')
+        .skip(1)
+        .map(|x| x.replace("~1", "/").replace("~0", "~"));
+    let mut target = document;
+    let mut folders = vec![];
+
+    for token in tokens {
+        let target_opt = match *target {
+            Value::Object(ref map) => {
+                if let Some(id) = id_of(draft, target) {
+                    folders.push(id);
+                }
+                map.get(&token)
+            }
+            Value::Array(ref list) => parse_index(&token).and_then(|x| list.get(x)),
+            _ => return None,
+        };
+        if let Some(t) = target_opt {
+            target = t;
+        } else {
+            return None;
+        }
+    }
+    Some((folders, target))
+}
+
+fn parse_index(s: &str) -> Option<usize> {
+    if s.starts_with('+') || (s.starts_with('0') && s.len() != 1) {
+        return None;
+    }
+    s.parse().ok()
 }
 
 #[cfg(test)]

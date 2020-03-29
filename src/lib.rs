@@ -25,18 +25,16 @@
 //! }
 //!
 //! ```
-mod checks;
-mod context;
+mod compilation;
 mod error;
 mod helpers;
 mod keywords;
 mod resolver;
 mod schemas;
-mod validator;
+pub use compilation::JSONSchema;
 pub use error::{ErrorIterator, ValidationError};
 pub use schemas::Draft;
 use serde_json::Value;
-pub use validator::JSONSchema;
 
 #[macro_use]
 extern crate lazy_static;

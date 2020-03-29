@@ -1,8 +1,8 @@
 use super::CompilationResult;
 use super::Validate;
-use crate::context::CompilationContext;
+use crate::compilation::CompilationContext;
+use crate::compilation::JSONSchema;
 use crate::error::{no_error, ErrorIterator, ValidationError};
-use crate::validator::JSONSchema;
 use serde_json::{Map, Value};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;

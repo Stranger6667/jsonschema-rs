@@ -1,4 +1,4 @@
-use crate::context::CompilationContext;
+use crate::compilation::CompilationContext;
 use crate::keywords;
 use serde_json::{Map, Value};
 

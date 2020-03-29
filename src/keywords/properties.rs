@@ -1,8 +1,8 @@
 use super::CompilationResult;
 use super::{Validate, Validators};
-use crate::context::CompilationContext;
+use crate::compilation::CompilationContext;
+use crate::compilation::{compile_validators, JSONSchema};
 use crate::error::{no_error, CompilationError, ErrorIterator};
-use crate::validator::{compile_validators, JSONSchema};
 use serde_json::{Map, Value};
 
 pub struct PropertiesValidator {

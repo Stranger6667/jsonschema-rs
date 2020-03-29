@@ -32,9 +32,9 @@ pub(crate) mod ref_;
 pub(crate) mod required;
 pub(crate) mod type_;
 pub(crate) mod unique_items;
+use crate::compilation::JSONSchema;
 use crate::error;
 use crate::error::ErrorIterator;
-use crate::validator::JSONSchema;
 use serde_json::Value;
 use std::fmt::{Debug, Error, Formatter};
 
