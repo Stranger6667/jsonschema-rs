@@ -157,7 +157,7 @@ pub(crate) fn compile_validators(
                 Ok(validators)
             }
         }
-        _ => unimplemented!(),
+        _ => Err(CompilationError::SchemaError),
     }
 }
 
@@ -218,6 +218,13 @@ mod tests {
         assert!(compiled.validate(&value).is_ok());
         let value = json!({"bar": true});
         assert!(compiled.validate(&value).is_err());
+    }
+
+    #[test]
+    fn wrong_schema_type() {
+        let schema = json!([1]);
+        let compiled = JSONSchema::compile(&schema, None);
+        assert!(compiled.is_err());
     }
 
     #[test]
