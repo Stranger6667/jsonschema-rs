@@ -68,7 +68,8 @@ impl<'a> Resolver<'a> {
         if let Some(x) = find_schemas(
             draft,
             schema,
-            &Url::parse(DEFAULT_ROOT_URL).unwrap(),
+            // This doesn't panic, since it is known to be correct
+            &Url::parse(DEFAULT_ROOT_URL).expect("The DEFAULT_ROOT_URL is incorrect"),
             &mut |id, x| {
                 if id == url.as_str() {
                     Some(x)
