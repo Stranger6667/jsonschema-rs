@@ -2,6 +2,7 @@ use super::boolean::TrueValidator;
 use super::{CompilationResult, Validate, Validators};
 use crate::compilation::{compile_validators, CompilationContext, JSONSchema};
 use crate::error::{no_error, ErrorIterator};
+use rayon::prelude::*;
 use serde_json::{Map, Value};
 
 pub struct ItemsArrayValidator {
@@ -69,19 +70,47 @@ impl ItemsObjectValidator {
 impl Validate for ItemsObjectValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
-            // TODO. make parallel
-            let errors: Vec<_> = self
-                .validators
-                .iter()
-                .flat_map(move |validator| {
-                    items
-                        .iter()
-                        .flat_map(move |item| validator.validate(schema, item))
-                })
-                .collect();
+            let validate = move |item| {
+                self.validators
+                    .iter()
+                    .flat_map(|validator| validator.validate(schema, item))
+                    .collect::<Vec<_>>()
+            };
+            let errors: Vec<_> = if items.len() > 8 {
+                items.par_iter().flat_map(validate).collect()
+            } else {
+                self.validators
+                    .iter()
+                    .flat_map(move |validator| {
+                        items
+                            .iter()
+                            .flat_map(move |item| validator.validate(schema, item))
+                    })
+                    .collect()
+            };
             return Box::new(errors.into_iter());
         }
         no_error()
+    }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(items) = instance {
+            let validate = move |item| {
+                self.validators
+                    .iter()
+                    .all(|validator| validator.is_valid(schema, item))
+            };
+            return if items.len() > 8 {
+                items.par_iter().all(validate)
+            } else {
+                self.validators.iter().all(move |validator| {
+                    items
+                        .iter()
+                        .all(move |item| validator.is_valid(schema, item))
+                })
+            };
+        }
+        true
     }
 
     fn name(&self) -> String {
