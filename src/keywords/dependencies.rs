@@ -46,6 +46,21 @@ impl Validate for DependenciesValidator {
         no_error()
     }
 
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = instance {
+            return self
+                .dependencies
+                .iter()
+                .filter(|(property, _)| item.contains_key(property))
+                .all(move |(_, validators)| {
+                    validators
+                        .iter()
+                        .all(move |validator| validator.is_valid(schema, instance))
+                });
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<dependencies: {:?}>", self.dependencies)
     }

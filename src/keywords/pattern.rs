@@ -39,6 +39,16 @@ impl Validate for PatternValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            if !self.pattern.is_match(item) {
+                return false;
+            }
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<pattern: {}>", self.pattern)
     }

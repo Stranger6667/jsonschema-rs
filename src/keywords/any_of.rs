@@ -25,16 +25,24 @@ impl AnyOfValidator {
 
 impl Validate for AnyOfValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if !self.is_valid(schema, instance) {
+            return ValidationError::any_of(instance.clone());
+        }
+        no_error()
+    }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
         for validators in self.schemas.iter() {
             if validators
                 .iter()
                 .all(|validator| validator.is_valid(schema, instance))
             {
-                return no_error();
+                return true;
             }
         }
-        ValidationError::any_of(instance.clone())
+        false
     }
+
     fn name(&self) -> String {
         format!("<any of: {:?}>", self.schemas)
     }

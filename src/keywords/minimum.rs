@@ -27,6 +27,17 @@ impl Validate for MinimumValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Number(item) = instance {
+            let item = item.as_f64().unwrap();
+            if item < self.limit {
+                return false;
+            }
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<minimum: {}>", self.limit)
     }

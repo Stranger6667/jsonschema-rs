@@ -18,12 +18,17 @@ impl ConstValidator {
 }
 
 impl Validate for ConstValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if !helpers::equal(instance, &self.value) {
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if !self.is_valid(schema, instance) {
             return ValidationError::constant(self.error_message.clone());
         };
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        helpers::equal(instance, &self.value)
+    }
+
     fn name(&self) -> String {
         format!("<const: {}>", self.value)
     }

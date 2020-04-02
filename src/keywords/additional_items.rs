@@ -48,6 +48,18 @@ impl Validate for AdditionalItemsObjectValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(items) = instance {
+            return items.iter().skip(self.items_count).all(|item| {
+                self.validators
+                    .iter()
+                    .all(move |validator| validator.is_valid(schema, item))
+            });
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!(
             "<additional items ({}): {:?}>",
@@ -65,6 +77,16 @@ impl Validate for AdditionalItemsBooleanValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(items) = instance {
+            if items.len() > self.items_count {
+                return false;
+            }
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<additional items: {}>", self.items_count)
     }

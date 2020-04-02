@@ -35,6 +35,18 @@ impl Validate for PropertyNamesObjectValidator {
         no_error()
     }
 
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = &instance.borrow() {
+            return self.validators.iter().all(move |validator| {
+                item.keys().all(move |key| {
+                    let wrapper = Value::String(key.to_string());
+                    validator.is_valid(schema, &wrapper)
+                })
+            });
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<property names: {:?}>", self.validators)
     }
@@ -49,13 +61,20 @@ impl PropertyNamesBooleanValidator {
 }
 
 impl Validate for PropertyNamesBooleanValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance.borrow() {
-            if !item.is_empty() {
-                return ValidationError::false_schema(instance.clone());
-            }
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if !self.is_valid(schema, instance) {
+            return ValidationError::false_schema(instance.clone());
         }
         no_error()
+    }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = instance {
+            if !item.is_empty() {
+                return false;
+            }
+        }
+        true
     }
 
     fn name(&self) -> String {

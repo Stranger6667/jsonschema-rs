@@ -28,6 +28,14 @@ impl Validate for ContentMediaTypeValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            return (self.func)(item).next().is_none();
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<contentMediaType: {}>", self.media_type)
     }
@@ -55,6 +63,14 @@ impl Validate for ContentEncodingValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            return (self.func)(item).next().is_none();
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<contentEncoding: {}>", self.encoding)
     }
@@ -100,6 +116,17 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            return match (self.converter)(item) {
+                Ok(converted) => (self.func)(&converted).next().is_none(),
+                Err(_) => false,
+            };
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!(
             "<contentMediaType - contentEncoding: {} - {}>",

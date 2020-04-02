@@ -15,6 +15,11 @@ impl Validate for TrueValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, _: &'a Value) -> ErrorIterator<'a> {
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, _: &Value) -> bool {
+        true
+    }
+
     fn name(&self) -> String {
         "<true>".to_string()
     }
@@ -32,6 +37,11 @@ impl Validate for FalseValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         ValidationError::false_schema(instance.clone())
     }
+
+    fn is_valid(&self, _: &JSONSchema, _: &Value) -> bool {
+        false
+    }
+
     fn name(&self) -> String {
         "<false>".to_string()
     }

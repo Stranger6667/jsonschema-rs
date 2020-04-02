@@ -31,6 +31,23 @@ impl Validate for ContainsValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(items) = instance {
+            for item in items {
+                if self
+                    .validators
+                    .iter()
+                    .all(|validator| validator.is_valid(schema, item))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<contains: {:?}>", self.validators)
     }

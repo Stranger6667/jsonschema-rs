@@ -26,6 +26,16 @@ impl Validate for MaxPropertiesValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = instance {
+            if item.len() > self.limit {
+                return false;
+            }
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<max properties: {}>", self.limit)
     }

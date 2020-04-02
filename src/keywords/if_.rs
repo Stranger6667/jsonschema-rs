@@ -37,6 +37,21 @@ impl Validate for IfThenValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if self
+            .schema
+            .iter()
+            .all(|validator| validator.is_valid(schema, instance))
+        {
+            return self
+                .then_schema
+                .iter()
+                .all(move |validator| validator.is_valid(schema, instance));
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<if-then: {:?} {:?}>", self.schema, self.then_schema)
     }
@@ -76,6 +91,21 @@ impl Validate for IfElseValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if self
+            .schema
+            .iter()
+            .any(|validator| !validator.is_valid(schema, instance))
+        {
+            return self
+                .else_schema
+                .iter()
+                .all(move |validator| validator.is_valid(schema, instance));
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<if-else: {:?} {:?}>", self.schema, self.else_schema)
     }
@@ -124,6 +154,23 @@ impl Validate for IfThenElseValidator {
             Box::new(errors.into_iter())
         }
     }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if self
+            .schema
+            .iter()
+            .all(|validator| validator.is_valid(schema, instance))
+        {
+            self.then_schema
+                .iter()
+                .all(move |validator| validator.is_valid(schema, instance))
+        } else {
+            self.else_schema
+                .iter()
+                .all(move |validator| validator.is_valid(schema, instance))
+        }
+    }
+
     fn name(&self) -> String {
         format!(
             "<if-then-else: {:?} {:?} {:?}>",

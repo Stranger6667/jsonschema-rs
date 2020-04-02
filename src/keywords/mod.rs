@@ -44,9 +44,7 @@ pub trait Validate: Send + Sync {
     // The same as above, but does not construct ErrorIterator.
     // It is faster for cases when the result is not needed (like anyOf), since errors are
     // not constructed
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        self.validate(schema, instance).next().is_none()
-    }
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool;
     fn name(&self) -> String {
         "<validator>".to_string()
     }

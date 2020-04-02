@@ -36,6 +36,15 @@ impl Validate for AllOfValidator {
             .collect();
         Box::new(errors.into_iter())
     }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        self.schemas.iter().all(move |validators| {
+            validators
+                .iter()
+                .all(move |validator| validator.is_valid(schema, instance))
+        })
+    }
+
     fn name(&self) -> String {
         format!("<all of: {:?}>", self.schemas)
     }

@@ -103,6 +103,19 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = instance {
+            for property in item.keys() {
+                if !self.properties.contains_key(property) {
+                    // No extra properties are allowed
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
     fn name(&self) -> String {
         "<additional properties: false>".to_string()
     }
@@ -145,6 +158,18 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(ref item) = instance {
+            return self.validators.iter().all(move |validator| {
+                item.iter()
+                    .filter(move |(property, _)| !self.properties.contains_key(*property))
+                    .all(move |(_, value)| validator.is_valid(schema, value))
+            });
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<additional properties: {:?}>", self.validators)
     }
@@ -184,6 +209,18 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = instance {
+            return self.validators.iter().all(move |validator| {
+                item.iter()
+                    .filter(move |(property, _)| !self.pattern.is_match(property))
+                    .all(move |(_, value)| validator.is_valid(schema, value))
+            });
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<additional properties: {:?}>", self.validators)
     }
@@ -212,6 +249,18 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = instance {
+            for (property, _) in item {
+                if !self.pattern.is_match(property) {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
     fn name(&self) -> String {
         "<additional properties: false>".to_string()
     }
@@ -262,6 +311,20 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = instance {
+            return self.validators.iter().all(move |validator| {
+                item.iter()
+                    .filter(move |(property, _)| {
+                        !self.properties.contains_key(*property) && !self.pattern.is_match(property)
+                    })
+                    .all(move |(_, value)| validator.is_valid(schema, value))
+            });
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<additional properties: {:?}>", self.validators)
     }
@@ -297,6 +360,18 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = instance {
+            for property in item.keys() {
+                if !self.properties.contains_key(property) && !self.pattern.is_match(property) {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
     fn name(&self) -> String {
         "<additional properties: false>".to_string()
     }

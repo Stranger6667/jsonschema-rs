@@ -27,6 +27,15 @@ impl Validate for MinLengthValidator {
         no_error()
     }
 
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            if item.chars().count() < self.limit {
+                return false;
+            }
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<min length: {}>", self.limit)
     }

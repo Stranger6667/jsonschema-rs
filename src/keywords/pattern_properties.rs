@@ -46,6 +46,22 @@ impl Validate for PatternPropertiesValidator {
         }
         no_error()
     }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = instance {
+            return self.patterns.iter().all(move |(re, validators)| {
+                item.iter()
+                    .filter(move |(key, _)| re.is_match(key))
+                    .all(move |(_key, value)| {
+                        validators
+                            .iter()
+                            .all(move |validator| validator.is_valid(schema, value))
+                    })
+            });
+        }
+        true
+    }
+
     fn name(&self) -> String {
         format!("<pattern properties: {:?}>", self.patterns)
     }
