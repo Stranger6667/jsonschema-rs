@@ -1,4 +1,4 @@
-use heck::SnakeCase;
+use heck::{SnakeCase, TitleCase};
 use proc_macro::TokenStream;
 use serde_json::{from_str, Value};
 use std::fs;
@@ -30,7 +30,7 @@ pub fn test_draft(input: TokenStream) -> TokenStream {
                 let valid = test.get("valid").unwrap().as_bool().unwrap();
                 output.push_str("\n#[test]\n");
                 output.push_str(&format!("fn {}_{}_{}()", file_name, i, j));
-                output.push_str(&make_fn_body(schema, data, &description, valid))
+                output.push_str(&make_fn_body(schema, data, &description, valid, &draft))
             }
         }
     }
@@ -68,7 +68,13 @@ fn load_tests(dir: &Path, prefix: String) -> Vec<(String, Value)> {
     tests
 }
 
-fn make_fn_body(schema: &Value, data: &Value, description: &str, valid: bool) -> String {
+fn make_fn_body(
+    schema: &Value,
+    data: &Value,
+    description: &str,
+    valid: bool,
+    draft: &str,
+) -> String {
     let mut output = "{".to_string();
     output.push_str(&format!(
         r###"
@@ -78,13 +84,14 @@ fn make_fn_body(schema: &Value, data: &Value, description: &str, valid: bool) ->
     let data: serde_json::Value = serde_json::from_str(data_str).unwrap();
     let description = r#"{}"#;
     println!("Description: {{}}", description);
-    let compiled = jsonschema::JSONSchema::compile(&schema, None).unwrap();
+    let compiled = jsonschema::JSONSchema::compile(&schema, Some(jsonschema::Draft::{})).unwrap();
     let result = compiled.validate(&data);
     assert_eq!(result.is_ok(), compiled.is_valid(&data));
     "###,
         schema.to_string(),
         data.to_string(),
-        description
+        description,
+        draft.to_title_case()
     ));
     if valid {
         output.push_str(

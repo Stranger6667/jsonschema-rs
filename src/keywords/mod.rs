@@ -14,6 +14,7 @@ pub(crate) mod format;
 pub(crate) mod helpers;
 pub(crate) mod if_;
 pub(crate) mod items;
+pub(crate) mod legacy;
 pub(crate) mod max_items;
 pub(crate) mod max_length;
 pub(crate) mod max_properties;
