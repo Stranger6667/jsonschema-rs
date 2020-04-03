@@ -1,6 +1,5 @@
 use super::{CompilationResult, Validate};
-use crate::compilation::CompilationContext;
-use crate::compilation::JSONSchema;
+use crate::compilation::{CompilationContext, JSONSchema};
 use crate::error::{no_error, CompilationError, ErrorIterator, PrimitiveType, ValidationError};
 use serde_json::{Map, Number, Value};
 
