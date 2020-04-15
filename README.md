@@ -1,6 +1,11 @@
 # jsonschema
 
-Yet another JSON Schema validator implementation. It compiles schema into a validation tree to have validation as fast as possible.
+A JSON Schema validator implementation. It compiles schema into a validation tree to have validation as fast as possible.
+
+```toml
+# Cargo.toml
+jsonschema = "0.2"
+```
 
 To validate documents against some schema and get validation errors (if any):
 
@@ -43,9 +48,37 @@ use serde_json::json;
 fn main() {
     let schema = json!({"maxLength": 5});
     let instance = json!("foo");
-    let compiled = JSONSchema::compile(&schema, None);  // Draft is detected automatically with fallback to Draft7
+    // Draft is detected automatically with fallback to Draft7
+    let compiled = JSONSchema::compile(&schema, None);
     assert!(compiled.is_valid(&instance));
 }
 ```
+
+Fully supported drafts (with optional test cases included):
+- Draft 7
+- Draft 6
+
+## Performance
+
+There is a comparison with other JSON Schema validators written in Rust - `jsonschema_valid` and `valico`.
+
+Test machine i8700K (12 cores), 32GB RAM.
+
+Performance of `jsonschema::JSONSchema.is_valid`. Ratios are given against compiled jsonschema:
+
+- Big valid input (`canada_schema.json` and `canada.json`)
+- Small valid input (`small_schema.json` and `small_valid.json`)
+- Small invalid input (`small_schema.json` and `small_invalid.json`)
+
+| Case          | jsonschema_valid       | valico                  | jsonschema (not compiled) | jsonschema (compiled) |
+| ------------- | ---------------------- | ----------------------- | ------------------------- | --------------------- |
+| Big valid     | 56.746 ms (**x187.2**) | 149.49 ms (**x493.17**) | 317.14 us (**x1.04**)     | 303.12 us             |
+| Small valid   | 2.23 us   (**x14.92**) | 3.87 us   (**x25.9**)   | 3.76 us   (**x25.17**)    | 149.38 ns             |
+| Small invalid | 515.22 ns (**x85.58**) | 4.08 us   (**x677.74**) | 3.63 us   (**x602.99**)   | 6.02 ns               |
+
+As you can see the compiled version is faster, especially for large inputs. However, not-compiled version is slower
+on smaller inputs than `jsonschema_valid`.
+
+You can find benchmark code in `benches/jsonschema.rs`
 
 **NOTE**. This library is in early development.

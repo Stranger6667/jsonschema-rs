@@ -44,11 +44,22 @@ fn canada_benchmark(c: &mut Criterion) {
     c.bench_function("canada bench", |b| b.iter(|| validator.is_valid(&data)));
 }
 
+fn canada_benchmark_not_compiled(c: &mut Criterion) {
+    let schema = black_box(read_json("benches/canada_schema.json"));
+    let data = black_box(read_json("benches/canada.json"));
+    c.bench_function("canada bench not compiled", |b| {
+        b.iter(|| {
+            let validator = JSONSchema::compile(&schema, None).unwrap();
+            validator.is_valid(&data)
+        })
+    });
+}
+
 fn canada_benchmark_jsonschema_valid(c: &mut Criterion) {
     let schema = black_box(read_json("benches/canada_schema.json"));
     let data = black_box(read_json("benches/canada.json"));
     let cfg = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap();
-    c.bench_function("canada bench alternative", |b| {
+    c.bench_function("canada bench jsonschema_valid", |b| {
         b.iter(|| jsonschema_valid::validate(&cfg, &data))
     });
 }
@@ -58,7 +69,7 @@ fn canada_benchmark_valico(c: &mut Criterion) {
     let data = black_box(read_json("benches/canada.json"));
     let mut scope = json_schema::Scope::new();
     let schema = scope.compile_and_return(schema.clone(), false).unwrap();
-    c.bench_function("canada bench alternative", |b| {
+    c.bench_function("canada bench valico", |b| {
         b.iter(|| schema.validate(&data).is_valid())
     });
 }
@@ -70,67 +81,90 @@ fn canada_compile_benchmark(c: &mut Criterion) {
     });
 }
 
-fn fastjsonschema_compile(c: &mut Criterion) {
-    let schema = read_json("benches/fast_schema.json");
-    c.bench_function("fastjsonschema compile", |b| {
+fn small_schema_compile(c: &mut Criterion) {
+    let schema = read_json("benches/small_schema.json");
+    c.bench_function("small_schema compile", |b| {
         b.iter(|| JSONSchema::compile(&schema, None).unwrap())
     });
 }
-fn fastjsonschema_valid(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/fast_schema.json"));
+fn small_schema_valid(c: &mut Criterion) {
+    let schema = black_box(read_json("benches/small_schema.json"));
     let validator = JSONSchema::compile(&schema, None).unwrap();
     let data =
         black_box(json!([9, "hello", [1, "a", true], {"a": "a", "b": "b", "d": "d"}, 42, 3]));
-    c.bench_function("fastjsonschema valid", |b| {
+    c.bench_function("small_schema valid", |b| {
         b.iter(|| validator.is_valid(&data))
     });
 }
-fn fastjsonschema_valid_jsonschema_valid(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/fast_schema.json"));
+fn small_schema_valid_not_compiled(c: &mut Criterion) {
+    let schema = black_box(read_json("benches/small_schema.json"));
+    let data =
+        black_box(json!([9, "hello", [1, "a", true], {"a": "a", "b": "b", "d": "d"}, 42, 3]));
+    c.bench_function("small_schema valid not compiled", |b| {
+        b.iter(|| {
+            let validator = JSONSchema::compile(&schema, None).unwrap();
+            validator.is_valid(&data)
+        })
+    });
+}
+fn small_schema_valid_jsonschema_valid(c: &mut Criterion) {
+    let schema = black_box(read_json("benches/small_schema.json"));
     let cfg = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap();
     let data =
         black_box(json!([9, "hello", [1, "a", true], {"a": "a", "b": "b", "d": "d"}, 42, 3]));
-    c.bench_function("fastjsonschema valid jsonschema_valid", |b| {
+    c.bench_function("small_schema valid jsonschema_valid", |b| {
         b.iter(|| jsonschema_valid::validate(&cfg, &data))
     });
 }
-fn fastjsonschema_valid_valico(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/fast_schema.json"));
+fn small_schema_valid_valico(c: &mut Criterion) {
+    let schema = black_box(read_json("benches/small_schema.json"));
     let mut scope = json_schema::Scope::new();
     let schema = scope.compile_and_return(schema.clone(), false).unwrap();
     let data =
         black_box(json!([9, "hello", [1, "a", true], {"a": "a", "b": "b", "d": "d"}, 42, 3]));
-    c.bench_function("fastjsonschema valid valico", |b| {
+    c.bench_function("small_schema valid valico", |b| {
         b.iter(|| schema.validate(&data).is_valid())
     });
 }
 
-fn fastjsonschema_invalid(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/fast_schema.json"));
+fn small_schema_invalid(c: &mut Criterion) {
+    let schema = black_box(read_json("benches/small_schema.json"));
     let validator = JSONSchema::compile(&schema, None).unwrap();
     let data =
         black_box(json!([10, "world", [1, "a", true], {"a": "a", "b": "b", "c": "xy"}, "str", 5]));
-    c.bench_function("fastjsonschema invalid", |b| {
+    c.bench_function("small_schema invalid", |b| {
         b.iter(|| validator.is_valid(&data))
     });
 }
 
-fn fastjsonschema_invalid_jsonschema_valid(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/fast_schema.json"));
+fn small_schema_invalid_not_compiled(c: &mut Criterion) {
+    let schema = black_box(read_json("benches/small_schema.json"));
+    let data =
+        black_box(json!([10, "world", [1, "a", true], {"a": "a", "b": "b", "c": "xy"}, "str", 5]));
+    c.bench_function("small_schema invalid not compiled", |b| {
+        b.iter(|| {
+            let validator = JSONSchema::compile(&schema, None).unwrap();
+            validator.is_valid(&data)
+        })
+    });
+}
+
+fn small_schema_invalid_jsonschema_valid(c: &mut Criterion) {
+    let schema = black_box(read_json("benches/small_schema.json"));
     let cfg = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap();
     let data =
         black_box(json!([10, "world", [1, "a", true], {"a": "a", "b": "b", "c": "xy"}, "str", 5]));
-    c.bench_function("fastjsonschema invalid jsonschema_valid", |b| {
+    c.bench_function("small_schema invalid jsonschema_valid", |b| {
         b.iter(|| jsonschema_valid::validate(&cfg, &data))
     });
 }
-fn fastjsonschema_invalid_valico(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/fast_schema.json"));
+fn small_schema_invalid_valico(c: &mut Criterion) {
+    let schema = black_box(read_json("benches/small_schema.json"));
     let mut scope = json_schema::Scope::new();
     let schema = scope.compile_and_return(schema.clone(), false).unwrap();
     let data =
         black_box(json!([10, "world", [1, "a", true], {"a": "a", "b": "b", "c": "xy"}, "str", 5]));
-    c.bench_function("fastjsonschema invalid valico", |b| {
+    c.bench_function("small_schema invalid valico", |b| {
         b.iter(|| schema.validate(&data).is_valid())
     });
 }
@@ -324,16 +358,19 @@ bench_compile!(c_aproperties6, "compile additional properties 6", {"properties":
 criterion_group!(
     benches,
     canada_benchmark,
-    canada_benchmark_jsonschema_valid,
-    canada_benchmark_valico,
+    canada_benchmark_not_compiled,
+    // canada_benchmark_jsonschema_valid,
+    // canada_benchmark_valico,
     //    canada_compile_benchmark,
-    //    fastjsonschema_compile,
-    //    fastjsonschema_valid,
-    //    fastjsonschema_valid_jsonschema_valid,
-    //    fastjsonschema_valid_valico,
-    //    fastjsonschema_invalid,
-    //    fastjsonschema_invalid_jsonschema_valid,
-    //    fastjsonschema_invalid_valico,
+    //    small_schema_compile,
+    small_schema_valid,
+    small_schema_valid_not_compiled,
+    // small_schema_valid_jsonschema_valid,
+    // small_schema_valid_valico,
+    small_schema_invalid,
+    small_schema_invalid_not_compiled,
+    // small_schema_invalid_jsonschema_valid,
+    // small_schema_invalid_valico,
     //    type_string_valid,
     //    type_string_invalid,
     //    false_schema,
