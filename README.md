@@ -58,9 +58,10 @@ fn main() {
 }
 ```
 
-Fully supported drafts (with optional test cases included):
+Supported drafts:
 - Draft 7
 - Draft 6
+- Draft 4 (except optional `bignum.json` test case)
 
 ## Performance
 
