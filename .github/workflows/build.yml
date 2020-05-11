@@ -1,6 +1,6 @@
 name: Continuous integration
 
-on: [pull_request]
+on: [push, pull_request]
 
 jobs:
 
@@ -26,6 +26,28 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: check
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Start background server  # User for integration tests
+        run: |
+          # This assumes that python3 is installed on the system
+          /usr/bin/env python3 -m pip install flask
+          # Starts the server in background
+          /usr/bin/env python3 ./tests/suite/bin/jsonschema_suite serve &
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
 
   fmt:
     name: Rustfmt
