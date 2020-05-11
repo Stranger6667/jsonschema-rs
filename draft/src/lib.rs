@@ -6,6 +6,14 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
+const TEST_TO_IGNORE: &[&str] = &["draft4_optional_bignum"];
+
+fn should_ignore_test(prefix_test_name: &str) -> bool {
+    TEST_TO_IGNORE
+        .iter()
+        .any(|test_to_ignore| prefix_test_name.starts_with(test_to_ignore))
+}
+
 #[proc_macro]
 pub fn test_draft(input: TokenStream) -> TokenStream {
     let dir_name = input.to_string();
@@ -28,6 +36,9 @@ pub fn test_draft(input: TokenStream) -> TokenStream {
                 let description = test.get("description").unwrap().as_str().unwrap();
                 let data = test.get("data").unwrap();
                 let valid = test.get("valid").unwrap().as_bool().unwrap();
+                if should_ignore_test(&file_name) {
+                    output.push_str("\n#[ignore]\n");
+                }
                 output.push_str("\n#[test]\n");
                 output.push_str(&format!("fn {}_{}_{}()", file_name, i, j));
                 output.push_str(&make_fn_body(schema, data, &description, valid, &draft))
