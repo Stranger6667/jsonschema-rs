@@ -73,12 +73,12 @@ fn make_fn_body(schema: &Value, data: &Value, description: &str, valid: bool) ->
     output.push_str(&format!(
         r###"
     let schema_str = r##"{}"##;
-    let schema: Value = serde_json::from_str(schema_str).unwrap();
+    let schema: serde_json::Value = serde_json::from_str(schema_str).unwrap();
     let data_str = r##"{}"##;
-    let data: Value = serde_json::from_str(data_str).unwrap();
+    let data: serde_json::Value = serde_json::from_str(data_str).unwrap();
     let description = r#"{}"#;
     println!("Description: {{}}", description);
-    let compiled = JSONSchema::compile(&schema, None).unwrap();
+    let compiled = jsonschema::JSONSchema::compile(&schema, None).unwrap();
     let result = compiled.validate(&data);
     assert_eq!(result.is_ok(), compiled.is_valid(&data));
     "###,
