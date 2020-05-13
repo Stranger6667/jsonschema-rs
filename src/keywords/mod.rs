@@ -145,6 +145,6 @@ mod tests {
     e!(e17: "not.json", 0, 1, r#"{"type":"integer"} is not allowed for 1"#);
     e!(e18: "pattern.json", 0, 1, r#"'abc' does not match '^a*$'"#);
     e!(e19: "required.json", 0, 1, r#"'foo' is a required property"#);
-    e!(e20: "type.json", 0, 1, r#"'1.1' is not of type 'integer'"#);
+    e!(e20: "type.json", 0, 2, r#"'1.1' is not of type 'integer'"#);
     e!(e21: "uniqueItems.json", 0, 1, r#"'[1,1]' has non-unique elements"#);
 }
