@@ -1,5 +1,7 @@
 # jsonschema
 
+[![codecov](https://codecov.io/gh/Stranger6667/jsonschema-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/Stranger6667/jsonschema-rs)
+
 A JSON Schema validator implementation. It compiles schema into a validation tree to have validation as fast as possible.
 
 ```toml
