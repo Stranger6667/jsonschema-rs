@@ -1,51 +1,113 @@
 use heck::{SnakeCase, TitleCase};
 use proc_macro::TokenStream;
-use serde_json::{from_str, Value};
+use proc_macro2::Span;
+use proc_macro2::TokenStream as TokenStream2;
+use quote::quote;
+use serde_json::{from_reader, Value};
 use std::fs;
 use std::fs::File;
-use std::io::Read;
 use std::path::Path;
+use syn::{
+    braced,
+    parse::{Parse, ParseStream},
+    parse_macro_input, Ident, LitStr, Token,
+};
 
-const TEST_TO_IGNORE: &[&str] = &["draft4_optional_bignum"];
-
-fn should_ignore_test(prefix_test_name: &str) -> bool {
-    TEST_TO_IGNORE
-        .iter()
-        .any(|test_to_ignore| prefix_test_name.starts_with(test_to_ignore))
+#[derive(Debug)]
+struct InputConfig {
+    dir_name: String,
+    test_to_exclude: Vec<String>,
 }
 
+fn parse_string_from_stream(parse_stream: ParseStream) -> Result<String, syn::Error> {
+    Ok(parse_stream.parse::<LitStr>()?.value())
+}
+
+fn string_to_ident(string: &str) -> Ident {
+    Ident::new(string, Span::call_site())
+}
+impl Parse for InputConfig {
+    fn parse(input: ParseStream) -> Result<Self, syn::Error> {
+        let dir_name = parse_string_from_stream(input)?;
+        let test_to_exclude: Vec<String> = if input.peek(Token![,]) {
+            let _: Token![,] = input.parse()?;
+
+            let content;
+            let _ = braced!(content in input);
+            content
+                .parse_terminated::<_, Token![,]>(parse_string_from_stream)?
+                .iter()
+                .cloned()
+                .collect::<Vec<_>>()
+        } else {
+            Vec::with_capacity(0)
+        };
+        Ok(Self {
+            dir_name,
+            test_to_exclude,
+        })
+    }
+}
+
+// Usage example
+// test_draft!("path/to/the/directory/containing/the/tests")
+// test_draft!("path/to/the/directory/containing/the/tests", {"this_test_name_will_not_be_rendered"})
 #[proc_macro]
 pub fn test_draft(input: TokenStream) -> TokenStream {
-    let dir_name = input.to_string();
-    let dir = Path::new(dir_name.trim_start_matches('"').trim_end_matches('"'));
-    let draft = dir
-        .to_str()
-        .unwrap()
+    let test_case = parse_macro_input!(input as InputConfig);
+
+    let dir = Path::new(&test_case.dir_name);
+    let draft = test_case
+        .dir_name
         .trim_end_matches('/')
         .split('/')
         .last()
         .unwrap()
         .to_string();
-    let tests = load_tests(dir, format!("{}_", draft));
-    let mut output = "".to_string();
-    for (file_name, test) in tests {
+    let mut rendered_tests = Vec::new();
+    for (file_name, test) in load_tests(&dir, String::from("")) {
         for (i, suite) in test.as_array().unwrap().iter().enumerate() {
-            let schema = suite.get("schema").unwrap();
-            let tests = suite.get("tests").unwrap().as_array().unwrap();
-            for (j, test) in tests.iter().enumerate() {
-                let description = test.get("description").unwrap().as_str().unwrap();
-                let data = test.get("data").unwrap();
+            let schema_str = suite.get("schema").unwrap().to_string();
+            for (j, test) in suite
+                .get("tests")
+                .unwrap()
+                .as_array()
+                .unwrap()
+                .iter()
+                .enumerate()
+            {
+                let data_str = test.get("data").unwrap().to_string();
                 let valid = test.get("valid").unwrap().as_bool().unwrap();
-                if should_ignore_test(&file_name) {
-                    output.push_str("\n#[ignore]\n");
-                }
-                output.push_str("\n#[test]\n");
-                output.push_str(&format!("fn {}_{}_{}()", file_name, i, j));
-                output.push_str(&make_fn_body(schema, data, &description, valid, &draft))
+                let test_case_name = format!("{}_{}_{}", file_name, i, j);
+
+                rendered_tests.push(render_test(
+                    &draft,
+                    &test_case_name,
+                    valid,
+                    &schema_str,
+                    &data_str,
+                    test_case.test_to_exclude.contains(&test_case_name),
+                ))
             }
         }
     }
-    output.parse().unwrap()
+
+    let test_valid = test_valid_token_stream();
+    let test_invalid = test_invalid_token_stream();
+    let draft_ident = string_to_ident(&draft);
+
+    let output = quote! {
+        mod #draft_ident {
+            use serde_json::{from_str, Value};
+            use jsonschema::{Draft, JSONSchema, ValidationError};
+
+            #test_valid
+            #test_invalid
+
+            #(#rendered_tests)*
+        }
+    };
+    output.into()
 }
 
 fn load_tests(dir: &Path, prefix: String) -> Vec<(String, Value)> {
@@ -61,10 +123,8 @@ fn load_tests(dir: &Path, prefix: String) -> Vec<(String, Value)> {
             let more = load_tests(&path, prefix);
             tests.extend(more)
         } else {
-            let mut file = File::open(&path).unwrap();
-            let mut content = String::new();
-            file.read_to_string(&mut content).ok().unwrap();
-            let data: Value = from_str(&content).unwrap();
+            let file = File::open(&path).unwrap();
+            let data: Value = from_reader(file).unwrap();
             let filename = path.file_name().unwrap().to_str().unwrap();
             tests.push((
                 format!(
@@ -79,48 +139,88 @@ fn load_tests(dir: &Path, prefix: String) -> Vec<(String, Value)> {
     tests
 }
 
-fn make_fn_body(
-    schema: &Value,
-    data: &Value,
-    description: &str,
-    valid: bool,
-    draft: &str,
-) -> String {
-    let mut output = "{".to_string();
-    output.push_str(&format!(
-        r###"
-    let schema_str = r##"{}"##;
-    let schema: serde_json::Value = serde_json::from_str(schema_str).unwrap();
-    let data_str = r##"{}"##;
-    let data: serde_json::Value = serde_json::from_str(data_str).unwrap();
-    let description = r#"{}"#;
-    println!("Description: {{}}", description);
-    let compiled = jsonschema::JSONSchema::compile(&schema, Some(jsonschema::Draft::{})).unwrap();
-    let result = compiled.validate(&data);
-    assert_eq!(result.is_ok(), compiled.is_valid(&data));
-    "###,
-        schema.to_string(),
-        data.to_string(),
-        description,
-        draft.to_title_case()
-    ));
-    if valid {
-        output.push_str(
-            r#"
-        let err = result.err();
-        let errors = err.iter().collect::<Vec<_>>();
-        if !errors.is_empty() {
-            let message = format!(
-                "Schema: {}\nInstance: {}\nError: {:?}",
-                schema, data, 1
-            );
-            assert!(false, message)
+fn test_valid_token_stream() -> TokenStream2 {
+    quote! {
+        fn test_valid(draft: Draft, schema_str: &str, data_str: &str) {
+            let schema: Value = from_str(schema_str).unwrap();
+            let data: Value = from_str(data_str).unwrap();
+
+            let compiled = JSONSchema::compile(&schema, Some(draft)).unwrap();
+
+            let result = compiled.validate(&data);
+
+            if let Err(mut errors_iterator) = result {
+                let first_error = errors_iterator.next();
+                assert!(
+                    first_error.is_none(),
+                    format!(
+                        "Schema: {}\nInstance: {}\nError: {:?}",
+                        schema, data, first_error,
+                    )
+                )
+            }
         }
-            "#,
-        )
-    } else {
-        output.push_str(r#"assert!(result.is_err(), "It should be INVALID!");"#)
     }
-    output.push_str("}");
-    output
+}
+
+fn test_invalid_token_stream() -> TokenStream2 {
+    quote! {
+        fn test_invalid(draft: Draft, schema_str: &str, data_str: &str) {
+            let schema: Value = from_str(schema_str).unwrap();
+            let data: Value = from_str(data_str).unwrap();
+
+            let compiled = JSONSchema::compile(&schema, Some(draft)).unwrap();
+
+            let result = compiled.validate(&data);
+            assert!(
+                !compiled.is_valid(&data),
+                format!(
+                    "Schema: {}\nInstance: {}\nError: It is supposed to be INVALID!",
+                    schema, data,
+                )
+            )
+        }
+    }
+}
+
+fn render_test(
+    draft: &str,
+    test_case_name: &str,
+    valid: bool,
+    schema_str: &str,
+    data_str: &str,
+    should_ignore: bool,
+) -> TokenStream2 {
+    let test_case_name_ident = string_to_ident(test_case_name);
+    let version_ident = string_to_ident(&draft.to_title_case());
+    let maybe_ignore_attr: Option<syn::Attribute> = if should_ignore {
+        Some(syn::parse_quote! { #[ignore] })
+    } else {
+        None
+    };
+    if valid {
+        quote! {
+            #maybe_ignore_attr
+            #[test]
+            fn #test_case_name_ident() {
+                test_valid(
+                    Draft::#version_ident,
+                    #schema_str,
+                    #data_str
+                )
+            }
+        }
+    } else {
+        quote! {
+            #maybe_ignore_attr
+            #[test]
+            fn #test_case_name_ident() {
+                test_invalid(
+                    Draft::#version_ident,
+                    #schema_str,
+                    #data_str
+                )
+            }
+        }
+    }
 }
