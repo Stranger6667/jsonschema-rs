@@ -115,7 +115,7 @@ impl Validate for ItemsObjectValidator {
     }
 
     fn name(&self) -> String {
-        format!("<items: {:#?}>", self.validators)
+        format!("<items: {:?}>", self.validators)
     }
 }
 

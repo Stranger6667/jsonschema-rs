@@ -35,7 +35,14 @@ impl Validate for EnumValidator {
     }
 
     fn name(&self) -> String {
-        format!("<enum: {:?}>", self.items)
+        format!(
+            "<enum: {}>",
+            self.items
+                .iter()
+                .map(|item| format!("{}", item))
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
     }
 }
 

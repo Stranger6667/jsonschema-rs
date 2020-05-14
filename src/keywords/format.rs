@@ -173,3 +173,17 @@ pub(crate) fn compile(
         None => Some(Err(CompilationError::SchemaError)),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn ignored_format() {
+        let schema = json!({"format": "custom", "type": "string"});
+        let instance = json!("foo");
+        let compiled = JSONSchema::compile(&schema, None).unwrap();
+        assert!(compiled.is_valid(&instance))
+    }
+}

@@ -545,11 +545,11 @@ impl<'a> fmt::Display for ValidationError<'a> {
                 kind: TypeKind::Multiple(types),
             } => write!(
                 f,
-                "'{}' is not of types '{}'",
+                "'{}' is not of types {}",
                 self.instance,
                 types
                     .iter()
-                    .map(|t| format!("{}", t))
+                    .map(|t| format!("'{}'", t))
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
@@ -563,15 +563,21 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn type_error() {
+    fn single_type_error() {
         let instance = json!(42);
-        let err = error(ValidationError::single_type_error(
-            &instance,
-            PrimitiveType::String,
-        ))
-        .next()
-        .unwrap();
+        let err = ValidationError::single_type_error(&instance, PrimitiveType::String);
         let repr = format!("{}", err);
         assert_eq!(repr, "'42' is not of type 'string'")
+    }
+
+    #[test]
+    fn multiple_types_error() {
+        let instance = json!(42);
+        let err = ValidationError::multiple_type_error(
+            &instance,
+            vec![PrimitiveType::String, PrimitiveType::Number],
+        );
+        let repr = format!("{}", err);
+        assert_eq!(repr, "'42' is not of types 'string', 'number'")
     }
 }

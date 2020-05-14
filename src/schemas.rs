@@ -3,7 +3,6 @@ use serde_json::{Map, Value};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Draft {
-    Draft3,
     Draft4,
     Draft6,
     Draft7,
@@ -114,7 +113,6 @@ impl Draft {
                 "uniqueItems" => Some(keywords::unique_items::compile),
                 _ => None,
             },
-            _ => None,
         }
     }
 }
@@ -122,9 +120,9 @@ impl Draft {
 /// Get the `Draft` from a JSON Schema URL.
 pub fn draft_from_url(url: &str) -> Option<Draft> {
     match url {
-        "http://json-schema.org/draft-07/schema" => Some(Draft::Draft7),
-        "http://json-schema.org/draft-06/schema" => Some(Draft::Draft6),
-        "http://json-schema.org/draft-04/schema" => Some(Draft::Draft4),
+        "http://json-schema.org/draft-07/schema#" => Some(Draft::Draft7),
+        "http://json-schema.org/draft-06/schema#" => Some(Draft::Draft6),
+        "http://json-schema.org/draft-04/schema#" => Some(Draft::Draft4),
         _ => None,
     }
 }
@@ -140,7 +138,7 @@ pub fn draft_from_schema(schema: &Value) -> Option<Draft> {
 
 pub fn id_of(draft: Draft, schema: &Value) -> Option<&str> {
     if let Value::Object(object) = schema {
-        if draft == Draft::Draft4 || draft == Draft::Draft3 {
+        if draft == Draft::Draft4 {
             object.get("id")
         } else {
             object.get("$id")
@@ -148,5 +146,20 @@ pub fn id_of(draft: Draft, schema: &Value) -> Option<&str> {
         .and_then(Value::as_str)
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::{json, Value};
+    use test_case::test_case;
+
+    #[test_case(json!({"$schema": "http://json-schema.org/draft-07/schema#"}), Some(Draft::Draft7))]
+    #[test_case(json!({"$schema": "http://json-schema.org/draft-06/schema#"}), Some(Draft::Draft6))]
+    #[test_case(json!({"$schema": "http://json-schema.org/draft-04/schema#"}), Some(Draft::Draft4))]
+    #[test_case(json!({"$schema": "http://example.com/custom/schema#"}), None)]
+    fn test_draft_from_schema(schema: Value, draft: Option<Draft>) {
+        assert_eq!(draft_from_schema(&schema), draft)
     }
 }
