@@ -59,7 +59,14 @@ impl Validate for MultipleTypesValidator {
     }
 
     fn name(&self) -> String {
-        format!("<type: {:?}>", self.types)
+        format!(
+            "<type: {}>",
+            self.types
+                .iter()
+                .map(|type_| format!("{}", type_))
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
     }
 }
 
