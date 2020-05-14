@@ -59,6 +59,7 @@ pub fn test_draft(input: TokenStream) -> TokenStream {
     let dir = Path::new(&test_case.dir_name);
     let draft = test_case
         .dir_name
+        .replace("-", "_")
         .trim_end_matches('/')
         .split('/')
         .last()
@@ -192,7 +193,7 @@ fn render_test(
     should_ignore: bool,
 ) -> TokenStream2 {
     let test_case_name_ident = string_to_ident(test_case_name);
-    let version_ident = string_to_ident(&draft.to_title_case());
+    let version_ident = string_to_ident(&draft.to_title_case().replace(" ", ""));
     let maybe_ignore_attr: Option<syn::Attribute> = if should_ignore {
         Some(syn::parse_quote! { #[ignore] })
     } else {

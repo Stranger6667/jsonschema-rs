@@ -7,6 +7,7 @@ pub(crate) mod const_;
 pub(crate) mod contains;
 pub(crate) mod content;
 pub(crate) mod dependencies;
+pub(crate) mod dependent_required;
 pub(crate) mod enum_;
 pub(crate) mod exclusive_maximum;
 pub(crate) mod exclusive_minimum;
