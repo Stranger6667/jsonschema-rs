@@ -6,6 +6,11 @@
 
 A JSON Schema validator implementation. It compiles schema into a validation tree to have validation as fast as possible.
 
+Supported drafts:
+- Draft 7
+- Draft 6
+- Draft 4 (except optional `bignum.json` test case)
+
 ```toml
 # Cargo.toml
 jsonschema = "0.2"
@@ -57,11 +62,6 @@ fn main() {
     assert!(compiled.is_valid(&instance));
 }
 ```
-
-Supported drafts:
-- Draft 7
-- Draft 6
-- Draft 4 (except optional `bignum.json` test case)
 
 ## Performance
 
