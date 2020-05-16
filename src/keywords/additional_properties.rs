@@ -99,9 +99,8 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
             for property in item.keys() {
                 if !self.properties.contains_key(property) {
                     // No extra properties are allowed
-                    return error(ValidationError::false_schema(&Value::String(
-                        property.to_string(),
-                    )));
+                    let property_value = Value::String(property.to_string());
+                    return error(ValidationError::false_schema(&property_value).into_owned());
                 }
             }
         }
@@ -247,9 +246,8 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
         if let Value::Object(item) = instance {
             for (property, _) in item {
                 if !self.pattern.is_match(property) {
-                    return error(ValidationError::false_schema(&Value::String(
-                        property.to_string(),
-                    )));
+                    let property_value = Value::String(property.to_string());
+                    return error(ValidationError::false_schema(&property_value).into_owned());
                 }
             }
         }
@@ -360,9 +358,8 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
         if let Value::Object(item) = instance {
             for property in item.keys() {
                 if !self.properties.contains_key(property) && !self.pattern.is_match(property) {
-                    return error(ValidationError::false_schema(&Value::String(
-                        property.to_string(),
-                    )));
+                    let property_value = Value::String(property.to_string());
+                    return error(ValidationError::false_schema(&property_value).into_owned());
                 }
             }
         }
