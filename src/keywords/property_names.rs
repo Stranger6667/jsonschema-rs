@@ -1,6 +1,8 @@
 use super::{CompilationResult, Validate, Validators};
-use crate::compilation::{compile_validators, CompilationContext, JSONSchema};
-use crate::error::{no_error, ErrorIterator, ValidationError};
+use crate::{
+    compilation::{compile_validators, CompilationContext, JSONSchema},
+    error::{error, no_error, ErrorIterator, ValidationError},
+};
 use serde_json::{Map, Value};
 use std::borrow::Borrow;
 
@@ -65,7 +67,7 @@ impl Validate for PropertyNamesBooleanValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            ValidationError::false_schema(instance.clone())
+            error(ValidationError::false_schema(instance))
         }
     }
 

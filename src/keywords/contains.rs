@@ -1,6 +1,8 @@
 use super::{CompilationResult, Validate, Validators};
-use crate::compilation::{compile_validators, CompilationContext, JSONSchema};
-use crate::error::{no_error, ErrorIterator, ValidationError};
+use crate::{
+    compilation::{compile_validators, CompilationContext, JSONSchema},
+    error::{error, no_error, ErrorIterator, ValidationError},
+};
 use serde_json::{Map, Value};
 
 pub struct ContainsValidator {
@@ -27,7 +29,7 @@ impl Validate for ContainsValidator {
                     return no_error();
                 }
             }
-            return ValidationError::contains(instance.clone());
+            return error(ValidationError::contains(instance));
         }
         no_error()
     }

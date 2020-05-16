@@ -1,7 +1,8 @@
 use super::{CompilationResult, Validate};
-use crate::compilation::CompilationContext;
-use crate::compilation::{compile_validators, JSONSchema};
-use crate::error::{error, ErrorIterator};
+use crate::{
+    compilation::{compile_validators, CompilationContext, JSONSchema},
+    error::{error, ErrorIterator},
+};
 use serde_json::Value;
 use url::Url;
 

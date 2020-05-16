@@ -1,6 +1,8 @@
 use super::{CompilationResult, Validate, Validators};
-use crate::compilation::{compile_validators, CompilationContext, JSONSchema};
-use crate::error::{CompilationError, ErrorIterator};
+use crate::{
+    compilation::{compile_validators, CompilationContext, JSONSchema},
+    error::{CompilationError, ErrorIterator},
+};
 use serde_json::{Map, Value};
 
 pub struct AllOfValidator {

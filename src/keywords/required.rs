@@ -1,6 +1,8 @@
 use super::{CompilationResult, Validate};
-use crate::compilation::{CompilationContext, JSONSchema};
-use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
+use crate::{
+    compilation::{CompilationContext, JSONSchema},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+};
 use serde_json::{Map, Value};
 
 pub struct RequiredValidator {
@@ -30,7 +32,7 @@ impl Validate for RequiredValidator {
         if let Value::Object(item) = instance {
             for property_name in self.required.iter() {
                 if !item.contains_key(property_name) {
-                    return ValidationError::required(property_name.clone());
+                    return error(ValidationError::required(instance, property_name.clone()));
                 }
             }
         }

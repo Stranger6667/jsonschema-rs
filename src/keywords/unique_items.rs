@@ -1,11 +1,13 @@
 use super::{CompilationResult, Validate};
-use crate::compilation::CompilationContext;
-use crate::compilation::JSONSchema;
-use crate::error::{no_error, ErrorIterator, ValidationError};
+use crate::{
+    compilation::{CompilationContext, JSONSchema},
+    error::{error, no_error, ErrorIterator, ValidationError},
+};
 use serde_json::{Map, Value};
-use std::collections::hash_map::DefaultHasher;
-use std::collections::HashSet;
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::{hash_map::DefaultHasher, HashSet},
+    hash::{Hash, Hasher},
+};
 
 // Based on implementation proposed by Sven Marnach:
 // https://stackoverflow.com/questions/60882381/what-is-the-fastest-correct-way-to-detect-that-there-are-no-duplicates-in-a-json
@@ -68,7 +70,7 @@ impl Validate for UniqueItemsValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            ValidationError::unique_items(instance.clone())
+            error(ValidationError::unique_items(instance))
         }
     }
 

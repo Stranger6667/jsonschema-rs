@@ -1,7 +1,9 @@
 //! Validator for `format` keyword.
 use super::{CompilationResult, Validate};
-use crate::compilation::{CompilationContext, JSONSchema};
-use crate::error::{error, no_error, CompilationError, ErrorIterator, ValidationError};
+use crate::{
+    compilation::{CompilationContext, JSONSchema},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+};
 use serde_json::{Map, Value};
 
 pub struct FormatValidator {
@@ -22,10 +24,7 @@ impl Validate for FormatValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if !(self.check)(item) {
-                return error(ValidationError::format(
-                    item.to_owned(),
-                    self.format.clone(),
-                ));
+                return error(ValidationError::format(instance, self.format.clone()));
             }
         }
         no_error()
@@ -46,8 +45,7 @@ impl Validate for FormatValidator {
 mod checks {
     use chrono::{DateTime, NaiveDate};
     use regex::Regex;
-    use std::net::IpAddr;
-    use std::str::FromStr;
+    use std::{net::IpAddr, str::FromStr};
     use url::Url;
     lazy_static! {
         static ref IRI_REFERENCE_RE: Regex =

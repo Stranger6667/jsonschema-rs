@@ -1,6 +1,8 @@
 use super::{CompilationResult, Validate, Validators};
-use crate::compilation::{compile_validators, CompilationContext, JSONSchema};
-use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
+use crate::{
+    compilation::{compile_validators, CompilationContext, JSONSchema},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+};
 use regex::Regex;
 use serde_json::{Map, Value};
 
@@ -58,7 +60,7 @@ impl Validate for AdditionalPropertiesFalseValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             if let Some((_, value)) = item.iter().next() {
-                return ValidationError::false_schema(value.clone());
+                return error(ValidationError::false_schema(value));
             }
         }
         no_error()
@@ -97,7 +99,9 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
             for property in item.keys() {
                 if !self.properties.contains_key(property) {
                     // No extra properties are allowed
-                    return ValidationError::false_schema(Value::String(property.to_string()));
+                    return error(ValidationError::false_schema(&Value::String(
+                        property.to_string(),
+                    )));
                 }
             }
         }
@@ -243,7 +247,9 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
         if let Value::Object(item) = instance {
             for (property, _) in item {
                 if !self.pattern.is_match(property) {
-                    return ValidationError::false_schema(Value::String(property.to_string()));
+                    return error(ValidationError::false_schema(&Value::String(
+                        property.to_string(),
+                    )));
                 }
             }
         }
@@ -354,7 +360,9 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
         if let Value::Object(item) = instance {
             for property in item.keys() {
                 if !self.properties.contains_key(property) && !self.pattern.is_match(property) {
-                    return ValidationError::false_schema(Value::String(property.to_string()));
+                    return error(ValidationError::false_schema(&Value::String(
+                        property.to_string(),
+                    )));
                 }
             }
         }

@@ -1,6 +1,8 @@
 use super::{CompilationResult, Validate};
-use crate::compilation::{CompilationContext, JSONSchema};
-use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
+use crate::{
+    compilation::{CompilationContext, JSONSchema},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+};
 use serde_json::{Map, Value};
 
 pub struct ExclusiveMinimumValidator {
@@ -22,7 +24,7 @@ impl Validate for ExclusiveMinimumValidator {
         if let Value::Number(item) = instance {
             let item = item.as_f64().unwrap();
             if item <= self.limit {
-                return ValidationError::exclusive_minimum(item, self.limit);
+                return error(ValidationError::exclusive_minimum(instance, self.limit));
             }
         }
         no_error()

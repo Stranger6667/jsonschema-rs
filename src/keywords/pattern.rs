@@ -1,6 +1,8 @@
 use super::{CompilationResult, Validate};
-use crate::compilation::{CompilationContext, JSONSchema};
-use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
+use crate::{
+    compilation::{CompilationContext, JSONSchema},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+};
 use regex::{Captures, Regex};
 use serde_json::{Map, Value};
 
@@ -34,7 +36,7 @@ impl Validate for PatternValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if !self.pattern.is_match(item) {
-                return ValidationError::pattern(item.clone(), self.original.clone());
+                return error(ValidationError::pattern(instance, self.original.clone()));
             }
         }
         no_error()
