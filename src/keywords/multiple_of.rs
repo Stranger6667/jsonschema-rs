@@ -1,6 +1,8 @@
 use super::{CompilationResult, Validate};
-use crate::compilation::{CompilationContext, JSONSchema};
-use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
+use crate::{
+    compilation::{CompilationContext, JSONSchema},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+};
 use serde_json::{Map, Value};
 use std::f64::EPSILON;
 
@@ -20,7 +22,7 @@ impl Validate for MultipleOfFloatValidator {
             let item = item.as_f64().unwrap();
             let remainder = (item / self.multiple_of) % 1.;
             if !(remainder < EPSILON && remainder < (1. - EPSILON)) {
-                return ValidationError::multiple_of(item, self.multiple_of);
+                return error(ValidationError::multiple_of(instance, self.multiple_of));
             }
         }
         no_error()
@@ -63,7 +65,7 @@ impl Validate for MultipleOfIntegerValidator {
                 remainder < EPSILON && remainder < (1. - EPSILON)
             };
             if !is_multiple {
-                return ValidationError::multiple_of(item, self.multiple_of);
+                return error(ValidationError::multiple_of(instance, self.multiple_of));
             }
         }
         no_error()

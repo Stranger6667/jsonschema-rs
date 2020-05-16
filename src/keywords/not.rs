@@ -1,6 +1,8 @@
 use super::{CompilationResult, Validate, Validators};
-use crate::compilation::{compile_validators, CompilationContext, JSONSchema};
-use crate::error::{no_error, ErrorIterator, ValidationError};
+use crate::{
+    compilation::{compile_validators, CompilationContext, JSONSchema},
+    error::{error, no_error, ErrorIterator, ValidationError},
+};
 use serde_json::{Map, Value};
 
 pub struct NotValidator {
@@ -23,7 +25,7 @@ impl Validate for NotValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            ValidationError::not(instance.clone(), self.original.clone())
+            error(ValidationError::not(instance, self.original.clone()))
         }
     }
 

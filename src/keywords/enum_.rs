@@ -1,6 +1,8 @@
 use super::{helpers, CompilationResult, Validate};
-use crate::compilation::{CompilationContext, JSONSchema};
-use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
+use crate::{
+    compilation::{CompilationContext, JSONSchema},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+};
 use serde_json::{Map, Value};
 
 pub struct EnumValidator {
@@ -23,7 +25,7 @@ impl EnumValidator {
 impl Validate for EnumValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if !self.is_valid(schema, instance) {
-            return ValidationError::enumeration(instance.clone(), self.options.clone());
+            return error(ValidationError::enumeration(instance, &self.options));
         }
         no_error()
     }

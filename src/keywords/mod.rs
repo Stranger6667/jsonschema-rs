@@ -34,9 +34,7 @@ pub(crate) mod ref_;
 pub(crate) mod required;
 pub(crate) mod type_;
 pub(crate) mod unique_items;
-use crate::compilation::JSONSchema;
-use crate::error;
-use crate::error::ErrorIterator;
+use crate::{compilation::JSONSchema, error, error::ErrorIterator};
 use serde_json::Value;
 use std::fmt::{Debug, Error, Formatter};
 
@@ -65,9 +63,7 @@ pub type Validators = Vec<BoxedValidator>;
 mod tests {
     use super::JSONSchema;
     use serde_json::{from_str, json, Value};
-    use std::fs::File;
-    use std::io::Read;
-    use std::path::Path;
+    use std::{fs::File, io::Read, path::Path};
 
     macro_rules! t {
         ($t:ident : $schema:tt => $expected:expr) => {
@@ -133,18 +129,18 @@ mod tests {
     e!(e4: "const.json", 0, 1, r#"'2' was expected"#);
     e!(e5: "contains.json", 0, 3, r#"None of '[2,3,4]' are valid under the given schema"#);
     e!(e6: "enum.json", 0, 1, r#"'4' is not one of '[1,2,3]'"#);
-    e!(e7: "exclusiveMaximum.json", 0, 1, r#"3 is greater than or equal to the maximum of 3"#);
+    e!(e7: "exclusiveMaximum.json", 0, 1, r#"3.0 is greater than or equal to the maximum of 3"#);
     e!(e8: "exclusiveMinimum.json", 0, 1, r#"1.1 is less than or equal to the minimum of 1.1"#);
-    e!(e9: "maxItems.json", 0, 2, r#"[1,2,3] is too long"#);
-    e!(e10: "maxLength.json", 0, 2, r#"'foo' is too long"#);
-    e!(e11: "maxProperties.json", 0, 2, r#"{"bar":2,"baz":3,"foo":1} has too many properties"#);
+    e!(e9: "maxItems.json", 0, 2, r#"[1,2,3] has more than 2 items"#);
+    e!(e10: "maxLength.json", 0, 2, r#"'"foo"' is longer than 2 characters"#);
+    e!(e11: "maxProperties.json", 0, 2, r#"{"bar":2,"baz":3,"foo":1} has more than 2 properties"#);
     e!(e12: "minimum.json", 0, 2, r#"0.6 is less than the minimum of 1.1"#);
-    e!(e13: "minItems.json", 0, 2, r#"[] is too short"#);
-    e!(e14: "minLength.json", 0, 2, r#"'f' is too short"#);
-    e!(e15: "minProperties.json", 0, 2, r#"{} does not have enough properties"#);
+    e!(e13: "minItems.json", 0, 2, r#"[] has less than 1 item"#);
+    e!(e14: "minLength.json", 0, 2, r#"'"f"' is shorter than 2 characters"#);
+    e!(e15: "minProperties.json", 0, 2, r#"{} has less than 1 property"#);
     e!(e16: "multipleOf.json", 0, 1, r#"7 is not a multiple of 2"#);
     e!(e17: "not.json", 0, 1, r#"{"type":"integer"} is not allowed for 1"#);
-    e!(e18: "pattern.json", 0, 1, r#"'abc' does not match '^a*$'"#);
+    e!(e18: "pattern.json", 0, 1, r#"'"abc"' does not match '^a*$'"#);
     e!(e19: "required.json", 0, 1, r#"'foo' is a required property"#);
     e!(e20: "type.json", 0, 2, r#"'1.1' is not of type 'integer'"#);
     e!(e21: "uniqueItems.json", 0, 1, r#"'[1,1]' has non-unique elements"#);

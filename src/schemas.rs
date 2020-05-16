@@ -1,5 +1,4 @@
-use crate::compilation::CompilationContext;
-use crate::keywords;
+use crate::{compilation::CompilationContext, keywords};
 use serde_json::{Map, Value};
 
 #[derive(Debug, PartialEq, Copy, Clone)]

@@ -1,7 +1,8 @@
-use super::boolean::TrueValidator;
-use super::{CompilationResult, Validate, Validators};
-use crate::compilation::{compile_validators, CompilationContext, JSONSchema};
-use crate::error::{no_error, ErrorIterator};
+use super::{boolean::TrueValidator, CompilationResult, Validate, Validators};
+use crate::{
+    compilation::{compile_validators, CompilationContext, JSONSchema},
+    error::{no_error, ErrorIterator},
+};
 use rayon::prelude::*;
 use serde_json::{Map, Value};
 

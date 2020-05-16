@@ -1,6 +1,8 @@
 use super::{CompilationResult, Validate};
-use crate::compilation::{CompilationContext, JSONSchema};
-use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
+use crate::{
+    compilation::{CompilationContext, JSONSchema},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+};
 use serde_json::{Map, Value};
 
 pub struct MinLengthValidator {
@@ -21,7 +23,7 @@ impl Validate for MinLengthValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if item.chars().count() < self.limit {
-                return ValidationError::min_length(item.clone());
+                return error(ValidationError::min_length(instance, self.limit));
             }
         }
         no_error()

@@ -1,17 +1,17 @@
 use super::{helpers, CompilationResult, Validate};
-use crate::compilation::{CompilationContext, JSONSchema};
-use crate::error::{no_error, ErrorIterator, ValidationError};
+use crate::{
+    compilation::{CompilationContext, JSONSchema},
+    error::{error, no_error, ErrorIterator, ValidationError},
+};
 use serde_json::{Map, Value};
 
 pub struct ConstValidator {
-    error_message: String,
     value: Value,
 }
 
 impl ConstValidator {
     pub(crate) fn compile(value: &Value) -> CompilationResult {
         Ok(Box::new(ConstValidator {
-            error_message: format!("'{}' was expected", value),
             value: value.clone(),
         }))
     }
@@ -22,7 +22,7 @@ impl Validate for ConstValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            ValidationError::constant(self.error_message.clone())
+            error(ValidationError::constant(instance, &self.value))
         }
     }
 

@@ -1,6 +1,8 @@
 use super::{CompilationResult, Validate, Validators};
-use crate::compilation::{compile_validators, CompilationContext, JSONSchema};
-use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
+use crate::{
+    compilation::{compile_validators, CompilationContext, JSONSchema},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+};
 use serde_json::{Map, Value};
 
 pub struct AnyOfValidator {
@@ -28,7 +30,7 @@ impl Validate for AnyOfValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            return ValidationError::any_of(instance.clone());
+            return error(ValidationError::any_of(instance));
         }
     }
 

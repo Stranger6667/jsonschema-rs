@@ -1,18 +1,22 @@
 //! Validators for `contentMediaType` and `contentEncoding` keywords.
-use super::Validate;
-use super::{CompilationResult, ErrorIterator};
-use crate::compilation::{CompilationContext, JSONSchema};
-use crate::error::{error, no_error, CompilationError, ValidationError};
+use super::{CompilationResult, ErrorIterator, Validate};
+use crate::{
+    compilation::{CompilationContext, JSONSchema},
+    error::{error, no_error, CompilationError, ValidationError},
+};
 use serde_json::{from_str, Map, Value};
 
 /// Validator for `contentMediaType` keyword.
 pub struct ContentMediaTypeValidator {
     media_type: String,
-    func: fn(&str) -> ErrorIterator,
+    func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
 }
 
 impl ContentMediaTypeValidator {
-    pub(crate) fn compile(media_type: &str, func: fn(&str) -> ErrorIterator) -> CompilationResult {
+    pub(crate) fn compile(
+        media_type: &str,
+        func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
+    ) -> CompilationResult {
         Ok(Box::new(ContentMediaTypeValidator {
             media_type: media_type.to_string(),
             func,
@@ -24,14 +28,14 @@ impl ContentMediaTypeValidator {
 impl Validate for ContentMediaTypeValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
-            return (self.func)(item);
+            return (self.func)(instance, item);
         }
         no_error()
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            return (self.func)(item).next().is_none();
+            return (self.func)(instance, item).next().is_none();
         }
         true
     }
@@ -44,11 +48,14 @@ impl Validate for ContentMediaTypeValidator {
 /// Validator for `contentEncoding` keyword.
 pub struct ContentEncodingValidator {
     encoding: String,
-    func: fn(&str) -> ErrorIterator,
+    func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
 }
 
 impl ContentEncodingValidator {
-    pub(crate) fn compile(encoding: &str, func: fn(&str) -> ErrorIterator) -> CompilationResult {
+    pub(crate) fn compile(
+        encoding: &str,
+        func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
+    ) -> CompilationResult {
         Ok(Box::new(ContentEncodingValidator {
             encoding: encoding.to_string(),
             func,
@@ -59,14 +66,14 @@ impl ContentEncodingValidator {
 impl Validate for ContentEncodingValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
-            return (self.func)(item);
+            return (self.func)(instance, item);
         }
         no_error()
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            return (self.func)(item).next().is_none();
+            return (self.func)(instance, item).next().is_none();
         }
         true
     }
@@ -80,16 +87,16 @@ impl Validate for ContentEncodingValidator {
 pub struct ContentMediaTypeAndEncodingValidator {
     media_type: String,
     encoding: String,
-    func: fn(&str) -> ErrorIterator,
-    converter: fn(&str) -> Result<String, ValidationError>,
+    func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
+    converter: fn(&Value, &str) -> Result<String, ValidationError>,
 }
 
-impl<'a> ContentMediaTypeAndEncodingValidator {
+impl ContentMediaTypeAndEncodingValidator {
     pub(crate) fn compile(
         media_type: &str,
         encoding: &str,
-        func: fn(&str) -> ErrorIterator,
-        converter: fn(&str) -> Result<String, ValidationError>,
+        func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
+        converter: fn(&Value, &str) -> Result<String, ValidationError>,
     ) -> CompilationResult {
         Ok(Box::new(ContentMediaTypeAndEncodingValidator {
             media_type: media_type.to_string(),
@@ -106,9 +113,9 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
         if let Value::String(item) = instance {
             // TODO. Avoid explicit `error` call. It might be done if `converter` will
             // return a proper type
-            return match (self.converter)(item) {
+            return match (self.converter)(instance, item) {
                 Ok(converted) => {
-                    let errors: Vec<_> = (self.func)(&converted).collect();
+                    let errors: Vec<_> = (self.func)(instance, &converted).collect();
                     Box::new(errors.into_iter())
                 }
                 Err(e) => error(e),
@@ -119,8 +126,8 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            return match (self.converter)(item) {
-                Ok(converted) => (self.func)(&converted).next().is_none(),
+            return match (self.converter)(instance, item) {
+                Ok(converted) => (self.func)(instance, &converted).next().is_none(),
                 Err(_) => false,
             };
         }
@@ -135,33 +142,30 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
     }
 }
 
-pub(crate) fn is_json(instance: &str) -> ErrorIterator {
-    if from_str::<Value>(instance).is_err() {
+pub(crate) fn is_json<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
+    if from_str::<Value>(instance_string).is_err() {
         return error(ValidationError::format(
-            instance.to_owned(),
-            "application/json".to_owned(),
+            instance,
+            "application/json".to_string(),
         ));
     }
     no_error()
 }
 
-pub(crate) fn is_base64(instance: &str) -> ErrorIterator {
-    if base64::decode(instance).is_err() {
-        return error(ValidationError::format(
-            instance.to_owned(),
-            "base64".to_owned(),
-        ));
+pub(crate) fn is_base64<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
+    if base64::decode(instance_string).is_err() {
+        return error(ValidationError::format(instance, "base64".to_string()));
     }
     no_error()
 }
 
-pub(crate) fn from_base64(instance: &str) -> Result<String, ValidationError> {
-    match base64::decode(instance) {
+pub(crate) fn from_base64(
+    instance: &Value,
+    instance_string: &str,
+) -> Result<String, ValidationError> {
+    match base64::decode(instance_string) {
         Ok(value) => Ok(String::from_utf8(value)?),
-        Err(_) => Err(ValidationError::format(
-            instance.to_owned(),
-            "base64".to_owned(),
-        )),
+        Err(_) => Err(ValidationError::format(instance, "base64".to_string())),
     }
 }
 

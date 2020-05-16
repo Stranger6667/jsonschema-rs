@@ -1,11 +1,12 @@
 //! Reference resolver. Implements logic, required by `$ref` keyword.
 //! Is able to load documents from remote locations via HTTP(S).
-use crate::compilation::DEFAULT_ROOT_URL;
-use crate::error::{CompilationError, ValidationError};
-use crate::schemas::{id_of, Draft};
+use crate::{
+    compilation::DEFAULT_ROOT_URL,
+    error::{CompilationError, ValidationError},
+    schemas::{id_of, Draft},
+};
 use serde_json::Value;
-use std::borrow::Cow;
-use std::collections::HashMap;
+use std::{borrow::Cow, collections::HashMap};
 use url::Url;
 
 pub(crate) struct Resolver<'a> {
@@ -207,10 +208,7 @@ fn parse_index(s: &str) -> Option<usize> {
 mod tests {
     use super::*;
     use serde_json::*;
-    use std::borrow::Cow;
-    use std::fs::File;
-    use std::io::Read;
-    use std::path::Path;
+    use std::{borrow::Cow, fs::File, io::Read, path::Path};
     use url::Url;
 
     fn load(path: &str, idx: usize) -> Value {

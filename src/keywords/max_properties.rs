@@ -1,6 +1,8 @@
 use super::{CompilationResult, Validate};
-use crate::compilation::{CompilationContext, JSONSchema};
-use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
+use crate::{
+    compilation::{CompilationContext, JSONSchema},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+};
 use serde_json::{Map, Value};
 
 pub struct MaxPropertiesValidator {
@@ -21,7 +23,7 @@ impl Validate for MaxPropertiesValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             if item.len() > self.limit {
-                return ValidationError::max_properties(instance.clone());
+                return error(ValidationError::max_properties(instance, self.limit));
             }
         }
         no_error()

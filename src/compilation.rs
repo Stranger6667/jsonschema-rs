@@ -1,10 +1,13 @@
 //! Schema compilation.
 //! The main idea is to compile the input JSON Schema to a validators tree that will contain
 //! everything needed to perform such validation in runtime.
-use crate::error::{CompilationError, ErrorIterator};
-use crate::keywords::Validators;
-use crate::resolver::Resolver;
-use crate::{keywords, schemas};
+use crate::{
+    error::{CompilationError, ErrorIterator},
+    keywords,
+    keywords::Validators,
+    resolver::Resolver,
+    schemas,
+};
 use serde_json::Value;
 use std::borrow::Cow;
 use url::{ParseError, Url};
@@ -166,10 +169,7 @@ mod tests {
     use super::*;
     use crate::error::ValidationError;
     use serde_json::*;
-    use std::borrow::Cow;
-    use std::fs::File;
-    use std::io::Read;
-    use std::path::Path;
+    use std::{borrow::Cow, fs::File, io::Read, path::Path};
     use url::Url;
 
     fn load(path: &str, idx: usize) -> Value {
@@ -237,8 +237,11 @@ mod tests {
         assert_eq!(errors.len(), 2);
         assert_eq!(
             format!("{}", errors[0]),
-            r#"{"a":3} does not have enough properties"#
+            r#"{"a":3} has less than 2 properties"#
         );
-        assert_eq!(format!("{}", errors[1]), r#"'a' is too short"#);
+        assert_eq!(
+            format!("{}", errors[1]),
+            r#"'"a"' is shorter than 3 characters"#
+        );
     }
 }

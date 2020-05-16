@@ -1,6 +1,8 @@
 use super::{CompilationResult, Validate};
-use crate::compilation::{CompilationContext, JSONSchema};
-use crate::error::{no_error, CompilationError, ErrorIterator, PrimitiveType, ValidationError};
+use crate::{
+    compilation::{CompilationContext, JSONSchema},
+    error::{error, no_error, CompilationError, ErrorIterator, PrimitiveType, ValidationError},
+};
 use serde_json::{Map, Number, Value};
 
 pub struct MultipleTypesValidator {
@@ -34,7 +36,10 @@ impl Validate for MultipleTypesValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            ValidationError::multiple_type_error(instance.clone(), self.types.clone())
+            error(ValidationError::multiple_type_error(
+                instance,
+                self.types.clone(),
+            ))
         }
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
@@ -71,7 +76,10 @@ impl Validate for NullTypeValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            ValidationError::single_type_error(instance.clone(), PrimitiveType::Null)
+            error(ValidationError::single_type_error(
+                instance,
+                PrimitiveType::Null,
+            ))
         }
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
@@ -96,7 +104,10 @@ impl Validate for BooleanTypeValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            ValidationError::single_type_error(instance.clone(), PrimitiveType::Boolean)
+            error(ValidationError::single_type_error(
+                instance,
+                PrimitiveType::Boolean,
+            ))
         }
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
@@ -121,7 +132,10 @@ impl Validate for StringTypeValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            ValidationError::single_type_error(instance.clone(), PrimitiveType::String)
+            error(ValidationError::single_type_error(
+                instance,
+                PrimitiveType::String,
+            ))
         }
     }
 
@@ -147,7 +161,10 @@ impl Validate for ArrayTypeValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            ValidationError::single_type_error(instance.clone(), PrimitiveType::Array)
+            error(ValidationError::single_type_error(
+                instance,
+                PrimitiveType::Array,
+            ))
         }
     }
 
@@ -173,7 +190,10 @@ impl Validate for ObjectTypeValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            ValidationError::single_type_error(instance.clone(), PrimitiveType::Object)
+            error(ValidationError::single_type_error(
+                instance,
+                PrimitiveType::Object,
+            ))
         }
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
@@ -198,7 +218,10 @@ impl Validate for NumberTypeValidator {
         if self.is_valid(config, instance) {
             no_error()
         } else {
-            ValidationError::single_type_error(instance.clone(), PrimitiveType::Number)
+            error(ValidationError::single_type_error(
+                instance,
+                PrimitiveType::Number,
+            ))
         }
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
@@ -223,7 +246,10 @@ impl Validate for IntegerTypeValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            ValidationError::single_type_error(instance.clone(), PrimitiveType::Integer)
+            error(ValidationError::single_type_error(
+                instance,
+                PrimitiveType::Integer,
+            ))
         }
     }
 

@@ -1,6 +1,8 @@
 use super::{CompilationResult, Validate, Validators};
-use crate::compilation::{compile_validators, CompilationContext, JSONSchema};
-use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
+use crate::{
+    compilation::{compile_validators, CompilationContext, JSONSchema},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+};
 use serde_json::{Map, Value};
 
 pub struct OneOfValidator {
@@ -58,10 +60,10 @@ impl Validate for OneOfValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         let (first_valid, first_valid_idx) = self.get_first_valid(schema, instance);
         if first_valid.is_none() {
-            return ValidationError::one_of_not_valid(instance.clone());
+            return error(ValidationError::one_of_not_valid(instance));
         }
         if self.are_others_valid(schema, instance, first_valid_idx) {
-            return ValidationError::one_of_multiple_valid(instance.clone());
+            return error(ValidationError::one_of_multiple_valid(instance));
         }
         no_error()
     }

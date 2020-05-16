@@ -1,8 +1,11 @@
 use serde_json::Value;
-use std::fmt::{Error, Formatter};
-use std::iter::{empty, once};
-use std::string::FromUtf8Error;
-use std::{error, fmt, io};
+use std::{
+    error, fmt,
+    fmt::{Error, Formatter},
+    io,
+    iter::{empty, once},
+    string::FromUtf8Error,
+};
 
 #[derive(Debug, PartialEq)]
 pub enum CompilationError {
@@ -31,6 +34,7 @@ impl From<url::ParseError> for CompilationError {
 /// An error that can occur during validation.
 #[derive(Debug)]
 pub struct ValidationError {
+    instance: Value,
     kind: ValidationErrorKind,
 }
 
@@ -49,67 +53,67 @@ pub(crate) fn error<'a>(instance: ValidationError) -> ErrorIterator<'a> {
 #[derive(Debug)]
 pub enum ValidationErrorKind {
     /// The input array contain more items than expected.
-    AdditionalItems { items: Vec<Value>, limit: usize },
+    AdditionalItems { limit: usize },
     /// The input value is not valid under any of the given schemas.
-    AnyOf(Value),
+    AnyOf,
     /// The input value doesn't match expected constant.
-    Constant(String),
+    Constant { expected_value: Value },
     /// The input array doesn't contain items conforming to the specified schema.
-    Contains(Value),
+    Contains,
     /// The input value doesn't match any of specified options.
-    Enum { instance: Value, options: Value },
+    Enum { options: Value },
     /// Value is too large.
-    ExclusiveMaximum { instance: f64, limit: f64 },
+    ExclusiveMaximum { limit: f64 },
     /// Value is too small.
-    ExclusiveMinimum { instance: f64, limit: f64 },
+    ExclusiveMinimum { limit: f64 },
     /// Everything is invalid for `false` schema.
-    FalseSchema(Value),
+    FalseSchema,
     /// If the referenced file is not found during ref resolution.
-    FileNotFound(io::Error),
+    FileNotFound { error: io::Error },
     /// When the input doesn't match to the specified format.
-    Format { instance: String, format: String },
+    Format { format: String },
     /// May happen in `contentEncoding` validation if `base64` encoded data is invalid.
-    FromUtf8(FromUtf8Error),
+    FromUtf8 { error: FromUtf8Error },
     /// May happen during ref resolution when remote document is not a valid JSON.
-    JSONParse(serde_json::Error),
+    JSONParse { error: serde_json::Error },
     /// `ref` value is not valid.
-    InvalidReference(String),
+    InvalidReference { reference: String },
     /// Too many items in an array.
-    MaxItems(Value),
+    MaxItems { limit: usize },
     /// Value is too large.
-    Maximum { instance: f64, limit: f64 },
+    Maximum { limit: f64 },
     /// String is too long.
-    MaxLength(String),
+    MaxLength { limit: usize },
     /// Too many properties in an object.
-    MaxProperties(Value),
+    MaxProperties { limit: usize },
     /// Too few items in an array.
-    MinItems(Value),
+    MinItems { limit: usize },
     /// Value is too small.
-    Minimum { instance: f64, limit: f64 },
+    Minimum { limit: f64 },
     /// String is too short.
-    MinLength(String),
+    MinLength { limit: usize },
     /// Not enough properties in an object.
-    MinProperties(Value),
+    MinProperties { limit: usize },
     /// When some number is not a multiple of another number.
-    MultipleOf { instance: f64, multiple_of: f64 },
+    MultipleOf { multiple_of: f64 },
     /// Negated schema failed validation.
-    Not { instance: Value, schema: Value },
+    Not { schema: Value },
     /// The given schema is valid under more than one of the given schemas.
-    OneOfMultipleValid(Value),
+    OneOfMultipleValid,
     /// The given schema is not valid under any on the given schemas.
-    OneOfNotValid(Value),
+    OneOfNotValid,
     /// When the input doesn't match to a pattern.
-    Pattern { instance: String, pattern: String },
+    Pattern { pattern: String },
     /// When a required property is missing.
-    Required(String),
+    Required { property: String },
     /// Resolved schema failed to compile.
     Schema,
     /// When the input value doesn't match one or multiple required types.
-    Type { instance: Value, kind: TypeKind },
+    Type { kind: TypeKind },
     /// When the input array has non-unique elements.
-    UniqueItems(Value),
+    UniqueItems,
     /// Reference contains unknown scheme.
-    UnknownReferenceScheme(String),
+    UnknownReferenceScheme { scheme: String },
 }
 
 /// For faster error handling in "type" keyword validator we have this enum, to match
@@ -147,179 +151,207 @@ pub enum TypeKind {
 
 /// Shortcuts for creation of specific error kinds.
 impl<'a> ValidationError {
-    pub(crate) fn additional_items(items: Vec<Value>, limit: usize) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::AdditionalItems { items, limit },
-        })
-    }
-    pub(crate) fn any_of(instance: Value) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::AnyOf(instance),
-        })
-    }
-    pub(crate) fn constant(message: String) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::Constant(message),
-        })
-    }
-    pub(crate) fn contains(instance: Value) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::Contains(instance),
-        })
-    }
-    pub(crate) fn enumeration(instance: Value, options: Value) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::Enum { instance, options },
-        })
-    }
-    pub(crate) fn exclusive_maximum(instance: f64, limit: f64) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::ExclusiveMaximum { instance, limit },
-        })
-    }
-    pub(crate) fn exclusive_minimum(instance: f64, limit: f64) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::ExclusiveMinimum { instance, limit },
-        })
-    }
-    pub(crate) fn false_schema(instance: Value) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::FalseSchema(instance),
-        })
-    }
-    pub(crate) fn file_not_found(err: io::Error) -> ValidationError {
+    pub(crate) fn additional_items(instance: &Value, limit: usize) -> ValidationError {
         ValidationError {
-            kind: ValidationErrorKind::FileNotFound(err),
+            instance: instance.clone(),
+            kind: ValidationErrorKind::AdditionalItems { limit },
         }
     }
-    pub(crate) fn format(instance: String, format: String) -> ValidationError {
+    pub(crate) fn any_of(instance: &Value) -> ValidationError {
         ValidationError {
-            kind: ValidationErrorKind::Format { instance, format },
+            instance: instance.clone(),
+            kind: ValidationErrorKind::AnyOf,
         }
     }
-    pub(crate) fn from_utf8(err: FromUtf8Error) -> ValidationError {
+    pub(crate) fn constant(instance: &Value, expected_value: &Value) -> ValidationError {
         ValidationError {
-            kind: ValidationErrorKind::FromUtf8(err),
+            instance: instance.clone(),
+            kind: ValidationErrorKind::Constant {
+                expected_value: expected_value.clone(),
+            },
         }
     }
-    pub(crate) fn json_parse(err: serde_json::Error) -> ValidationError {
+    pub(crate) fn contains(instance: &Value) -> ValidationError {
         ValidationError {
-            kind: ValidationErrorKind::JSONParse(err),
+            instance: instance.clone(),
+            kind: ValidationErrorKind::Contains,
+        }
+    }
+    pub(crate) fn enumeration(instance: &Value, options: &Value) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::Enum {
+                options: options.clone(),
+            },
+        }
+    }
+    pub(crate) fn exclusive_maximum(instance: &Value, limit: f64) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::ExclusiveMaximum { limit },
+        }
+    }
+    pub(crate) fn exclusive_minimum(instance: &Value, limit: f64) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::ExclusiveMinimum { limit },
+        }
+    }
+    pub(crate) fn false_schema(instance: &Value) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::FalseSchema,
+        }
+    }
+    pub(crate) fn file_not_found(error: io::Error) -> ValidationError {
+        ValidationError {
+            instance: Value::Null,
+            kind: ValidationErrorKind::FileNotFound { error },
+        }
+    }
+    pub(crate) fn format(instance: &Value, format: String) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::Format { format },
+        }
+    }
+    pub(crate) fn from_utf8(error: FromUtf8Error) -> ValidationError {
+        ValidationError {
+            instance: Value::Null,
+            kind: ValidationErrorKind::FromUtf8 { error },
+        }
+    }
+    pub(crate) fn json_parse(error: serde_json::Error) -> ValidationError {
+        ValidationError {
+            instance: Value::Null,
+            kind: ValidationErrorKind::JSONParse { error },
         }
     }
     pub(crate) fn invalid_reference(reference: String) -> ValidationError {
         ValidationError {
-            kind: ValidationErrorKind::InvalidReference(reference),
+            instance: Value::Null,
+            kind: ValidationErrorKind::InvalidReference { reference },
         }
     }
-    pub(crate) fn max_items(instance: Value) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::MaxItems(instance),
-        })
+    pub(crate) fn max_items(instance: &Value, limit: usize) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::MaxItems { limit },
+        }
     }
-    pub(crate) fn maximum(instance: f64, limit: f64) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::Maximum { instance, limit },
-        })
+    pub(crate) fn maximum(instance: &Value, limit: f64) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::Maximum { limit },
+        }
     }
-    pub(crate) fn max_length(instance: String) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::MaxLength(instance),
-        })
+    pub(crate) fn max_length(instance: &Value, limit: usize) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::MaxLength { limit },
+        }
     }
-    pub(crate) fn max_properties(instance: Value) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::MaxProperties(instance),
-        })
+    pub(crate) fn max_properties(instance: &Value, limit: usize) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::MaxProperties { limit },
+        }
     }
-    pub(crate) fn min_items(instance: Value) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::MinItems(instance),
-        })
+    pub(crate) fn min_items(instance: &Value, limit: usize) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::MinItems { limit },
+        }
     }
-    pub(crate) fn minimum(instance: f64, limit: f64) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::Minimum { instance, limit },
-        })
+    pub(crate) fn minimum(instance: &Value, limit: f64) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::Minimum { limit },
+        }
     }
-    pub(crate) fn min_length(instance: String) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::MinLength(instance),
-        })
+    pub(crate) fn min_length(instance: &Value, limit: usize) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::MinLength { limit },
+        }
     }
-    pub(crate) fn min_properties(instance: Value) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::MinProperties(instance),
-        })
+    pub(crate) fn min_properties(instance: &Value, limit: usize) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::MinProperties { limit },
+        }
     }
-    pub(crate) fn multiple_of(instance: f64, multiple_of: f64) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::MultipleOf {
-                instance,
-                multiple_of,
-            },
-        })
+    pub(crate) fn multiple_of(instance: &Value, multiple_of: f64) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::MultipleOf { multiple_of },
+        }
     }
-    pub(crate) fn not(instance: Value, schema: Value) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::Not { instance, schema },
-        })
+    pub(crate) fn not(instance: &Value, schema: Value) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::Not { schema },
+        }
     }
-    pub(crate) fn one_of_multiple_valid(instance: Value) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::OneOfMultipleValid(instance),
-        })
+    pub(crate) fn one_of_multiple_valid(instance: &Value) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::OneOfMultipleValid,
+        }
     }
-    pub(crate) fn one_of_not_valid(instance: Value) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::OneOfNotValid(instance),
-        })
+    pub(crate) fn one_of_not_valid(instance: &Value) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::OneOfNotValid,
+        }
     }
-    pub(crate) fn pattern(instance: String, pattern: String) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::Pattern { instance, pattern },
-        })
+    pub(crate) fn pattern(instance: &Value, pattern: String) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::Pattern { pattern },
+        }
     }
-    pub(crate) fn required(property: String) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::Required(property),
-        })
+    pub(crate) fn required(instance: &Value, property: String) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::Required { property },
+        }
     }
     pub(crate) fn schema() -> ValidationError {
         ValidationError {
+            instance: Value::Null,
             kind: ValidationErrorKind::Schema,
         }
     }
-    pub(crate) fn single_type_error(
-        instance: Value,
-        type_name: PrimitiveType,
-    ) -> ErrorIterator<'a> {
-        error(ValidationError {
+    pub(crate) fn single_type_error(instance: &Value, type_name: PrimitiveType) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
             kind: ValidationErrorKind::Type {
-                instance,
                 kind: TypeKind::Single(type_name),
             },
-        })
+        }
     }
     pub(crate) fn multiple_type_error(
-        instance: Value,
+        instance: &Value,
         types: Vec<PrimitiveType>,
-    ) -> ErrorIterator<'a> {
-        error(ValidationError {
+    ) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
             kind: ValidationErrorKind::Type {
-                instance,
                 kind: TypeKind::Multiple(types),
             },
-        })
+        }
     }
-    pub(crate) fn unique_items(instance: Value) -> ErrorIterator<'a> {
-        error(ValidationError {
-            kind: ValidationErrorKind::UniqueItems(instance),
-        })
+    pub(crate) fn unique_items(instance: &Value) -> ValidationError {
+        ValidationError {
+            instance: instance.clone(),
+            kind: ValidationErrorKind::UniqueItems,
+        }
     }
     pub(crate) fn unknown_reference_scheme(scheme: String) -> ValidationError {
         ValidationError {
-            kind: ValidationErrorKind::UnknownReferenceScheme(scheme),
+            instance: Value::Null,
+            kind: ValidationErrorKind::UnknownReferenceScheme { scheme },
         }
     }
 }
@@ -349,19 +381,26 @@ impl From<FromUtf8Error> for ValidationError {
 /// Textual representation of various validation errors.
 impl fmt::Display for ValidationError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self.kind {
+        match &self.kind {
             ValidationErrorKind::Schema => write!(f, "Schema error"),
-            ValidationErrorKind::JSONParse(ref err) => write!(f, "{}", err),
-            ValidationErrorKind::FileNotFound(ref err) => write!(f, "{}", err),
-            ValidationErrorKind::UnknownReferenceScheme(ref schema) => {
-                write!(f, "Unknown schema: {}", schema)
+            ValidationErrorKind::JSONParse { error } => write!(f, "{}", error),
+            ValidationErrorKind::FileNotFound { error } => write!(f, "{}", error),
+            ValidationErrorKind::UnknownReferenceScheme { scheme } => {
+                write!(f, "Unknown scheme: {}", scheme)
             }
-            ValidationErrorKind::Format {
-                ref instance,
-                ref format,
-            } => write!(f, "'{}' is not a '{}'", instance, format),
-            ValidationErrorKind::AdditionalItems { ref items, limit } => {
-                let extras: Vec<&Value> = items.iter().skip(limit).collect();
+            ValidationErrorKind::Format { format } => {
+                write!(f, "'{}' is not a '{}'", self.instance, format)
+            }
+            ValidationErrorKind::AdditionalItems { limit } => {
+                // It's safe to unwrap here as ValidationErrorKind::AdditionalItems is reported only in
+                // case of arrays with more items than expected
+                let extras: Vec<&Value> = self
+                    .instance
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .skip(*limit)
+                    .collect();
                 let verb = {
                     if extras.len() == 1 {
                         "was"
@@ -380,100 +419,129 @@ impl fmt::Display for ValidationError {
                     verb
                 )
             }
-            ValidationErrorKind::AnyOf(ref instance) => write!(
+            ValidationErrorKind::AnyOf => write!(
                 f,
                 "'{}' is not valid under any of the given schemas",
-                instance
+                self.instance
             ),
-            ValidationErrorKind::Contains(ref instance) => {
-                write!(f, "None of '{}' are valid under the given schema", instance)
+            ValidationErrorKind::Contains => write!(
+                f,
+                "None of '{}' are valid under the given schema",
+                self.instance
+            ),
+            ValidationErrorKind::Constant { expected_value } => {
+                write!(f, "'{}' was expected", expected_value)
             }
-            ValidationErrorKind::Constant(ref message) => write!(f, "{}", message),
-            ValidationErrorKind::FromUtf8(ref err) => write!(f, "{}", err),
-            ValidationErrorKind::Enum {
-                ref instance,
-                ref options,
-            } => write!(f, "'{}' is not one of '{}'", instance, options),
-            ValidationErrorKind::ExclusiveMaximum { instance, limit } => write!(
+            ValidationErrorKind::FromUtf8 { error } => write!(f, "{}", error),
+            ValidationErrorKind::Enum { options } => {
+                write!(f, "'{}' is not one of '{}'", self.instance, options)
+            }
+            ValidationErrorKind::ExclusiveMaximum { limit } => write!(
                 f,
                 "{} is greater than or equal to the maximum of {}",
-                instance, limit
+                self.instance, limit
             ),
-            ValidationErrorKind::ExclusiveMinimum { instance, limit } => write!(
+            ValidationErrorKind::ExclusiveMinimum { limit } => write!(
                 f,
                 "{} is less than or equal to the minimum of {}",
-                instance, limit
+                self.instance, limit
             ),
-            ValidationErrorKind::FalseSchema(ref instance) => {
-                write!(f, "False schema does not allow '{}'", instance)
+            ValidationErrorKind::FalseSchema => {
+                write!(f, "False schema does not allow '{}'", self.instance)
             }
-            ValidationErrorKind::InvalidReference(ref path) => {
-                write!(f, "Invalid reference: {}", path)
+            ValidationErrorKind::InvalidReference { reference } => {
+                write!(f, "Invalid reference: {}", reference)
             }
-            ValidationErrorKind::Maximum { instance, limit } => {
-                write!(f, "{} is greater than the maximum of {}", instance, limit)
+            ValidationErrorKind::Maximum { limit } => write!(
+                f,
+                "{} is greater than the maximum of {}",
+                self.instance, limit
+            ),
+            ValidationErrorKind::Minimum { limit } => {
+                write!(f, "{} is less than the minimum of {}", self.instance, limit)
             }
-            ValidationErrorKind::Minimum { instance, limit } => {
-                write!(f, "{} is less than the minimum of {}", instance, limit)
+            ValidationErrorKind::MaxLength { limit } => write!(
+                f,
+                "'{}' is longer than {} character{}",
+                self.instance,
+                limit,
+                if *limit == 1 { "" } else { "s" }
+            ),
+            ValidationErrorKind::MinLength { limit } => write!(
+                f,
+                "'{}' is shorter than {} character{}",
+                self.instance,
+                limit,
+                if *limit == 1 { "" } else { "s" }
+            ),
+            ValidationErrorKind::MaxItems { limit } => write!(
+                f,
+                "{} has more than {} item{}",
+                self.instance,
+                limit,
+                if *limit == 1 { "" } else { "s" }
+            ),
+            ValidationErrorKind::MinItems { limit } => write!(
+                f,
+                "{} has less than {} item{}",
+                self.instance,
+                limit,
+                if *limit == 1 { "" } else { "s" }
+            ),
+            ValidationErrorKind::MaxProperties { limit } => write!(
+                f,
+                "{} has more than {} propert{}",
+                self.instance,
+                limit,
+                if *limit == 1 { "y" } else { "ies" }
+            ),
+            ValidationErrorKind::MinProperties { limit } => write!(
+                f,
+                "{} has less than {} propert{}",
+                self.instance,
+                limit,
+                if *limit == 1 { "y" } else { "ies" }
+            ),
+            ValidationErrorKind::Not { schema } => {
+                write!(f, "{} is not allowed for {}", schema, self.instance)
             }
-            ValidationErrorKind::MaxLength(ref instance) => write!(f, "'{}' is too long", instance),
-            ValidationErrorKind::MinLength(ref instance) => {
-                write!(f, "'{}' is too short", instance)
-            }
-            ValidationErrorKind::MaxItems(ref instance) => write!(f, "{} is too long", instance),
-            ValidationErrorKind::MinItems(ref instance) => write!(f, "{} is too short", instance),
-            ValidationErrorKind::MaxProperties(ref instance) => {
-                write!(f, "{} has too many properties", instance)
-            }
-            ValidationErrorKind::MinProperties(ref instance) => {
-                write!(f, "{} does not have enough properties", instance)
-            }
-            ValidationErrorKind::Not {
-                ref instance,
-                ref schema,
-            } => write!(f, "{} is not allowed for {}", schema, instance),
-            ValidationErrorKind::OneOfNotValid(ref instance) => write!(
+            ValidationErrorKind::OneOfNotValid => write!(
                 f,
                 "'{}' is not valid under any of the given schemas",
-                instance
+                self.instance
             ),
-            ValidationErrorKind::OneOfMultipleValid(ref instance) => write!(
+            ValidationErrorKind::OneOfMultipleValid => write!(
                 f,
                 "'{}' is valid under more than one of the given schemas",
-                instance
+                self.instance
             ),
-            ValidationErrorKind::Pattern {
-                ref instance,
-                ref pattern,
-            } => write!(f, "'{}' does not match '{}'", instance, pattern),
-            ValidationErrorKind::Required(ref property) => {
+            ValidationErrorKind::Pattern { pattern } => {
+                write!(f, "'{}' does not match '{}'", self.instance, pattern)
+            }
+            ValidationErrorKind::Required { property } => {
                 write!(f, "'{}' is a required property", property)
             }
-            ValidationErrorKind::MultipleOf {
-                instance,
-                multiple_of,
-            } => write!(f, "{} is not a multiple of {}", instance, multiple_of),
-            ValidationErrorKind::UniqueItems(ref instance) => {
-                write!(f, "'{}' has non-unique elements", instance)
+            ValidationErrorKind::MultipleOf { multiple_of } => {
+                write!(f, "{} is not a multiple of {}", self.instance, multiple_of)
+            }
+            ValidationErrorKind::UniqueItems => {
+                write!(f, "'{}' has non-unique elements", self.instance)
             }
             ValidationErrorKind::Type {
-                ref instance,
-                ref kind,
-            } => match kind {
-                TypeKind::Single(ref type_) => {
-                    write!(f, "'{}' is not of type '{}'", instance, type_)
-                }
-                TypeKind::Multiple(ref types) => write!(
-                    f,
-                    "'{}' is not of types '{}'",
-                    instance,
-                    types
-                        .iter()
-                        .map(|t| format!("{}", t))
-                        .collect::<Vec<String>>()
-                        .join(", ")
-                ),
-            },
+                kind: TypeKind::Single(type_),
+            } => write!(f, "'{}' is not of type '{}'", self.instance, type_),
+            ValidationErrorKind::Type {
+                kind: TypeKind::Multiple(types),
+            } => write!(
+                f,
+                "'{}' is not of types '{}'",
+                self.instance,
+                types
+                    .iter()
+                    .map(|t| format!("{}", t))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
         }
     }
 }
@@ -486,9 +554,12 @@ mod tests {
     #[test]
     fn type_error() {
         let instance = json!(42);
-        let err = ValidationError::single_type_error(instance, PrimitiveType::String)
-            .next()
-            .unwrap();
+        let err = error(ValidationError::single_type_error(
+            &instance,
+            PrimitiveType::String,
+        ))
+        .next()
+        .unwrap();
         let repr = format!("{}", err);
         assert_eq!(repr, "'42' is not of type 'string'")
     }

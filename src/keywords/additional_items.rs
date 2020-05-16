@@ -1,7 +1,8 @@
-use super::boolean::TrueValidator;
-use super::{CompilationResult, Validate, Validators};
-use crate::compilation::{compile_validators, CompilationContext, JSONSchema};
-use crate::error::{no_error, CompilationError, ErrorIterator, ValidationError};
+use super::{boolean::TrueValidator, CompilationResult, Validate, Validators};
+use crate::{
+    compilation::{compile_validators, CompilationContext, JSONSchema},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+};
 use serde_json::{Map, Value};
 
 pub struct AdditionalItemsObjectValidator {
@@ -72,7 +73,10 @@ impl Validate for AdditionalItemsBooleanValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
             if items.len() > self.items_count {
-                return ValidationError::additional_items(items.clone(), self.items_count);
+                return error(ValidationError::additional_items(
+                    instance,
+                    self.items_count,
+                ));
             }
         }
         no_error()

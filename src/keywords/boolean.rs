@@ -1,6 +1,8 @@
 use super::{CompilationResult, Validate};
-use crate::compilation::JSONSchema;
-use crate::error::{no_error, ErrorIterator, ValidationError};
+use crate::{
+    compilation::JSONSchema,
+    error::{error, no_error, ErrorIterator, ValidationError},
+};
 use serde_json::Value;
 
 pub struct TrueValidator {}
@@ -35,7 +37,7 @@ impl FalseValidator {
 
 impl Validate for FalseValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        ValidationError::false_schema(instance.clone())
+        error(ValidationError::false_schema(instance))
     }
 
     fn is_valid(&self, _: &JSONSchema, _: &Value) -> bool {
