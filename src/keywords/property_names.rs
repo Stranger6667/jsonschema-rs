@@ -62,10 +62,11 @@ impl PropertyNamesBooleanValidator {
 
 impl Validate for PropertyNamesBooleanValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if !self.is_valid(schema, instance) {
-            return ValidationError::false_schema(instance.clone());
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
+            ValidationError::false_schema(instance.clone())
         }
-        no_error()
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {

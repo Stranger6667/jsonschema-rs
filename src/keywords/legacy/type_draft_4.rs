@@ -31,10 +31,11 @@ impl MultipleTypesValidator {
 
 impl Validate for MultipleTypesValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if !self.is_valid(schema, instance) {
-            return ValidationError::multiple_type_error(instance.clone(), self.types.clone());
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
+            ValidationError::multiple_type_error(instance.clone(), self.types.clone())
         }
-        no_error()
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         for type_ in self.types.iter() {
@@ -67,10 +68,11 @@ impl IntegerTypeValidator {
 
 impl Validate for IntegerTypeValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if !self.is_valid(schema, instance) {
-            return ValidationError::single_type_error(instance.clone(), PrimitiveType::Integer);
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
+            ValidationError::single_type_error(instance.clone(), PrimitiveType::Integer)
         }
-        no_error()
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
