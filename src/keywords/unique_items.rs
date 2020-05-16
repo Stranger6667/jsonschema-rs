@@ -65,10 +65,11 @@ impl UniqueItemsValidator {
 
 impl Validate for UniqueItemsValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if !self.is_valid(schema, instance) {
-            return ValidationError::unique_items(instance.clone());
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
+            ValidationError::unique_items(instance.clone())
         }
-        no_error()
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {

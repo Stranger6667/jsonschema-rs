@@ -31,10 +31,11 @@ impl MultipleTypesValidator {
 
 impl Validate for MultipleTypesValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if !self.is_valid(schema, instance) {
-            return ValidationError::multiple_type_error(instance.clone(), self.types.clone());
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
+            ValidationError::multiple_type_error(instance.clone(), self.types.clone())
         }
-        no_error()
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         for type_ in self.types.iter() {
@@ -67,10 +68,11 @@ impl NullTypeValidator {
 
 impl Validate for NullTypeValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if !self.is_valid(schema, instance) {
-            return ValidationError::single_type_error(instance.clone(), PrimitiveType::Null);
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
+            ValidationError::single_type_error(instance.clone(), PrimitiveType::Null)
         }
-        no_error()
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         instance.is_null()
@@ -91,10 +93,11 @@ impl BooleanTypeValidator {
 
 impl Validate for BooleanTypeValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if !self.is_valid(schema, instance) {
-            return ValidationError::single_type_error(instance.clone(), PrimitiveType::Boolean);
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
+            ValidationError::single_type_error(instance.clone(), PrimitiveType::Boolean)
         }
-        no_error()
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         instance.is_boolean()
@@ -115,10 +118,11 @@ impl StringTypeValidator {
 
 impl Validate for StringTypeValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if !self.is_valid(schema, instance) {
-            return ValidationError::single_type_error(instance.clone(), PrimitiveType::String);
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
+            ValidationError::single_type_error(instance.clone(), PrimitiveType::String)
         }
-        no_error()
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
@@ -140,10 +144,11 @@ impl ArrayTypeValidator {
 
 impl Validate for ArrayTypeValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if !self.is_valid(schema, instance) {
-            return ValidationError::single_type_error(instance.clone(), PrimitiveType::Array);
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
+            ValidationError::single_type_error(instance.clone(), PrimitiveType::Array)
         }
-        no_error()
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
@@ -165,10 +170,11 @@ impl ObjectTypeValidator {
 
 impl Validate for ObjectTypeValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if !self.is_valid(schema, instance) {
-            return ValidationError::single_type_error(instance.clone(), PrimitiveType::Object);
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
+            ValidationError::single_type_error(instance.clone(), PrimitiveType::Object)
         }
-        no_error()
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         instance.is_object()
@@ -189,10 +195,11 @@ impl NumberTypeValidator {
 
 impl Validate for NumberTypeValidator {
     fn validate<'a>(&self, config: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if !self.is_valid(config, instance) {
-            return ValidationError::single_type_error(instance.clone(), PrimitiveType::Number);
+        if self.is_valid(config, instance) {
+            no_error()
+        } else {
+            ValidationError::single_type_error(instance.clone(), PrimitiveType::Number)
         }
-        no_error()
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         instance.is_number()
@@ -213,10 +220,11 @@ impl IntegerTypeValidator {
 
 impl Validate for IntegerTypeValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if !self.is_valid(schema, instance) {
-            return ValidationError::single_type_error(instance.clone(), PrimitiveType::Integer);
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
+            ValidationError::single_type_error(instance.clone(), PrimitiveType::Integer)
         }
-        no_error()
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {

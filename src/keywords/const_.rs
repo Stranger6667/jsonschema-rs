@@ -19,10 +19,11 @@ impl ConstValidator {
 
 impl Validate for ConstValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if !self.is_valid(schema, instance) {
-            return ValidationError::constant(self.error_message.clone());
-        };
-        no_error()
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
+            ValidationError::constant(self.error_message.clone())
+        }
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
