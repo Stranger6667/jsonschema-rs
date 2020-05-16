@@ -88,7 +88,7 @@ pub struct ContentMediaTypeAndEncodingValidator {
     media_type: String,
     encoding: String,
     func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
-    converter: fn(&Value, &str) -> Result<String, ValidationError>,
+    converter: for<'a> fn(&'a Value, &str) -> Result<String, ValidationError<'a>>,
 }
 
 impl ContentMediaTypeAndEncodingValidator {
@@ -96,7 +96,7 @@ impl ContentMediaTypeAndEncodingValidator {
         media_type: &str,
         encoding: &str,
         func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
-        converter: fn(&Value, &str) -> Result<String, ValidationError>,
+        converter: for<'a> fn(&'a Value, &str) -> Result<String, ValidationError<'a>>,
     ) -> CompilationResult {
         Ok(Box::new(ContentMediaTypeAndEncodingValidator {
             media_type: media_type.to_string(),
@@ -159,10 +159,10 @@ pub(crate) fn is_base64<'a>(instance: &'a Value, instance_string: &str) -> Error
     no_error()
 }
 
-pub(crate) fn from_base64(
-    instance: &Value,
+pub(crate) fn from_base64<'a>(
+    instance: &'a Value,
     instance_string: &str,
-) -> Result<String, ValidationError> {
+) -> Result<String, ValidationError<'a>> {
     match base64::decode(instance_string) {
         Ok(value) => Ok(String::from_utf8(value)?),
         Err(_) => Err(ValidationError::format(instance, "base64".to_string())),

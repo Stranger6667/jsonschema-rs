@@ -27,7 +27,10 @@ impl Validate for PropertyNamesObjectValidator {
                 .flat_map(move |validator| {
                     item.keys().flat_map(move |key| {
                         let wrapper = Value::String(key.to_string());
-                        let errors: Vec<_> = validator.validate(schema, &wrapper).collect();
+                        let errors: Vec<_> = validator
+                            .validate(schema, &wrapper)
+                            .map(|validation_error| validation_error.into_owned())
+                            .collect();
                         errors.into_iter()
                     })
                 })
