@@ -11,9 +11,10 @@ pub struct MinLengthValidator {
 
 impl<'a> MinLengthValidator {
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
-        if let Value::Number(limit) = schema {
-            let limit = limit.as_u64().unwrap() as usize;
-            return Ok(Box::new(MinLengthValidator { limit }));
+        if let Some(limit) = schema.as_u64() {
+            return Ok(Box::new(MinLengthValidator {
+                limit: limit as usize,
+            }));
         }
         Err(CompilationError::SchemaError)
     }
@@ -21,7 +22,7 @@ impl<'a> MinLengthValidator {
 
 impl Validate for MinLengthValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::String(item) = instance {
+        if let Some(item) = instance.as_str() {
             if item.chars().count() < self.limit {
                 return error(ValidationError::min_length(instance, self.limit));
             }
@@ -30,7 +31,7 @@ impl Validate for MinLengthValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
+        if let Some(item) = instance.as_str() {
             if item.chars().count() < self.limit {
                 return false;
             }

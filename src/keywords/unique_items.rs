@@ -1,7 +1,7 @@
 use super::{CompilationResult, Validate};
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{error, no_error, ErrorIterator, ValidationError},
+    error::{error, no_error, ErrorIterator, PrimitiveType, ValidationError},
 };
 use serde_json::{Map, Value};
 use std::{
@@ -18,27 +18,32 @@ impl Eq for HashedValue<'_> {}
 
 impl<'a> Hash for HashedValue<'a> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        match self.0 {
-            Value::Null => state.write_u32(3_221_225_473), // chosen randomly
-            Value::Bool(ref item) => item.hash(state),
-            Value::Number(ref item) => {
-                if let Some(number) = item.as_u64() {
+        match PrimitiveType::from(self.0) {
+            PrimitiveType::Array => {
+                // Unwrap is safe as we know that it is an array
+                self.0
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .for_each(|item| HashedValue(item).hash(state))
+            }
+            PrimitiveType::Boolean => self.0.as_bool().hash(state),
+            PrimitiveType::Integer => {
+                if let Some(number) = self.0.as_u64() {
                     number.hash(state);
-                } else if let Some(number) = item.as_i64() {
+                } else if let Some(number) = self.0.as_i64() {
                     number.hash(state);
-                } else if let Some(number) = item.as_f64() {
-                    number.to_bits().hash(state)
                 }
             }
-            Value::String(ref item) => item.hash(state),
-            Value::Array(ref items) => {
-                for item in items {
-                    HashedValue(item).hash(state);
-                }
+            PrimitiveType::Null => state.write_u32(3_221_225_473), // chosen randomly
+            PrimitiveType::Number => {
+                // Unwrap is safe as we know that it is a number
+                self.0.as_f64().unwrap().to_bits().hash(state)
             }
-            Value::Object(ref items) => {
+            PrimitiveType::Object => {
                 let mut hash = 0;
-                for (key, value) in items {
+                // Unwrap is safe as we know that it is an object
+                for (key, value) in self.0.as_object().unwrap().iter() {
                     // We have no way of building a new hasher of type `H`, so we
                     // hardcode using the default hasher of a hash map.
                     let mut item_hasher = DefaultHasher::default();
@@ -48,6 +53,7 @@ impl<'a> Hash for HashedValue<'a> {
                 }
                 state.write_u64(hash);
             }
+            PrimitiveType::String => self.0.as_str().hash(state),
         }
     }
 }
@@ -75,7 +81,7 @@ impl Validate for UniqueItemsValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Array(items) = instance {
+        if let Some(items) = instance.as_array() {
             if !is_unique(items) {
                 return false;
             }
@@ -92,8 +98,8 @@ pub(crate) fn compile(
     schema: &Value,
     _: &CompilationContext,
 ) -> Option<CompilationResult> {
-    if let Value::Bool(value) = schema {
-        if *value {
+    if let Some(value) = schema.as_bool() {
+        if value {
             Some(UniqueItemsValidator::compile())
         } else {
             None

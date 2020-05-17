@@ -11,9 +11,10 @@ pub struct MaxItemsValidator {
 
 impl<'a> MaxItemsValidator {
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
-        if let Value::Number(limit) = schema {
-            let limit = limit.as_u64().unwrap() as usize;
-            return Ok(Box::new(MaxItemsValidator { limit }));
+        if let Some(limit) = schema.as_u64() {
+            return Ok(Box::new(MaxItemsValidator {
+                limit: limit as usize,
+            }));
         }
         Err(CompilationError::SchemaError)
     }
@@ -21,7 +22,7 @@ impl<'a> MaxItemsValidator {
 
 impl Validate for MaxItemsValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Array(items) = instance {
+        if let Some(items) = instance.as_array() {
             if items.len() > self.limit {
                 return error(ValidationError::max_items(instance, self.limit));
             }
@@ -30,7 +31,7 @@ impl Validate for MaxItemsValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Array(items) = instance {
+        if let Some(items) = instance.as_array() {
             if items.len() > self.limit {
                 return false;
             }

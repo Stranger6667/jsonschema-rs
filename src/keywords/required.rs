@@ -11,25 +11,25 @@ pub struct RequiredValidator {
 
 impl RequiredValidator {
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
-        match schema {
-            Value::Array(items) => {
-                let mut required = Vec::with_capacity(items.len());
-                for item in items {
-                    match item {
-                        Value::String(string) => required.push(string.clone()),
-                        _ => return Err(CompilationError::SchemaError),
-                    }
+        if let Some(items) = schema.as_array() {
+            let mut required = Vec::with_capacity(items.len());
+            for item in items {
+                if let Some(string) = item.as_str() {
+                    required.push(string.to_string())
+                } else {
+                    return Err(CompilationError::SchemaError);
                 }
-                Ok(Box::new(RequiredValidator { required }))
             }
-            _ => Err(CompilationError::SchemaError),
+            Ok(Box::new(RequiredValidator { required }))
+        } else {
+            Err(CompilationError::SchemaError)
         }
     }
 }
 
 impl Validate for RequiredValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             for property_name in self.required.iter() {
                 if !item.contains_key(property_name) {
                     return error(ValidationError::required(instance, property_name.clone()));
@@ -40,7 +40,7 @@ impl Validate for RequiredValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             return self
                 .required
                 .iter()

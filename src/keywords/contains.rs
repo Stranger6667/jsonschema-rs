@@ -19,7 +19,7 @@ impl ContainsValidator {
 
 impl Validate for ContainsValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Array(items) = instance {
+        if let Some(items) = instance.as_array() {
             for item in items {
                 if self
                     .validators
@@ -35,7 +35,7 @@ impl Validate for ContainsValidator {
     }
 
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Array(items) = instance {
+        if let Some(items) = instance.as_array() {
             for item in items {
                 if self
                     .validators

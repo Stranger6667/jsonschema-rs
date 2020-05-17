@@ -139,7 +139,7 @@ pub fn draft_from_schema(schema: &Value) -> Option<Draft> {
 }
 
 pub fn id_of(draft: Draft, schema: &Value) -> Option<&str> {
-    if let Value::Object(object) = schema {
+    if let Some(object) = schema.as_object() {
         if draft == Draft::Draft4 || draft == Draft::Draft3 {
             object.get("id")
         } else {

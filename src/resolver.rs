@@ -123,37 +123,33 @@ fn find_schemas<'a, F>(
 where
     F: FnMut(String, &'a Value) -> Option<&'a Value>,
 {
-    match schema {
-        Value::Object(item) => {
-            if let Some(url) = id_of(draft, schema) {
-                let new_url = base_url.join(url)?;
-                if let Some(x) = callback(new_url.to_string(), schema) {
-                    return Ok(Some(x));
-                }
-                for (_, subschema) in item {
-                    let result = find_schemas(draft, subschema, &new_url, callback)?;
-                    if result.is_some() {
-                        return Ok(result);
-                    }
-                }
-            } else {
-                for (_, subschema) in item {
-                    let result = find_schemas(draft, subschema, base_url, callback)?;
-                    if result.is_some() {
-                        return Ok(result);
-                    }
+    if let Some(item) = schema.as_object() {
+        if let Some(url) = id_of(draft, schema) {
+            let new_url = base_url.join(url)?;
+            if let Some(x) = callback(new_url.to_string(), schema) {
+                return Ok(Some(x));
+            }
+            for (_, subschema) in item {
+                let result = find_schemas(draft, subschema, &new_url, callback)?;
+                if result.is_some() {
+                    return Ok(result);
                 }
             }
-        }
-        Value::Array(items) => {
-            for item in items {
-                let result = find_schemas(draft, item, base_url, callback)?;
+        } else {
+            for (_, subschema) in item {
+                let result = find_schemas(draft, subschema, base_url, callback)?;
                 if result.is_some() {
                     return Ok(result);
                 }
             }
         }
-        _ => {}
+    } else if let Some(items) = schema.as_array() {
+        for item in items {
+            let result = find_schemas(draft, item, base_url, callback)?;
+            if result.is_some() {
+                return Ok(result);
+            }
+        }
     }
     Ok(None)
 }
@@ -178,15 +174,15 @@ pub fn pointer<'a>(
     let mut folders = vec![];
 
     for token in tokens {
-        let target_opt = match *target {
-            Value::Object(ref map) => {
-                if let Some(id) = id_of(draft, target) {
-                    folders.push(id);
-                }
-                map.get(&token)
+        let target_opt = if let Some(map) = target.as_object() {
+            if let Some(id) = id_of(draft, target) {
+                folders.push(id);
             }
-            Value::Array(ref list) => parse_index(&token).and_then(|x| list.get(x)),
-            _ => return None,
+            map.get(&token)
+        } else if let Some(list) = target.as_array() {
+            parse_index(&token).and_then(|x| list.get(x))
+        } else {
+            None
         };
         if let Some(t) = target_opt {
             target = t;

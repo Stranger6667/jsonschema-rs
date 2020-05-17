@@ -3,7 +3,7 @@ use crate::{
     compilation::{CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, PrimitiveType, ValidationError},
 };
-use serde_json::{Map, Number, Value};
+use serde_json::{Map, Value};
 use std::convert::TryFrom;
 
 pub struct MultipleTypesValidator {
@@ -14,12 +14,13 @@ impl MultipleTypesValidator {
     pub(crate) fn compile(items: &[Value]) -> CompilationResult {
         let mut types = Vec::with_capacity(items.len());
         for item in items {
-            match item {
-                Value::String(string) => match PrimitiveType::try_from(string.as_str()) {
+            if let Some(string) = item.as_str() {
+                match PrimitiveType::try_from(string) {
                     Ok(primitive_value) => types.push(primitive_value),
                     Err(_) => return Err(CompilationError::SchemaError),
-                },
-                _ => return Err(CompilationError::SchemaError),
+                }
+            } else {
+                return Err(CompilationError::SchemaError);
             }
         }
         Ok(Box::new(MultipleTypesValidator { types }))
@@ -38,17 +39,11 @@ impl Validate for MultipleTypesValidator {
         }
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        let instance_primitive_type = PrimitiveType::from(instance);
         for type_ in self.types.iter() {
-            match (type_, instance) {
-                (PrimitiveType::Integer, Value::Number(num)) if is_integer(num) => return true,
-                (PrimitiveType::Null, Value::Null)
-                | (PrimitiveType::Boolean, Value::Bool(_))
-                | (PrimitiveType::String, Value::String(_))
-                | (PrimitiveType::Array, Value::Array(_))
-                | (PrimitiveType::Object, Value::Object(_))
-                | (PrimitiveType::Number, Value::Number(_)) => return true,
-                (_, _) => continue,
-            };
+            if type_ == &instance_primitive_type {
+                return true;
+            }
         }
         false
     }
@@ -79,10 +74,7 @@ impl Validate for IntegerTypeValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Number(num) = instance {
-            return is_integer(num);
-        }
-        false
+        instance.is_u64() || instance.is_i64()
     }
 
     fn name(&self) -> String {
@@ -90,29 +82,26 @@ impl Validate for IntegerTypeValidator {
     }
 }
 
-fn is_integer(num: &Number) -> bool {
-    num.is_u64() || num.is_i64()
-}
-
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     _: &CompilationContext,
 ) -> Option<CompilationResult> {
-    match schema {
-        Value::String(item) => compile_single_type(item.as_str()),
-        Value::Array(items) => {
-            if items.len() == 1 {
-                if let Some(Value::String(item)) = items.iter().next() {
-                    compile_single_type(item.as_str())
-                } else {
-                    Some(Err(CompilationError::SchemaError))
-                }
+    if let Some(item) = schema.as_str() {
+        compile_single_type(item)
+    } else if let Some(items) = schema.as_array() {
+        if items.len() == 1 {
+            // Unwrap is safe as we checked that we have exactly one item
+            if let Some(string) = items.iter().next().unwrap().as_str() {
+                compile_single_type(string)
             } else {
-                Some(MultipleTypesValidator::compile(items))
+                Some(Err(CompilationError::SchemaError))
             }
+        } else {
+            Some(MultipleTypesValidator::compile(items))
         }
-        _ => Some(Err(CompilationError::SchemaError)),
+    } else {
+        Some(Err(CompilationError::SchemaError))
     }
 }
 

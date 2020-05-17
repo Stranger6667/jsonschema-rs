@@ -30,7 +30,7 @@ impl PatternPropertiesValidator {
 
 impl Validate for PatternPropertiesValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             let errors: Vec<_> = self
                 .patterns
                 .iter()
@@ -50,7 +50,7 @@ impl Validate for PatternPropertiesValidator {
     }
 
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             return self.patterns.iter().all(move |(re, validators)| {
                 item.iter()
                     .filter(move |(key, _)| re.is_match(key))

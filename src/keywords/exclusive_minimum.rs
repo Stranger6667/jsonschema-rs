@@ -11,8 +11,7 @@ pub struct ExclusiveMinimumValidator {
 
 impl<'a> ExclusiveMinimumValidator {
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
-        if let Value::Number(limit) = schema {
-            let limit = limit.as_f64().unwrap();
+        if let Some(limit) = schema.as_f64() {
             return Ok(Box::new(ExclusiveMinimumValidator { limit }));
         }
         Err(CompilationError::SchemaError)
@@ -21,8 +20,7 @@ impl<'a> ExclusiveMinimumValidator {
 
 impl Validate for ExclusiveMinimumValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Number(item) = instance {
-            let item = item.as_f64().unwrap();
+        if let Some(item) = instance.as_f64() {
             if item <= self.limit {
                 return error(ValidationError::exclusive_minimum(instance, self.limit));
             }
@@ -31,8 +29,7 @@ impl Validate for ExclusiveMinimumValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Number(item) = instance {
-            let item = item.as_f64().unwrap();
+        if let Some(item) = instance.as_f64() {
             if item <= self.limit {
                 return false;
             }

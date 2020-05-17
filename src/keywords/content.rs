@@ -27,14 +27,14 @@ impl ContentMediaTypeValidator {
 /// Validator delegates validation to the stored function.
 impl Validate for ContentMediaTypeValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::String(item) = instance {
+        if let Some(item) = instance.as_str() {
             return (self.func)(instance, item);
         }
         no_error()
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
+        if let Some(item) = instance.as_str() {
             return (self.func)(instance, item).next().is_none();
         }
         true
@@ -65,14 +65,14 @@ impl ContentEncodingValidator {
 
 impl Validate for ContentEncodingValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::String(item) = instance {
+        if let Some(item) = instance.as_str() {
             return (self.func)(instance, item);
         }
         no_error()
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
+        if let Some(item) = instance.as_str() {
             return (self.func)(instance, item).next().is_none();
         }
         true
@@ -110,7 +110,7 @@ impl ContentMediaTypeAndEncodingValidator {
 /// Decode the input value & check media type
 impl Validate for ContentMediaTypeAndEncodingValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::String(item) = instance {
+        if let Some(item) = instance.as_str() {
             // TODO. Avoid explicit `error` call. It might be done if `converter` will
             // return a proper type
             return match (self.converter)(instance, item) {
@@ -125,7 +125,7 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
+        if let Some(item) = instance.as_str() {
             return match (self.converter)(instance, item) {
                 Ok(converted) => (self.func)(instance, &converted).next().is_none(),
                 Err(_) => false,
@@ -174,33 +174,31 @@ pub(crate) fn compile_media_type(
     subschema: &Value,
     _: &CompilationContext,
 ) -> Option<CompilationResult> {
-    match subschema {
-        Value::String(media_type) => {
-            let func = match media_type.as_str() {
-                "application/json" => is_json,
-                _ => return None,
-            };
-            if let Some(content_encoding) = schema.get("contentEncoding") {
-                match content_encoding {
-                    Value::String(content_encoding) => {
-                        let converter = match content_encoding.as_str() {
-                            "base64" => from_base64,
-                            _ => return None,
-                        };
-                        Some(ContentMediaTypeAndEncodingValidator::compile(
-                            media_type,
-                            content_encoding,
-                            func,
-                            converter,
-                        ))
-                    }
-                    _ => Some(Err(CompilationError::SchemaError)),
-                }
+    if let Some(media_type) = subschema.as_str() {
+        let func = match media_type {
+            "application/json" => is_json,
+            _ => return None,
+        };
+        if let Some(content_encoding) = schema.get("contentEncoding") {
+            if let Some(content_encoding) = content_encoding.as_str() {
+                let converter = match content_encoding {
+                    "base64" => from_base64,
+                    _ => return None,
+                };
+                Some(ContentMediaTypeAndEncodingValidator::compile(
+                    media_type,
+                    content_encoding,
+                    func,
+                    converter,
+                ))
             } else {
-                Some(ContentMediaTypeValidator::compile(media_type, func))
+                Some(Err(CompilationError::SchemaError))
             }
+        } else {
+            Some(ContentMediaTypeValidator::compile(media_type, func))
         }
-        _ => Some(Err(CompilationError::SchemaError)),
+    } else {
+        Some(Err(CompilationError::SchemaError))
     }
 }
 
@@ -214,14 +212,13 @@ pub(crate) fn compile_content_encoding(
         // TODO. what if media type is not supported?
         return None;
     }
-    match subschema {
-        Value::String(content_encoding) => {
-            let func = match content_encoding.as_str() {
-                "base64" => is_base64,
-                _ => return None,
-            };
-            Some(ContentEncodingValidator::compile(content_encoding, func))
-        }
-        _ => Some(Err(CompilationError::SchemaError)),
+    if let Some(content_encoding) = subschema.as_str() {
+        let func = match content_encoding {
+            "base64" => is_base64,
+            _ => return None,
+        };
+        Some(ContentEncodingValidator::compile(content_encoding, func))
+    } else {
+        Some(Err(CompilationError::SchemaError))
     }
 }

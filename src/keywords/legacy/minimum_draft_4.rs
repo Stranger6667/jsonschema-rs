@@ -7,8 +7,12 @@ pub(crate) fn compile(
     schema: &Value,
     context: &CompilationContext,
 ) -> Option<CompilationResult> {
-    match parent.get("exclusiveMinimum") {
-        Some(Value::Bool(true)) => exclusive_minimum::compile(parent, schema, context),
-        _ => minimum::compile(parent, schema, context),
+    if let Some(exclusive_maximum) = parent.get("exclusiveMinimum") {
+        if let Some(value) = exclusive_maximum.as_bool() {
+            if value {
+                return exclusive_minimum::compile(parent, schema, context);
+            }
+        }
     }
+    minimum::compile(parent, schema, context)
 }

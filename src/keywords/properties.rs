@@ -11,22 +11,21 @@ pub struct PropertiesValidator {
 
 impl PropertiesValidator {
     pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
-        match schema {
-            Value::Object(map) => {
-                let mut properties = Vec::with_capacity(map.len());
-                for (key, subschema) in map {
-                    properties.push((key.clone(), compile_validators(subschema, context)?));
-                }
-                Ok(Box::new(PropertiesValidator { properties }))
+        if let Some(map) = schema.as_object() {
+            let mut properties = Vec::with_capacity(map.len());
+            for (key, subschema) in map {
+                properties.push((key.clone(), compile_validators(subschema, context)?));
             }
-            _ => Err(CompilationError::SchemaError),
+            Ok(Box::new(PropertiesValidator { properties }))
+        } else {
+            Err(CompilationError::SchemaError)
         }
     }
 }
 
 impl Validate for PropertiesValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             let errors: Vec<_> = self
                 .properties
                 .iter()
@@ -45,7 +44,7 @@ impl Validate for PropertiesValidator {
     }
 
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             return self.properties.iter().all(move |(name, validators)| {
                 let option = item.get(name);
                 option.into_iter().all(move |item| {

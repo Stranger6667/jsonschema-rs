@@ -19,22 +19,21 @@ pub struct PatternValidator {
 
 impl PatternValidator {
     pub(crate) fn compile(pattern: &Value) -> CompilationResult {
-        match pattern {
-            Value::String(item) => {
-                let pattern = convert_regex(item)?;
-                Ok(Box::new(PatternValidator {
-                    original: item.clone(),
-                    pattern,
-                }))
-            }
-            _ => Err(CompilationError::SchemaError),
+        if let Some(item) = pattern.as_str() {
+            let pattern = convert_regex(item)?;
+            Ok(Box::new(PatternValidator {
+                original: item.to_string(),
+                pattern,
+            }))
+        } else {
+            Err(CompilationError::SchemaError)
         }
     }
 }
 
 impl Validate for PatternValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::String(item) = instance {
+        if let Some(item) = instance.as_str() {
             if !self.pattern.is_match(item) {
                 return error(ValidationError::pattern(instance, self.original.clone()));
             }
@@ -43,7 +42,7 @@ impl Validate for PatternValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
+        if let Some(item) = instance.as_str() {
             if !self.pattern.is_match(item) {
                 return false;
             }

@@ -18,8 +18,7 @@ impl<'a> MultipleOfFloatValidator {
 
 impl Validate for MultipleOfFloatValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Number(item) = instance {
-            let item = item.as_f64().unwrap();
+        if let Some(item) = instance.as_f64() {
             let remainder = (item / self.multiple_of) % 1.;
             if !(remainder < EPSILON && remainder < (1. - EPSILON)) {
                 return error(ValidationError::multiple_of(instance, self.multiple_of));
@@ -29,8 +28,7 @@ impl Validate for MultipleOfFloatValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Number(item) = instance {
-            let item = item.as_f64().unwrap();
+        if let Some(item) = instance.as_f64() {
             let remainder = (item / self.multiple_of) % 1.;
             if !(remainder < EPSILON && remainder < (1. - EPSILON)) {
                 return false;
@@ -56,8 +54,7 @@ impl<'a> MultipleOfIntegerValidator {
 
 impl Validate for MultipleOfIntegerValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Number(item) = instance {
-            let item = item.as_f64().unwrap();
+        if let Some(item) = instance.as_f64() {
             let is_multiple = if item.fract() == 0. {
                 (item % self.multiple_of) == 0.
             } else {
@@ -72,8 +69,7 @@ impl Validate for MultipleOfIntegerValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Number(item) = instance {
-            let item = item.as_f64().unwrap();
+        if let Some(item) = instance.as_f64() {
             let is_multiple = if item.fract() == 0. {
                 (item % self.multiple_of) == 0.
             } else {
@@ -97,8 +93,7 @@ pub(crate) fn compile(
     schema: &Value,
     _: &CompilationContext,
 ) -> Option<CompilationResult> {
-    if let Value::Number(multiple_of) = schema {
-        let multiple_of = multiple_of.as_f64().unwrap();
+    if let Some(multiple_of) = schema.as_f64() {
         return if multiple_of.fract() == 0. {
             Some(MultipleOfIntegerValidator::compile(multiple_of))
         } else {

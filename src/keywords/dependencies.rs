@@ -16,9 +16,10 @@ impl DependenciesValidator {
             Some(map) => {
                 let mut dependencies = Vec::with_capacity(map.len());
                 for (key, subschema) in map {
-                    let s = match subschema {
-                        Value::Array(_) => vec![RequiredValidator::compile(subschema)?],
-                        _ => compile_validators(subschema, context)?,
+                    let s = if subschema.is_array() {
+                        vec![RequiredValidator::compile(subschema)?]
+                    } else {
+                        compile_validators(subschema, context)?
                     };
                     dependencies.push((key.clone(), s))
                 }
@@ -31,7 +32,7 @@ impl DependenciesValidator {
 
 impl Validate for DependenciesValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             let errors: Vec<_> = self
                 .dependencies
                 .iter()
@@ -49,7 +50,7 @@ impl Validate for DependenciesValidator {
     }
 
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             return self
                 .dependencies
                 .iter()

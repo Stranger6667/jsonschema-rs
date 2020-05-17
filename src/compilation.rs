@@ -129,38 +129,36 @@ pub(crate) fn compile_validators(
     context: &CompilationContext,
 ) -> Result<Validators, CompilationError> {
     let context = context.push(schema);
-    match schema {
-        Value::Bool(value) => {
-            let mut validators = Vec::with_capacity(1);
-            if let Some(validator) = keywords::boolean::compile(*value) {
-                validators.push(validator?)
+    if let Some(value) = schema.as_bool() {
+        let mut validators = Vec::with_capacity(1);
+        if let Some(validator) = keywords::boolean::compile(value) {
+            validators.push(validator?)
+        }
+        Ok(validators)
+    } else if let Some(object) = schema.as_object() {
+        if let Some(reference) = object.get("$ref") {
+            if let Some(reference) = reference.as_str() {
+                let mut validators = Vec::with_capacity(1);
+                if let Some(validator) = keywords::ref_::compile(schema, reference, &context) {
+                    validators.push(validator?)
+                }
+                Ok(validators)
+            } else {
+                Err(CompilationError::SchemaError)
+            }
+        } else {
+            let mut validators = Vec::with_capacity(object.len());
+            for (keyword, subschema) in object {
+                if let Some(compilation_func) = context.draft.get_validator(keyword) {
+                    if let Some(validator) = compilation_func(object, subschema, &context) {
+                        validators.push(validator?)
+                    }
+                }
             }
             Ok(validators)
         }
-        Value::Object(object) => {
-            if let Some(reference) = object.get("$ref") {
-                if let Value::String(reference) = reference {
-                    let mut validators = Vec::with_capacity(1);
-                    if let Some(validator) = keywords::ref_::compile(schema, reference, &context) {
-                        validators.push(validator?)
-                    }
-                    Ok(validators)
-                } else {
-                    Err(CompilationError::SchemaError)
-                }
-            } else {
-                let mut validators = Vec::with_capacity(object.len());
-                for (keyword, subschema) in object {
-                    if let Some(compilation_func) = context.draft.get_validator(keyword) {
-                        if let Some(validator) = compilation_func(object, subschema, &context) {
-                            validators.push(validator?)
-                        }
-                    }
-                }
-                Ok(validators)
-            }
-        }
-        _ => Err(CompilationError::SchemaError),
+    } else {
+        Err(CompilationError::SchemaError)
     }
 }
 

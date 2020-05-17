@@ -47,7 +47,7 @@ pub(crate) fn no_error<'a>() -> ErrorIterator<'a> {
     Box::new(empty())
 }
 // A wrapper for one error
-pub(crate) fn error<'a>(instance: ValidationError<'a>) -> ErrorIterator<'a> {
+pub(crate) fn error(instance: ValidationError) -> ErrorIterator {
     Box::new(once(instance))
 }
 
@@ -120,7 +120,7 @@ pub enum ValidationErrorKind {
 
 /// For faster error handling in "type" keyword validator we have this enum, to match
 /// with it instead of a string.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PrimitiveType {
     Integer,
     Null,
@@ -144,6 +144,26 @@ impl TryFrom<&str> for PrimitiveType {
             "object" => Ok(PrimitiveType::Object),
             "number" => Ok(PrimitiveType::Number),
             _ => Err(()),
+        }
+    }
+}
+
+impl From<&Value> for PrimitiveType {
+    fn from(value: &Value) -> Self {
+        if value.is_array() {
+            PrimitiveType::Array
+        } else if value.is_boolean() {
+            PrimitiveType::Boolean
+        } else if value.is_null() {
+            PrimitiveType::Null
+        } else if value.is_object() {
+            PrimitiveType::Object
+        } else if value.is_string() {
+            PrimitiveType::String
+        } else if value.is_u64() || value.is_i64() {
+            PrimitiveType::Integer
+        } else {
+            PrimitiveType::Number
         }
     }
 }
@@ -231,7 +251,7 @@ impl<'a> ValidationError<'a> {
     }
     pub(crate) fn file_not_found(error: io::Error) -> ValidationError<'a> {
         ValidationError {
-            instance: Cow::Owned(Value::Null),
+            instance: Cow::Owned(Value::default()),
             kind: ValidationErrorKind::FileNotFound { error },
         }
     }
@@ -243,19 +263,19 @@ impl<'a> ValidationError<'a> {
     }
     pub(crate) fn from_utf8(error: FromUtf8Error) -> ValidationError<'a> {
         ValidationError {
-            instance: Cow::Owned(Value::Null),
+            instance: Cow::Owned(Value::default()),
             kind: ValidationErrorKind::FromUtf8 { error },
         }
     }
     pub(crate) fn json_parse(error: serde_json::Error) -> ValidationError<'a> {
         ValidationError {
-            instance: Cow::Owned(Value::Null),
+            instance: Cow::Owned(Value::default()),
             kind: ValidationErrorKind::JSONParse { error },
         }
     }
     pub(crate) fn invalid_reference(reference: String) -> ValidationError<'a> {
         ValidationError {
-            instance: Cow::Owned(Value::Null),
+            instance: Cow::Owned(Value::default()),
             kind: ValidationErrorKind::InvalidReference { reference },
         }
     }
@@ -345,7 +365,7 @@ impl<'a> ValidationError<'a> {
     }
     pub(crate) fn schema() -> ValidationError<'a> {
         ValidationError {
-            instance: Cow::Owned(Value::Null),
+            instance: Cow::Owned(Value::default()),
             kind: ValidationErrorKind::Schema,
         }
     }
@@ -379,7 +399,7 @@ impl<'a> ValidationError<'a> {
     }
     pub(crate) fn unknown_reference_scheme(scheme: String) -> ValidationError<'a> {
         ValidationError {
-            instance: Cow::Owned(Value::Null),
+            instance: Cow::Owned(Value::default()),
             kind: ValidationErrorKind::UnknownReferenceScheme { scheme },
         }
     }

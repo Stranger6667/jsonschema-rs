@@ -23,7 +23,7 @@ impl ItemsArrayValidator {
 
 impl Validate for ItemsArrayValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Array(items) = instance {
+        if let Some(items) = instance.as_array() {
             let errors: Vec<_> = items
                 .iter()
                 .zip(self.items.iter())
@@ -39,7 +39,7 @@ impl Validate for ItemsArrayValidator {
     }
 
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Array(items) = instance {
+        if let Some(items) = instance.as_array() {
             return items
                 .iter()
                 .zip(self.items.iter())
@@ -70,7 +70,7 @@ impl ItemsObjectValidator {
 
 impl Validate for ItemsObjectValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Array(items) = instance {
+        if let Some(items) = instance.as_array() {
             let validate = move |item| {
                 self.validators
                     .iter()
@@ -95,7 +95,7 @@ impl Validate for ItemsObjectValidator {
     }
 
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Array(items) = instance {
+        if let Some(items) = instance.as_array() {
             let validate = move |item| {
                 self.validators
                     .iter()
@@ -124,16 +124,17 @@ pub(crate) fn compile(
     schema: &Value,
     context: &CompilationContext,
 ) -> Option<CompilationResult> {
-    match schema {
-        Value::Array(items) => Some(ItemsArrayValidator::compile(&items, &context)),
-        Value::Object(_) => Some(ItemsObjectValidator::compile(schema, &context)),
-        Value::Bool(value) => {
-            if *value {
-                Some(TrueValidator::compile())
-            } else {
-                Some(ItemsObjectValidator::compile(schema, &context))
-            }
+    if let Some(items) = schema.as_array() {
+        Some(ItemsArrayValidator::compile(&items, &context))
+    } else if schema.is_object() {
+        Some(ItemsObjectValidator::compile(schema, &context))
+    } else if let Some(value) = schema.as_bool() {
+        if value {
+            Some(TrueValidator::compile())
+        } else {
+            Some(ItemsObjectValidator::compile(schema, &context))
         }
-        _ => None,
+    } else {
+        None
     }
 }

@@ -11,9 +11,10 @@ pub struct MinPropertiesValidator {
 
 impl<'a> MinPropertiesValidator {
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
-        if let Value::Number(limit) = schema {
-            let limit = limit.as_u64().unwrap() as usize;
-            return Ok(Box::new(MinPropertiesValidator { limit }));
+        if let Some(limit) = schema.as_u64() {
+            return Ok(Box::new(MinPropertiesValidator {
+                limit: limit as usize,
+            }));
         }
         Err(CompilationError::SchemaError)
     }
@@ -21,7 +22,7 @@ impl<'a> MinPropertiesValidator {
 
 impl Validate for MinPropertiesValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             if item.len() < self.limit {
                 return error(ValidationError::min_properties(instance, self.limit));
             }
@@ -30,7 +31,7 @@ impl Validate for MinPropertiesValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             if item.len() < self.limit {
                 return false;
             }

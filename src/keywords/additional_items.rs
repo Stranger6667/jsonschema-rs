@@ -35,7 +35,7 @@ impl<'a> AdditionalItemsBooleanValidator {
 
 impl Validate for AdditionalItemsObjectValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Array(items) = instance {
+        if let Some(items) = instance.as_array() {
             let errors: Vec<_> = items
                 .iter()
                 .skip(self.items_count)
@@ -51,7 +51,7 @@ impl Validate for AdditionalItemsObjectValidator {
     }
 
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Array(items) = instance {
+        if let Some(items) = instance.as_array() {
             return items.iter().skip(self.items_count).all(|item| {
                 self.validators
                     .iter()
@@ -71,7 +71,7 @@ impl Validate for AdditionalItemsObjectValidator {
 
 impl Validate for AdditionalItemsBooleanValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Array(items) = instance {
+        if let Some(items) = instance.as_array() {
             if items.len() > self.items_count {
                 return error(ValidationError::additional_items(
                     instance,
@@ -83,7 +83,7 @@ impl Validate for AdditionalItemsBooleanValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Array(items) = instance {
+        if let Some(items) = instance.as_array() {
             if items.len() > self.items_count {
                 return false;
             }
@@ -102,24 +102,26 @@ pub(crate) fn compile(
     context: &CompilationContext,
 ) -> Option<CompilationResult> {
     if let Some(items) = parent.get("items") {
-        match items {
-            Value::Object(_) => Some(TrueValidator::compile()),
-            Value::Array(items) => {
-                let items_count = items.len();
-                match schema {
-                    Value::Object(_) => Some(AdditionalItemsObjectValidator::compile(
-                        schema,
-                        items_count,
-                        context,
-                    )),
-                    Value::Bool(true) => Some(TrueValidator::compile()),
-                    Value::Bool(false) => {
-                        Some(AdditionalItemsBooleanValidator::compile(items_count))
-                    }
-                    _ => None,
+        if items.is_object() {
+            Some(TrueValidator::compile())
+        } else if let Some(items) = items.as_array() {
+            if schema.is_object() {
+                Some(AdditionalItemsObjectValidator::compile(
+                    schema,
+                    items.len(),
+                    context,
+                ))
+            } else if let Some(boolean) = schema.as_bool() {
+                if boolean {
+                    Some(TrueValidator::compile())
+                } else {
+                    Some(AdditionalItemsBooleanValidator::compile(items.len()))
                 }
+            } else {
+                None
             }
-            _ => Some(Err(CompilationError::SchemaError)),
+        } else {
+            Some(Err(CompilationError::SchemaError))
         }
     } else {
         Some(TrueValidator::compile())

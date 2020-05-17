@@ -4,7 +4,6 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
 };
 use serde_json::{Map, Value};
-use std::borrow::Borrow;
 
 pub struct PropertyNamesObjectValidator {
     validators: Validators,
@@ -20,7 +19,7 @@ impl PropertyNamesObjectValidator {
 
 impl Validate for PropertyNamesObjectValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = &instance.borrow() {
+        if let Some(item) = instance.as_object() {
             let errors: Vec<_> = self
                 .validators
                 .iter()
@@ -41,7 +40,7 @@ impl Validate for PropertyNamesObjectValidator {
     }
 
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = &instance.borrow() {
+        if let Some(item) = instance.as_object() {
             return self.validators.iter().all(move |validator| {
                 item.keys().all(move |key| {
                     let wrapper = Value::String(key.to_string());
@@ -75,7 +74,7 @@ impl Validate for PropertyNamesBooleanValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             if !item.is_empty() {
                 return false;
             }
@@ -93,9 +92,15 @@ pub(crate) fn compile(
     schema: &Value,
     context: &CompilationContext,
 ) -> Option<CompilationResult> {
-    match schema {
-        Value::Object(_) => Some(PropertyNamesObjectValidator::compile(schema, context)),
-        Value::Bool(false) => Some(PropertyNamesBooleanValidator::compile()),
-        _ => None,
+    if schema.is_object() {
+        Some(PropertyNamesObjectValidator::compile(schema, context))
+    } else if let Some(value) = schema.as_bool() {
+        if value {
+            None
+        } else {
+            Some(PropertyNamesBooleanValidator::compile())
+        }
+    } else {
+        None
     }
 }

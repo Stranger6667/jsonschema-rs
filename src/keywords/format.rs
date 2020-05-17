@@ -22,7 +22,7 @@ impl FormatValidator {
 
 impl Validate for FormatValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::String(item) = instance {
+        if let Some(item) = instance.as_str() {
             if !(self.check)(item) {
                 return error(ValidationError::format(instance, self.format.clone()));
             }
@@ -31,7 +31,7 @@ impl Validate for FormatValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
+        if let Some(item) = instance.as_str() {
             return (self.check)(item);
         }
         true

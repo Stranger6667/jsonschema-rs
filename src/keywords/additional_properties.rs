@@ -20,7 +20,7 @@ impl AdditionalPropertiesValidator {
 
 impl Validate for AdditionalPropertiesValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             let errors: Vec<_> = self
                 .validators
                 .iter()
@@ -35,7 +35,7 @@ impl Validate for AdditionalPropertiesValidator {
     }
 
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             return self.validators.iter().all(move |validator| {
                 item.values()
                     .all(move |value| validator.is_valid(schema, value))
@@ -58,7 +58,7 @@ impl<'a> AdditionalPropertiesFalseValidator {
 
 impl Validate for AdditionalPropertiesFalseValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             if let Some((_, value)) = item.iter().next() {
                 return error(ValidationError::false_schema(value));
             }
@@ -67,7 +67,7 @@ impl Validate for AdditionalPropertiesFalseValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             return item.iter().next().is_some();
         }
         true
@@ -84,7 +84,7 @@ pub struct AdditionalPropertiesNotEmptyFalseValidator {
 
 impl AdditionalPropertiesNotEmptyFalseValidator {
     pub(crate) fn compile(properties: &Value) -> CompilationResult {
-        if let Value::Object(properties) = properties {
+        if let Some(properties) = properties.as_object() {
             return Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
                 properties: properties.clone(),
             }));
@@ -95,7 +95,7 @@ impl AdditionalPropertiesNotEmptyFalseValidator {
 
 impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             for property in item.keys() {
                 if !self.properties.contains_key(property) {
                     // No extra properties are allowed
@@ -108,7 +108,7 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             for property in item.keys() {
                 if !self.properties.contains_key(property) {
                     // No extra properties are allowed
@@ -135,7 +135,7 @@ impl AdditionalPropertiesNotEmptyValidator {
         properties: &Value,
         context: &CompilationContext,
     ) -> CompilationResult {
-        if let Value::Object(properties) = properties {
+        if let Some(properties) = properties.as_object() {
             return Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
                 properties: properties.clone(),
                 validators: compile_validators(schema, context)?,
@@ -147,7 +147,7 @@ impl AdditionalPropertiesNotEmptyValidator {
 
 impl Validate for AdditionalPropertiesNotEmptyValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(ref item) = instance {
+        if let Some(ref item) = instance.as_object() {
             let errors: Vec<_> = self
                 .validators
                 .iter()
@@ -163,7 +163,7 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
     }
 
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(ref item) = instance {
+        if let Some(ref item) = instance.as_object() {
             return self.validators.iter().all(move |validator| {
                 item.iter()
                     .filter(move |(property, _)| !self.properties.contains_key(*property))
@@ -198,7 +198,7 @@ impl AdditionalPropertiesWithPatternsValidator {
 
 impl Validate for AdditionalPropertiesWithPatternsValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             let errors: Vec<_> = self
                 .validators
                 .iter()
@@ -214,7 +214,7 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
     }
 
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             return self.validators.iter().all(move |validator| {
                 item.iter()
                     .filter(move |(property, _)| !self.pattern.is_match(property))
@@ -243,7 +243,7 @@ impl<'a> AdditionalPropertiesWithPatternsFalseValidator {
 
 impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             for (property, _) in item {
                 if !self.pattern.is_match(property) {
                     let property_value = Value::String(property.to_string());
@@ -255,7 +255,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             for (property, _) in item {
                 if !self.pattern.is_match(property) {
                     return false;
@@ -283,7 +283,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator {
         pattern: Regex,
         context: &CompilationContext,
     ) -> CompilationResult {
-        if let Value::Object(properties) = properties {
+        if let Some(properties) = properties.as_object() {
             return Ok(Box::new(
                 AdditionalPropertiesWithPatternsNotEmptyValidator {
                     validators: compile_validators(schema, context)?,
@@ -298,7 +298,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator {
 
 impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             let errors: Vec<_> = self
                 .validators
                 .iter()
@@ -317,7 +317,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
     }
 
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             return self.validators.iter().all(move |validator| {
                 item.iter()
                     .filter(move |(property, _)| {
@@ -341,7 +341,7 @@ pub struct AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
 
 impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
     pub(crate) fn compile(properties: &Value, pattern: Regex) -> CompilationResult {
-        if let Value::Object(properties) = properties {
+        if let Some(properties) = properties.as_object() {
             return Ok(Box::new(
                 AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
                     properties: properties.clone(),
@@ -355,7 +355,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
 
 impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             for property in item.keys() {
                 if !self.properties.contains_key(property) && !self.pattern.is_match(property) {
                     let property_value = Value::String(property.to_string());
@@ -367,7 +367,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
+        if let Some(item) = instance.as_object() {
             for property in item.keys() {
                 if !self.properties.contains_key(property) && !self.pattern.is_match(property) {
                     return false;
@@ -389,53 +389,51 @@ pub(crate) fn compile(
 ) -> Option<CompilationResult> {
     let properties = parent.get("properties");
     if let Some(patterns) = parent.get("patternProperties") {
-        if let Value::Object(obj) = patterns {
+        if let Some(obj) = patterns.as_object() {
             let pattern = obj.keys().cloned().collect::<Vec<String>>().join("|");
-            return match Regex::new(&pattern) {
-                Ok(re) => {
-                    match schema {
-                        Value::Bool(true) => None, // "additionalProperties" are "true" by default
-                        Value::Bool(false) => match properties {
-                            Some(properties) => Some(
-                                AdditionalPropertiesWithPatternsNotEmptyFalseValidator::compile(
-                                    properties, re,
-                                ),
+            if let Ok(re) = Regex::new(&pattern) {
+                if let Some(boolean) = schema.as_bool() {
+                    if boolean {
+                        None // "additionalProperties" are "true" by default
+                    } else if let Some(properties) = properties {
+                        Some(
+                            AdditionalPropertiesWithPatternsNotEmptyFalseValidator::compile(
+                                properties, re,
                             ),
-                            None => {
-                                Some(AdditionalPropertiesWithPatternsFalseValidator::compile(re))
-                            }
-                        },
-                        _ => match properties {
-                            Some(properties) => {
-                                Some(AdditionalPropertiesWithPatternsNotEmptyValidator::compile(
-                                    schema, properties, re, context,
-                                ))
-                            }
-                            None => Some(AdditionalPropertiesWithPatternsValidator::compile(
-                                schema, re, context,
-                            )),
-                        },
+                        )
+                    } else {
+                        Some(AdditionalPropertiesWithPatternsFalseValidator::compile(re))
                     }
+                } else if let Some(properties) = properties {
+                    Some(AdditionalPropertiesWithPatternsNotEmptyValidator::compile(
+                        schema, properties, re, context,
+                    ))
+                } else {
+                    Some(AdditionalPropertiesWithPatternsValidator::compile(
+                        schema, re, context,
+                    ))
                 }
-                Err(_) => Some(Err(CompilationError::SchemaError)),
-            };
+            } else {
+                Some(Err(CompilationError::SchemaError))
+            }
+        } else {
+            Some(Err(CompilationError::SchemaError))
         }
-        Some(Err(CompilationError::SchemaError))
+    } else if let Some(boolean) = schema.as_bool() {
+        if boolean {
+            None // "additionalProperties" are "true" by default
+        } else if let Some(properties) = properties {
+            Some(AdditionalPropertiesNotEmptyFalseValidator::compile(
+                properties,
+            ))
+        } else {
+            Some(AdditionalPropertiesFalseValidator::compile())
+        }
+    } else if let Some(properties) = properties {
+        Some(AdditionalPropertiesNotEmptyValidator::compile(
+            schema, properties, context,
+        ))
     } else {
-        match schema {
-            Value::Bool(true) => None, // "additionalProperties" are "true" by default
-            Value::Bool(false) => match properties {
-                Some(properties) => Some(AdditionalPropertiesNotEmptyFalseValidator::compile(
-                    properties,
-                )),
-                None => Some(AdditionalPropertiesFalseValidator::compile()),
-            },
-            _ => match properties {
-                Some(properties) => Some(AdditionalPropertiesNotEmptyValidator::compile(
-                    schema, properties, context,
-                )),
-                None => Some(AdditionalPropertiesValidator::compile(schema, context)),
-            },
-        }
+        Some(AdditionalPropertiesValidator::compile(schema, context))
     }
 }
