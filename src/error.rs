@@ -46,7 +46,7 @@ pub(crate) fn no_error<'a>() -> ErrorIterator<'a> {
     Box::new(empty())
 }
 // A wrapper for one error
-pub(crate) fn error<'a>(instance: ValidationError<'a>) -> ErrorIterator<'a> {
+pub(crate) fn error(instance: ValidationError) -> ErrorIterator {
     Box::new(once(instance))
 }
 
