@@ -4,6 +4,7 @@ use crate::{
     error::{error, no_error, CompilationError, ErrorIterator, PrimitiveType, ValidationError},
 };
 use serde_json::{Map, Number, Value};
+use std::convert::TryFrom;
 
 pub struct MultipleTypesValidator {
     types: Vec<PrimitiveType>,
@@ -14,15 +15,9 @@ impl MultipleTypesValidator {
         let mut types = Vec::with_capacity(items.len());
         for item in items {
             match item {
-                Value::String(string) => match string.as_str() {
-                    "integer" => types.push(PrimitiveType::Integer),
-                    "null" => types.push(PrimitiveType::Null),
-                    "boolean" => types.push(PrimitiveType::Boolean),
-                    "string" => types.push(PrimitiveType::String),
-                    "array" => types.push(PrimitiveType::Array),
-                    "object" => types.push(PrimitiveType::Object),
-                    "number" => types.push(PrimitiveType::Number),
-                    _ => return Err(CompilationError::SchemaError),
+                Value::String(string) => match PrimitiveType::try_from(string.as_str()) {
+                    Ok(primitive_value) => types.push(primitive_value),
+                    Err(_) => return Err(CompilationError::SchemaError),
                 },
                 _ => return Err(CompilationError::SchemaError),
             }

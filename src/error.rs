@@ -1,6 +1,7 @@
 use serde_json::Value;
 use std::{
     borrow::Cow,
+    convert::TryFrom,
     error, fmt,
     fmt::{Error, Formatter},
     io,
@@ -128,6 +129,23 @@ pub enum PrimitiveType {
     Array,
     Object,
     Number,
+}
+
+impl TryFrom<&str> for PrimitiveType {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "integer" => Ok(PrimitiveType::Integer),
+            "null" => Ok(PrimitiveType::Null),
+            "boolean" => Ok(PrimitiveType::Boolean),
+            "string" => Ok(PrimitiveType::String),
+            "array" => Ok(PrimitiveType::Array),
+            "object" => Ok(PrimitiveType::Object),
+            "number" => Ok(PrimitiveType::Number),
+            _ => Err(()),
+        }
+    }
 }
 
 impl fmt::Display for PrimitiveType {

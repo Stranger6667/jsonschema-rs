@@ -4,6 +4,7 @@ use crate::{
     error::{error, no_error, CompilationError, ErrorIterator, PrimitiveType, ValidationError},
 };
 use serde_json::{Map, Number, Value};
+use std::convert::TryFrom;
 
 pub struct MultipleTypesValidator {
     types: Vec<PrimitiveType>,
@@ -14,15 +15,9 @@ impl MultipleTypesValidator {
         let mut types = Vec::with_capacity(items.len());
         for item in items {
             match item {
-                Value::String(string) => match string.as_str() {
-                    "integer" => types.push(PrimitiveType::Integer),
-                    "null" => types.push(PrimitiveType::Null),
-                    "boolean" => types.push(PrimitiveType::Boolean),
-                    "string" => types.push(PrimitiveType::String),
-                    "array" => types.push(PrimitiveType::Array),
-                    "object" => types.push(PrimitiveType::Object),
-                    "number" => types.push(PrimitiveType::Number),
-                    _ => return Err(CompilationError::SchemaError),
+                Value::String(string) => match PrimitiveType::try_from(string.as_str()) {
+                    Ok(primitive_value) => types.push(primitive_value),
+                    Err(_) => return Err(CompilationError::SchemaError),
                 },
                 _ => return Err(CompilationError::SchemaError),
             }
@@ -292,14 +287,14 @@ pub(crate) fn compile(
 }
 
 fn compile_single_type(item: &str) -> Option<CompilationResult> {
-    match item {
-        "integer" => Some(IntegerTypeValidator::compile()),
-        "null" => Some(NullTypeValidator::compile()),
-        "boolean" => Some(BooleanTypeValidator::compile()),
-        "string" => Some(StringTypeValidator::compile()),
-        "array" => Some(ArrayTypeValidator::compile()),
-        "object" => Some(ObjectTypeValidator::compile()),
-        "number" => Some(NumberTypeValidator::compile()),
-        _ => Some(Err(CompilationError::SchemaError)),
+    match PrimitiveType::try_from(item) {
+        Ok(PrimitiveType::Integer) => Some(IntegerTypeValidator::compile()),
+        Ok(PrimitiveType::Null) => Some(NullTypeValidator::compile()),
+        Ok(PrimitiveType::Boolean) => Some(BooleanTypeValidator::compile()),
+        Ok(PrimitiveType::String) => Some(StringTypeValidator::compile()),
+        Ok(PrimitiveType::Array) => Some(ArrayTypeValidator::compile()),
+        Ok(PrimitiveType::Object) => Some(ObjectTypeValidator::compile()),
+        Ok(PrimitiveType::Number) => Some(NumberTypeValidator::compile()),
+        Err(_) => Some(Err(CompilationError::SchemaError)),
     }
 }
