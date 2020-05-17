@@ -64,8 +64,8 @@ pub struct IfElseValidator {
     else_schema: Validators,
 }
 
-impl<'a> IfElseValidator {
-    pub(crate) fn compile(
+impl IfElseValidator {
+    pub(crate) fn compile<'a>(
         schema: &'a Value,
         else_schema: &'a Value,
         context: &CompilationContext,

@@ -50,7 +50,7 @@ impl Validate for AdditionalPropertiesValidator {
 }
 pub struct AdditionalPropertiesFalseValidator {}
 
-impl<'a> AdditionalPropertiesFalseValidator {
+impl AdditionalPropertiesFalseValidator {
     pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(AdditionalPropertiesFalseValidator {}))
     }
@@ -233,7 +233,7 @@ pub struct AdditionalPropertiesWithPatternsFalseValidator {
     pattern: Regex,
 }
 
-impl<'a> AdditionalPropertiesWithPatternsFalseValidator {
+impl AdditionalPropertiesWithPatternsFalseValidator {
     pub(crate) fn compile(pattern: Regex) -> CompilationResult {
         Ok(Box::new(AdditionalPropertiesWithPatternsFalseValidator {
             pattern,

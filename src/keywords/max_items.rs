@@ -9,7 +9,7 @@ pub struct MaxItemsValidator {
     limit: usize,
 }
 
-impl<'a> MaxItemsValidator {
+impl MaxItemsValidator {
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Some(limit) = schema.as_u64() {
             return Ok(Box::new(MaxItemsValidator {

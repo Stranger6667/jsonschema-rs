@@ -27,7 +27,7 @@ impl AdditionalItemsObjectValidator {
     }
 }
 
-impl<'a> AdditionalItemsBooleanValidator {
+impl AdditionalItemsBooleanValidator {
     pub(crate) fn compile(items_count: usize) -> CompilationResult {
         Ok(Box::new(AdditionalItemsBooleanValidator { items_count }))
     }

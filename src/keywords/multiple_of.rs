@@ -10,7 +10,7 @@ pub struct MultipleOfFloatValidator {
     multiple_of: f64,
 }
 
-impl<'a> MultipleOfFloatValidator {
+impl MultipleOfFloatValidator {
     pub(crate) fn compile(multiple_of: f64) -> CompilationResult {
         Ok(Box::new(MultipleOfFloatValidator { multiple_of }))
     }
@@ -46,7 +46,7 @@ pub struct MultipleOfIntegerValidator {
     multiple_of: f64,
 }
 
-impl<'a> MultipleOfIntegerValidator {
+impl MultipleOfIntegerValidator {
     pub(crate) fn compile(multiple_of: f64) -> CompilationResult {
         Ok(Box::new(MultipleOfIntegerValidator { multiple_of }))
     }

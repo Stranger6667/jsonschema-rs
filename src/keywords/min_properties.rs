@@ -9,7 +9,7 @@ pub struct MinPropertiesValidator {
     limit: usize,
 }
 
-impl<'a> MinPropertiesValidator {
+impl MinPropertiesValidator {
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Some(limit) = schema.as_u64() {
             return Ok(Box::new(MinPropertiesValidator {
