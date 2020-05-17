@@ -30,7 +30,7 @@ impl Validate for AnyOfValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            return error(ValidationError::any_of(instance));
+            error(ValidationError::any_of(instance))
         }
     }
 
