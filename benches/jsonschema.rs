@@ -445,8 +445,6 @@ criterion_group!(
     //    property_names_invalid2,
     //    required_valid,
     //    required_invalid,
-    //    format_time_benchmark,
-    //    max_length_benchmark,
     //    ref_valid,
     //    properties_valid,
     //    properties_invalid,
