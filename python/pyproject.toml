@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools", "wheel", "setuptools-rust"]
+
+[tool.black]
+line-length = 120
+target_version = ["py37"]
+
+[tool.isort]
+# config compatible with Black
+line_length = 120
+multi_line_output = 3
+default_section = "THIRDPARTY"
+include_trailing_comma = true
+known_first_party = "jsonschema_rs"
+known_third_party = []

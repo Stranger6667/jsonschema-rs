@@ -21,7 +21,7 @@
 //!    if let Err(errors) = result {
 //!        for error in errors {
 //!            println!("Validation error: {}", error)
-//!        }   
+//!        }
 //!    }
 //!    Ok(())
 //! }

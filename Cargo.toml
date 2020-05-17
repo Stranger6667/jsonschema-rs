@@ -8,7 +8,7 @@ readme = "README.md"
 description = "A crate for performing JSON schema validation"
 repository = "https://github.com/Stranger6667/jsonschema-rs"
 keywords = ["jsonschema", "validation"]
-exclude = ["tests"]
+exclude = ["tests", "python"]
 categories = ["web-programming"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
