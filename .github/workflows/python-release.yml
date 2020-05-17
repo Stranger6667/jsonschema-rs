@@ -1,0 +1,47 @@
+name: Python Release
+
+on:
+  push:
+    tags:
+      - python-v*
+
+jobs:
+
+  create_wheels_manylinux:
+    runs-on: ubuntu-latest
+    name: Create wheels for manylinux
+    container: quay.io/pypa/manylinux2010_x86_64
+    steps:
+      - uses: actions/checkout@v1
+
+      - run: /usr/bin/env python3 -m pip install setuptools_rust twine
+
+      - name: Build and audit wheels
+        working-directory: ./python
+        run: sh build-wheels.sh
+
+      - name: Upload package
+        working-directory: ./python
+        run: twine upload ./dist/* --username=${PYPI_USERNAME} --password=${PYPI_PASSWORD}
+        env:
+          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+
+  create_source_dist:
+    name: Create sdist package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+
+      - run: /usr/bin/env python3 -m pip install setuptools_rust twine
+
+      - name: Build sdist
+        working-directory: ./python
+        run: sh build-sdist.sh
+
+      - name: Upload package
+        working-directory: ./python
+        run: twine upload ./dist/* --username=${PYPI_USERNAME} --password=${PYPI_PASSWORD}
+        env:
+          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}

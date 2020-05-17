@@ -17,6 +17,22 @@ jobs:
       - name: Run commitsar
         uses: docker://commitsar/commitsar
 
+  pre-commit:
+    name: Generic pre-commit checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+
+      - run: pip install pre-commit
+      - run: pre-commit run --all-files
+        working-directory: ./python
+
   check:
     name: Check
     runs-on: ubuntu-latest
@@ -90,6 +106,40 @@ jobs:
           name: coverage
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ${{ steps.coverage.outputs.report }}
+
+  test-python:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python: [3.5, 3.6, 3.7, 3.8]
+
+    name: Python ${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Start background server  # User for integration tests
+        run: |
+          # This assumes that python3 is installed on the system
+          /usr/bin/env python3 -m pip install flask
+          # Starts the server in background
+          /usr/bin/env python3 ./tests/suite/bin/jsonschema_suite serve &
+
+      - run: /usr/bin/env python3 -m pip install setuptools_rust tox
+        working-directory: ./python
+
+      - run: ./build-sdist.sh
+        working-directory: ./python
+
+      - name: Run ${{ matrix.python }} tox job
+        run: tox -e py${TOX_JOB//.} # Strip dot from python version to match tox job
+        working-directory: ./python
+        env:
+          TOX_JOB: ${{ matrix.python }}
 
   fmt:
     name: Rustfmt
