@@ -139,11 +139,8 @@ pub(crate) fn compile_validators(
         Value::Object(object) => {
             if let Some(reference) = object.get("$ref") {
                 if let Value::String(reference) = reference {
-                    let mut validators = Vec::with_capacity(1);
-                    if let Some(validator) = keywords::ref_::compile(schema, reference, &context) {
-                        validators.push(validator?)
-                    }
-                    Ok(validators)
+                    Ok(vec![keywords::ref_::compile(schema, reference, &context)
+                        .expect("Should always return Some")?])
                 } else {
                     Err(CompilationError::SchemaError)
                 }
