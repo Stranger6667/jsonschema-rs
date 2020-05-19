@@ -213,4 +213,11 @@ mod tests {
         let compiled = JSONSchema::compile(&schema, None).unwrap();
         assert!(compiled.is_valid(&instance))
     }
+
+    #[test_case(json!({"additionalProperties": false}), json!({}))]
+    fn is_valid(schema: Value, instance: Value) {
+        let data = json!(instance);
+        let compiled = JSONSchema::compile(&schema, None).unwrap();
+        assert!(compiled.is_valid(&data))
+    }
 }

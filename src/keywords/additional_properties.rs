@@ -68,7 +68,7 @@ impl Validate for AdditionalPropertiesFalseValidator {
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
-            return item.iter().next().is_some();
+            return item.iter().next().is_none();
         }
         true
     }
