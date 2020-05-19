@@ -10,6 +10,7 @@ pub struct MinItemsValidator {
 }
 
 impl MinItemsValidator {
+    #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Value::Number(limit) = schema {
             let limit = limit.as_u64().unwrap() as usize;
@@ -42,6 +43,7 @@ impl Validate for MinItemsValidator {
         format!("<min items: {}>", self.limit)
     }
 }
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

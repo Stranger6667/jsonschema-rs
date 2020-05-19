@@ -11,6 +11,7 @@ pub struct MultipleOfFloatValidator {
 }
 
 impl<'a> MultipleOfFloatValidator {
+    #[inline]
     pub(crate) fn compile(multiple_of: f64) -> CompilationResult {
         Ok(Box::new(MultipleOfFloatValidator { multiple_of }))
     }
@@ -49,6 +50,7 @@ pub struct MultipleOfIntegerValidator {
 }
 
 impl<'a> MultipleOfIntegerValidator {
+    #[inline]
     pub(crate) fn compile(multiple_of: f64) -> CompilationResult {
         Ok(Box::new(MultipleOfIntegerValidator { multiple_of }))
     }
@@ -92,6 +94,7 @@ impl Validate for MultipleOfIntegerValidator {
     }
 }
 
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

@@ -12,6 +12,7 @@ pub struct FormatValidator {
 }
 
 impl FormatValidator {
+    #[inline]
     pub(crate) fn compile(format: &'static str, check: fn(&str) -> bool) -> CompilationResult {
         Ok(Box::new(FormatValidator { format, check }))
     }
@@ -138,6 +139,7 @@ mod checks {
     }
 }
 
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

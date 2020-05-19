@@ -13,6 +13,7 @@ pub struct ContentMediaTypeValidator {
 }
 
 impl ContentMediaTypeValidator {
+    #[inline]
     pub(crate) fn compile(
         media_type: &str,
         func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
@@ -52,6 +53,7 @@ pub struct ContentEncodingValidator {
 }
 
 impl ContentEncodingValidator {
+    #[inline]
     pub(crate) fn compile(
         encoding: &str,
         func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
@@ -92,6 +94,7 @@ pub struct ContentMediaTypeAndEncodingValidator {
 }
 
 impl ContentMediaTypeAndEncodingValidator {
+    #[inline]
     pub(crate) fn compile(
         media_type: &str,
         encoding: &str,
@@ -166,6 +169,7 @@ pub(crate) fn from_base64<'a>(
     }
 }
 
+#[inline]
 pub(crate) fn compile_media_type(
     schema: &Map<String, Value>,
     subschema: &Value,
@@ -201,6 +205,7 @@ pub(crate) fn compile_media_type(
     }
 }
 
+#[inline]
 pub(crate) fn compile_content_encoding(
     schema: &Map<String, Value>,
     subschema: &Value,

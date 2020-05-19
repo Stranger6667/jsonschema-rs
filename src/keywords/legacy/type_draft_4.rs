@@ -10,6 +10,7 @@ pub struct MultipleTypesValidator {
 }
 
 impl MultipleTypesValidator {
+    #[inline]
     pub(crate) fn compile(items: &[Value]) -> CompilationResult {
         let mut types = Vec::with_capacity(items.len());
         for item in items {
@@ -73,6 +74,7 @@ impl Validate for MultipleTypesValidator {
 pub struct IntegerTypeValidator {}
 
 impl IntegerTypeValidator {
+    #[inline]
     pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(IntegerTypeValidator {}))
     }
@@ -106,6 +108,7 @@ fn is_integer(num: &Number) -> bool {
     num.is_u64() || num.is_i64()
 }
 
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

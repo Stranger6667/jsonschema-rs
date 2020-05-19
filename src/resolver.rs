@@ -114,7 +114,8 @@ impl<'a> Resolver<'a> {
 }
 
 /// Find all sub-schemas in the document and execute callback on each of them.
-fn find_schemas<'a, F>(
+#[inline]
+pub(crate) fn find_schemas<'a, F>(
     draft: Draft,
     schema: &'a Value,
     base_url: &Url,

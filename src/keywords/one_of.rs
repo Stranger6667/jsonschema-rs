@@ -10,6 +10,7 @@ pub struct OneOfValidator {
 }
 
 impl OneOfValidator {
+    #[inline]
     pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
         match schema.as_array() {
             Some(items) => {
@@ -79,6 +80,7 @@ impl Validate for OneOfValidator {
     }
 }
 
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

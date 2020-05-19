@@ -101,6 +101,7 @@ impl<'a> CompilationContext<'a> {
     ///    build_url("#/definitions/foo") -> "http://example.com/folder/#/definitions/foo"
     ///
     /// In other words it keeps track of sub-folders during compilation.
+    #[inline]
     pub(crate) fn push(&'a self, schema: &Value) -> Self {
         match schemas::id_of(self.draft, schema) {
             Some(id) => {
@@ -127,6 +128,7 @@ impl<'a> CompilationContext<'a> {
 }
 
 /// Compile JSON schema into a tree of validators.
+#[inline]
 pub(crate) fn compile_validators(
     schema: &Value,
     context: &CompilationContext,

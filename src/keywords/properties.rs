@@ -10,6 +10,7 @@ pub struct PropertiesValidator {
 }
 
 impl PropertiesValidator {
+    #[inline]
     pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
         match schema {
             Value::Object(map) => {
@@ -62,6 +63,8 @@ impl Validate for PropertiesValidator {
         format!("<properties: {:?}>", self.properties)
     }
 }
+
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

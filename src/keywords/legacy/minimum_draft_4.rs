@@ -2,6 +2,7 @@ use super::super::{exclusive_minimum, minimum, CompilationResult};
 use crate::compilation::CompilationContext;
 use serde_json::{Map, Value};
 
+#[inline]
 pub(crate) fn compile(
     parent: &Map<String, Value>,
     schema: &Value,

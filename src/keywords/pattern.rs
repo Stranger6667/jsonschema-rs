@@ -18,6 +18,7 @@ pub struct PatternValidator {
 }
 
 impl PatternValidator {
+    #[inline]
     pub(crate) fn compile(pattern: &Value) -> CompilationResult {
         match pattern {
             Value::String(item) => {
@@ -82,6 +83,8 @@ fn replace_control_group(captures: &Captures) -> String {
         - 64) as char)
         .to_string()
 }
+
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

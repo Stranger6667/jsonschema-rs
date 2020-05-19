@@ -10,6 +10,7 @@ pub struct ContainsValidator {
 }
 
 impl ContainsValidator {
+    #[inline]
     pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
         Ok(Box::new(ContainsValidator {
             validators: compile_validators(schema, context)?,
@@ -55,6 +56,7 @@ impl Validate for ContainsValidator {
     }
 }
 
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

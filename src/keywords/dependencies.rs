@@ -11,6 +11,7 @@ pub struct DependenciesValidator {
 }
 
 impl DependenciesValidator {
+    #[inline]
     pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
         match schema.as_object() {
             Some(map) => {
@@ -68,6 +69,7 @@ impl Validate for DependenciesValidator {
     }
 }
 
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

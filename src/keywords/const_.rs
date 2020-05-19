@@ -10,6 +10,7 @@ pub struct ConstValidator {
 }
 
 impl ConstValidator {
+    #[inline]
     pub(crate) fn compile(value: &Value) -> CompilationResult {
         Ok(Box::new(ConstValidator {
             value: value.clone(),
@@ -34,6 +35,7 @@ impl Validate for ConstValidator {
         format!("<const: {}>", self.value)
     }
 }
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
