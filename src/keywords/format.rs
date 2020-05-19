@@ -7,16 +7,13 @@ use crate::{
 use serde_json::{Map, Value};
 
 pub struct FormatValidator {
-    format: String,
+    format: &'static str,
     check: fn(&str) -> bool,
 }
 
 impl FormatValidator {
-    pub(crate) fn compile(format: &str, check: fn(&str) -> bool) -> CompilationResult {
-        Ok(Box::new(FormatValidator {
-            format: format.to_string(),
-            check,
-        }))
+    pub(crate) fn compile(format: &'static str, check: fn(&str) -> bool) -> CompilationResult {
+        Ok(Box::new(FormatValidator { format, check }))
     }
 }
 
@@ -24,7 +21,7 @@ impl Validate for FormatValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if !(self.check)(item) {
-                return error(ValidationError::format(instance, self.format.clone()));
+                return error(ValidationError::format(instance, self.format));
             }
         }
         no_error()
@@ -146,31 +143,44 @@ pub(crate) fn compile(
     schema: &Value,
     _: &CompilationContext,
 ) -> Option<CompilationResult> {
-    match schema.as_str() {
-        Some(format) => {
-            let func = match format {
-                "date" => checks::date,
-                "date-time" => checks::datetime,
-                "email" => checks::email,
-                "hostname" => checks::hostname,
-                "idn-email" => checks::email,
-                "idn-hostname" => checks::hostname,
-                "ipv4" => checks::ipv4,
-                "ipv6" => checks::ipv6,
-                "iri" => checks::iri,
-                "iri-reference" => checks::iri_reference,
-                "json-pointer" => checks::json_pointer,
-                "regex" => checks::regex,
-                "relative-json-pointer" => checks::relative_json_pointer,
-                "time" => checks::time,
-                "uri" => checks::iri,
-                "uri-reference" => checks::uri_reference,
-                "uri-template" => checks::uri_template,
-                _ => return None,
-            };
-            Some(FormatValidator::compile(format, func))
+    if let Value::String(format) = schema {
+        match format.as_str() {
+            "date" => Some(FormatValidator::compile("date", checks::date)),
+            "date-time" => Some(FormatValidator::compile("date-time", checks::datetime)),
+            "email" => Some(FormatValidator::compile("email", checks::email)),
+            "hostname" => Some(FormatValidator::compile("hostname", checks::hostname)),
+            "idn-email" => Some(FormatValidator::compile("idn-email", checks::email)),
+            "idn-hostname" => Some(FormatValidator::compile("idn-hostname", checks::hostname)),
+            "ipv4" => Some(FormatValidator::compile("ipv4", checks::ipv4)),
+            "ipv6" => Some(FormatValidator::compile("ipv6", checks::ipv6)),
+            "iri" => Some(FormatValidator::compile("iri", checks::iri)),
+            "iri-reference" => Some(FormatValidator::compile(
+                "iri-reference",
+                checks::iri_reference,
+            )),
+            "json-pointer" => Some(FormatValidator::compile(
+                "json-pointer",
+                checks::json_pointer,
+            )),
+            "regex" => Some(FormatValidator::compile("regex", checks::regex)),
+            "relative-json-pointer" => Some(FormatValidator::compile(
+                "relative-json-pointer",
+                checks::relative_json_pointer,
+            )),
+            "time" => Some(FormatValidator::compile("time", checks::time)),
+            "uri" => Some(FormatValidator::compile("uri", checks::iri)),
+            "uri-reference" => Some(FormatValidator::compile(
+                "uri-reference",
+                checks::uri_reference,
+            )),
+            "uri-template" => Some(FormatValidator::compile(
+                "uri-template",
+                checks::uri_template,
+            )),
+            _ => None,
         }
-        None => Some(Err(CompilationError::SchemaError)),
+    } else {
+        Some(Err(CompilationError::SchemaError))
     }
 }
 
