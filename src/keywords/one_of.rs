@@ -12,16 +12,14 @@ pub struct OneOfValidator {
 impl OneOfValidator {
     #[inline]
     pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
-        match schema.as_array() {
-            Some(items) => {
-                let mut schemas = Vec::with_capacity(items.len());
-                for item in items {
-                    schemas.push(compile_validators(item, context)?)
-                }
-                Ok(Box::new(OneOfValidator { schemas }))
+        if let Value::Array(items) = schema {
+            let mut schemas = Vec::with_capacity(items.len());
+            for item in items {
+                schemas.push(compile_validators(item, context)?)
             }
-            None => Err(CompilationError::SchemaError),
+            return Ok(Box::new(OneOfValidator { schemas }));
         }
+        return Err(CompilationError::SchemaError);
     }
 
     fn get_first_valid(

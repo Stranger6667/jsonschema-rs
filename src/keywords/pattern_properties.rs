@@ -13,19 +13,17 @@ pub struct PatternPropertiesValidator {
 impl PatternPropertiesValidator {
     #[inline]
     pub(crate) fn compile(properties: &Value, context: &CompilationContext) -> CompilationResult {
-        match properties.as_object() {
-            Some(map) => {
-                let mut patterns = Vec::with_capacity(map.len());
-                for (pattern, subschema) in map {
-                    patterns.push((
-                        Regex::new(pattern)?,
-                        compile_validators(subschema, context)?,
-                    ));
-                }
-                Ok(Box::new(PatternPropertiesValidator { patterns }))
+        if let Value::Object(map) = properties {
+            let mut patterns = Vec::with_capacity(map.len());
+            for (pattern, subschema) in map {
+                patterns.push((
+                    Regex::new(pattern)?,
+                    compile_validators(subschema, context)?,
+                ));
             }
-            None => Err(CompilationError::SchemaError),
+            return Ok(Box::new(PatternPropertiesValidator { patterns }));
         }
+        Err(CompilationError::SchemaError)
     }
 }
 
