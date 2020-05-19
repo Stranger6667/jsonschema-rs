@@ -1,6 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use jsonschema::*;
-use jsonschema_valid;
 use jsonschema_valid::schemas;
 use serde_json::{from_str, json, Value};
 use std::fs::File;
@@ -17,446 +16,549 @@ fn read_json(filepath: &str) -> Value {
     data
 }
 
-macro_rules! bench_validate {
-    ($b:ident, $name:expr, $schema:tt, $data: tt) => {
-        fn $b(c: &mut Criterion) {
-            let schema = json!($schema);
-            let validator = JSONSchema::compile(&schema, None).unwrap();
-            let data = black_box(json!($data));
-            c.bench_function($name, |b| b.iter(|| validator.is_valid(&data)));
+fn strip_characters(original: &str) -> String {
+    original
+        .chars()
+        .filter(|&c| !"{}:\" ,[]".contains(c))
+        .collect()
+}
+
+macro_rules! bench {
+    (
+      name = $name:tt;
+      schema = $schema:tt;
+      valid = $( $valid:tt ),* $(,)*;
+      invalid = $( $invalid:tt ),* $(,)*;
+    ) => {
+        paste::item! {
+          #[allow(dead_code)]
+          fn [<bench_ $name>](c: &mut Criterion) {
+              let schema = json!($schema);
+              let validator = JSONSchema::compile(&schema, None).unwrap();
+              let suffix = strip_characters(stringify!($schema));
+              c.bench_function(format!("{}{}{}", $name, " compile ", suffix).as_str(), |b| b.iter(|| JSONSchema::compile(&schema, None).unwrap()));
+              $(
+                   let instance = black_box(json!($valid));
+                   assert!(validator.is_valid(&instance));
+                   let suffix = strip_characters(stringify!($valid));
+                   c.bench_function(format!("{}{}{}", $name, " is_valid valid ", suffix).as_str(), |b| b.iter(|| validator.is_valid(&instance)));
+                   c.bench_function(format!("{}{}{}", $name, " validate valid ", suffix).as_str(), |b| b.iter(|| validator.validate(&instance).ok()));
+              )*
+              $(
+                   let instance = black_box(json!($invalid));
+                   assert!(!validator.is_valid(&instance));
+                   let suffix = strip_characters(stringify!($invalid));
+                   c.bench_function(format!("{}{}{}", $name, " is_valid invalid ", suffix).as_str(), |b| b.iter(|| validator.is_valid(&instance)));
+                   c.bench_function(format!("{}{}{}", $name, " validate invalid ", suffix).as_str(), |b| b.iter(|| {
+                        let _: Vec<_> = validator.validate(&instance).unwrap_err().collect();
+                   }));
+              )*
+          }
+        }
+    };
+    (
+      name = $name:tt;
+      schema = $schema:tt;
+      invalid = $( $invalid:tt ),* $(,)*;
+    ) => {
+        paste::item! {
+          fn [<bench_ $name>](c: &mut Criterion) {
+              let schema = json!($schema);
+              let validator = JSONSchema::compile(&schema, None).unwrap();
+              let suffix = strip_characters(stringify!($schema));
+              c.bench_function(format!("{}{}{}", $name, " compile ", suffix).as_str(), |b| b.iter(|| JSONSchema::compile(&schema, None).unwrap()));
+              $(
+                   let instance = black_box(json!($invalid));
+                   assert!(!validator.is_valid(&instance));
+                   let suffix = strip_characters(stringify!($invalid));
+                   c.bench_function(format!("{}{}{}", $name, " is_valid invalid ", suffix).as_str(), |b| b.iter(|| validator.is_valid(&instance)));
+                   c.bench_function(format!("{}{}{}", $name, " validate invalid ", suffix).as_str(), |b| b.iter(|| {
+                        let _: Vec<_> = validator.validate(&instance).unwrap_err().collect();
+                   }));
+              )*
+          }
         }
     };
 }
 
-macro_rules! bench_compile {
-    ($b:ident, $name:expr, $schema:tt) => {
-        fn $b(c: &mut Criterion) {
-            let schema = black_box(json!($schema));
-            c.bench_function($name, |b| b.iter(|| JSONSchema::compile(&schema, None)));
-        }
-    };
-}
-
-fn canada_benchmark(c: &mut Criterion) {
+#[allow(dead_code)]
+fn big_schema(c: &mut Criterion) {
     let schema = black_box(read_json("benches/canada_schema.json"));
-    let data = black_box(read_json("benches/canada.json"));
+    let instance = black_box(read_json("benches/canada.json"));
+
+    // jsonschema
     let validator = JSONSchema::compile(&schema, None).unwrap();
-    c.bench_function("canada bench", |b| b.iter(|| validator.is_valid(&data)));
-}
-
-fn canada_benchmark_not_compiled(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/canada_schema.json"));
-    let data = black_box(read_json("benches/canada.json"));
-    c.bench_function("canada bench not compiled", |b| {
-        b.iter(|| {
-            let validator = JSONSchema::compile(&schema, None).unwrap();
-            validator.is_valid(&data)
-        })
-    });
-}
-
-fn canada_benchmark_jsonschema_valid(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/canada_schema.json"));
-    let data = black_box(read_json("benches/canada.json"));
-    let cfg = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap();
-    c.bench_function("canada bench jsonschema_valid", |b| {
-        b.iter(|| jsonschema_valid::validate(&cfg, &data))
-    });
-}
-
-fn canada_benchmark_valico(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/canada_schema.json"));
-    let data = black_box(read_json("benches/canada.json"));
-    let mut scope = json_schema::Scope::new();
-    let schema = scope.compile_and_return(schema.clone(), false).unwrap();
-    c.bench_function("canada bench valico", |b| {
-        b.iter(|| schema.validate(&data).is_valid())
-    });
-}
-
-fn canada_compile_benchmark(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/canada_schema.json"));
-    c.bench_function("canada compile", |b| {
+    c.bench_function("jsonschema big schema compile", |b| {
         b.iter(|| JSONSchema::compile(&schema, None).unwrap())
     });
+    c.bench_function("jsonschema big schema is_valid", |b| {
+        b.iter(|| validator.is_valid(&instance))
+    });
+    c.bench_function("jsonschema big schema validate", |b| {
+        b.iter(|| validator.validate(&instance).ok())
+    });
+
+    // jsonschema_valid
+    let cfg = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap();
+    c.bench_function("jsonschema_valid big schema compile", |b| {
+        b.iter(|| {
+            jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap()
+        })
+    });
+    c.bench_function("jsonschema_valid big schema validate", |b| {
+        b.iter(|| jsonschema_valid::validate(&cfg, &instance))
+    });
+
+    // valico
+    let mut scope = json_schema::Scope::new();
+    let compiled = scope.compile_and_return(schema.clone(), false).unwrap();
+    c.bench_function("valico big schema compile", |b| {
+        b.iter(|| {
+            let mut scope = json_schema::Scope::new();
+            scope.compile_and_return(schema.clone(), false).unwrap();
+        })
+    });
+    c.bench_function("valico big schema validate", |b| {
+        b.iter(|| compiled.validate(&instance).is_valid())
+    });
 }
 
-fn small_schema_compile(c: &mut Criterion) {
+#[allow(dead_code)]
+fn small_schema(c: &mut Criterion) {
     let schema = read_json("benches/small_schema.json");
-    c.bench_function("small_schema compile", |b| {
+    let valid =
+        black_box(json!([9, "hello", [1, "a", true], {"a": "a", "b": "b", "d": "d"}, 42, 3]));
+    let invalid =
+        black_box(json!([10, "world", [1, "a", true], {"a": "a", "b": "b", "c": "xy"}, "str", 5]));
+
+    // jsonschema
+    let validator = JSONSchema::compile(&schema, None).unwrap();
+    c.bench_function("jsonschema small schema compile", |b| {
         b.iter(|| JSONSchema::compile(&schema, None).unwrap())
     });
-}
-fn small_schema_valid(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/small_schema.json"));
-    let validator = JSONSchema::compile(&schema, None).unwrap();
-    let data =
-        black_box(json!([9, "hello", [1, "a", true], {"a": "a", "b": "b", "d": "d"}, 42, 3]));
-    c.bench_function("small_schema valid", |b| {
-        b.iter(|| validator.is_valid(&data))
+    c.bench_function("jsonschema small schema is_valid valid", |b| {
+        b.iter(|| validator.is_valid(&valid))
     });
-}
-fn small_schema_valid_not_compiled(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/small_schema.json"));
-    let data =
-        black_box(json!([9, "hello", [1, "a", true], {"a": "a", "b": "b", "d": "d"}, 42, 3]));
-    c.bench_function("small_schema valid not compiled", |b| {
+    c.bench_function("jsonschema small schema validate valid", |b| {
+        b.iter(|| validator.validate(&valid).ok())
+    });
+    c.bench_function("jsonschema small schema is_valid invalid", |b| {
+        b.iter(|| validator.is_valid(&invalid))
+    });
+    c.bench_function("jsonschema small schema validate invalid", |b| {
         b.iter(|| {
-            let validator = JSONSchema::compile(&schema, None).unwrap();
-            validator.is_valid(&data)
+            let _: Vec<_> = validator.validate(&invalid).unwrap_err().collect();
         })
     });
-}
-fn small_schema_valid_jsonschema_valid(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/small_schema.json"));
+
+    // jsonschema_valid
     let cfg = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap();
-    let data =
-        black_box(json!([9, "hello", [1, "a", true], {"a": "a", "b": "b", "d": "d"}, 42, 3]));
-    c.bench_function("small_schema valid jsonschema_valid", |b| {
-        b.iter(|| jsonschema_valid::validate(&cfg, &data))
-    });
-}
-fn small_schema_valid_valico(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/small_schema.json"));
-    let mut scope = json_schema::Scope::new();
-    let schema = scope.compile_and_return(schema.clone(), false).unwrap();
-    let data =
-        black_box(json!([9, "hello", [1, "a", true], {"a": "a", "b": "b", "d": "d"}, 42, 3]));
-    c.bench_function("small_schema valid valico", |b| {
-        b.iter(|| schema.validate(&data).is_valid())
-    });
-}
-
-fn small_schema_invalid(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/small_schema.json"));
-    let validator = JSONSchema::compile(&schema, None).unwrap();
-    let data =
-        black_box(json!([10, "world", [1, "a", true], {"a": "a", "b": "b", "c": "xy"}, "str", 5]));
-    c.bench_function("small_schema invalid", |b| {
-        b.iter(|| validator.is_valid(&data))
-    });
-}
-
-fn small_schema_invalid_not_compiled(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/small_schema.json"));
-    let data =
-        black_box(json!([10, "world", [1, "a", true], {"a": "a", "b": "b", "c": "xy"}, "str", 5]));
-    c.bench_function("small_schema invalid not compiled", |b| {
+    c.bench_function("jsonschema_valid small schema compile", |b| {
         b.iter(|| {
-            let validator = JSONSchema::compile(&schema, None).unwrap();
-            validator.is_valid(&data)
+            jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap()
         })
     });
-}
-
-fn small_schema_invalid_jsonschema_valid(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/small_schema.json"));
-    let cfg = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap();
-    let data =
-        black_box(json!([10, "world", [1, "a", true], {"a": "a", "b": "b", "c": "xy"}, "str", 5]));
-    c.bench_function("small_schema invalid jsonschema_valid", |b| {
-        b.iter(|| jsonschema_valid::validate(&cfg, &data))
+    c.bench_function("jsonschema_valid small schema validate valid", |b| {
+        b.iter(|| jsonschema_valid::validate(&cfg, &valid))
     });
-}
-fn small_schema_invalid_valico(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/small_schema.json"));
+    c.bench_function("jsonschema_valid small schema validate invalid", |b| {
+        b.iter(|| jsonschema_valid::validate(&cfg, &invalid).ok())
+    });
+
+    // valico
     let mut scope = json_schema::Scope::new();
-    let schema = scope.compile_and_return(schema.clone(), false).unwrap();
-    let data =
-        black_box(json!([10, "world", [1, "a", true], {"a": "a", "b": "b", "c": "xy"}, "str", 5]));
-    c.bench_function("small_schema invalid valico", |b| {
-        b.iter(|| schema.validate(&data).is_valid())
+    let compiled = scope.compile_and_return(schema.clone(), false).unwrap();
+    c.bench_function("valico small schema compile", |b| {
+        b.iter(|| {
+            let mut scope = json_schema::Scope::new();
+            scope.compile_and_return(schema.clone(), false).unwrap();
+        })
+    });
+    c.bench_function("valico small schema validate valid", |b| {
+        b.iter(|| compiled.validate(&valid).is_valid())
+    });
+    c.bench_function("valico small schema validate invalid", |b| {
+        b.iter(|| compiled.validate(&invalid).is_valid())
     });
 }
 
-bench_validate!(
-    additional_items_valid,
-    "additional items valid",
-    {"items": [{}, {}, {}], "additionalItems": false},
-    [1, 2, 3]
+bench!(
+  name = "additional_items_boolean";
+  schema = {"items": [{}, {}, {}], "additionalItems": false};
+  valid = [1, 2, 3];
+  invalid = [1, 2, 3, 4];
 );
-bench_validate!(
-    additional_items_invalid,
-    "additional items invalid",
-    {"items": [{}, {}, {}], "additionalItems": false},
-    [1, 2, 3, 4]
+bench!(
+  name = "additional_items_object";
+  schema = {"items": [{}, {}, {}], "additionalItems": {"type": "string"}};
+  valid = [1, 2, 3, "foo"];
+  invalid = [1, 2, 3, 4];
 );
-bench_validate!(
-    additional_properties_valid1,
-    "additional properties valid 1",
-    {
-        "properties": {"foo": {}, "bar": {}},
-        "additionalProperties": {"type": "boolean"}
-    },
-    {"foo" : 1, "bar" : 2, "quux" : true}
+bench!(
+  name = "additional_properties_single";
+  schema = {"additionalProperties": {"type": "string"}};
+  valid = {"foo": "bar"};
+  invalid = {"foo": 1};
 );
-bench_validate!(
-    additional_properties_invalid1,
-    "additional properties invalid 1",
-    {
-        "properties": {"foo": {}, "bar": {}},
-        "additionalProperties": {"type": "boolean"}
-    },
-    {"foo" : 1, "bar" : 2, "quux" : 12}
+bench!(
+  name = "additional_properties_and_properties";
+  schema = {"additionalProperties": {"type": "string"}, "properties": {"foo": {}}};
+  valid = {"foo": 1};
+  invalid = {"foo": 1, "bar": true};
 );
-bench_validate!(
-    additional_properties_valid2,
-    "additional properties valid 2",
-    {"additionalProperties": {"type": "boolean"}},
-    {"foo" : true}
+bench!(
+  name = "additional_properties_and_pattern_properties";
+  schema = {"additionalProperties": {"type": "string"}, "patternProperties": {"f.*o": {"type": "integer"}}};
+  valid = {"foo": 1};
+  invalid = {"foo": 1, "bar": true};
 );
-bench_validate!(
-    additional_properties_invalid2,
-    "additional properties invalid 2",
-    {"additionalProperties": {"type": "boolean"}},
-    {"foo" : 1}
+bench!(
+  name = "additional_properties_and_properties_and_pattern_properties";
+  schema = {"additionalProperties": {"type": "string"}, "properties": {"foo": {}}, "patternProperties": {"f.*a": {"type": "integer"}}};
+  valid = {"foo": null, "fza": 2};
+  invalid = {"foo": null, "fzo": 2, "bar": true};
 );
-bench_validate!(
-    additional_properties_valid3,
-    "additional properties valid 3",
-    {"additionalProperties": false},
-    {}
+bench!(
+  name = "additional_properties_false";
+  schema = {"additionalProperties": false};
+  valid = {};
+  invalid = {"foo": 1};
 );
-bench_validate!(
-    additional_properties_invalid3,
-    "additional properties invalid 3",
-    {"additionalProperties": false},
-    {"foo" : 1}
+bench!(
+  name = "additional_properties_false_and_properties";
+  schema = {"additionalProperties": false, "properties": {"foo": {}}};
+  valid = {"foo": 1};
+  invalid = {"foo": 1, "bar": 2};
 );
-bench_validate!(
-    additional_properties_valid4,
-    "additional properties valid 4",
-    {
-        "properties": {"foo": {}, "bar": {}},
-        "additionalProperties": false
-    },
-    {"foo" : 1, "bar" : 2}
+bench!(
+  name = "additional_properties_false_and_pattern_properties";
+  schema = {"additionalProperties": false, "patternProperties": {"f.*o": {"type": "integer"}}};
+  valid = {"foo": 1};
+  invalid = {"foo": 1, "bar": 2};
 );
-bench_validate!(
-    additional_properties_invalid4,
-    "additional properties invalid 4",
-    {
-        "properties": {"foo": {}, "bar": {}},
-        "additionalProperties": false
-    },
-    {"foo" : 1, "bar" : 2, "quux" : 12}
+bench!(
+  name = "additional_properties_false_and_properties_and_pattern_properties";
+  schema = {"additionalProperties": false, "properties": {"foo": {}}, "patternProperties": {"f.*o": {"type": "integer"}}};
+  valid = {"foo": 1};
+  invalid = {"foo": 1, "fz0": 2, "bar": 2};
 );
-bench_validate!(
-    additional_properties_valid5,
-    "additional properties valid 5",
-    {
-        "properties": {"foo": {}, "bar": {}},
-        "patternProperties": { "^v": {} },
-        "additionalProperties": false
-    },
-    {"foo": 1}
+bench!(
+  name = "all_of";
+  schema = {"allOf": [{"type": "integer"}, {"minimum": 2}]};
+  valid = 4;
+  invalid = 1;
 );
-bench_validate!(
-    additional_properties_invalid5,
-    "additional properties invalid 5",
-    {
-        "properties": {"foo": {}, "bar": {}},
-        "patternProperties": { "^v": {} },
-        "additionalProperties": false
-    },
-    {"foo" : 1, "bar" : 2, "quux" : "boom"}
+bench!(
+  name = "any_of";
+  schema = {"anyOf": [{"type": "integer"}, {"minimum": 2}]};
+  valid = 1;
+  invalid = 1.5;
 );
-bench_validate!(
-    additional_properties_valid6,
-    "additional properties valid 6",
-    {
-        "properties": {"foo": {}, "bar": {}},
-        "patternProperties": { "^v": {} },
-        "additionalProperties": {"type": "integer"}
-    },
-    {"foo": 1}
+bench!(
+  name = "any_of_multiple_types";
+  schema = {"anyOf": [{"type": "integer"}, {"type": "string"}]};
+  valid = "foo";
+  invalid = null;
 );
-bench_validate!(
-    additional_properties_invalid6,
-    "additional properties invalid 6",
-    {
-        "properties": {"foo": {}, "bar": {}},
-        "patternProperties": { "^v": {} },
-        "additionalProperties": {"type": "integer"}
-    },
-    {"foo" : 1, "bar" : 2, "quux" : "boom"}
+bench!(
+  name = "boolean_false";
+  schema = false;
+  invalid = 1;
 );
-bench_validate!(all_of_valid, "allOf valid", {"allOf": [{"type": "integer"}, {"minimum": 2}]}, 4);
-bench_validate!(all_of_invalid, "allOf invalid", {"allOf": [{"type": "integer"}, {"minimum": 2}]}, 1);
-bench_validate!(any_of_valid, "anyOf valid", {"anyOf": [{"type": "integer"}, {"minimum": 2}]}, 1);
-bench_validate!(any_of_invalid, "anyOf invalid", {"anyOf": [{"type": "integer"}, {"minimum": 2}]}, 1.5);
-bench_validate!(one_of_valid, "oneOf valid", {"oneOf": [{"type": "integer"}, {"minimum": 2}]}, 1);
-bench_validate!(one_of_invalid1, "oneOf invalid1", {"oneOf": [{"type": "integer"}, {"minimum": 2}]}, 3);
-bench_validate!(enum_valid, "enum valid", {"enum": [1, 2, 3, 4]}, 4);
-bench_validate!(enum_invalid, "enum invalid", {"enum": [1, 2, 3, 4]}, 5);
-bench_validate!(contains_valid, "contains valid", {"contains": {"minimum": 5}}, [5]);
-bench_validate!(contains_invalid, "contains invalid", {"contains": {"minimum": 5}}, [1]);
-bench_validate!(const_valid, "const valid", {"const": 1}, 1);
-bench_validate!(const_invalid1, "const invalid1", {"const": 1}, 2);
-bench_validate!(const_invalid2, "const invalid2", {"const": 1}, "2");
-bench_validate!(false_schema, "false schema", false, 1);
-bench_validate!(format_ipv4_valid, "format ipv4 valid", {"format": "ipv4"}, "127.0.0.1");
-bench_validate!(format_ipv4_invalid, "format ipv4 invalid", {"format": "ipv4"}, "127.0.0.999");
-bench_validate!(not_valid, "not valid", {"not": {"type": "null"}}, 1);
-bench_validate!(not_invalid, "not invalid", {"not": {"type": "null"}}, null);
-bench_validate!(min_properties_valid, "min properties valid", {"minProperties": 2}, {"a": 1, "b": 2});
-bench_validate!(min_properties_invalid, "min properties invalid", {"minProperties": 2}, {"a": 1});
-bench_validate!(max_properties_valid, "max properties valid", {"maxProperties": 1}, {"a": 1});
-bench_validate!(max_properties_invalid, "max properties invalid", {"maxProperties": 1}, {"a": 1, "b": 2});
-bench_validate!(min_items_valid, "min items valid", {"minItems": 2}, [1, 2]);
-bench_validate!(min_items_invalid, "min items invalid", {"minItems": 2}, [1]);
-bench_validate!(max_items_valid, "max items valid", {"maxItems": 1}, [1]);
-bench_validate!(max_items_invalid, "max items invalid", {"maxItems": 1}, [1, 2]);
-bench_validate!(max_length_valid, "max length valid", {"maxLength": 3}, "123");
-bench_validate!(max_length_invalid, "max length invalid", {"maxLength": 3}, "1234");
-bench_validate!(min_length_valid, "min length valid", {"minLength": 3}, "123");
-bench_validate!(min_length_invalid, "min length invalid", {"minLength": 3}, "12");
-bench_validate!(exclusive_maximum_valid, "exclusive maximum valid", {"exclusiveMaximum": 3}, 2);
-bench_validate!(exclusive_maximum_invalid, "exclusive maximum invalid", {"exclusiveMaximum": 3}, 3);
-bench_validate!(exclusive_minimum_valid, "exclusive minimum valid", {"exclusiveMinimum": 3}, 5);
-bench_validate!(exclusive_minimum_invalid, "exclusive minimum invalid", {"exclusiveMinimum": 3}, 3);
-bench_validate!(maximum_valid, "maximum valid", {"maximum": 3}, 2);
-bench_validate!(maximum_invalid, "maximum invalid", {"maximum": 3}, 5);
-bench_validate!(minimum_valid, "minimum valid", {"minimum": 3}, 5);
-bench_validate!(minimum_invalid, "minimum invalid", {"minimum": 3}, 1);
-bench_validate!(type_string_valid, "type string valid", {"type": "string"}, "1");
-bench_validate!(type_string_invalid, "type string invalid", {"type": "string"}, 1);
-bench_validate!(type_integer_valid1, "type integer valid 1", {"type": "integer"}, 1);
-bench_validate!(type_integer_invalid1, "type integer invalid 1", {"type": "integer"}, 1.4);
-bench_validate!(type_integer_valid2, "type integer valid 2", {"type": "integer"}, 1.0);
-bench_validate!(type_integer_invalid2, "type integer invalid 2", {"type": "integer"}, "foo");
-bench_validate!(type_multiple_valid3, "type multiple valid 3", {"type": ["integer", "string"]}, "foo");
-bench_validate!(type_multiple_invalid3, "type multiple invalid 3", {"type": ["integer", "string"]}, []);
-bench_validate!(unique_items_valid, "unique items valid", {"uniqueItems": true}, [1, 2, 3, 4, 5]);
-bench_validate!(unique_items_invalid, "unique items invalid", {"uniqueItems": true}, [1, 2, 3, 4, 5, 1]);
-bench_validate!(multiple_of_integer_valid, "multipleOf integer valid", {"multipleOf": 5}, 125);
-bench_validate!(multiple_of_integer_invalid1, "multipleOf integer invalid 1", {"multipleOf": 5}, 212);
-bench_validate!(multiple_of_integer_invalid2, "multipleOf integer invalid 2", {"multipleOf": 5}, 212.4);
-bench_validate!(multiple_of_float_valid, "multipleOf float valid", {"multipleOf": 2.5}, 127.5);
-bench_validate!(multiple_of_float_invalid, "multipleOf float invalid", {"multipleOf": 2.5}, 112.2);
-bench_validate!(property_names_valid, "propertyNames valid", {"propertyNames": {"maxLength": 3}}, {"ABC": 1});
-bench_validate!(property_names_invalid1, "propertyNames invalid 1", {"propertyNames": {"maxLength": 3}}, {"ABCD": 1});
-bench_validate!(property_names_invalid2, "propertyNames invalid 2", {"propertyNames": false}, {"ABCD": 1});
-bench_validate!(pattern_valid, "pattern valid", {"pattern": "A[0-9]{2}Z"}, "A11Z");
-bench_validate!(pattern_invalid, "pattern invalid", {"pattern": "A[0-9]{2}Z"}, "A119");
-bench_validate!(properties_valid, "properties valid", {"properties": {"foo": {"type": "string"}}}, {"foo": "bar"});
-bench_validate!(properties_invalid, "properties invalid", {"properties": {"foo": {"type": "string"}}}, {"foo": 1});
-bench_validate!(required_valid, "required valid", {"required": ["a"]}, {"a": 1});
-bench_validate!(required_invalid, "required invalid", {"required": ["a"]}, {});
-bench_validate!(ref_valid, "ref valid", {"items": [{"type": "integer"},{"$ref": "#/items/0"}]}, [1, 2]);
-bench_compile!(c_required, "compile required", {"required": ["a", "b", "c"]});
-bench_compile!(c_properties, "compile properties", {"properties": {"a": true, "b": true, "c": true}});
-bench_compile!(c_dependencies, "compile dependencies", {"dependencies": {"bar": ["foo"]}});
-bench_compile!(c_enum, "compile enum", {"enum": [1, 2, "3"]});
-bench_compile!(c_aproperties1, "compile additional properties 1", {"additionalProperties": {"type": "boolean"}});
-bench_compile!(c_aproperties2, "compile additional properties 2", {"properties": {"foo": {}, "bar": {}}, "additionalProperties": {"type": "boolean"}});
-bench_compile!(c_aproperties3, "compile additional properties 3", {"properties": {"foo": {}, "bar": {}}, "patternProperties": { "^v": {} }, "additionalProperties": false});
-bench_compile!(c_aproperties4, "compile additional properties 4", {"patternProperties": {"^á": {}}, "additionalProperties": false});
-bench_compile!(c_aproperties5, "compile additional properties 5", {"additionalProperties": false});
-bench_compile!(c_aproperties6, "compile additional properties 6", {"properties": {"foo": {}, "bar": {}}, "additionalProperties": false});
+bench!(
+  name = "const";
+  schema = {"const": 1};
+  valid = 1;
+  invalid = "foo";
+);
+bench!(
+  name = "contains";
+  schema = {"contains": {"minimum": 5}};
+  valid = [5];
+  invalid = [1];
+);
+bench!(
+  name = "enum";
+  schema = {"enum": [1, 2, 3, 4]};
+  valid = 4;
+  invalid = 5;
+);
+bench!(
+  name = "exclusive_maximum";
+  schema = {"exclusiveMaximum": 3};
+  valid = 2;
+  invalid = 3;
+);
+bench!(
+  name = "exclusive_minimum";
+  schema = {"exclusiveMinimum": 3};
+  valid = 4;
+  invalid = 3;
+);
+bench!(
+  name = "format_date";
+  schema = {"format": "date"};
+  valid = "1963-06-19";
+  invalid = "06/19/1963";
+);
+bench!(
+  name = "format_datetime";
+  schema = {"format": "date-time"};
+  valid = "1963-06-19T08:30:06.283185Z";
+  invalid = "1990-02-31T15:59:60.123-08:00";
+);
+bench!(
+  name = "format_email";
+  schema = {"format": "email"};
+  valid = "test@test.com";
+  invalid = "foo";
+);
+bench!(
+  name = "format_hostname";
+  schema = {"format": "hostname"};
+  valid = "www.example.com";
+  invalid = "not_a_valid_host_name";
+);
+bench!(
+  name = "format_ipv4";
+  schema = {"format": "ipv4"};
+  valid = "127.0.0.1";
+  invalid = "127.0.0.999", "foobar", "2001:0db8:85a3:0000:0000:8a2e:0370:7334";
+);
+bench!(
+  name = "format_ipv6";
+  schema = {"format": "ipv6"};
+  valid = "2001:0db8:85a3:0000:0000:8a2e:0370:7334";
+  invalid = "127.0.0.1", "foobar";
+);
+bench!(
+  name = "format_iri";
+  schema = {"format": "iri"};
+  valid = "http://ƒøø.ßår/?∂éœ=πîx#πîüx";
+  invalid = "/abc";
+);
+bench!(
+  name = "format_iri_reference";
+  schema = {"format": "iri-reference"};
+  valid = "http://ƒøø.ßår/?∂éœ=πîx#πîüx";
+  invalid = "#ƒräg\\mênt";
+);
+bench!(
+  name = "format_json_pointer";
+  schema = {"format": "json-pointer"};
+  valid = "/foo/bar~0/baz~1/%a";
+  invalid = "/foo/bar~";
+);
+bench!(
+  name = "format_regex";
+  schema = {"format": "regex"};
+  valid = r#"([abc])+\s+$"#;
+  invalid = "^(abc]";
+);
+bench!(
+  name = "format_relative_json_pointer";
+  schema = {"format": "relative-json-pointer"};
+  valid = "1";
+  invalid = "/foo/bar";
+);
+bench!(
+  name = "format_time";
+  schema = {"format": "time"};
+  valid = "08:30:06.283185Z";
+  invalid = "01:01:01,1111";
+);
+bench!(
+  name = "format_uri_reference";
+  schema = {"format": "uri-reference"};
+  valid = "http://foo.bar/?baz=qux#quux";
+  invalid = "#frag\\ment";
+);
+bench!(
+  name = "format_uri_template";
+  schema = {"format": "uri-template"};
+  valid = "http://example.com/dictionary/{term:1}/{term}";
+  invalid = "http://example.com/dictionary/{term:1}/{term";
+);
+bench!(
+  name = "items";
+  schema = {"items": {"type": "integer"}};
+  valid = [1, 2, 3];
+  invalid = [1, 2, "x"];
+);
+bench!(
+  name = "maximum";
+  schema = {"maximum": 3};
+  valid = 3;
+  invalid = 5;
+);
+bench!(
+  name = "max_items";
+  schema = {"maxItems": 1};
+  valid = [1];
+  invalid = [1, 2];
+);
+bench!(
+  name = "max_length";
+  schema = {"maxLength": 3};
+  valid = "foo";
+  invalid = "foob";
+);
+bench!(
+  name = "max_properties";
+  schema = {"maxProperties": 1};
+  valid = {"a": 1};
+  invalid = {"a": 1, "b": 1};
+);
+bench!(
+  name = "minimum";
+  schema = {"minimum": 3};
+  valid = 5;
+  invalid = 1;
+);
+bench!(
+  name = "min_items";
+  schema = {"minItems": 2};
+  valid = [1, 2];
+  invalid = [1];
+);
+bench!(
+  name = "min_length";
+  schema = {"minLength": 3};
+  valid = "123";
+  invalid = "12";
+);
+bench!(
+  name = "min_properties";
+  schema = {"minProperties": 2};
+  valid = {"a": 1, "b": 2};
+  invalid = {"a": 1};
+);
+bench!(
+  name = "multiple_of_integer";
+  schema = {"multipleOf": 5};
+  valid = 125;
+  invalid = 212, 212.4;
+);
+bench!(
+  name = "multiple_of_number";
+  schema = {"multipleOf": 2.5};
+  valid = 127.5;
+  invalid = 112.2;
+);
+bench!(
+  name = "not";
+  schema = {"not": {"type": "null"}};
+  valid = 1;
+  invalid = null;
+);
+bench!(
+  name = "one_of";
+  schema = {"oneOf": [{"type": "integer"}, {"minimum": 2}]};
+  valid = 1;
+  invalid = 3;
+);
+bench!(
+  name = "pattern";
+  schema = {"pattern": "A[0-9]{2}Z"};
+  valid = "A11Z";
+  invalid = "A119";
+);
+bench!(
+  name = "pattern_properties";
+  schema = {"patternProperties": {"f.*o": {"type": "integer"}}};
+  valid = {"foo": 1};
+  invalid = {"foo": "bar", "fooooo": 2};
+);
+bench!(
+  name = "properties";
+  schema = {"properties": {"foo": {"type": "string"}}};
+  valid = {"foo": "bar"};
+  invalid = {"foo": 1};
+);
+bench!(
+  name = "property_names";
+  schema = {"propertyNames": {"maxLength": 3}};
+  valid = {"ABC": 1};
+  invalid = {"ABCD": 1};
+);
+bench!(
+  name = "ref";
+  schema = {"items": [{"type": "integer"},{"$ref": "#/items/0"}]};
+  valid = [1, 2];
+  invalid = [1, "b"];
+);
+bench!(
+  name = "required";
+  schema = {"required": ["a"]};
+  valid = {"a": 1};
+  invalid = {};
+);
+bench!(
+  name = "type_integer";
+  schema = {"type": "integer"};
+  valid = 1, 1.0;
+  invalid = 1.4, "foo";
+);
+bench!(
+  name = "type_string";
+  schema = {"type": "string"};
+  valid = "foo";
+  invalid = 1;
+);
+bench!(
+  name = "type_multiple";
+  schema = {"type": ["integer", "string"]};
+  valid = "foo";
+  invalid = [];
+);
+bench!(
+  name = "unique_items";
+  schema = {"uniqueItems": true};
+  valid = [1, 2, 3, 4, 5];
+  invalid = [1, 2, 3, 4, 5, 1];
+);
 
 criterion_group!(
-    benches,
-    canada_benchmark,
-    canada_benchmark_not_compiled,
-    // canada_benchmark_jsonschema_valid,
-    // canada_benchmark_valico,
-    //    canada_compile_benchmark,
-    //    small_schema_compile,
-    small_schema_valid,
-    small_schema_valid_not_compiled,
-    // small_schema_valid_jsonschema_valid,
-    // small_schema_valid_valico,
-    small_schema_invalid,
-    small_schema_invalid_not_compiled,
-    // small_schema_invalid_jsonschema_valid,
-    // small_schema_invalid_valico,
-    //    type_string_valid,
-    //    type_string_invalid,
-    //    false_schema,
-    //    additional_items_valid,
-    //    additional_items_invalid,
-    //    not_valid,
-    //    not_invalid,
-    //    enum_valid,
-    //    enum_invalid,
-    //    all_of_valid,
-    //    all_of_invalid,
-    //    any_of_valid,
-    //    any_of_invalid,
-    //    one_of_valid,
-    //    one_of_invalid1,
-    //    format_ipv4_valid,
-    //    format_ipv4_invalid,
-    //    contains_valid,
-    //    contains_invalid,
-    //    const_valid,
-    //    const_invalid1,
-    //    const_invalid2,
-    //    min_items_valid,
-    //    min_items_invalid,
-    //    max_items_valid,
-    //    max_items_invalid,
-    //    min_properties_valid,
-    //    min_properties_invalid,
-    //    max_properties_valid,
-    //    max_properties_invalid,
-    //    max_length_valid,
-    //    max_length_invalid,
-    //    min_length_valid,
-    //    min_length_invalid,
-    //    exclusive_maximum_valid,
-    //    exclusive_maximum_invalid,
-    //    exclusive_minimum_valid,
-    //    exclusive_minimum_invalid,
-    //    maximum_valid,
-    //    maximum_invalid,
-    //    minimum_valid,
-    //    minimum_invalid,
-    //    additional_properties_valid1,
-    //    additional_properties_invalid1,
-    //    additional_properties_valid2,
-    //    additional_properties_invalid2,
-    //    additional_properties_valid3,
-    //    additional_properties_invalid3,
-    //    additional_properties_valid4,
-    //    additional_properties_invalid4,
-    //    additional_properties_valid5,
-    //    additional_properties_invalid5,
-    //    additional_properties_valid6,
-    //    additional_properties_invalid6,
-    //    type_integer_valid1,
-    //    type_integer_invalid1,
-    //    type_integer_valid2,
-    //    type_integer_invalid2,
-    //    type_multiple_valid3,
-    //    type_multiple_invalid3,
-    //    unique_items_valid,
-    //    unique_items_invalid,
-    //    multiple_of_integer_valid,
-    //    multiple_of_integer_invalid1,
-    //    multiple_of_integer_invalid2,
-    //    multiple_of_float_valid,
-    //    multiple_of_float_invalid,
-    //    pattern_valid,
-    //    pattern_invalid,
-    //    property_names_valid,
-    //    property_names_invalid1,
-    //    property_names_invalid2,
-    //    required_valid,
-    //    required_invalid,
-    //    ref_valid,
-    //    properties_valid,
-    //    properties_invalid,
-    //    c_required,
-    //    c_properties,
-    //    c_dependencies,
-    //    c_enum,
-    //    c_aproperties1,
-    //    c_aproperties2,
-    //    c_aproperties3,
-    //    c_aproperties4,
-    //    c_aproperties5,
-    //    c_aproperties6,
+    keywords,
+    bench_additional_items_boolean,
+    bench_additional_items_object,
+    bench_additional_properties_single,
+    bench_additional_properties_and_properties,
+    bench_additional_properties_and_pattern_properties,
+    bench_additional_properties_and_properties_and_pattern_properties,
+    bench_additional_properties_false,
+    bench_additional_properties_false_and_properties,
+    bench_additional_properties_false_and_pattern_properties,
+    bench_additional_properties_false_and_properties_and_pattern_properties,
+    bench_all_of,
+    bench_any_of,
+    bench_any_of_multiple_types,
+    bench_boolean_false,
+    bench_const,
+    bench_enum,
+    bench_contains,
+    bench_format_date,
+    bench_format_datetime,
+    bench_format_email,
+    bench_format_ipv4,
+    bench_format_regex,
+    bench_items,
+    bench_maximum,
+    bench_min_properties,
+    bench_multiple_of_integer,
+    bench_multiple_of_number,
+    bench_not,
+    bench_one_of,
+    bench_pattern,
+    bench_pattern_properties,
+    bench_properties,
+    bench_property_names,
+    bench_ref,
+    bench_required,
+    bench_type_integer,
+    bench_type_string,
+    bench_type_multiple,
+    bench_unique_items,
 );
-criterion_main!(benches);
+criterion_group!(arbitrary, big_schema, small_schema);
+criterion_main!(arbitrary, keywords);
