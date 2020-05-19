@@ -144,17 +144,14 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
 
 pub(crate) fn is_json<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
     if from_str::<Value>(instance_string).is_err() {
-        return error(ValidationError::format(
-            instance,
-            "application/json".to_string(),
-        ));
+        return error(ValidationError::format(instance, "application/json"));
     }
     no_error()
 }
 
 pub(crate) fn is_base64<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
     if base64::decode(instance_string).is_err() {
-        return error(ValidationError::format(instance, "base64".to_string()));
+        return error(ValidationError::format(instance, "base64"));
     }
     no_error()
 }
@@ -165,7 +162,7 @@ pub(crate) fn from_base64<'a>(
 ) -> Result<String, ValidationError<'a>> {
     match base64::decode(instance_string) {
         Ok(value) => Ok(String::from_utf8(value)?),
-        Err(_) => Err(ValidationError::format(instance, "base64".to_string())),
+        Err(_) => Err(ValidationError::format(instance, "base64")),
     }
 }
 

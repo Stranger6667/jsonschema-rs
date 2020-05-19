@@ -72,7 +72,7 @@ pub enum ValidationErrorKind {
     /// If the referenced file is not found during ref resolution.
     FileNotFound { error: io::Error },
     /// When the input doesn't match to the specified format.
-    Format { format: String },
+    Format { format: &'static str },
     /// May happen in `contentEncoding` validation if `base64` encoded data is invalid.
     FromUtf8 { error: FromUtf8Error },
     /// May happen during ref resolution when remote document is not a valid JSON.
@@ -217,7 +217,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::FileNotFound { error },
         }
     }
-    pub(crate) fn format(instance: &'a Value, format: String) -> ValidationError<'a> {
+    pub(crate) fn format(instance: &'a Value, format: &'static str) -> ValidationError<'a> {
         ValidationError {
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Format { format },
