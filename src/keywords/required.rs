@@ -10,6 +10,7 @@ pub struct RequiredValidator {
 }
 
 impl RequiredValidator {
+    #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         match schema {
             Value::Array(items) => {
@@ -54,6 +55,7 @@ impl Validate for RequiredValidator {
     }
 }
 
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

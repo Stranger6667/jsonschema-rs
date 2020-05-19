@@ -10,6 +10,7 @@ pub struct MaxLengthValidator {
 }
 
 impl MaxLengthValidator {
+    #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Value::Number(limit) = schema {
             let limit = limit.as_u64().unwrap() as usize;
@@ -42,6 +43,7 @@ impl Validate for MaxLengthValidator {
         format!("<max length: {}>", self.limit)
     }
 }
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

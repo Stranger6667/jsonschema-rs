@@ -11,6 +11,7 @@ pub struct RefValidator {
 }
 
 impl RefValidator {
+    #[inline]
     pub(crate) fn compile(reference: &str, context: &CompilationContext) -> CompilationResult {
         let reference = context.build_url(reference)?;
         Ok(Box::new(RefValidator { reference }))
@@ -61,6 +62,8 @@ impl Validate for RefValidator {
         format!("<ref: {}>", self.reference)
     }
 }
+
+#[inline]
 pub(crate) fn compile(
     _: &Value,
     reference: &str,

@@ -10,6 +10,7 @@ pub struct MinimumValidator {
 }
 
 impl MinimumValidator {
+    #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Value::Number(limit) = schema {
             let limit = limit.as_f64().unwrap();
@@ -45,6 +46,7 @@ impl Validate for MinimumValidator {
     }
 }
 
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

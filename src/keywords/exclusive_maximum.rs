@@ -10,6 +10,7 @@ pub struct ExclusiveMaximumValidator {
 }
 
 impl<'a> ExclusiveMaximumValidator {
+    #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Value::Number(limit) = schema {
             return Ok(Box::new(ExclusiveMaximumValidator {
@@ -46,6 +47,7 @@ impl Validate for ExclusiveMaximumValidator {
     }
 }
 
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

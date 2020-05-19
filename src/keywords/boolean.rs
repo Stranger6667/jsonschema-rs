@@ -8,6 +8,7 @@ use serde_json::Value;
 pub struct TrueValidator {}
 
 impl TrueValidator {
+    #[inline]
     pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(TrueValidator {}))
     }
@@ -30,6 +31,7 @@ impl Validate for TrueValidator {
 pub struct FalseValidator {}
 
 impl FalseValidator {
+    #[inline]
     pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(FalseValidator {}))
     }
@@ -49,6 +51,7 @@ impl Validate for FalseValidator {
     }
 }
 
+#[inline]
 pub(crate) fn compile(value: bool) -> Option<CompilationResult> {
     if value {
         Some(TrueValidator::compile())

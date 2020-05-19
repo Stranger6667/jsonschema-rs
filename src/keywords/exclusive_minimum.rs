@@ -10,6 +10,7 @@ pub struct ExclusiveMinimumValidator {
 }
 
 impl<'a> ExclusiveMinimumValidator {
+    #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Value::Number(limit) = schema {
             let limit = limit.as_f64().unwrap();
@@ -44,6 +45,7 @@ impl Validate for ExclusiveMinimumValidator {
         format!("<exclusive minimum: {}>", self.limit)
     }
 }
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

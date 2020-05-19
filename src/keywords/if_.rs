@@ -11,6 +11,7 @@ pub struct IfThenValidator {
 }
 
 impl IfThenValidator {
+    #[inline]
     pub(crate) fn compile(
         schema: &Value,
         then_schema: &Value,
@@ -65,6 +66,7 @@ pub struct IfElseValidator {
 }
 
 impl<'a> IfElseValidator {
+    #[inline]
     pub(crate) fn compile(
         schema: &'a Value,
         else_schema: &'a Value,
@@ -120,6 +122,7 @@ pub struct IfThenElseValidator {
 }
 
 impl IfThenElseValidator {
+    #[inline]
     pub(crate) fn compile(
         schema: &Value,
         then_schema: &Value,
@@ -181,6 +184,7 @@ impl Validate for IfThenElseValidator {
     }
 }
 
+#[inline]
 pub(crate) fn compile(
     parent: &Map<String, Value>,
     schema: &Value,

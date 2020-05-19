@@ -11,6 +11,7 @@ pub struct EnumValidator {
 }
 
 impl EnumValidator {
+    #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Value::Array(items) = schema {
             return Ok(Box::new(EnumValidator {
@@ -46,6 +47,7 @@ impl Validate for EnumValidator {
     }
 }
 
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

@@ -14,6 +14,7 @@ pub struct AdditionalItemsBooleanValidator {
 }
 
 impl AdditionalItemsObjectValidator {
+    #[inline]
     pub(crate) fn compile(
         schema: &Value,
         items_count: usize,
@@ -28,6 +29,7 @@ impl AdditionalItemsObjectValidator {
 }
 
 impl<'a> AdditionalItemsBooleanValidator {
+    #[inline]
     pub(crate) fn compile(items_count: usize) -> CompilationResult {
         Ok(Box::new(AdditionalItemsBooleanValidator { items_count }))
     }
@@ -96,6 +98,7 @@ impl Validate for AdditionalItemsBooleanValidator {
     }
 }
 
+#[inline]
 pub(crate) fn compile(
     parent: &Map<String, Value>,
     schema: &Value,

@@ -60,6 +60,7 @@ pub fn is_unique(items: &[Value]) -> bool {
 pub struct UniqueItemsValidator {}
 
 impl UniqueItemsValidator {
+    #[inline]
     pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(UniqueItemsValidator {}))
     }
@@ -87,6 +88,8 @@ impl Validate for UniqueItemsValidator {
         "<unique items>".to_string()
     }
 }
+
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

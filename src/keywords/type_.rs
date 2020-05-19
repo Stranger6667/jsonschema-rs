@@ -10,6 +10,7 @@ pub struct MultipleTypesValidator {
 }
 
 impl MultipleTypesValidator {
+    #[inline]
     pub(crate) fn compile(items: &[Value]) -> CompilationResult {
         let mut types = Vec::with_capacity(items.len());
         for item in items {
@@ -73,6 +74,7 @@ impl Validate for MultipleTypesValidator {
 pub struct NullTypeValidator {}
 
 impl NullTypeValidator {
+    #[inline]
     pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(NullTypeValidator {}))
     }
@@ -101,6 +103,7 @@ impl Validate for NullTypeValidator {
 pub struct BooleanTypeValidator {}
 
 impl BooleanTypeValidator {
+    #[inline]
     pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(BooleanTypeValidator {}))
     }
@@ -129,6 +132,7 @@ impl Validate for BooleanTypeValidator {
 pub struct StringTypeValidator {}
 
 impl StringTypeValidator {
+    #[inline]
     pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(StringTypeValidator {}))
     }
@@ -158,6 +162,7 @@ impl Validate for StringTypeValidator {
 pub struct ArrayTypeValidator {}
 
 impl ArrayTypeValidator {
+    #[inline]
     pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(ArrayTypeValidator {}))
     }
@@ -187,6 +192,7 @@ impl Validate for ArrayTypeValidator {
 pub struct ObjectTypeValidator {}
 
 impl ObjectTypeValidator {
+    #[inline]
     pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(ObjectTypeValidator {}))
     }
@@ -215,6 +221,7 @@ impl Validate for ObjectTypeValidator {
 pub struct NumberTypeValidator {}
 
 impl NumberTypeValidator {
+    #[inline]
     pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(NumberTypeValidator {}))
     }
@@ -243,6 +250,7 @@ impl Validate for NumberTypeValidator {
 pub struct IntegerTypeValidator {}
 
 impl IntegerTypeValidator {
+    #[inline]
     pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(IntegerTypeValidator {}))
     }
@@ -276,6 +284,7 @@ fn is_integer(num: &Number) -> bool {
     num.is_u64() || num.is_i64() || num.as_f64().unwrap().fract() == 0.
 }
 
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

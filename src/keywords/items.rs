@@ -11,6 +11,7 @@ pub struct ItemsArrayValidator {
 }
 
 impl ItemsArrayValidator {
+    #[inline]
     pub(crate) fn compile(schemas: &[Value], context: &CompilationContext) -> CompilationResult {
         let mut items = Vec::with_capacity(schemas.len());
         for item in schemas {
@@ -62,6 +63,7 @@ pub struct ItemsObjectValidator {
 }
 
 impl ItemsObjectValidator {
+    #[inline]
     pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
         let validators = compile_validators(schema, context)?;
         Ok(Box::new(ItemsObjectValidator { validators }))
@@ -119,6 +121,7 @@ impl Validate for ItemsObjectValidator {
     }
 }
 
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

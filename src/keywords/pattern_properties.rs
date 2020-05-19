@@ -11,6 +11,7 @@ pub struct PatternPropertiesValidator {
 }
 
 impl PatternPropertiesValidator {
+    #[inline]
     pub(crate) fn compile(properties: &Value, context: &CompilationContext) -> CompilationResult {
         match properties.as_object() {
             Some(map) => {
@@ -69,6 +70,7 @@ impl Validate for PatternPropertiesValidator {
     }
 }
 
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,

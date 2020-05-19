@@ -11,6 +11,7 @@ pub struct AdditionalPropertiesValidator {
 }
 
 impl AdditionalPropertiesValidator {
+    #[inline]
     pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
         Ok(Box::new(AdditionalPropertiesValidator {
             validators: compile_validators(schema, context)?,
@@ -51,6 +52,7 @@ impl Validate for AdditionalPropertiesValidator {
 pub struct AdditionalPropertiesFalseValidator {}
 
 impl<'a> AdditionalPropertiesFalseValidator {
+    #[inline]
     pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(AdditionalPropertiesFalseValidator {}))
     }
@@ -83,6 +85,7 @@ pub struct AdditionalPropertiesNotEmptyFalseValidator {
 }
 
 impl AdditionalPropertiesNotEmptyFalseValidator {
+    #[inline]
     pub(crate) fn compile(properties: &Value) -> CompilationResult {
         if let Value::Object(properties) = properties {
             return Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
@@ -130,6 +133,7 @@ pub struct AdditionalPropertiesNotEmptyValidator {
 }
 
 impl AdditionalPropertiesNotEmptyValidator {
+    #[inline]
     pub(crate) fn compile(
         schema: &Value,
         properties: &Value,
@@ -184,6 +188,7 @@ pub struct AdditionalPropertiesWithPatternsValidator {
 }
 
 impl AdditionalPropertiesWithPatternsValidator {
+    #[inline]
     pub(crate) fn compile(
         schema: &Value,
         pattern: Regex,
@@ -234,6 +239,7 @@ pub struct AdditionalPropertiesWithPatternsFalseValidator {
 }
 
 impl<'a> AdditionalPropertiesWithPatternsFalseValidator {
+    #[inline]
     pub(crate) fn compile(pattern: Regex) -> CompilationResult {
         Ok(Box::new(AdditionalPropertiesWithPatternsFalseValidator {
             pattern,
@@ -277,6 +283,7 @@ pub struct AdditionalPropertiesWithPatternsNotEmptyValidator {
 }
 
 impl AdditionalPropertiesWithPatternsNotEmptyValidator {
+    #[inline]
     pub(crate) fn compile(
         schema: &Value,
         properties: &Value,
@@ -340,6 +347,7 @@ pub struct AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
 }
 
 impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
+    #[inline]
     pub(crate) fn compile(properties: &Value, pattern: Regex) -> CompilationResult {
         if let Value::Object(properties) = properties {
             return Ok(Box::new(
@@ -382,6 +390,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
     }
 }
 
+#[inline]
 pub(crate) fn compile(
     parent: &Map<String, Value>,
     schema: &Value,

@@ -11,6 +11,7 @@ pub struct PropertyNamesObjectValidator {
 }
 
 impl PropertyNamesObjectValidator {
+    #[inline]
     pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
         Ok(Box::new(PropertyNamesObjectValidator {
             validators: compile_validators(schema, context)?,
@@ -60,6 +61,7 @@ impl Validate for PropertyNamesObjectValidator {
 pub struct PropertyNamesBooleanValidator {}
 
 impl PropertyNamesBooleanValidator {
+    #[inline]
     pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(PropertyNamesBooleanValidator {}))
     }
@@ -88,6 +90,7 @@ impl Validate for PropertyNamesBooleanValidator {
     }
 }
 
+#[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
