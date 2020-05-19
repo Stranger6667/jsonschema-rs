@@ -12,17 +12,15 @@ pub struct AllOfValidator {
 impl AllOfValidator {
     #[inline]
     pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
-        match schema.as_array() {
-            Some(items) => {
-                let mut schemas = Vec::with_capacity(items.len());
-                for item in items {
-                    let validators = compile_validators(item, context)?;
-                    schemas.push(validators)
-                }
-                Ok(Box::new(AllOfValidator { schemas }))
+        if let Value::Array(items) = schema {
+            let mut schemas = Vec::with_capacity(items.len());
+            for item in items {
+                let validators = compile_validators(item, context)?;
+                schemas.push(validators)
             }
-            None => Err(CompilationError::SchemaError),
+            return Ok(Box::new(AllOfValidator { schemas }));
         }
+        Err(CompilationError::SchemaError)
     }
 }
 

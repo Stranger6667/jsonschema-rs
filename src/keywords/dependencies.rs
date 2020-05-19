@@ -13,20 +13,18 @@ pub struct DependenciesValidator {
 impl DependenciesValidator {
     #[inline]
     pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
-        match schema.as_object() {
-            Some(map) => {
-                let mut dependencies = Vec::with_capacity(map.len());
-                for (key, subschema) in map {
-                    let s = match subschema {
-                        Value::Array(_) => vec![RequiredValidator::compile(subschema)?],
-                        _ => compile_validators(subschema, context)?,
-                    };
-                    dependencies.push((key.clone(), s))
-                }
-                Ok(Box::new(DependenciesValidator { dependencies }))
+        if let Value::Object(map) = schema {
+            let mut dependencies = Vec::with_capacity(map.len());
+            for (key, subschema) in map {
+                let s = match subschema {
+                    Value::Array(_) => vec![RequiredValidator::compile(subschema)?],
+                    _ => compile_validators(subschema, context)?,
+                };
+                dependencies.push((key.clone(), s))
             }
-            None => Err(CompilationError::SchemaError),
+            return Ok(Box::new(DependenciesValidator { dependencies }));
         }
+        Err(CompilationError::SchemaError)
     }
 }
 
