@@ -22,6 +22,10 @@ pub struct JSONSchema<'a> {
     pub(crate) resolver: Resolver<'a>,
 }
 
+lazy_static! {
+    static ref DEFAULT_SCOPE: Url = url::Url::parse(DEFAULT_ROOT_URL).unwrap();
+}
+
 impl<'a> JSONSchema<'a> {
     pub fn compile(
         schema: &'a Value,
@@ -34,11 +38,10 @@ impl<'a> JSONSchema<'a> {
         let draft = draft.unwrap_or_else(|| {
             schemas::draft_from_schema(schema).unwrap_or(schemas::Draft::Draft7)
         });
-        let base_url = match schemas::id_of(draft, schema) {
-            Some(url) => url.to_string(),
-            None => DEFAULT_ROOT_URL.to_string(),
+        let scope = match schemas::id_of(draft, schema) {
+            Some(url) => url::Url::parse(&url)?,
+            None => DEFAULT_SCOPE.clone(),
         };
-        let scope = url::Url::parse(&base_url)?;
         let resolver = Resolver::new(draft, &scope, schema)?;
         let context = CompilationContext::new(scope, draft);
         let validators = compile_validators(schema, &context)?;
