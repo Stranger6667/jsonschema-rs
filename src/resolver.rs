@@ -1,7 +1,7 @@
 //! Reference resolver. Implements logic, required by `$ref` keyword.
 //! Is able to load documents from remote locations via HTTP(S).
 use crate::{
-    compilation::DEFAULT_ROOT_URL,
+    compilation::{DEFAULT_ROOT_URL, DEFAULT_SCOPE},
     error::{CompilationError, ValidationError},
     schemas::{id_of, Draft},
 };
@@ -60,25 +60,19 @@ impl<'a> Resolver<'a> {
     ) -> Result<(Url, Cow<'a, Value>), ValidationError> {
         let mut resource = url.clone();
         resource.set_fragment(None);
-        let fragment = percent_encoding::percent_decode_str(url.fragment().unwrap_or_else(|| ""))
+        let fragment = percent_encoding::percent_decode_str(url.fragment().unwrap_or(""))
             .decode_utf8()
             .unwrap();
 
         // Location-independent identifiers are searched before trying to resolve by
         // fragment-less url
-        if let Some(x) = find_schemas(
-            draft,
-            schema,
-            // This doesn't panic, since it is known to be correct
-            &Url::parse(DEFAULT_ROOT_URL).expect("The DEFAULT_ROOT_URL is incorrect"),
-            &mut |id, x| {
-                if id == url.as_str() {
-                    Some(x)
-                } else {
-                    None
-                }
-            },
-        )
+        if let Some(x) = find_schemas(draft, schema, &DEFAULT_SCOPE, &mut |id, x| {
+            if id == url.as_str() {
+                Some(x)
+            } else {
+                None
+            }
+        })
         .unwrap()
         {
             return Ok((resource, Cow::Borrowed(x)));
