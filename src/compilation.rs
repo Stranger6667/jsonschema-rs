@@ -92,6 +92,7 @@ impl<'a> CompilationContext<'a> {
         }
     }
 
+    #[allow(clippy::doc_markdown)]
     /// Push a new scope. All URLs built from the new context will have this scope in them.
     /// Before push:
     ///    scope = http://example.com/

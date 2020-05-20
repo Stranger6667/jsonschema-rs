@@ -33,7 +33,7 @@ impl<'a> Resolver<'a> {
 
     /// Load a document for the given `url`.
     /// It may be:
-    ///   - the root document (DEFAULT_ROOT_URL) case;
+    ///   - the root document (`DEFAULT_ROOT_URL`) case;
     ///   - named subschema that is stored in `self.schemas`;
     ///   - document from a remote location;
     fn resolve_url(&self, url: &Url, schema: &'a Value) -> Result<Cow<'a, Value>, ValidationError> {
