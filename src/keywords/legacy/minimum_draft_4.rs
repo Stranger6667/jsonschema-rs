@@ -8,8 +8,9 @@ pub fn compile(
     schema: &Value,
     context: &CompilationContext,
 ) -> Option<CompilationResult> {
-    match parent.get("exclusiveMinimum") {
-        Some(Value::Bool(true)) => exclusive_minimum::compile(parent, schema, context),
-        _ => minimum::compile(parent, schema, context),
+    if let Some(Value::Bool(true)) = parent.get("exclusiveMinimum") {
+        exclusive_minimum::compile(parent, schema, context)
+    } else {
+        minimum::compile(parent, schema, context)
     }
 }

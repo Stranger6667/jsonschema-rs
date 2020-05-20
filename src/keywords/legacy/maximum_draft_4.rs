@@ -8,8 +8,9 @@ pub fn compile(
     schema: &Value,
     context: &CompilationContext,
 ) -> Option<CompilationResult> {
-    match parent.get("exclusiveMaximum") {
-        Some(Value::Bool(true)) => exclusive_maximum::compile(parent, schema, context),
-        _ => maximum::compile(parent, schema, context),
+    if let Some(Value::Bool(true)) = parent.get("exclusiveMaximum") {
+        exclusive_maximum::compile(parent, schema, context)
+    } else {
+        maximum::compile(parent, schema, context)
     }
 }
