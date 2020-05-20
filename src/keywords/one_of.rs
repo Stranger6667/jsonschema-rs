@@ -22,28 +22,22 @@ impl OneOfValidator {
         Err(CompilationError::SchemaError)
     }
 
-    fn get_first_valid(
-        &self,
-        schema: &JSONSchema,
-        instance: &Value,
-    ) -> (Option<&Validators>, Option<usize>) {
-        let mut first_valid = None;
+    fn get_first_valid(&self, schema: &JSONSchema, instance: &Value) -> Option<usize> {
         let mut first_valid_idx = None;
         for (idx, validators) in self.schemas.iter().enumerate() {
             if validators
                 .iter()
                 .all(|validator| validator.is_valid(schema, instance))
             {
-                first_valid = Some(validators);
                 first_valid_idx = Some(idx);
                 break;
             }
         }
-        (first_valid, first_valid_idx)
+        first_valid_idx
     }
 
-    fn are_others_valid(&self, schema: &JSONSchema, instance: &Value, idx: Option<usize>) -> bool {
-        for validators in self.schemas.iter().skip(idx.unwrap() + 1) {
+    fn are_others_valid(&self, schema: &JSONSchema, instance: &Value, idx: usize) -> bool {
+        for validators in self.schemas.iter().skip(idx + 1) {
             if validators
                 .iter()
                 .all(|validator| validator.is_valid(schema, instance))
@@ -57,21 +51,23 @@ impl OneOfValidator {
 
 impl Validate for OneOfValidator {
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        let (first_valid, first_valid_idx) = self.get_first_valid(schema, instance);
-        if first_valid.is_none() {
-            return error(ValidationError::one_of_not_valid(instance));
+        let first_valid_idx = self.get_first_valid(schema, instance);
+        if let Some(idx) = first_valid_idx {
+            if self.are_others_valid(schema, instance, idx) {
+                return error(ValidationError::one_of_multiple_valid(instance));
+            }
+            no_error()
+        } else {
+            error(ValidationError::one_of_not_valid(instance))
         }
-        if self.are_others_valid(schema, instance, first_valid_idx) {
-            return error(ValidationError::one_of_multiple_valid(instance));
-        }
-        no_error()
     }
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        let (first_valid, first_valid_idx) = self.get_first_valid(schema, instance);
-        if first_valid.is_none() {
-            return false;
+        let first_valid_idx = self.get_first_valid(schema, instance);
+        if let Some(idx) = first_valid_idx {
+            !self.are_others_valid(schema, instance, idx)
+        } else {
+            false
         }
-        !self.are_others_valid(schema, instance, first_valid_idx)
     }
     fn name(&self) -> String {
         format!("<one of: {:?}>", self.schemas)
