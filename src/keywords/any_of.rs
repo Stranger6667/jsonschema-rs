@@ -34,7 +34,7 @@ impl Validate for AnyOfValidator {
     }
 
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        for validators in self.schemas.iter() {
+        for validators in &self.schemas {
             if validators
                 .iter()
                 .all(|validator| validator.is_valid(schema, instance))

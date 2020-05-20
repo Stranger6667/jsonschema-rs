@@ -44,7 +44,7 @@ impl Validate for MultipleTypesValidator {
         }
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        for type_ in self.types.iter() {
+        for type_ in &self.types {
             match (type_, instance) {
                 (PrimitiveType::Integer, Value::Number(num)) if is_integer(num) => return true,
                 (PrimitiveType::Null, Value::Null)
