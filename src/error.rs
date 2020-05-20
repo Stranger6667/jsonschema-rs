@@ -430,7 +430,7 @@ impl<'a> fmt::Display for ValidationError<'a> {
                     verb
                 )
             }
-            ValidationErrorKind::AnyOf => write!(
+            ValidationErrorKind::AnyOf | ValidationErrorKind::OneOfNotValid => write!(
                 f,
                 "'{}' is not valid under any of the given schemas",
                 self.instance
@@ -516,11 +516,6 @@ impl<'a> fmt::Display for ValidationError<'a> {
             ValidationErrorKind::Not { schema } => {
                 write!(f, "{} is not allowed for {}", schema, self.instance)
             }
-            ValidationErrorKind::OneOfNotValid => write!(
-                f,
-                "'{}' is not valid under any of the given schemas",
-                self.instance
-            ),
             ValidationErrorKind::OneOfMultipleValid => write!(
                 f,
                 "'{}' is valid under more than one of the given schemas",
