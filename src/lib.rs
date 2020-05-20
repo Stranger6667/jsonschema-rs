@@ -33,7 +33,6 @@
     clippy::explicit_iter_loop,
     clippy::match_same_arms,
     clippy::needless_borrow,
-    clippy::redundant_pub_crate,
     clippy::print_stdout,
     clippy::integer_arithmetic
 )]
