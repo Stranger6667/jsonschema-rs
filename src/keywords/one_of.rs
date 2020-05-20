@@ -19,7 +19,7 @@ impl OneOfValidator {
             }
             return Ok(Box::new(OneOfValidator { schemas }));
         }
-        return Err(CompilationError::SchemaError);
+        Err(CompilationError::SchemaError)
     }
 
     fn get_first_valid(
