@@ -1,3 +1,4 @@
+/// Docs: https://tools.ietf.org/html/draft-handrews-json-schema-validation-01#section-6.2.5
 use crate::{
     compilation::{CompilationContext, JSONSchema},
     error::{no_error, CompilationError, ErrorIterator, ValidationError},
@@ -7,6 +8,7 @@ use crate::{
 use num_cmp::NumCmp;
 use serde_json::{Map, Value};
 
+/// The value of "exclusiveMinimum" MUST be number, representing an exclusive lower limit for a numeric instance.
 pub struct ExclusiveMinimumU64Validator {
     limit: u64,
 }
@@ -19,6 +21,8 @@ pub struct ExclusiveMinimumF64Validator {
 
 macro_rules! validate {
     ($validator: ty) => {
+        /// If the instance is a number, then the instance is valid only if it has a value strictly
+        /// greater than (not equal to) "exclusiveMinimum".
         impl Validate for $validator {
             #[inline]
             fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {

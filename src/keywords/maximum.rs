@@ -1,3 +1,4 @@
+/// Docs: https://tools.ietf.org/html/draft-handrews-json-schema-validation-01#section-6.2.2
 use crate::{
     compilation::{CompilationContext, JSONSchema},
     error::{no_error, CompilationError, ErrorIterator, ValidationError},
@@ -7,6 +8,8 @@ use crate::{
 use num_cmp::NumCmp;
 use serde_json::{Map, Value};
 
+/// The value of "maximum" MUST be a number, representing an inclusive upper limit for
+/// a numeric instance.
 pub struct MaximumU64Validator {
     limit: u64,
 }
@@ -19,6 +22,8 @@ pub struct MaximumF64Validator {
 
 macro_rules! validate {
     ($validator: ty) => {
+        /// If the instance is a number, then this keyword validates only if
+        /// the instance is less than or exactly equal to "maximum".
         impl Validate for $validator {
             #[inline]
             fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {

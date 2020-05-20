@@ -1,3 +1,4 @@
+/// Docs: https://tools.ietf.org/html/draft-handrews-json-schema-validation-01#section-6.2.1
 use crate::{
     compilation::{CompilationContext, JSONSchema},
     error::{no_error, CompilationError, ErrorIterator, ValidationError},
@@ -7,6 +8,7 @@ use crate::{
 use serde_json::{Map, Value};
 use std::f64::EPSILON;
 
+/// The value of "multipleOf" MUST be a number, strictly greater than 0.
 pub struct MultipleOfFloatValidator {
     multiple_of: f64,
 }
@@ -18,6 +20,7 @@ impl MultipleOfFloatValidator {
     }
 }
 
+/// A numeric instance is valid only if division by this keyword's value results in an integer.
 impl Validate for MultipleOfFloatValidator {
     #[inline]
     fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
@@ -72,6 +75,7 @@ impl Validate for MultipleOfFloatValidator {
     }
 }
 
+/// Special case for integer values in `multiple_of` / floats with empty fractional part
 pub struct MultipleOfIntegerValidator {
     multiple_of: f64,
 }
