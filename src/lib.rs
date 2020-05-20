@@ -58,6 +58,7 @@ extern crate lazy_static;
 /// let instance = json!("foo");
 /// assert!(is_valid(&schema, &instance));
 /// ```
+#[inline]
 pub fn is_valid(schema: &Value, instance: &Value) -> bool {
     let compiled = JSONSchema::compile(schema, None).expect("Invalid schema");
     compiled.is_valid(instance)

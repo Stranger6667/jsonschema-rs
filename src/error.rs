@@ -16,17 +16,20 @@ pub enum CompilationError {
 impl error::Error for CompilationError {}
 
 impl fmt::Display for CompilationError {
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         write!(f, "Schema compilation error")
     }
 }
 
 impl From<regex::Error> for CompilationError {
+    #[inline]
     fn from(_: regex::Error) -> Self {
         CompilationError::SchemaError
     }
 }
 impl From<url::ParseError> for CompilationError {
+    #[inline]
     fn from(_: url::ParseError) -> Self {
         CompilationError::SchemaError
     }
@@ -368,22 +371,26 @@ impl<'a> ValidationError<'a> {
 }
 
 impl<'a> From<CompilationError> for ValidationError<'a> {
+    #[inline]
     fn from(_: CompilationError) -> Self {
         ValidationError::schema()
     }
 }
 impl<'a> error::Error for ValidationError<'a> {}
 impl<'a> From<serde_json::Error> for ValidationError<'a> {
+    #[inline]
     fn from(err: serde_json::Error) -> Self {
         ValidationError::json_parse(err)
     }
 }
 impl<'a> From<io::Error> for ValidationError<'a> {
+    #[inline]
     fn from(err: io::Error) -> Self {
         ValidationError::file_not_found(err)
     }
 }
 impl<'a> From<FromUtf8Error> for ValidationError<'a> {
+    #[inline]
     fn from(err: FromUtf8Error) -> Self {
         ValidationError::from_utf8(err)
     }
@@ -391,6 +398,7 @@ impl<'a> From<FromUtf8Error> for ValidationError<'a> {
 
 /// Textual representation of various validation errors.
 impl<'a> fmt::Display for ValidationError<'a> {
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match &self.kind {
             ValidationErrorKind::Schema => write!(f, "Schema error"),
