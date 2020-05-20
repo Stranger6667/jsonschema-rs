@@ -145,21 +145,21 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
     }
 }
 
-pub(crate) fn is_json<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
+pub fn is_json<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
     if from_str::<Value>(instance_string).is_err() {
         return error(ValidationError::format(instance, "application/json"));
     }
     no_error()
 }
 
-pub(crate) fn is_base64<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
+pub fn is_base64<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
     if base64::decode(instance_string).is_err() {
         return error(ValidationError::format(instance, "base64"));
     }
     no_error()
 }
 
-pub(crate) fn from_base64<'a>(
+pub fn from_base64<'a>(
     instance: &'a Value,
     instance_string: &str,
 ) -> Result<String, ValidationError<'a>> {
@@ -170,7 +170,7 @@ pub(crate) fn from_base64<'a>(
 }
 
 #[inline]
-pub(crate) fn compile_media_type(
+pub fn compile_media_type(
     schema: &Map<String, Value>,
     subschema: &Value,
     _: &CompilationContext,
@@ -206,7 +206,7 @@ pub(crate) fn compile_media_type(
 }
 
 #[inline]
-pub(crate) fn compile_content_encoding(
+pub fn compile_content_encoding(
     schema: &Map<String, Value>,
     subschema: &Value,
     _: &CompilationContext,

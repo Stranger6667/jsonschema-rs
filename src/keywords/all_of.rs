@@ -51,7 +51,7 @@ impl Validate for AllOfValidator {
     }
 }
 #[inline]
-pub(crate) fn compile(
+pub fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     context: &CompilationContext,

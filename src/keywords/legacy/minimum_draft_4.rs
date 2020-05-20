@@ -3,7 +3,7 @@ use crate::compilation::CompilationContext;
 use serde_json::{Map, Value};
 
 #[inline]
-pub(crate) fn compile(
+pub fn compile(
     parent: &Map<String, Value>,
     schema: &Value,
     context: &CompilationContext,

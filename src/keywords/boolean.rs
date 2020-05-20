@@ -52,7 +52,7 @@ impl Validate for FalseValidator {
 }
 
 #[inline]
-pub(crate) fn compile(value: bool) -> Option<CompilationResult> {
+pub fn compile(value: bool) -> Option<CompilationResult> {
     if value {
         Some(TrueValidator::compile())
     } else {

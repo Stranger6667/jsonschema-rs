@@ -64,7 +64,7 @@ impl Validate for RefValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
+pub fn compile(
     _: &Value,
     reference: &str,
     context: &CompilationContext,
