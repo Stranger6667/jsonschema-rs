@@ -30,7 +30,7 @@ impl Validate for PropertyNamesObjectValidator {
                         let wrapper = Value::String(key.to_string());
                         let errors: Vec<_> = validator
                             .validate(schema, &wrapper)
-                            .map(|validation_error| validation_error.into_owned())
+                            .map(ValidationError::into_owned)
                             .collect();
                         errors.into_iter()
                     })
