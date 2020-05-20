@@ -45,6 +45,7 @@
 mod compilation;
 mod error;
 mod keywords;
+mod primitive_type;
 mod resolver;
 mod schemas;
 pub use compilation::JSONSchema;
