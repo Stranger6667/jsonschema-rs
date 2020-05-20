@@ -31,7 +31,7 @@ impl RequiredValidator {
 impl Validate for RequiredValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
-            for property_name in self.required.iter() {
+            for property_name in &self.required {
                 if !item.contains_key(property_name) {
                     return error(ValidationError::required(instance, property_name.clone()));
                 }
