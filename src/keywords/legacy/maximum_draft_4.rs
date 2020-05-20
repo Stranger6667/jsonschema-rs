@@ -1,5 +1,7 @@
-use super::super::{exclusive_maximum, maximum, CompilationResult};
-use crate::compilation::CompilationContext;
+use crate::{
+    compilation::CompilationContext,
+    keywords::{exclusive_maximum, maximum, CompilationResult},
+};
 use serde_json::{Map, Value};
 
 #[inline]

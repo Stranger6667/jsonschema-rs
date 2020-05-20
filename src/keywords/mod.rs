@@ -34,26 +34,7 @@ pub mod ref_;
 pub mod required;
 pub mod type_;
 pub mod unique_items;
-use crate::{compilation::JSONSchema, error, error::ErrorIterator};
-use serde_json::Value;
-use std::fmt::{Debug, Error, Formatter};
-
-pub trait Validate: Send + Sync {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a>;
-    // The same as above, but does not construct ErrorIterator.
-    // It is faster for cases when the result is not needed (like anyOf), since errors are
-    // not constructed
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool;
-    fn name(&self) -> String {
-        "<validator>".to_string()
-    }
-}
-
-impl Debug for dyn Validate + Send + Sync {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        f.write_str(&self.name())
-    }
-}
+use crate::{error, validator::Validate};
 
 pub type CompilationResult = Result<BoxedValidator, error::CompilationError>;
 pub type BoxedValidator = Box<dyn Validate + Send + Sync>;
@@ -100,7 +81,7 @@ fn format_key_value_validators(validators: &[(String, Validators)]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::JSONSchema;
+    use crate::compilation::JSONSchema;
     use serde_json::{json, Value};
     use test_case::test_case;
 

@@ -1,8 +1,9 @@
 //! Validator for `format` keyword.
-use super::{CompilationResult, Validate};
 use crate::{
     compilation::{CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    keywords::CompilationResult,
+    validator::Validate,
 };
 use chrono::{DateTime, NaiveDate};
 use regex::Regex;
@@ -298,7 +299,7 @@ pub fn compile(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::compilation::JSONSchema;
     use serde_json::json;
 
     #[test]

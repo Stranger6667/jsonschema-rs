@@ -1,7 +1,8 @@
-use super::{CompilationResult, Validate};
 use crate::{
     compilation::{CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    keywords::CompilationResult,
+    validator::Validate,
 };
 use num_cmp::NumCmp;
 use serde_json::{Map, Value};

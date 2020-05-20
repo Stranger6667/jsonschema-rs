@@ -57,6 +57,7 @@ mod keywords;
 mod primitive_type;
 mod resolver;
 mod schemas;
+mod validator;
 pub use compilation::JSONSchema;
 pub use error::{CompilationError, ErrorIterator, ValidationError};
 pub use schemas::Draft;

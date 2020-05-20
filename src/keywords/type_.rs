@@ -1,8 +1,9 @@
-use super::{CompilationResult, Validate};
 use crate::{
     compilation::{CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    keywords::CompilationResult,
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
+    validator::Validate,
 };
 use serde_json::{Map, Number, Value};
 use std::convert::TryFrom;
