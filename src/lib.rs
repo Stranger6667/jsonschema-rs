@@ -27,6 +27,13 @@
 //! }
 //!
 //! ```
+#![warn(
+    clippy::doc_markdown,
+    clippy::redundant_closure,
+    clippy::explicit_iter_loop,
+    clippy::match_same_arms,
+    clippy::needless_borrow
+)]
 mod compilation;
 mod error;
 mod keywords;

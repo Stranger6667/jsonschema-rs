@@ -128,13 +128,13 @@ pub(crate) fn compile(
     context: &CompilationContext,
 ) -> Option<CompilationResult> {
     match schema {
-        Value::Array(items) => Some(ItemsArrayValidator::compile(&items, &context)),
-        Value::Object(_) => Some(ItemsObjectValidator::compile(schema, &context)),
+        Value::Array(items) => Some(ItemsArrayValidator::compile(items, context)),
+        Value::Object(_) => Some(ItemsObjectValidator::compile(schema, context)),
         Value::Bool(value) => {
             if *value {
                 Some(TrueValidator::compile())
             } else {
-                Some(ItemsObjectValidator::compile(schema, &context))
+                Some(ItemsObjectValidator::compile(schema, context))
             }
         }
         _ => None,
