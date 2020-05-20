@@ -1,9 +1,11 @@
 use super::{CompilationResult, Validate};
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, PrimitiveType, ValidationError},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    primitive_type::PrimitiveType,
 };
 use serde_json::{Map, Number, Value};
+use std::convert::TryFrom;
 
 pub struct MultipleTypesValidator {
     types: Vec<PrimitiveType>,
@@ -15,16 +17,13 @@ impl MultipleTypesValidator {
         let mut types = Vec::with_capacity(items.len());
         for item in items {
             match item {
-                Value::String(string) => match string.as_str() {
-                    "integer" => types.push(PrimitiveType::Integer),
-                    "null" => types.push(PrimitiveType::Null),
-                    "boolean" => types.push(PrimitiveType::Boolean),
-                    "string" => types.push(PrimitiveType::String),
-                    "array" => types.push(PrimitiveType::Array),
-                    "object" => types.push(PrimitiveType::Object),
-                    "number" => types.push(PrimitiveType::Number),
-                    _ => return Err(CompilationError::SchemaError),
-                },
+                Value::String(string) => {
+                    if let Ok(primitive_type) = PrimitiveType::try_from(string.as_str()) {
+                        types.push(primitive_type)
+                    } else {
+                        return Err(CompilationError::SchemaError);
+                    }
+                }
                 _ => return Err(CompilationError::SchemaError),
             }
         }
@@ -308,14 +307,14 @@ pub fn compile(
 }
 
 fn compile_single_type(item: &str) -> Option<CompilationResult> {
-    match item {
-        "integer" => Some(IntegerTypeValidator::compile()),
-        "null" => Some(NullTypeValidator::compile()),
-        "boolean" => Some(BooleanTypeValidator::compile()),
-        "string" => Some(StringTypeValidator::compile()),
-        "array" => Some(ArrayTypeValidator::compile()),
-        "object" => Some(ObjectTypeValidator::compile()),
-        "number" => Some(NumberTypeValidator::compile()),
-        _ => Some(Err(CompilationError::SchemaError)),
+    match PrimitiveType::try_from(item) {
+        Ok(PrimitiveType::Array) => Some(ArrayTypeValidator::compile()),
+        Ok(PrimitiveType::Boolean) => Some(BooleanTypeValidator::compile()),
+        Ok(PrimitiveType::Integer) => Some(IntegerTypeValidator::compile()),
+        Ok(PrimitiveType::Null) => Some(NullTypeValidator::compile()),
+        Ok(PrimitiveType::Number) => Some(NumberTypeValidator::compile()),
+        Ok(PrimitiveType::Object) => Some(ObjectTypeValidator::compile()),
+        Ok(PrimitiveType::String) => Some(StringTypeValidator::compile()),
+        Err(()) => Some(Err(CompilationError::SchemaError)),
     }
 }

@@ -1,3 +1,4 @@
+use crate::primitive_type::PrimitiveType;
 use serde_json::Value;
 use std::{
     borrow::Cow,
@@ -125,33 +126,6 @@ pub enum ValidationErrorKind {
     UniqueItems,
     /// Reference contains unknown scheme.
     UnknownReferenceScheme { scheme: String },
-}
-
-/// For faster error handling in "type" keyword validator we have this enum, to match
-/// with it instead of a string.
-#[derive(Debug, Clone)]
-pub enum PrimitiveType {
-    Integer,
-    Null,
-    Boolean,
-    String,
-    Array,
-    Object,
-    Number,
-}
-
-impl fmt::Display for PrimitiveType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        match self {
-            PrimitiveType::Integer => write!(f, "integer"),
-            PrimitiveType::Null => write!(f, "null"),
-            PrimitiveType::Boolean => write!(f, "boolean"),
-            PrimitiveType::String => write!(f, "string"),
-            PrimitiveType::Array => write!(f, "array"),
-            PrimitiveType::Object => write!(f, "object"),
-            PrimitiveType::Number => write!(f, "number"),
-        }
-    }
 }
 
 #[derive(Debug)]
