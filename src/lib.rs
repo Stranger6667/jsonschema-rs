@@ -32,7 +32,8 @@
     clippy::redundant_closure,
     clippy::explicit_iter_loop,
     clippy::match_same_arms,
-    clippy::needless_borrow
+    clippy::needless_borrow,
+    clippy::redundant_pub_crate
 )]
 mod compilation;
 mod error;

@@ -391,7 +391,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
+pub fn compile(
     parent: &Map<String, Value>,
     schema: &Value,
     context: &CompilationContext,

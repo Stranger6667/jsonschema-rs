@@ -42,11 +42,11 @@ pub struct ValidationError<'a> {
 pub type ErrorIterator<'a> = Box<dyn Iterator<Item = ValidationError<'a>> + Sync + Send + 'a>;
 
 // Empty iterator means no error happened
-pub(crate) fn no_error<'a>() -> ErrorIterator<'a> {
+pub fn no_error<'a>() -> ErrorIterator<'a> {
     Box::new(empty())
 }
 // A wrapper for one error
-pub(crate) fn error(instance: ValidationError) -> ErrorIterator {
+pub fn error(instance: ValidationError) -> ErrorIterator {
     Box::new(once(instance))
 }
 

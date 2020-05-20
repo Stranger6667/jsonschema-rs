@@ -85,7 +85,7 @@ fn replace_control_group(captures: &Captures) -> String {
 }
 
 #[inline]
-pub(crate) fn compile(
+pub fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     _: &CompilationContext,

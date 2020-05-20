@@ -12,7 +12,7 @@ use serde_json::Value;
 use std::borrow::Cow;
 use url::{ParseError, Url};
 
-pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
+pub const DEFAULT_ROOT_URL: &str = "json-schema:///";
 
 // Stores validators tree and runs validation on input documents
 pub struct JSONSchema<'a> {
@@ -23,7 +23,7 @@ pub struct JSONSchema<'a> {
 }
 
 lazy_static! {
-    pub(crate) static ref DEFAULT_SCOPE: Url = url::Url::parse(DEFAULT_ROOT_URL).unwrap();
+    pub static ref DEFAULT_SCOPE: Url = url::Url::parse(DEFAULT_ROOT_URL).unwrap();
 }
 
 impl<'a> JSONSchema<'a> {
@@ -129,7 +129,7 @@ impl<'a> CompilationContext<'a> {
 
 /// Compile JSON schema into a tree of validators.
 #[inline]
-pub(crate) fn compile_validators(
+pub fn compile_validators(
     schema: &Value,
     context: &CompilationContext,
 ) -> Result<Validators, CompilationError> {

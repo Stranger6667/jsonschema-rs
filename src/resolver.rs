@@ -9,7 +9,7 @@ use serde_json::Value;
 use std::{borrow::Cow, collections::HashMap};
 use url::Url;
 
-pub(crate) struct Resolver<'a> {
+pub struct Resolver<'a> {
     // canonical_id: sub-schema mapping to resolve documents by their ID
     // canonical_id is composed with the root document id
     // (if not specified, then `DEFAULT_ROOT_URL` is used for this purpose)
@@ -109,7 +109,7 @@ impl<'a> Resolver<'a> {
 
 /// Find all sub-schemas in the document and execute callback on each of them.
 #[inline]
-pub(crate) fn find_schemas<'a, F>(
+pub fn find_schemas<'a, F>(
     draft: Draft,
     schema: &'a Value,
     base_url: &Url,

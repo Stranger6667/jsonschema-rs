@@ -285,7 +285,7 @@ fn is_integer(num: &Number) -> bool {
 }
 
 #[inline]
-pub(crate) fn compile(
+pub fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     _: &CompilationContext,
