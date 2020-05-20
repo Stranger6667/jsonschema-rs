@@ -36,7 +36,11 @@ impl OneOfValidator {
         first_valid_idx
     }
 
+    #[allow(clippy::integer_arithmetic)]
     fn are_others_valid(&self, schema: &JSONSchema, instance: &Value, idx: usize) -> bool {
+        // `idx + 1` will not overflow, because the maximum possible value there is `usize::MAX - 1`
+        // For example we have `usize::MAX` schemas and only the last one is valid, then
+        // in `get_first_valid` we enumerate from `0`, and on the last index will be `usize::MAX - 1`
         for validators in self.schemas.iter().skip(idx + 1) {
             if validators
                 .iter()

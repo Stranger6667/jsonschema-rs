@@ -72,13 +72,15 @@ fn convert_regex(pattern: &str) -> Result<Regex, regex::Error> {
     )
 }
 
+#[allow(clippy::integer_arithmetic)]
 fn replace_control_group(captures: &Captures) -> String {
+    // There will be no overflow, because the minimum value is 65 (char 'A')
     ((captures
         .index(0)
         .trim_start_matches(r"\c")
         .chars()
         .next()
-        .unwrap()
+        .expect("This is always present because of the regex rule. It has [A-Za-z] next")
         .to_ascii_uppercase() as u8
         - 64) as char)
         .to_string()
