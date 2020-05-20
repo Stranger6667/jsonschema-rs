@@ -9,7 +9,7 @@ use serde_json::{Map, Value};
 use std::ops::Index;
 
 lazy_static! {
-    static ref CONTROL_GROUPS_RE: Regex = Regex::new(r"\\c[A-Za-z]").unwrap();
+    static ref CONTROL_GROUPS_RE: Regex = Regex::new(r"\\c[A-Za-z]").expect("Is a valid regex");
 }
 
 pub struct PatternValidator {

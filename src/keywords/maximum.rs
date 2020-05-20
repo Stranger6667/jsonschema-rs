@@ -13,7 +13,7 @@ impl MaximumValidator {
     #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Value::Number(limit) = schema {
-            let limit = limit.as_f64().unwrap();
+            let limit = limit.as_f64().expect("Always valid");
             return Ok(Box::new(MaximumValidator { limit }));
         }
         Err(CompilationError::SchemaError)
@@ -23,7 +23,7 @@ impl MaximumValidator {
 impl Validate for MaximumValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Number(item) = instance {
-            let item = item.as_f64().unwrap();
+            let item = item.as_f64().expect("Always valid");
             if item > self.limit {
                 return error(ValidationError::maximum(instance, self.limit));
             }
@@ -33,7 +33,7 @@ impl Validate for MaximumValidator {
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::Number(item) = instance {
-            let item = item.as_f64().unwrap();
+            let item = item.as_f64().expect("Always valid");
             if item > self.limit {
                 return false;
             }

@@ -23,7 +23,7 @@ pub struct JSONSchema<'a> {
 }
 
 lazy_static! {
-    pub static ref DEFAULT_SCOPE: Url = url::Url::parse(DEFAULT_ROOT_URL).unwrap();
+    pub static ref DEFAULT_SCOPE: Url = url::Url::parse(DEFAULT_ROOT_URL).expect("Is a valid URL");
 }
 
 impl<'a> JSONSchema<'a> {
