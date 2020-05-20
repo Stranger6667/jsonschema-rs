@@ -132,10 +132,9 @@ pub fn draft_from_url(url: &str) -> Option<Draft> {
 #[inline]
 pub fn draft_from_schema(schema: &Value) -> Option<Draft> {
     schema
-        .as_object()
-        .and_then(|x| x.get("$schema"))
+        .get("$schema")
         .and_then(Value::as_str)
-        .and_then(|x| draft_from_url(x))
+        .and_then(draft_from_url)
 }
 
 #[inline]
