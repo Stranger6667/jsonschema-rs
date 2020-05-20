@@ -24,7 +24,7 @@ impl<'a> Resolver<'a> {
     ) -> Result<Resolver<'a>, CompilationError> {
         let mut schemas = HashMap::new();
         // traverse the schema and store all named ones under their canonical ids
-        find_schemas(draft, schema, &scope, &mut |id, schema| {
+        find_schemas(draft, schema, scope, &mut |id, schema| {
             schemas.insert(id, schema);
             None
         })?;
@@ -38,7 +38,7 @@ impl<'a> Resolver<'a> {
     ///   - document from a remote location;
     fn resolve_url(&self, url: &Url, schema: &'a Value) -> Result<Cow<'a, Value>, ValidationError> {
         match url.as_str() {
-            DEFAULT_ROOT_URL => Ok(Cow::Borrowed(&schema)),
+            DEFAULT_ROOT_URL => Ok(Cow::Borrowed(schema)),
             url_str => match self.schemas.get(url_str) {
                 Some(value) => Ok(Cow::Borrowed(value)),
                 None => match url.scheme() {

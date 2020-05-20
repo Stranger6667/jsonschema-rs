@@ -39,7 +39,7 @@ impl<'a> JSONSchema<'a> {
             schemas::draft_from_schema(schema).unwrap_or(schemas::Draft::Draft7)
         });
         let scope = match schemas::id_of(draft, schema) {
-            Some(url) => url::Url::parse(&url)?,
+            Some(url) => url::Url::parse(url)?,
             None => DEFAULT_SCOPE.clone(),
         };
         let resolver = Resolver::new(draft, &scope, schema)?;

@@ -69,5 +69,5 @@ pub(crate) fn compile(
     reference: &str,
     context: &CompilationContext,
 ) -> Option<CompilationResult> {
-    Some(RefValidator::compile(reference, &context))
+    Some(RefValidator::compile(reference, context))
 }
