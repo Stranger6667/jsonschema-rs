@@ -9,7 +9,7 @@ pub struct ExclusiveMaximumValidator {
     limit: f64,
 }
 
-impl<'a> ExclusiveMaximumValidator {
+impl ExclusiveMaximumValidator {
     #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Value::Number(limit) = schema {
