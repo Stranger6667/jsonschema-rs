@@ -416,7 +416,7 @@ impl<'a> fmt::Display for ValidationError<'a> {
                 let extras: Vec<&Value> = self
                     .instance
                     .as_array()
-                    .unwrap()
+                    .expect("Always valid")
                     .iter()
                     .skip(*limit)
                     .collect();

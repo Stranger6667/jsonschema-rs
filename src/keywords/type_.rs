@@ -281,7 +281,7 @@ impl Validate for IntegerTypeValidator {
 }
 
 fn is_integer(num: &Number) -> bool {
-    num.is_u64() || num.is_i64() || num.as_f64().unwrap().fract() == 0.
+    num.is_u64() || num.is_i64() || num.as_f64().expect("Always valid").fract() == 0.
 }
 
 #[inline]
