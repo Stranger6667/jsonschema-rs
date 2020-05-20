@@ -9,7 +9,7 @@ pub struct MinLengthValidator {
     limit: usize,
 }
 
-impl<'a> MinLengthValidator {
+impl MinLengthValidator {
     #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Value::Number(limit) = schema {

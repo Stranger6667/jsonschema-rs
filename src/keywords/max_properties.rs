@@ -9,7 +9,7 @@ pub struct MaxPropertiesValidator {
     limit: usize,
 }
 
-impl<'a> MaxPropertiesValidator {
+impl MaxPropertiesValidator {
     #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Value::Number(limit) = schema {
