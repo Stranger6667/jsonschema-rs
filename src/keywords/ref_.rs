@@ -1,8 +1,8 @@
-use super::{CompilationResult, Validate};
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
     error::{error, ErrorIterator, ValidationError},
-    keywords::Validators,
+    keywords::{CompilationResult, Validators},
+    validator::Validate,
 };
 use parking_lot::RwLock;
 use serde_json::Value;

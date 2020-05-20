@@ -1,8 +1,8 @@
-use super::{CompilationResult, Validate, Validators};
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::format_validators,
+    keywords::{format_validators, CompilationResult, Validators},
+    validator::Validate,
 };
 use serde_json::{Map, Value};
 use std::borrow::Borrow;

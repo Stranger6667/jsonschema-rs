@@ -1,8 +1,9 @@
 //! Validators for `contentMediaType` and `contentEncoding` keywords.
-use super::{CompilationResult, ErrorIterator, Validate};
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ValidationError},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    keywords::CompilationResult,
+    validator::Validate,
 };
 use serde_json::{from_str, Map, Value};
 

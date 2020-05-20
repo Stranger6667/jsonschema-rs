@@ -1,7 +1,7 @@
-use super::super::{type_, CompilationResult, Validate};
 use crate::{
     compilation::{CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    keywords::{type_, CompilationResult, Validate},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
 };
 use serde_json::{Map, Number, Value};
