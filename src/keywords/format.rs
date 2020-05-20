@@ -4,138 +4,263 @@ use crate::{
     compilation::{CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
 };
+use chrono::{DateTime, NaiveDate};
+use regex::Regex;
 use serde_json::{Map, Value};
+use std::{net::IpAddr, str::FromStr};
+use url::Url;
 
-pub struct FormatValidator {
-    format: &'static str,
-    check: fn(&str) -> bool,
+lazy_static! {
+    static ref IRI_REFERENCE_RE: Regex =
+        Regex::new(r"^(\w+:(/?/?))?[^#\\\s]*(#[^\\\s]*)?\z").unwrap();
+    static ref JSON_POINTER_RE: Regex = Regex::new(r"^(/(([^/~])|(~[01]))*)*\z").unwrap();
+    static ref RELATIVE_JSON_POINTER_RE: Regex =
+        Regex::new(r"^(?:0|[1-9][0-9]*)(?:#|(?:/(?:[^~/]|~0|~1)*)*)\z").unwrap();
+    static ref TIME_RE: Regex =
+        Regex::new(
+        r"^([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])(\.[0-9]{6})?(([Zz])|([+|\-]([01][0-9]|2[0-3]):[0-5][0-9]))\z",
+    ).unwrap();
+    static ref URI_REFERENCE_RE: Regex =
+        Regex::new(r"^(\w+:(/?/?))?[^#\\\s]*(#[^\\\s]*)?\z").unwrap();
+    static ref URI_TEMPLATE_RE: Regex = Regex::new(
+        r#"^(?:(?:[^\x00-\x20"'<>%\\^`{|}]|%[0-9a-f]{2})|\{[+#./;?&=,!@|]?(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?(?:,(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?)*})*\z"#
+    )
+    .unwrap();
 }
 
-impl FormatValidator {
-    #[inline]
-    pub(crate) fn compile(format: &'static str, check: fn(&str) -> bool) -> CompilationResult {
-        Ok(Box::new(FormatValidator { format, check }))
-    }
-}
+macro_rules! format_validator {
+    ($name:ident) => {
+        struct $name {}
 
-impl Validate for FormatValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::String(item) = instance {
-            if !(self.check)(item) {
-                return error(ValidationError::format(instance, self.format));
+        impl $name {
+            pub(crate) fn compile() -> CompilationResult {
+                Ok(Box::new($name {}))
             }
         }
-        no_error()
-    }
+    };
+}
 
+macro_rules! validate {
+    ($format:expr) => {
+        fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+            if let Value::String(_item) = instance {
+                if !self.is_valid(schema, instance) {
+                    return error(ValidationError::format(instance, $format));
+                }
+            }
+            no_error()
+        }
+
+        fn name(&self) -> String {
+            concat!("<format: ", $format, ">").to_string()
+        }
+    };
+}
+
+format_validator!(DateValidator);
+impl Validate for DateValidator {
+    validate!("date");
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            return (self.check)(item);
+            return NaiveDate::parse_from_str(item, "%Y-%m-%d").is_ok();
         }
         true
     }
-
-    fn name(&self) -> String {
-        format!("<format: {}>", self.format)
+}
+format_validator!(DateTimeValidator);
+impl Validate for DateTimeValidator {
+    validate!("date-time");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            return DateTime::parse_from_rfc3339(item).is_ok();
+        }
+        true
+    }
+}
+format_validator!(EmailValidator);
+impl Validate for EmailValidator {
+    validate!("email");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            return item.contains('@');
+        }
+        true
+    }
+}
+format_validator!(IDNEmailValidator);
+impl Validate for IDNEmailValidator {
+    validate!("idn-email");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            return item.contains('@');
+        }
+        true
+    }
+}
+format_validator!(HostnameValidator);
+impl Validate for HostnameValidator {
+    validate!("hostname");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            return !(item.ends_with('-')
+                || item.starts_with('-')
+                || item.is_empty()
+                || item.chars().count() > 255
+                || item
+                    .chars()
+                    .any(|c| !(c.is_alphanumeric() || c == '-' || c == '.'))
+                || item.split('.').any(|part| part.chars().count() > 63));
+        }
+        true
+    }
+}
+format_validator!(IDNHostnameValidator);
+impl Validate for IDNHostnameValidator {
+    validate!("idn-hostname");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            return !(item.ends_with('-')
+                || item.starts_with('-')
+                || item.is_empty()
+                || item.chars().count() > 255
+                || item
+                    .chars()
+                    .any(|c| !(c.is_alphanumeric() || c == '-' || c == '.'))
+                || item.split('.').any(|part| part.chars().count() > 63));
+        }
+        true
+    }
+}
+format_validator!(IpV4Validator);
+impl Validate for IpV4Validator {
+    validate!("ipv4");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            return match IpAddr::from_str(item.as_str()) {
+                Ok(i) => match i {
+                    IpAddr::V4(_) => true,
+                    IpAddr::V6(_) => false,
+                },
+                Err(_) => false,
+            };
+        }
+        true
     }
 }
 
-mod checks {
-    use chrono::{DateTime, NaiveDate};
-    use regex::Regex;
-    use std::{net::IpAddr, str::FromStr};
-    use url::Url;
-    lazy_static! {
-        static ref IRI_REFERENCE_RE: Regex =
-            Regex::new(r"^(\w+:(/?/?))?[^#\\\s]*(#[^\\\s]*)?\z").unwrap();
-        static ref JSON_POINTER_RE: Regex = Regex::new(r"^(/(([^/~])|(~[01]))*)*\z").unwrap();
-        static ref RELATIVE_JSON_POINTER_RE: Regex =
-            Regex::new(r"^(?:0|[1-9][0-9]*)(?:#|(?:/(?:[^~/]|~0|~1)*)*)\z").unwrap();
-        static ref TIME_RE: Regex =
-            Regex::new(
-            r"^([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])(\.[0-9]{6})?(([Zz])|([+|\-]([01][0-9]|2[0-3]):[0-5][0-9]))\z",
-        ).unwrap();
-        static ref URI_REFERENCE_RE: Regex =
-            Regex::new(r"^(\w+:(/?/?))?[^#\\\s]*(#[^\\\s]*)?\z").unwrap();
-        static ref URI_TEMPLATE_RE: Regex = Regex::new(
-            r#"^(?:(?:[^\x00-\x20"'<>%\\^`{|}]|%[0-9a-f]{2})|\{[+#./;?&=,!@|]?(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?(?:,(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?)*})*\z"#
-        )
-        .unwrap();
+format_validator!(IpV6Validator);
+impl Validate for IpV6Validator {
+    validate!("ipv6");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            return match IpAddr::from_str(item.as_str()) {
+                Ok(i) => match i {
+                    IpAddr::V4(_) => false,
+                    IpAddr::V6(_) => true,
+                },
+                Err(_) => false,
+            };
+        }
+        true
     }
-
-    pub(crate) fn date(instance: &str) -> bool {
-        NaiveDate::parse_from_str(instance, "%Y-%m-%d").is_ok()
-    }
-
-    pub(crate) fn datetime(instance: &str) -> bool {
-        DateTime::parse_from_rfc3339(instance).is_ok()
-    }
-
-    pub(crate) fn email(instance: &str) -> bool {
-        instance.contains('@')
-    }
-
-    pub(crate) fn hostname(instance: &str) -> bool {
-        !(instance.ends_with('-')
-            || instance.starts_with('-')
-            || instance.is_empty()
-            || instance.chars().count() > 255
-            || instance
-                .chars()
-                .any(|c| !(c.is_alphanumeric() || c == '-' || c == '.'))
-            || instance.split('.').any(|part| part.chars().count() > 63))
-    }
-
-    pub(crate) fn ipv4(instance: &str) -> bool {
-        match IpAddr::from_str(instance) {
-            Ok(i) => match i {
-                IpAddr::V4(_) => true,
-                IpAddr::V6(_) => false,
-            },
-            Err(_) => false,
+}
+format_validator!(IRIValidator);
+impl Validate for IRIValidator {
+    validate!("iri");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            Url::from_str(item).is_ok()
+        } else {
+            true
         }
     }
-
-    pub(crate) fn ipv6(instance: &str) -> bool {
-        match IpAddr::from_str(instance) {
-            Ok(i) => match i {
-                IpAddr::V4(_) => false,
-                IpAddr::V6(_) => true,
-            },
-            Err(_) => false,
+}
+format_validator!(URIValidator);
+impl Validate for URIValidator {
+    validate!("uri");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            Url::from_str(item).is_ok()
+        } else {
+            true
         }
     }
-
-    pub(crate) fn iri(instance: &str) -> bool {
-        Url::from_str(instance).is_ok()
+}
+format_validator!(IRIReferenceValidator);
+impl Validate for IRIReferenceValidator {
+    validate!("iri-reference");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            IRI_REFERENCE_RE.is_match(item)
+        } else {
+            true
+        }
     }
-
-    pub(crate) fn iri_reference(instance: &str) -> bool {
-        IRI_REFERENCE_RE.is_match(instance)
+}
+format_validator!(JSONPointerValidator);
+impl Validate for JSONPointerValidator {
+    validate!("json-pointer");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            JSON_POINTER_RE.is_match(item)
+        } else {
+            true
+        }
     }
-
-    pub(crate) fn json_pointer(instance: &str) -> bool {
-        JSON_POINTER_RE.is_match(instance)
+}
+format_validator!(RegexValidator);
+impl Validate for RegexValidator {
+    validate!("regex");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            Regex::new(item).is_ok()
+        } else {
+            true
+        }
     }
-
-    pub(crate) fn regex(instance: &str) -> bool {
-        Regex::new(instance).is_ok()
+}
+format_validator!(RelativeJSONPointerValidator);
+impl Validate for RelativeJSONPointerValidator {
+    validate!("relative-json-pointer");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            RELATIVE_JSON_POINTER_RE.is_match(item)
+        } else {
+            true
+        }
     }
-
-    pub(crate) fn relative_json_pointer(instance: &str) -> bool {
-        RELATIVE_JSON_POINTER_RE.is_match(instance)
+}
+format_validator!(TimeValidator);
+impl Validate for TimeValidator {
+    validate!("time");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            TIME_RE.is_match(item)
+        } else {
+            true
+        }
     }
-
-    pub(crate) fn time(instance: &str) -> bool {
-        TIME_RE.is_match(instance)
+}
+format_validator!(URIReferenceValidator);
+impl Validate for URIReferenceValidator {
+    validate!("uri-reference");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            URI_REFERENCE_RE.is_match(item)
+        } else {
+            true
+        }
     }
-
-    pub(crate) fn uri_reference(instance: &str) -> bool {
-        URI_REFERENCE_RE.is_match(instance)
-    }
-
-    pub(crate) fn uri_template(instance: &str) -> bool {
-        URI_TEMPLATE_RE.is_match(instance)
+}
+format_validator!(URITemplateValidator);
+impl Validate for URITemplateValidator {
+    validate!("uri-template");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            URI_TEMPLATE_RE.is_match(item)
+        } else {
+            true
+        }
     }
 }
 
@@ -147,38 +272,23 @@ pub(crate) fn compile(
 ) -> Option<CompilationResult> {
     if let Value::String(format) = schema {
         match format.as_str() {
-            "date" => Some(FormatValidator::compile("date", checks::date)),
-            "date-time" => Some(FormatValidator::compile("date-time", checks::datetime)),
-            "email" => Some(FormatValidator::compile("email", checks::email)),
-            "hostname" => Some(FormatValidator::compile("hostname", checks::hostname)),
-            "idn-email" => Some(FormatValidator::compile("idn-email", checks::email)),
-            "idn-hostname" => Some(FormatValidator::compile("idn-hostname", checks::hostname)),
-            "ipv4" => Some(FormatValidator::compile("ipv4", checks::ipv4)),
-            "ipv6" => Some(FormatValidator::compile("ipv6", checks::ipv6)),
-            "iri" => Some(FormatValidator::compile("iri", checks::iri)),
-            "iri-reference" => Some(FormatValidator::compile(
-                "iri-reference",
-                checks::iri_reference,
-            )),
-            "json-pointer" => Some(FormatValidator::compile(
-                "json-pointer",
-                checks::json_pointer,
-            )),
-            "regex" => Some(FormatValidator::compile("regex", checks::regex)),
-            "relative-json-pointer" => Some(FormatValidator::compile(
-                "relative-json-pointer",
-                checks::relative_json_pointer,
-            )),
-            "time" => Some(FormatValidator::compile("time", checks::time)),
-            "uri" => Some(FormatValidator::compile("uri", checks::iri)),
-            "uri-reference" => Some(FormatValidator::compile(
-                "uri-reference",
-                checks::uri_reference,
-            )),
-            "uri-template" => Some(FormatValidator::compile(
-                "uri-template",
-                checks::uri_template,
-            )),
+            "date" => Some(DateValidator::compile()),
+            "date-time" => Some(DateTimeValidator::compile()),
+            "email" => Some(EmailValidator::compile()),
+            "hostname" => Some(HostnameValidator::compile()),
+            "idn-email" => Some(IDNEmailValidator::compile()),
+            "idn-hostname" => Some(IDNHostnameValidator::compile()),
+            "ipv4" => Some(IpV4Validator::compile()),
+            "ipv6" => Some(IpV6Validator::compile()),
+            "iri" => Some(IRIValidator::compile()),
+            "iri-reference" => Some(IRIReferenceValidator::compile()),
+            "json-pointer" => Some(JSONPointerValidator::compile()),
+            "regex" => Some(RegexValidator::compile()),
+            "relative-json-pointer" => Some(RelativeJSONPointerValidator::compile()),
+            "time" => Some(TimeValidator::compile()),
+            "uri" => Some(URIValidator::compile()),
+            "uri-reference" => Some(URIReferenceValidator::compile()),
+            "uri-template" => Some(URITemplateValidator::compile()),
             _ => None,
         }
     } else {
