@@ -103,21 +103,20 @@ impl<'a> CompilationContext<'a> {
     /// In other words it keeps track of sub-folders during compilation.
     #[inline]
     pub(crate) fn push(&'a self, schema: &Value) -> Self {
-        match schemas::id_of(self.draft, schema) {
-            Some(id) => {
-                let scope = Url::options()
-                    .base_url(Some(&self.scope))
-                    .parse(id)
-                    .unwrap();
-                CompilationContext {
-                    scope: Cow::Owned(scope),
-                    draft: self.draft,
-                }
+        if let Some(id) = schemas::id_of(self.draft, schema) {
+            let scope = Url::options()
+                .base_url(Some(&self.scope))
+                .parse(id)
+                .unwrap();
+            CompilationContext {
+                scope: Cow::Owned(scope),
+                draft: self.draft,
             }
-            None => CompilationContext {
+        } else {
+            CompilationContext {
                 scope: Cow::Borrowed(self.scope.as_ref()),
                 draft: self.draft,
-            },
+            }
         }
     }
 
