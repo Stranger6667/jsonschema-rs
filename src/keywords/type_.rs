@@ -1,3 +1,4 @@
+/// Docs: https://tools.ietf.org/html/draft-handrews-json-schema-validation-01#section-6.1.1
 use crate::{
     compilation::{CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
@@ -8,6 +9,8 @@ use crate::{
 use serde_json::{Map, Value};
 use std::convert::TryFrom;
 
+/// The value of this keyword MUST be either a string or an array.
+/// If it is an array, elements of the array MUST be strings and MUST be unique.
 pub struct MultipleTypesValidator {
     types: PrimitiveTypesBitMap,
 }
@@ -17,6 +20,8 @@ impl MultipleTypesValidator {
     pub(crate) fn compile(items: &[Value]) -> CompilationResult {
         let mut types = PrimitiveTypesBitMap::new();
         for item in items {
+            // String values MUST be one of the six primitive types ("null", "boolean", "object",
+            // "array", "number", or "string"), or "integer" which matches any number with a zero fractional part.
             match item {
                 Value::String(string) => {
                     if let Ok(primitive_type) = PrimitiveType::try_from(string.as_str()) {
@@ -32,6 +37,7 @@ impl MultipleTypesValidator {
     }
 }
 
+/// An instance validates if and only if the instance is in any of the sets listed for this keyword.
 impl Validate for MultipleTypesValidator {
     #[inline]
     fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {

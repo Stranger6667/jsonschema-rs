@@ -1,3 +1,4 @@
+/// Docs: https://tools.ietf.org/html/draft-handrews-json-schema-validation-01#section-6.1.2
 use crate::{
     compilation::{CompilationContext, JSONSchema},
     error::{CompilationError, ValidationError},
@@ -7,6 +8,9 @@ use crate::{
 use serde_json::{Map, Value};
 use std::f64::EPSILON;
 
+/// The value of this keyword MUST be an array. This array SHOULD have at least one element.
+/// Elements in the array SHOULD be unique.
+/// Elements in the array might be of any value, including null.
 #[derive(Debug)]
 pub struct EnumValidator {
     options: Value,
@@ -26,6 +30,8 @@ impl EnumValidator {
     }
 }
 
+/// An instance validates successfully against this keyword if its value is equal to one of
+/// the elements in this keyword's array value.
 impl Validate for EnumValidator {
     #[inline]
     fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {

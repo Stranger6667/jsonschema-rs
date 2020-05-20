@@ -1,3 +1,4 @@
+/// Docs: https://tools.ietf.org/html/draft-handrews-json-schema-validation-01#section-6.1.3
 use crate::{
     compilation::{CompilationContext, JSONSchema},
     error::{error, ErrorIterator, ValidationError},
@@ -7,6 +8,7 @@ use crate::{
 use serde_json::{Map, Number, Value};
 use std::f64::EPSILON;
 
+/// The value of this keyword MAY be of any type, including null.
 struct ConstArrayValidator {
     value: Vec<Value>,
 }
@@ -18,6 +20,7 @@ impl ConstArrayValidator {
         }))
     }
 }
+/// An instance validates successfully against this keyword if its value is equal to the value of the keyword.
 impl Validate for ConstArrayValidator {
     #[inline]
     fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
