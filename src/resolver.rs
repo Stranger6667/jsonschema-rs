@@ -43,8 +43,8 @@ impl<'a> Resolver<'a> {
                 Some(value) => Ok(Cow::Borrowed(value)),
                 None => match url.scheme() {
                     "http" | "https" => {
-                        let response = reqwest::blocking::get(url.as_str()).unwrap();
-                        let document: Value = response.json().unwrap();
+                        let response = reqwest::blocking::get(url.as_str())?;
+                        let document: Value = response.json()?;
                         Ok(Cow::Owned(document))
                     }
                     scheme => Err(ValidationError::unknown_reference_scheme(scheme.to_owned())),
@@ -60,9 +60,8 @@ impl<'a> Resolver<'a> {
     ) -> Result<(Url, Cow<'a, Value>), ValidationError> {
         let mut resource = url.clone();
         resource.set_fragment(None);
-        let fragment = percent_encoding::percent_decode_str(url.fragment().unwrap_or(""))
-            .decode_utf8()
-            .unwrap();
+        let fragment =
+            percent_encoding::percent_decode_str(url.fragment().unwrap_or("")).decode_utf8()?;
 
         // Location-independent identifiers are searched before trying to resolve by
         // fragment-less url
@@ -72,9 +71,7 @@ impl<'a> Resolver<'a> {
             } else {
                 None
             }
-        })
-        .unwrap()
-        {
+        })? {
             return Ok((resource, Cow::Borrowed(x)));
         }
 
@@ -83,28 +80,25 @@ impl<'a> Resolver<'a> {
         match self.resolve_url(&resource, schema)? {
             Cow::Borrowed(document) => match pointer(draft, document, fragment.as_ref()) {
                 Some((folders, resolved)) => {
-                    if folders.len() > 1 {
-                        for i in folders.iter().skip(1) {
-                            resource = resource.join(i).unwrap();
-                        }
-                    }
-                    Ok((resource, Cow::Borrowed(resolved)))
+                    Ok((join_folders(resource, folders)?, Cow::Borrowed(resolved)))
                 }
                 None => Err(ValidationError::invalid_reference(url.as_str().to_string())),
             },
             Cow::Owned(document) => match pointer(draft, &document, fragment.as_ref()) {
-                Some((folders, x)) => {
-                    if folders.len() > 1 {
-                        for i in folders.iter().skip(1) {
-                            resource = resource.join(i).unwrap();
-                        }
-                    }
-                    Ok((resource, Cow::Owned(x.clone())))
-                }
+                Some((folders, x)) => Ok((join_folders(resource, folders)?, Cow::Owned(x.clone()))),
                 None => Err(ValidationError::invalid_reference(url.as_str().to_string())),
             },
         }
     }
+}
+
+fn join_folders(mut resource: Url, folders: Vec<&str>) -> Result<Url, url::ParseError> {
+    if folders.len() > 1 {
+        for i in folders.iter().skip(1) {
+            resource = resource.join(i)?;
+        }
+    }
+    Ok(resource)
 }
 
 /// Find all sub-schemas in the document and execute callback on each of them.
