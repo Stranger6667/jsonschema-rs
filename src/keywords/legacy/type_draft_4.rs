@@ -61,7 +61,7 @@ impl Validate for MultipleTypesValidator {
 
     fn name(&self) -> String {
         format!(
-            "<type: {}>",
+            "type: [{}]",
             self.types
                 .iter()
                 .map(|type_| format!("{}", type_))
@@ -100,7 +100,7 @@ impl Validate for IntegerTypeValidator {
     }
 
     fn name(&self) -> String {
-        "<type: integer>".to_string()
+        "type: integer".to_string()
     }
 }
 

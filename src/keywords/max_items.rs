@@ -40,7 +40,7 @@ impl Validate for MaxItemsValidator {
     }
 
     fn name(&self) -> String {
-        format!("<max items: {}>", self.limit)
+        format!("maxItems: {}", self.limit)
     }
 }
 

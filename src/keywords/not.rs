@@ -2,6 +2,7 @@ use super::{CompilationResult, Validate, Validators};
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
+    keywords::format_validators,
 };
 use serde_json::{Map, Value};
 
@@ -38,7 +39,7 @@ impl Validate for NotValidator {
     }
 
     fn name(&self) -> String {
-        format!("<not: {:?}>", self.validators)
+        format!("not: {}", format_validators(&self.validators))
     }
 }
 

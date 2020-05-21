@@ -40,7 +40,7 @@ impl Validate for MaxLengthValidator {
     }
 
     fn name(&self) -> String {
-        format!("<max length: {}>", self.limit)
+        format!("maxLength: {}", self.limit)
     }
 }
 #[inline]

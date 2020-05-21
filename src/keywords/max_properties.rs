@@ -40,7 +40,7 @@ impl Validate for MaxPropertiesValidator {
     }
 
     fn name(&self) -> String {
-        format!("<max properties: {}>", self.limit)
+        format!("maxProperties: {}", self.limit)
     }
 }
 

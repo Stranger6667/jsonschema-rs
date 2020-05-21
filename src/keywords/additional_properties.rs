@@ -2,6 +2,7 @@ use super::{CompilationResult, Validate, Validators};
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    keywords::format_validators,
 };
 use regex::Regex;
 use serde_json::{Map, Value};
@@ -46,7 +47,10 @@ impl Validate for AdditionalPropertiesValidator {
     }
 
     fn name(&self) -> String {
-        format!("<additional properties: {:?}>", self.validators)
+        format!(
+            "additionalProperties: {}",
+            format_validators(&self.validators)
+        )
     }
 }
 pub struct AdditionalPropertiesFalseValidator {}
@@ -76,7 +80,7 @@ impl Validate for AdditionalPropertiesFalseValidator {
     }
 
     fn name(&self) -> String {
-        "<additional properties: false>".to_string()
+        "additionalProperties: false".to_string()
     }
 }
 
@@ -123,7 +127,7 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
     }
 
     fn name(&self) -> String {
-        "<additional properties: false>".to_string()
+        "additionalProperties: false".to_string()
     }
 }
 
@@ -178,7 +182,10 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
     }
 
     fn name(&self) -> String {
-        format!("<additional properties: {:?}>", self.validators)
+        format!(
+            "additionalProperties: {}",
+            format_validators(&self.validators)
+        )
     }
 }
 
@@ -230,7 +237,10 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
     }
 
     fn name(&self) -> String {
-        format!("<additional properties: {:?}>", self.validators)
+        format!(
+            "additionalProperties: {}",
+            format_validators(&self.validators)
+        )
     }
 }
 
@@ -272,7 +282,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
     }
 
     fn name(&self) -> String {
-        "<additional properties: false>".to_string()
+        "additionalProperties: false".to_string()
     }
 }
 
@@ -337,7 +347,10 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
     }
 
     fn name(&self) -> String {
-        format!("<additional properties: {:?}>", self.validators)
+        format!(
+            "additionalProperties: {}",
+            format_validators(&self.validators)
+        )
     }
 }
 
@@ -386,7 +399,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
     }
 
     fn name(&self) -> String {
-        "<additional properties: false>".to_string()
+        "additionalProperties: false".to_string()
     }
 }
 

@@ -85,7 +85,7 @@ impl Validate for UniqueItemsValidator {
     }
 
     fn name(&self) -> String {
-        "<unique items>".to_string()
+        "uniqueItems: true".to_string()
     }
 }
 

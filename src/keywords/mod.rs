@@ -59,87 +59,127 @@ pub type CompilationResult = Result<BoxedValidator, error::CompilationError>;
 pub type BoxedValidator = Box<dyn Validate + Send + Sync>;
 pub type Validators = Vec<BoxedValidator>;
 
+fn format_validators(validators: &[BoxedValidator]) -> String {
+    match validators.len() {
+        0 => "{}".to_string(),
+        1 => {
+            let name = validators[0].name();
+            match name.as_str() {
+                // boolean validators are represented as is, without brackets because if they
+                // occur in a vector, then the schema is not a key/value mapping
+                "true" | "false" => name,
+                _ => format!("{{{}}}", name),
+            }
+        }
+        _ => format!(
+            "{{{}}}",
+            validators
+                .iter()
+                .map(|validator| format!("{:?}", validator))
+                .collect::<Vec<String>>()
+                .join(", ")
+        ),
+    }
+}
+
+fn format_vec_of_validators(validators: &[Validators]) -> String {
+    validators
+        .iter()
+        .map(|v| format_validators(v))
+        .collect::<Vec<String>>()
+        .join(", ")
+}
+
+fn format_key_value_validators(validators: &[(String, Validators)]) -> String {
+    validators
+        .iter()
+        .map(|(name, validators)| format!("{}: {}", name, format_validators(validators)))
+        .collect::<Vec<String>>()
+        .join(", ")
+}
+
 #[cfg(test)]
 mod tests {
     use super::JSONSchema;
     use serde_json::{json, Value};
     use test_case::test_case;
 
-    #[test_case(json!({"additionalItems": false, "items": [{"type": "string"}]}), "<additional items: 1>")]
-    #[test_case(json!({"additionalItems": {"type": "integer"}, "items": [{"type": "string"}]}), "<additional items (1): [<type: integer>]>")]
-    #[test_case(json!({"additionalProperties": {"type": "string"}}), "<additional properties: [<type: string>]>")]
-    #[test_case(json!({"additionalProperties": {"type": "string"}, "properties": {"foo": {}}}), "<additional properties: [<type: string>]>")]
-    #[test_case(json!({"additionalProperties": {"type": "string"}, "patternProperties": {"f.*o": {"type": "integer"}}}), "<additional properties: [<type: string>]>")]
-    #[test_case(json!({"additionalProperties": {"type": "string"}, "properties": {"foo": {}}, "patternProperties": {"f.*o": {"type": "integer"}}}), "<additional properties: [<type: string>]>")]
-    #[test_case(json!({"additionalProperties": false}), "<additional properties: false>")]
-    #[test_case(json!({"additionalProperties": false, "properties": {"foo": {}}}), "<additional properties: false>")]
-    #[test_case(json!({"additionalProperties": false, "patternProperties": {"f.*o": {"type": "integer"}}}), "<additional properties: false>")]
-    #[test_case(json!({"additionalProperties": false, "properties": {"foo": {}}, "patternProperties": {"f.*o": {"type": "integer"}}}), "<additional properties: false>")]
-    #[test_case(json!({"allOf": [{"type": "integer"}, {"minimum": 2}]}), "<all of: [[<type: integer>], [<minimum: 2>]]>")]
-    #[test_case(json!({"anyOf": [{"type": "integer"}, {"minimum": 2}]}), "<any of: [[<type: integer>], [<minimum: 2>]]>")]
-    #[test_case(json!(true), "<true>")]
-    #[test_case(json!(false), "<false>")]
-    #[test_case(json!({"const": 1}), "<const: 1>")]
-    #[test_case(json!({"contains": {"minimum": 5}}), "<contains: [<minimum: 5>]>")]
-    #[test_case(json!({"contentMediaType": "application/json"}), "<contentMediaType: application/json>")]
-    #[test_case(json!({"contentEncoding": "base64"}), "<contentEncoding: base64>")]
-    #[test_case(json!({"contentEncoding": "base64", "contentMediaType": "application/json"}), "<contentMediaType - contentEncoding: application/json - base64>")]
-    #[test_case(json!({"dependencies": {"bar": ["foo"]}}), "<dependencies: [(\"bar\", [<required: [\"foo\"]>])]>")]
-    #[test_case(json!({"enum": [1]}), "<enum: 1>")]
-    #[test_case(json!({"exclusiveMaximum": 1}), "<exclusive maximum: 1>")]
-    #[test_case(json!({"exclusiveMinimum": 1}), "<exclusive minimum: 1>")]
-    #[test_case(json!({"format": "date"}), "<format: date>")]
-    #[test_case(json!({"format": "date-time"}), "<format: date-time>")]
-    #[test_case(json!({"format": "email"}), "<format: email>")]
-    #[test_case(json!({"format": "hostname"}), "<format: hostname>")]
-    #[test_case(json!({"format": "idn-email"}), "<format: idn-email>")]
-    #[test_case(json!({"format": "idn-hostname"}), "<format: idn-hostname>")]
-    #[test_case(json!({"format": "ipv4"}), "<format: ipv4>")]
-    #[test_case(json!({"format": "ipv6"}), "<format: ipv6>")]
-    #[test_case(json!({"format": "iri"}), "<format: iri>")]
-    #[test_case(json!({"format": "iri-reference"}), "<format: iri-reference>")]
-    #[test_case(json!({"format": "json-pointer"}), "<format: json-pointer>")]
-    #[test_case(json!({"format": "regex"}), "<format: regex>")]
-    #[test_case(json!({"format": "relative-json-pointer"}), "<format: relative-json-pointer>")]
-    #[test_case(json!({"format": "time"}), "<format: time>")]
-    #[test_case(json!({"format": "uri"}), "<format: uri>")]
-    #[test_case(json!({"format": "uri-reference"}), "<format: uri-reference>")]
-    #[test_case(json!({"format": "uri-template"}), "<format: uri-template>")]
-    #[test_case(json!({"if": {"exclusiveMaximum": 0}, "then": {"minimum": -10}}), "<if-then: [<exclusive maximum: 0>] [<minimum: -10>]>")]
-    #[test_case(json!({"if": {"exclusiveMaximum": 0}, "else": {"minimum": -10}}), "<if-else: [<exclusive maximum: 0>] [<minimum: -10>]>")]
-    #[test_case(json!({"if": {"exclusiveMaximum": 0}, "then": {"minimum": -10}, "else": {"multipleOf": 2}}), "<if-then-else: [<exclusive maximum: 0>] [<minimum: -10>] [<multiple of: 2>]>")]
-    #[test_case(json!({"items": [{"type": "string"}]}), "<items: [[<type: string>]]>")]
-    #[test_case(json!({"items": {"type": "integer"}}), "<items: [<type: integer>]>")]
-    #[test_case(json!({"maxItems": 1}), "<max items: 1>")]
-    #[test_case(json!({"maxLength": 1}), "<max length: 1>")]
-    #[test_case(json!({"maxProperties": 1}), "<max properties: 1>")]
-    #[test_case(json!({"maximum": 1}), "<maximum: 1>")]
-    #[test_case(json!({"minItems": 1}), "<min items: 1>")]
-    #[test_case(json!({"minLength": 1}), "<min length: 1>")]
-    #[test_case(json!({"minProperties": 1}), "<min properties: 1>")]
-    #[test_case(json!({"minimum": 1}), "<minimum: 1>")]
-    #[test_case(json!({"multipleOf": 1}), "<multiple of: 1>")]
-    #[test_case(json!({"multipleOf": 1.5}), "<multiple of: 1.5>")]
-    #[test_case(json!({"not": true}), "<not: [<true>]>")]
-    #[test_case(json!({"oneOf": [{"type": "integer"}, {"minimum": 2}]}), "<one of: [[<type: integer>], [<minimum: 2>]]>")]
-    #[test_case(json!({"pattern": "^a*$"}), "<pattern: ^a*$>")]
-    #[test_case(json!({"patternProperties": {"f.*o": {"type": "integer"}}}), "<pattern properties: [(f.*o, [<type: integer>])]>")]
-    #[test_case(json!({"properties": {"foo": {}}}), "<properties: [(\"foo\", [])]>")]
-    #[test_case(json!({"propertyNames": {"maxLength": 3}}), "<property names: [<max length: 3>]>")]
-    #[test_case(json!({"propertyNames": false}), "<property names: false>")]
-    #[test_case(json!({"$ref": "#/properties/foo"}), "<ref: json-schema:///#/properties/foo>")]
-    #[test_case(json!({"required": ["foo"]}), "<required: [\"foo\"]>")]
-    #[test_case(json!({"type": "null"}), "<type: null>")]
-    #[test_case(json!({"type": "boolean"}), "<type: boolean>")]
-    #[test_case(json!({"type": "string"}), "<type: string>")]
-    #[test_case(json!({"type": "array"}), "<type: array>")]
-    #[test_case(json!({"type": "object"}), "<type: object>")]
-    #[test_case(json!({"type": "number"}), "<type: number>")]
-    #[test_case(json!({"type": "integer"}), "<type: integer>")]
-    #[test_case(json!({"type": "integer", "$schema": "http://json-schema.org/draft-04/schema#"}), "<type: integer>")]
-    #[test_case(json!({"type": ["integer", "null"]}), "<type: integer, null>")]
-    #[test_case(json!({"type": ["integer", "null"], "$schema": "http://json-schema.org/draft-04/schema#"}), "<type: integer, null>")]
-    #[test_case(json!({"uniqueItems": true}), "<unique items>")]
+    #[test_case(json!({"additionalItems": false, "items": [{"type": "string"}]}), "additionalItems: false")]
+    #[test_case(json!({"additionalItems": {"type": "integer"}, "items": [{"type": "string"}]}), "additionalItems: {type: integer}")]
+    #[test_case(json!({"additionalProperties": {"type": "string"}}), "additionalProperties: {type: string}")]
+    #[test_case(json!({"additionalProperties": {"type": "string"}, "properties": {"foo": {}}}), "additionalProperties: {type: string}")]
+    #[test_case(json!({"additionalProperties": {"type": "string"}, "patternProperties": {"f.*o": {"type": "integer"}}}), "additionalProperties: {type: string}")]
+    #[test_case(json!({"additionalProperties": {"type": "string"}, "properties": {"foo": {}}, "patternProperties": {"f.*o": {"type": "integer"}}}), "additionalProperties: {type: string}")]
+    #[test_case(json!({"additionalProperties": false}), "additionalProperties: false")]
+    #[test_case(json!({"additionalProperties": false, "properties": {"foo": {}}}), "additionalProperties: false")]
+    #[test_case(json!({"additionalProperties": false, "patternProperties": {"f.*o": {"type": "integer"}}}), "additionalProperties: false")]
+    #[test_case(json!({"additionalProperties": false, "properties": {"foo": {}}, "patternProperties": {"f.*o": {"type": "integer"}}}), "additionalProperties: false")]
+    #[test_case(json!({"allOf": [{"type": "integer"}, {"minimum": 2}]}), "allOf: [{type: integer}, {minimum: 2}]")]
+    #[test_case(json!({"anyOf": [{"type": "integer"}, {"minimum": 2}]}), "anyOf: [{type: integer}, {minimum: 2}]")]
+    #[test_case(json!(true), "true")]
+    #[test_case(json!(false), "false")]
+    #[test_case(json!({"const": 1}), "const: 1")]
+    #[test_case(json!({"contains": {"minimum": 5}}), "contains: {minimum: 5}")]
+    #[test_case(json!({"contentMediaType": "application/json"}), "contentMediaType: application/json")]
+    #[test_case(json!({"contentEncoding": "base64"}), "contentEncoding: base64")]
+    #[test_case(json!({"contentEncoding": "base64", "contentMediaType": "application/json"}), "{contentMediaType: application/json, contentEncoding: base64}")]
+    #[test_case(json!({"dependencies": {"bar": ["foo"]}}), "dependencies: {bar: {required: [foo]}}")]
+    #[test_case(json!({"enum": [1]}), "enum: [1]")]
+    #[test_case(json!({"exclusiveMaximum": 1}), "exclusiveMaximum: 1")]
+    #[test_case(json!({"exclusiveMinimum": 1}), "exclusiveMinimum: 1")]
+    #[test_case(json!({"format": "date"}), "format: date")]
+    #[test_case(json!({"format": "date-time"}), "format: date-time")]
+    #[test_case(json!({"format": "email"}), "format: email")]
+    #[test_case(json!({"format": "hostname"}), "format: hostname")]
+    #[test_case(json!({"format": "idn-email"}), "format: idn-email")]
+    #[test_case(json!({"format": "idn-hostname"}), "format: idn-hostname")]
+    #[test_case(json!({"format": "ipv4"}), "format: ipv4")]
+    #[test_case(json!({"format": "ipv6"}), "format: ipv6")]
+    #[test_case(json!({"format": "iri"}), "format: iri")]
+    #[test_case(json!({"format": "iri-reference"}), "format: iri-reference")]
+    #[test_case(json!({"format": "json-pointer"}), "format: json-pointer")]
+    #[test_case(json!({"format": "regex"}), "format: regex")]
+    #[test_case(json!({"format": "relative-json-pointer"}), "format: relative-json-pointer")]
+    #[test_case(json!({"format": "time"}), "format: time")]
+    #[test_case(json!({"format": "uri"}), "format: uri")]
+    #[test_case(json!({"format": "uri-reference"}), "format: uri-reference")]
+    #[test_case(json!({"format": "uri-template"}), "format: uri-template")]
+    #[test_case(json!({"if": {"exclusiveMaximum": 0}, "then": {"minimum": -10}}), "if: {exclusiveMaximum: 0}, then: {minimum: -10}")]
+    #[test_case(json!({"if": {"exclusiveMaximum": 0}, "else": {"minimum": -10}}), "if: {exclusiveMaximum: 0}, else: {minimum: -10}")]
+    #[test_case(json!({"if": {"exclusiveMaximum": 0}, "then": {"minimum": -10}, "else": {"multipleOf": 2}}), "if: {exclusiveMaximum: 0}, then: {minimum: -10}, else: {multipleOf: 2}")]
+    #[test_case(json!({"items": [{"type": "string"}]}), "items: [{type: string}]")]
+    #[test_case(json!({"items": {"type": "integer"}}), "items: {type: integer}")]
+    #[test_case(json!({"items": {"type": "integer", "minimum": 4}}), "items: {minimum: 4, type: integer}")]
+    #[test_case(json!({"maxItems": 1}), "maxItems: 1")]
+    #[test_case(json!({"maxLength": 1}), "maxLength: 1")]
+    #[test_case(json!({"maxProperties": 1}), "maxProperties: 1")]
+    #[test_case(json!({"maximum": 1}), "maximum: 1")]
+    #[test_case(json!({"minItems": 1}), "minItems: 1")]
+    #[test_case(json!({"minLength": 1}), "minLength: 1")]
+    #[test_case(json!({"minProperties": 1}), "minProperties: 1")]
+    #[test_case(json!({"minimum": 1}), "minimum: 1")]
+    #[test_case(json!({"multipleOf": 1}), "multipleOf: 1")]
+    #[test_case(json!({"multipleOf": 1.5}), "multipleOf: 1.5")]
+    #[test_case(json!({"not": true}), "not: true")]
+    #[test_case(json!({"oneOf": [{"type": "integer"}, {"minimum": 2}]}), "oneOf: [{type: integer}, {minimum: 2}]")]
+    #[test_case(json!({"pattern": "^a*$"}), "pattern: ^a*$")]
+    #[test_case(json!({"patternProperties": {"f.*o": {"type": "integer"}}}), "patternProperties: {f.*o: {type: integer}}")]
+    #[test_case(json!({"properties": {"foo": {}}}), "properties: {foo: {}}")]
+    #[test_case(json!({"propertyNames": {"maxLength": 3}}), "propertyNames: {maxLength: 3}")]
+    #[test_case(json!({"propertyNames": false}), "propertyNames: false")]
+    #[test_case(json!({"$ref": "#/properties/foo"}), "$ref: json-schema:///#/properties/foo")]
+    #[test_case(json!({"required": ["foo"]}), "required: [foo]")]
+    #[test_case(json!({"type": "null"}), "type: null")]
+    #[test_case(json!({"type": "boolean"}), "type: boolean")]
+    #[test_case(json!({"type": "string"}), "type: string")]
+    #[test_case(json!({"type": "array"}), "type: array")]
+    #[test_case(json!({"type": "object"}), "type: object")]
+    #[test_case(json!({"type": "number"}), "type: number")]
+    #[test_case(json!({"type": "integer"}), "type: integer")]
+    #[test_case(json!({"type": "integer", "$schema": "http://json-schema.org/draft-04/schema#"}), "type: integer")]
+    #[test_case(json!({"type": ["integer", "null"]}), "type: [integer, null]")]
+    #[test_case(json!({"type": ["integer", "null"], "$schema": "http://json-schema.org/draft-04/schema#"}), "type: [integer, null]")]
+    #[test_case(json!({"uniqueItems": true}), "uniqueItems: true")]
     fn debug_representation(schema: Value, expected: &str) {
         let compiled = JSONSchema::compile(&schema, None).unwrap();
         assert_eq!(format!("{:?}", compiled.validators[0]), expected);

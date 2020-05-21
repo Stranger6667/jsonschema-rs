@@ -2,6 +2,7 @@ use super::{boolean::TrueValidator, CompilationResult, Validate, Validators};
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    keywords::format_validators,
 };
 use serde_json::{Map, Value};
 
@@ -64,10 +65,7 @@ impl Validate for AdditionalItemsObjectValidator {
     }
 
     fn name(&self) -> String {
-        format!(
-            "<additional items ({}): {:?}>",
-            self.items_count, self.validators
-        )
+        format!("additionalItems: {}", format_validators(&self.validators))
     }
 }
 
@@ -94,7 +92,7 @@ impl Validate for AdditionalItemsBooleanValidator {
     }
 
     fn name(&self) -> String {
-        format!("<additional items: {}>", self.items_count)
+        "additionalItems: false".to_string()
     }
 }
 

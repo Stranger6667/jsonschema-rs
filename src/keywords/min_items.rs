@@ -40,7 +40,7 @@ impl Validate for MinItemsValidator {
     }
 
     fn name(&self) -> String {
-        format!("<min items: {}>", self.limit)
+        format!("minItems: {}", self.limit)
     }
 }
 #[inline]

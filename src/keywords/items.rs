@@ -2,6 +2,7 @@ use super::{boolean::TrueValidator, CompilationResult, Validate, Validators};
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator},
+    keywords::{format_validators, format_vec_of_validators},
 };
 use rayon::prelude::*;
 use serde_json::{Map, Value};
@@ -54,7 +55,7 @@ impl Validate for ItemsArrayValidator {
     }
 
     fn name(&self) -> String {
-        format!("<items: {:?}>", self.items)
+        format!("items: [{}]", format_vec_of_validators(&self.items))
     }
 }
 
@@ -117,7 +118,7 @@ impl Validate for ItemsObjectValidator {
     }
 
     fn name(&self) -> String {
-        format!("<items: {:?}>", self.validators)
+        format!("items: {}", format_validators(&self.validators))
     }
 }
 

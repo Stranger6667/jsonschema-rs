@@ -41,7 +41,7 @@ impl Validate for MultipleOfFloatValidator {
     }
 
     fn name(&self) -> String {
-        format!("<multiple of: {}>", self.multiple_of)
+        format!("multipleOf: {}", self.multiple_of)
     }
 }
 
@@ -90,7 +90,7 @@ impl Validate for MultipleOfIntegerValidator {
     }
 
     fn name(&self) -> String {
-        format!("<multiple of: {}>", self.multiple_of)
+        format!("multipleOf: {}", self.multiple_of)
     }
 }
 

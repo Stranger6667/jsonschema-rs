@@ -2,7 +2,7 @@ use super::{CompilationResult, Validate, Validators};
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
     error::{no_error, CompilationError, ErrorIterator},
-    keywords::required::RequiredValidator,
+    keywords::{format_key_value_validators, required::RequiredValidator},
 };
 use serde_json::{Map, Value};
 
@@ -63,7 +63,10 @@ impl Validate for DependenciesValidator {
     }
 
     fn name(&self) -> String {
-        format!("<dependencies: {:?}>", self.dependencies)
+        format!(
+            "dependencies: {{{}}}",
+            format_key_value_validators(&self.dependencies)
+        )
     }
 }
 

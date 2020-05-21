@@ -2,6 +2,7 @@ use super::{CompilationResult, Validate, Validators};
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator},
+    keywords::format_validators,
 };
 use serde_json::{Map, Value};
 
@@ -56,7 +57,11 @@ impl Validate for IfThenValidator {
     }
 
     fn name(&self) -> String {
-        format!("<if-then: {:?} {:?}>", self.schema, self.then_schema)
+        format!(
+            "if: {}, then: {}",
+            format_validators(&self.schema),
+            format_validators(&self.then_schema)
+        )
     }
 }
 
@@ -111,7 +116,11 @@ impl Validate for IfElseValidator {
     }
 
     fn name(&self) -> String {
-        format!("<if-else: {:?} {:?}>", self.schema, self.else_schema)
+        format!(
+            "if: {}, else: {}",
+            format_validators(&self.schema),
+            format_validators(&self.else_schema)
+        )
     }
 }
 
@@ -178,8 +187,10 @@ impl Validate for IfThenElseValidator {
 
     fn name(&self) -> String {
         format!(
-            "<if-then-else: {:?} {:?} {:?}>",
-            self.schema, self.then_schema, self.else_schema
+            "if: {}, then: {}, else: {}",
+            format_validators(&self.schema),
+            format_validators(&self.then_schema),
+            format_validators(&self.else_schema)
         )
     }
 }

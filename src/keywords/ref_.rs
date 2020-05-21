@@ -59,7 +59,7 @@ impl Validate for RefValidator {
     }
 
     fn name(&self) -> String {
-        format!("<ref: {}>", self.reference)
+        format!("$ref: {}", self.reference)
     }
 }
 

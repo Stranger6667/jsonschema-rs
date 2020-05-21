@@ -2,6 +2,7 @@ use super::{CompilationResult, Validate, Validators};
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
+    keywords::format_validators,
 };
 use serde_json::{Map, Value};
 use std::borrow::Borrow;
@@ -54,7 +55,7 @@ impl Validate for PropertyNamesObjectValidator {
     }
 
     fn name(&self) -> String {
-        format!("<property names: {:?}>", self.validators)
+        format!("propertyNames: {}", format_validators(&self.validators))
     }
 }
 
@@ -86,7 +87,7 @@ impl Validate for PropertyNamesBooleanValidator {
     }
 
     fn name(&self) -> String {
-        "<property names: false>".to_string()
+        "propertyNames: false".to_string()
     }
 }
 

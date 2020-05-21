@@ -32,7 +32,7 @@ impl Validate for ConstValidator {
     }
 
     fn name(&self) -> String {
-        format!("<const: {}>", self.value)
+        format!("const: {}", self.value)
     }
 }
 #[inline]

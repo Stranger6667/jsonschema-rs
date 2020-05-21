@@ -40,7 +40,7 @@ impl Validate for MinPropertiesValidator {
     }
 
     fn name(&self) -> String {
-        format!("<min properties: {}>", self.limit)
+        format!("minProperties: {}", self.limit)
     }
 }
 

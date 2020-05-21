@@ -42,7 +42,7 @@ impl Validate for ContentMediaTypeValidator {
     }
 
     fn name(&self) -> String {
-        format!("<contentMediaType: {}>", self.media_type)
+        format!("contentMediaType: {}", self.media_type)
     }
 }
 
@@ -81,7 +81,7 @@ impl Validate for ContentEncodingValidator {
     }
 
     fn name(&self) -> String {
-        format!("<contentEncoding: {}>", self.encoding)
+        format!("contentEncoding: {}", self.encoding)
     }
 }
 
@@ -139,7 +139,7 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
 
     fn name(&self) -> String {
         format!(
-            "<contentMediaType - contentEncoding: {} - {}>",
+            "{{contentMediaType: {}, contentEncoding: {}}}",
             self.media_type, self.encoding
         )
     }

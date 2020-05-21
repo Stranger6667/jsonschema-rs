@@ -42,7 +42,7 @@ impl Validate for MinimumValidator {
     }
 
     fn name(&self) -> String {
-        format!("<minimum: {}>", self.limit)
+        format!("minimum: {}", self.limit)
     }
 }
 
