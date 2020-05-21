@@ -57,18 +57,20 @@ extern crate lazy_static;
 
 /// Validates `instance` against `schema`. Draft version is detected automatically.
 /// ```rust
-/// use jsonschema::is_valid;
+/// use jsonschema::{is_valid, CompilationError};
 /// use serde_json::json;
 ///
-///
-/// let schema = json!({"maxLength": 5});
-/// let instance = json!("foo");
-/// assert!(is_valid(&schema, &instance));
+/// fn main() -> Result<(), CompilationError> {
+///    let schema = json!({"maxLength": 5});
+///    let instance = json!("foo");
+///    assert!(is_valid(&schema, &instance)?);
+///    Ok(())
+/// }
 /// ```
 #[inline]
-pub fn is_valid(schema: &Value, instance: &Value) -> bool {
-    let compiled = JSONSchema::compile(schema, None).expect("Invalid schema");
-    compiled.is_valid(instance)
+pub fn is_valid(schema: &Value, instance: &Value) -> Result<bool, CompilationError> {
+    let compiled = JSONSchema::compile(schema, None)?;
+    Ok(compiled.is_valid(instance))
 }
 
 #[cfg(test)]
@@ -81,7 +83,7 @@ mod tests {
         let schema = json!({"minLength": 5});
         let valid = json!("foobar");
         let invalid = json!("foo");
-        assert!(is_valid(&schema, &valid));
-        assert!(!is_valid(&schema, &invalid));
+        assert!(is_valid(&schema, &valid).unwrap());
+        assert!(!is_valid(&schema, &invalid).unwrap());
     }
 }
