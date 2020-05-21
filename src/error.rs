@@ -5,6 +5,7 @@ use std::{
     fmt::{Error, Formatter},
     io,
     iter::{empty, once},
+    str::Utf8Error,
     string::FromUtf8Error,
 };
 
@@ -78,10 +79,14 @@ pub enum ValidationErrorKind {
     Format { format: &'static str },
     /// May happen in `contentEncoding` validation if `base64` encoded data is invalid.
     FromUtf8 { error: FromUtf8Error },
+    /// Invalid UTF-8 string during percent encoding when resolving happens
+    Utf8 { error: Utf8Error },
     /// May happen during ref resolution when remote document is not a valid JSON.
     JSONParse { error: serde_json::Error },
     /// `ref` value is not valid.
     InvalidReference { reference: String },
+    /// Invalid URL, e.g. invalid port number or IP address
+    InvalidURL { error: url::ParseError },
     /// Too many items in an array.
     MaxItems { limit: u64 },
     /// Value is too large.
@@ -110,6 +115,8 @@ pub enum ValidationErrorKind {
     Pattern { pattern: String },
     /// When a required property is missing.
     Required { property: String },
+    /// Any error that happens during network request via `reqwest` crate
+    Reqwest { error: reqwest::Error },
     /// Resolved schema failed to compile.
     Schema,
     /// When the input value doesn't match one or multiple required types.
@@ -244,6 +251,12 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::InvalidReference { reference },
         }
     }
+    pub(crate) fn invalid_url(error: url::ParseError) -> ValidationError<'a> {
+        ValidationError {
+            instance: Cow::Owned(Value::Null),
+            kind: ValidationErrorKind::InvalidURL { error },
+        }
+    }
     pub(crate) fn max_items(instance: &'a Value, limit: u64) -> ValidationError<'a> {
         ValidationError {
             instance: Cow::Borrowed(instance),
@@ -328,6 +341,12 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Required { property },
         }
     }
+    pub(crate) fn reqwest(error: reqwest::Error) -> ValidationError<'a> {
+        ValidationError {
+            instance: Cow::Owned(Value::Null),
+            kind: ValidationErrorKind::Reqwest { error },
+        }
+    }
     pub(crate) fn schema() -> ValidationError<'a> {
         ValidationError {
             instance: Cow::Owned(Value::Null),
@@ -368,6 +387,12 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::UnknownReferenceScheme { scheme },
         }
     }
+    pub(crate) fn utf8(error: Utf8Error) -> ValidationError<'a> {
+        ValidationError {
+            instance: Cow::Owned(Value::Null),
+            kind: ValidationErrorKind::Utf8 { error },
+        }
+    }
 }
 
 impl<'a> From<CompilationError> for ValidationError<'a> {
@@ -395,6 +420,24 @@ impl<'a> From<FromUtf8Error> for ValidationError<'a> {
         ValidationError::from_utf8(err)
     }
 }
+impl<'a> From<Utf8Error> for ValidationError<'a> {
+    #[inline]
+    fn from(err: Utf8Error) -> Self {
+        ValidationError::utf8(err)
+    }
+}
+impl<'a> From<url::ParseError> for ValidationError<'a> {
+    #[inline]
+    fn from(err: url::ParseError) -> Self {
+        ValidationError::invalid_url(err)
+    }
+}
+impl<'a> From<reqwest::Error> for ValidationError<'a> {
+    #[inline]
+    fn from(err: reqwest::Error) -> Self {
+        ValidationError::reqwest(err)
+    }
+}
 
 /// Textual representation of various validation errors.
 impl<'a> fmt::Display for ValidationError<'a> {
@@ -403,7 +446,9 @@ impl<'a> fmt::Display for ValidationError<'a> {
         match &self.kind {
             ValidationErrorKind::Schema => write!(f, "Schema error"),
             ValidationErrorKind::JSONParse { error } => write!(f, "{}", error),
+            ValidationErrorKind::Reqwest { error } => write!(f, "{}", error),
             ValidationErrorKind::FileNotFound { error } => write!(f, "{}", error),
+            ValidationErrorKind::InvalidURL { error } => write!(f, "{}", error),
             ValidationErrorKind::UnknownReferenceScheme { scheme } => {
                 write!(f, "Unknown scheme: {}", scheme)
             }
@@ -452,6 +497,7 @@ impl<'a> fmt::Display for ValidationError<'a> {
                 write!(f, "'{}' was expected", expected_value)
             }
             ValidationErrorKind::FromUtf8 { error } => write!(f, "{}", error),
+            ValidationErrorKind::Utf8 { error } => write!(f, "{}", error),
             ValidationErrorKind::Enum { options } => {
                 write!(f, "'{}' is not one of '{}'", self.instance, options)
             }

@@ -35,7 +35,12 @@
     clippy::needless_borrow,
     clippy::print_stdout,
     clippy::integer_arithmetic,
-    clippy::cast_possible_truncation
+    clippy::cast_possible_truncation,
+    clippy::result_unwrap_used,
+    clippy::result_map_unwrap_or_else,
+    clippy::option_unwrap_used,
+    clippy::option_map_unwrap_or_else,
+    clippy::option_map_unwrap_or
 )]
 mod compilation;
 mod error;
