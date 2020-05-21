@@ -34,7 +34,8 @@
     clippy::match_same_arms,
     clippy::needless_borrow,
     clippy::print_stdout,
-    clippy::integer_arithmetic
+    clippy::integer_arithmetic,
+    clippy::cast_possible_truncation
 )]
 mod compilation;
 mod error;

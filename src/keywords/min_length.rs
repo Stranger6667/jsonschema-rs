@@ -6,14 +6,13 @@ use crate::{
 use serde_json::{Map, Value};
 
 pub struct MinLengthValidator {
-    limit: usize,
+    limit: u64,
 }
 
 impl MinLengthValidator {
     #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
-        if let Value::Number(limit) = schema {
-            let limit = limit.as_u64().unwrap() as usize;
+        if let Some(limit) = schema.as_u64() {
             return Ok(Box::new(MinLengthValidator { limit }));
         }
         Err(CompilationError::SchemaError)
@@ -23,7 +22,7 @@ impl MinLengthValidator {
 impl Validate for MinLengthValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
-            if item.chars().count() < self.limit {
+            if (item.chars().count() as u64) < self.limit {
                 return error(ValidationError::min_length(instance, self.limit));
             }
         }
@@ -32,7 +31,7 @@ impl Validate for MinLengthValidator {
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            if item.chars().count() < self.limit {
+            if (item.chars().count() as u64) < self.limit {
                 return false;
             }
         }
