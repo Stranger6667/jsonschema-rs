@@ -2,6 +2,7 @@ use super::{CompilationResult, Validate, Validators};
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
+    keywords::format_validators,
 };
 use serde_json::{Map, Value};
 
@@ -52,7 +53,7 @@ impl Validate for ContainsValidator {
     }
 
     fn name(&self) -> String {
-        format!("<contains: {:?}>", self.validators)
+        format!("contains: {}", format_validators(&self.validators))
     }
 }
 

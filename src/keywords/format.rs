@@ -52,7 +52,7 @@ macro_rules! validate {
         }
 
         fn name(&self) -> String {
-            concat!("<format: ", $format, ">").to_string()
+            concat!("format: ", $format).to_string()
         }
     };
 }

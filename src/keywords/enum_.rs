@@ -37,7 +37,7 @@ impl Validate for EnumValidator {
 
     fn name(&self) -> String {
         format!(
-            "<enum: {}>",
+            "enum: [{}]",
             self.items
                 .iter()
                 .map(|item| format!("{}", item))

@@ -40,7 +40,7 @@ impl Validate for MinLengthValidator {
     }
 
     fn name(&self) -> String {
-        format!("<min length: {}>", self.limit)
+        format!("minLength: {}", self.limit)
     }
 }
 

@@ -42,7 +42,7 @@ impl Validate for MaximumValidator {
     }
 
     fn name(&self) -> String {
-        format!("<maximum: {}>", self.limit)
+        format!("maximum: {}", self.limit)
     }
 }
 

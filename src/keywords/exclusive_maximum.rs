@@ -43,7 +43,7 @@ impl Validate for ExclusiveMaximumValidator {
     }
 
     fn name(&self) -> String {
-        format!("<exclusive maximum: {}>", self.limit)
+        format!("exclusiveMaximum: {}", self.limit)
     }
 }
 

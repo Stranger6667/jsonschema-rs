@@ -2,6 +2,7 @@ use super::{CompilationResult, Validate, Validators};
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
     error::{no_error, CompilationError, ErrorIterator},
+    keywords::format_key_value_validators,
 };
 use serde_json::{Map, Value};
 
@@ -60,7 +61,10 @@ impl Validate for PropertiesValidator {
     }
 
     fn name(&self) -> String {
-        format!("<properties: {:?}>", self.properties)
+        format!(
+            "properties: {{{}}}",
+            format_key_value_validators(&self.properties)
+        )
     }
 }
 

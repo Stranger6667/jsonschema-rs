@@ -2,6 +2,7 @@ use super::{CompilationResult, Validate, Validators};
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
     error::{CompilationError, ErrorIterator},
+    keywords::format_vec_of_validators,
 };
 use serde_json::{Map, Value};
 
@@ -47,7 +48,7 @@ impl Validate for AllOfValidator {
     }
 
     fn name(&self) -> String {
-        format!("<all of: {:?}>", self.schemas)
+        format!("allOf: [{}]", format_vec_of_validators(&self.schemas))
     }
 }
 #[inline]

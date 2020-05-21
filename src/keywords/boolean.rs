@@ -24,7 +24,7 @@ impl Validate for TrueValidator {
     }
 
     fn name(&self) -> String {
-        "<true>".to_string()
+        "true".to_string()
     }
 }
 
@@ -47,7 +47,7 @@ impl Validate for FalseValidator {
     }
 
     fn name(&self) -> String {
-        "<false>".to_string()
+        "false".to_string()
     }
 }
 

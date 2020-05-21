@@ -2,6 +2,7 @@ use super::{CompilationResult, Validate, Validators};
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
     error::{no_error, CompilationError, ErrorIterator},
+    keywords::format_validators,
 };
 use regex::Regex;
 use serde_json::{Map, Value};
@@ -64,7 +65,14 @@ impl Validate for PatternPropertiesValidator {
     }
 
     fn name(&self) -> String {
-        format!("<pattern properties: {:?}>", self.patterns)
+        format!(
+            "patternProperties: {{{}}}",
+            self.patterns
+                .iter()
+                .map(|(key, validators)| { format!("{}: {}", key, format_validators(validators)) })
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
     }
 }
 

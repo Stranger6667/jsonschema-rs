@@ -51,7 +51,7 @@ impl Validate for RequiredValidator {
     }
 
     fn name(&self) -> String {
-        format!("<required: {:?}>", self.required)
+        format!("required: [{}]", self.required.join(", "))
     }
 }
 

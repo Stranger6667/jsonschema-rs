@@ -53,7 +53,7 @@ impl Validate for PatternValidator {
     }
 
     fn name(&self) -> String {
-        format!("<pattern: {}>", self.pattern)
+        format!("pattern: {}", self.pattern)
     }
 }
 

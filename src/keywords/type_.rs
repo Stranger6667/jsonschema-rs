@@ -61,7 +61,7 @@ impl Validate for MultipleTypesValidator {
 
     fn name(&self) -> String {
         format!(
-            "<type: {}>",
+            "type: [{}]",
             self.types
                 .iter()
                 .map(|type_| format!("{}", type_))
@@ -96,7 +96,7 @@ impl Validate for NullTypeValidator {
     }
 
     fn name(&self) -> String {
-        "<type: null>".to_string()
+        "type: null".to_string()
     }
 }
 
@@ -125,7 +125,7 @@ impl Validate for BooleanTypeValidator {
     }
 
     fn name(&self) -> String {
-        "<type: boolean>".to_string()
+        "type: boolean".to_string()
     }
 }
 
@@ -155,7 +155,7 @@ impl Validate for StringTypeValidator {
     }
 
     fn name(&self) -> String {
-        "<type: string>".to_string()
+        "type: string".to_string()
     }
 }
 
@@ -185,7 +185,7 @@ impl Validate for ArrayTypeValidator {
     }
 
     fn name(&self) -> String {
-        "<type: array>".to_string()
+        "type: array".to_string()
     }
 }
 
@@ -214,7 +214,7 @@ impl Validate for ObjectTypeValidator {
     }
 
     fn name(&self) -> String {
-        "<type: object>".to_string()
+        "type: object".to_string()
     }
 }
 
@@ -243,7 +243,7 @@ impl Validate for NumberTypeValidator {
     }
 
     fn name(&self) -> String {
-        "<type: number>".to_string()
+        "type: number".to_string()
     }
 }
 
@@ -276,7 +276,7 @@ impl Validate for IntegerTypeValidator {
     }
 
     fn name(&self) -> String {
-        "<type: integer>".to_string()
+        "type: integer".to_string()
     }
 }
 
