@@ -83,21 +83,21 @@ pub enum ValidationErrorKind {
     /// `ref` value is not valid.
     InvalidReference { reference: String },
     /// Too many items in an array.
-    MaxItems { limit: usize },
+    MaxItems { limit: u64 },
     /// Value is too large.
     Maximum { limit: f64 },
     /// String is too long.
-    MaxLength { limit: usize },
+    MaxLength { limit: u64 },
     /// Too many properties in an object.
-    MaxProperties { limit: usize },
+    MaxProperties { limit: u64 },
     /// Too few items in an array.
-    MinItems { limit: usize },
+    MinItems { limit: u64 },
     /// Value is too small.
     Minimum { limit: f64 },
     /// String is too short.
-    MinLength { limit: usize },
+    MinLength { limit: u64 },
     /// Not enough properties in an object.
-    MinProperties { limit: usize },
+    MinProperties { limit: u64 },
     /// When some number is not a multiple of another number.
     MultipleOf { multiple_of: f64 },
     /// Negated schema failed validation.
@@ -244,7 +244,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::InvalidReference { reference },
         }
     }
-    pub(crate) fn max_items(instance: &'a Value, limit: usize) -> ValidationError<'a> {
+    pub(crate) fn max_items(instance: &'a Value, limit: u64) -> ValidationError<'a> {
         ValidationError {
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MaxItems { limit },
@@ -256,19 +256,19 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Maximum { limit },
         }
     }
-    pub(crate) fn max_length(instance: &'a Value, limit: usize) -> ValidationError<'a> {
+    pub(crate) fn max_length(instance: &'a Value, limit: u64) -> ValidationError<'a> {
         ValidationError {
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MaxLength { limit },
         }
     }
-    pub(crate) fn max_properties(instance: &'a Value, limit: usize) -> ValidationError<'a> {
+    pub(crate) fn max_properties(instance: &'a Value, limit: u64) -> ValidationError<'a> {
         ValidationError {
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MaxProperties { limit },
         }
     }
-    pub(crate) fn min_items(instance: &'a Value, limit: usize) -> ValidationError<'a> {
+    pub(crate) fn min_items(instance: &'a Value, limit: u64) -> ValidationError<'a> {
         ValidationError {
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MinItems { limit },
@@ -280,13 +280,13 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Minimum { limit },
         }
     }
-    pub(crate) fn min_length(instance: &'a Value, limit: usize) -> ValidationError<'a> {
+    pub(crate) fn min_length(instance: &'a Value, limit: u64) -> ValidationError<'a> {
         ValidationError {
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MinLength { limit },
         }
     }
-    pub(crate) fn min_properties(instance: &'a Value, limit: usize) -> ValidationError<'a> {
+    pub(crate) fn min_properties(instance: &'a Value, limit: u64) -> ValidationError<'a> {
         ValidationError {
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MinProperties { limit },

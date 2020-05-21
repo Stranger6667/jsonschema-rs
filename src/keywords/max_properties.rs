@@ -6,14 +6,13 @@ use crate::{
 use serde_json::{Map, Value};
 
 pub struct MaxPropertiesValidator {
-    limit: usize,
+    limit: u64,
 }
 
 impl MaxPropertiesValidator {
     #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
-        if let Value::Number(limit) = schema {
-            let limit = limit.as_u64().unwrap() as usize;
+        if let Some(limit) = schema.as_u64() {
             return Ok(Box::new(MaxPropertiesValidator { limit }));
         }
         Err(CompilationError::SchemaError)
@@ -23,7 +22,7 @@ impl MaxPropertiesValidator {
 impl Validate for MaxPropertiesValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
-            if item.len() > self.limit {
+            if (item.len() as u64) > self.limit {
                 return error(ValidationError::max_properties(instance, self.limit));
             }
         }
@@ -32,7 +31,7 @@ impl Validate for MaxPropertiesValidator {
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
-            if item.len() > self.limit {
+            if (item.len() as u64) > self.limit {
                 return false;
             }
         }
