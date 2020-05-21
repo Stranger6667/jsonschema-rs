@@ -1,4 +1,4 @@
-/// Docs: https://tools.ietf.org/html/draft-fge-json-schema-validation-00#section-5.1.3
+/// Docs: <https://tools.ietf.org/html/draft-fge-json-schema-validation-00#section-5.1.3>
 use crate::{
     compilation::CompilationContext,
     keywords::{exclusive_minimum, minimum, CompilationResult},
