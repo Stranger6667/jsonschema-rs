@@ -2,24 +2,24 @@ use super::super::{type_, CompilationResult, Validate};
 use crate::{
     compilation::{CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
-    primitive_type::PrimitiveType,
+    primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
 };
 use serde_json::{Map, Number, Value};
 use std::convert::TryFrom;
 
 pub struct MultipleTypesValidator {
-    types: Vec<PrimitiveType>,
+    types: PrimitiveTypesBitMap,
 }
 
 impl MultipleTypesValidator {
     #[inline]
     pub(crate) fn compile(items: &[Value]) -> CompilationResult {
-        let mut types = Vec::with_capacity(items.len());
+        let mut types = PrimitiveTypesBitMap::new();
         for item in items {
             match item {
                 Value::String(string) => {
                     if let Ok(primitive_type) = PrimitiveType::try_from(string.as_str()) {
-                        types.push(primitive_type)
+                        types |= primitive_type;
                     } else {
                         return Err(CompilationError::SchemaError);
                     }
@@ -38,32 +38,29 @@ impl Validate for MultipleTypesValidator {
         } else {
             error(ValidationError::multiple_type_error(
                 instance,
-                self.types.clone(),
+                self.types,
             ))
         }
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        for type_ in &self.types {
-            match (type_, instance) {
-                (PrimitiveType::Integer, Value::Number(num)) if is_integer(num) => return true,
-                (PrimitiveType::Null, Value::Null)
-                | (PrimitiveType::Boolean, Value::Bool(_))
-                | (PrimitiveType::String, Value::String(_))
-                | (PrimitiveType::Array, Value::Array(_))
-                | (PrimitiveType::Object, Value::Object(_))
-                | (PrimitiveType::Number, Value::Number(_)) => return true,
-                (_, _) => continue,
-            };
+        match instance {
+            Value::Array(_) => self.types.contains_type(&PrimitiveType::Array),
+            Value::Bool(_) => self.types.contains_type(&PrimitiveType::Boolean),
+            Value::Null => self.types.contains_type(&PrimitiveType::Null),
+            Value::Number(num) => {
+                self.types.contains_type(&PrimitiveType::Number)
+                    || (self.types.contains_type(&PrimitiveType::Integer) && is_integer(num))
+            }
+            Value::Object(_) => self.types.contains_type(&PrimitiveType::Object),
+            Value::String(_) => self.types.contains_type(&PrimitiveType::String),
         }
-        false
     }
 
     fn name(&self) -> String {
         format!(
             "type: [{}]",
             self.types
-                .iter()
-                .map(|type_| format!("{}", type_))
+                .into_iter().map(|type_| format!("{}", type_))
                 .collect::<Vec<String>>()
                 .join(", ")
         )
