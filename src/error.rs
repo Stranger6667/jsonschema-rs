@@ -1,4 +1,4 @@
-use crate::primitive_type::PrimitiveType;
+use crate::primitive_type::{PrimitiveType, PrimitiveTypesBitMap};
 use serde_json::Value;
 use std::{
     borrow::Cow,
@@ -131,7 +131,7 @@ pub enum ValidationErrorKind {
 #[derive(Debug)]
 pub enum TypeKind {
     Single(PrimitiveType),
-    Multiple(Vec<PrimitiveType>),
+    Multiple(PrimitiveTypesBitMap),
 }
 
 /// Shortcuts for creation of specific error kinds.
@@ -340,7 +340,7 @@ impl<'a> ValidationError<'a> {
     }
     pub(crate) fn multiple_type_error(
         instance: &'a Value,
-        types: Vec<PrimitiveType>,
+        types: PrimitiveTypesBitMap,
     ) -> ValidationError<'a> {
         ValidationError {
             instance: Cow::Borrowed(instance),
@@ -571,7 +571,7 @@ impl<'a> fmt::Display for ValidationError<'a> {
                 "'{}' is not of types {}",
                 self.instance,
                 types
-                    .iter()
+                    .into_iter()
                     .map(|t| format!("'{}'", t))
                     .collect::<Vec<String>>()
                     .join(", ")
@@ -598,9 +598,9 @@ mod tests {
         let instance = json!(42);
         let err = ValidationError::multiple_type_error(
             &instance,
-            vec![PrimitiveType::String, PrimitiveType::Number],
+            vec![PrimitiveType::String, PrimitiveType::Number].into(),
         );
         let repr = format!("{}", err);
-        assert_eq!(repr, "'42' is not of types 'string', 'number'")
+        assert_eq!(repr, "'42' is not of types 'number', 'string'")
     }
 }
