@@ -281,7 +281,7 @@ bench!(
   name = "enum";
   schema = {"enum": [1, 2, 3, 4]};
   valid = 4;
-  invalid = 5;
+  invalid = 5, "foo";
 );
 bench!(
   name = "exclusive_maximum";
