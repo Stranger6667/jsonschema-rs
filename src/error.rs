@@ -1,5 +1,5 @@
 use crate::primitive_type::{PrimitiveType, PrimitiveTypesBitMap};
-use serde_json::Value;
+use serde_json::{Map, Number, Value};
 use std::{
     borrow::Cow,
     error, fmt,
@@ -183,11 +183,66 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::AnyOf,
         }
     }
-    pub(crate) fn constant(instance: &'a Value, expected_value: &Value) -> ValidationError<'a> {
+    pub(crate) fn constant_array(
+        instance: &'a Value,
+        expected_value: &[Value],
+    ) -> ValidationError<'a> {
         ValidationError {
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Constant {
-                expected_value: expected_value.clone(),
+                expected_value: Value::Array(expected_value.to_vec()),
+            },
+        }
+    }
+    pub(crate) fn constant_boolean(
+        instance: &'a Value,
+        expected_value: bool,
+    ) -> ValidationError<'a> {
+        ValidationError {
+            instance: Cow::Borrowed(instance),
+            kind: ValidationErrorKind::Constant {
+                expected_value: Value::Bool(expected_value),
+            },
+        }
+    }
+    pub(crate) fn constant_null(instance: &'a Value) -> ValidationError<'a> {
+        ValidationError {
+            instance: Cow::Borrowed(instance),
+            kind: ValidationErrorKind::Constant {
+                expected_value: Value::Null,
+            },
+        }
+    }
+    pub(crate) fn constant_number(
+        instance: &'a Value,
+        expected_value: &Number,
+    ) -> ValidationError<'a> {
+        ValidationError {
+            instance: Cow::Borrowed(instance),
+            kind: ValidationErrorKind::Constant {
+                expected_value: Value::Number(expected_value.clone()),
+            },
+        }
+    }
+    pub(crate) fn constant_object(
+        instance: &'a Value,
+        expected_value: &Map<String, Value>,
+    ) -> ValidationError<'a> {
+        ValidationError {
+            instance: Cow::Borrowed(instance),
+            kind: ValidationErrorKind::Constant {
+                expected_value: Value::Object(expected_value.clone()),
+            },
+        }
+    }
+    pub(crate) fn constant_string(
+        instance: &'a Value,
+        expected_value: &str,
+    ) -> ValidationError<'a> {
+        ValidationError {
+            instance: Cow::Borrowed(instance),
+            kind: ValidationErrorKind::Constant {
+                expected_value: Value::String(expected_value.to_string()),
             },
         }
     }

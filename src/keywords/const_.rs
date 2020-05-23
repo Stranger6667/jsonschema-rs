@@ -4,25 +4,84 @@ use crate::{
     keywords::CompilationResult,
     validator::Validate,
 };
-use serde_json::{Map, Value};
+use serde_json::{Map, Number, Value};
 use std::f64::EPSILON;
 
-pub struct ConstValidator {
-    value: Value,
+struct ConstArrayValidator {
+    value: Vec<Value>,
 }
-
-impl ConstValidator {
+impl ConstArrayValidator {
     #[inline]
-    pub(crate) fn compile(value: &Value) -> CompilationResult {
-        Ok(Box::new(ConstValidator {
-            value: value.clone(),
+    pub(crate) fn compile(value: &[Value]) -> CompilationResult {
+        Ok(Box::new(ConstArrayValidator {
+            value: value.to_vec(),
         }))
     }
 }
-
-impl Validate for ConstValidator {
+impl Validate for ConstArrayValidator {
+    #[inline]
     fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
-        ValidationError::constant(instance, &self.value)
+        ValidationError::constant_array(instance, &self.value)
+    }
+
+    fn name(&self) -> String {
+        format!(
+            "const: [{}]",
+            self.value
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+
+    #[inline]
+    fn is_valid_array(&self, _: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
+        self.value == instance_value
+    }
+    #[inline]
+    fn is_valid_boolean(&self, _: &JSONSchema, _: &Value, _: bool) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_object(&self, _: &JSONSchema, _: &Value, _: &Map<String, Value>) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_null(&self, _: &JSONSchema, _: &Value, _: ()) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_number(&self, _: &JSONSchema, _: &Value, _: f64) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_signed_integer(&self, _: &JSONSchema, _: &Value, _: i64) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_string(&self, _: &JSONSchema, _: &Value, _: &str) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_unsigned_integer(&self, _: &JSONSchema, _: &Value, _: u64) -> bool {
+        false
+    }
+}
+
+struct ConstBooleanValidator {
+    value: bool,
+}
+impl ConstBooleanValidator {
+    #[inline]
+    pub(crate) fn compile(value: bool) -> CompilationResult {
+        Ok(Box::new(ConstBooleanValidator { value }))
+    }
+}
+impl Validate for ConstBooleanValidator {
+    #[inline]
+    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
+        ValidationError::constant_boolean(instance, self.value)
     }
 
     fn name(&self) -> String {
@@ -30,37 +89,135 @@ impl Validate for ConstValidator {
     }
 
     #[inline]
-    fn is_valid_array(&self, _: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
-        self.value
-            .as_array()
-            .map_or_else(|| false, |value| value.as_slice() == instance_value)
+    fn is_valid_array(&self, _: &JSONSchema, _: &Value, _: &[Value]) -> bool {
+        false
     }
     #[inline]
     fn is_valid_boolean(&self, _: &JSONSchema, _: &Value, instance_value: bool) -> bool {
-        self.value
-            .as_bool()
-            .map_or_else(|| false, |value| value == instance_value)
-    }
-    #[inline]
-    fn is_valid_object(
-        &self,
-        _: &JSONSchema,
-        _: &Value,
-        instance_value: &Map<String, Value>,
-    ) -> bool {
-        self.value
-            .as_object()
-            .map_or_else(|| false, |value| value == instance_value)
+        self.value == instance_value
     }
     #[inline]
     fn is_valid_null(&self, _: &JSONSchema, _: &Value, _: ()) -> bool {
-        self.value.is_null()
+        false
+    }
+    #[inline]
+    fn is_valid_number(&self, _: &JSONSchema, _: &Value, _: f64) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_object(&self, _: &JSONSchema, _: &Value, _: &Map<String, Value>) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_signed_integer(&self, _: &JSONSchema, _: &Value, _: i64) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_string(&self, _: &JSONSchema, _: &Value, _: &str) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_unsigned_integer(&self, _: &JSONSchema, _: &Value, _: u64) -> bool {
+        false
+    }
+}
+
+struct ConstNullValidator {}
+impl ConstNullValidator {
+    #[inline]
+    pub(crate) fn compile() -> CompilationResult {
+        Ok(Box::new(ConstNullValidator {}))
+    }
+}
+impl Validate for ConstNullValidator {
+    #[inline]
+    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
+        ValidationError::constant_null(instance)
+    }
+
+    fn name(&self) -> String {
+        format!("const: {}", Value::Null)
+    }
+
+    #[inline]
+    fn is_valid_array(&self, _: &JSONSchema, _: &Value, _: &[Value]) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_boolean(&self, _: &JSONSchema, _: &Value, _: bool) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_null(&self, _: &JSONSchema, _: &Value, _: ()) -> bool {
+        true
+    }
+    #[inline]
+    fn is_valid_number(&self, _: &JSONSchema, _: &Value, _: f64) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_object(&self, _: &JSONSchema, _: &Value, _: &Map<String, Value>) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_signed_integer(&self, _: &JSONSchema, _: &Value, _: i64) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_string(&self, _: &JSONSchema, _: &Value, _: &str) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_unsigned_integer(&self, _: &JSONSchema, _: &Value, _: u64) -> bool {
+        false
+    }
+}
+
+struct ConstNumberValidator {
+    // This is saved in order to ensure that the error message is not altered by precision loss
+    original_value: Number,
+    value: f64,
+}
+impl ConstNumberValidator {
+    #[inline]
+    pub(crate) fn compile(original_value: &Number) -> CompilationResult {
+        Ok(Box::new(ConstNumberValidator {
+            original_value: original_value.clone(),
+            value: original_value
+                .as_f64()
+                .expect("A JSON number will always be representable as f64"),
+        }))
+    }
+}
+impl Validate for ConstNumberValidator {
+    #[inline]
+    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
+        ValidationError::constant_number(instance, &self.original_value)
+    }
+
+    fn name(&self) -> String {
+        format!("const: {}", self.original_value)
+    }
+
+    #[inline]
+    fn is_valid_array(&self, _: &JSONSchema, _: &Value, _: &[Value]) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_boolean(&self, _: &JSONSchema, _: &Value, _: bool) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_null(&self, _: &JSONSchema, _: &Value, _: ()) -> bool {
+        false
     }
     #[inline]
     fn is_valid_number(&self, _: &JSONSchema, _: &Value, instance_value: f64) -> bool {
-        self.value
-            .as_f64()
-            .map_or_else(|| false, |value| (value - instance_value).abs() < EPSILON)
+        (self.value - instance_value).abs() < EPSILON
+    }
+    #[inline]
+    fn is_valid_object(&self, _: &JSONSchema, _: &Value, _: &Map<String, Value>) -> bool {
+        false
     }
     #[inline]
     fn is_valid_signed_integer(
@@ -73,10 +230,8 @@ impl Validate for ConstValidator {
         self.is_valid_number(schema, instance, instance_value as f64)
     }
     #[inline]
-    fn is_valid_string(&self, _: &JSONSchema, _: &Value, instance_value: &str) -> bool {
-        self.value
-            .as_str()
-            .map_or_else(|| false, |value| value == instance_value)
+    fn is_valid_string(&self, _: &JSONSchema, _: &Value, _: &str) -> bool {
+        false
     }
     #[inline]
     fn is_valid_unsigned_integer(
@@ -90,11 +245,140 @@ impl Validate for ConstValidator {
     }
 }
 
+struct ConstObjectValidator {
+    value: Map<String, Value>,
+}
+impl ConstObjectValidator {
+    #[inline]
+    pub(crate) fn compile(value: &Map<String, Value>) -> CompilationResult {
+        Ok(Box::new(ConstObjectValidator {
+            value: value.clone(),
+        }))
+    }
+}
+impl Validate for ConstObjectValidator {
+    #[inline]
+    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
+        ValidationError::constant_object(instance, &self.value)
+    }
+
+    fn name(&self) -> String {
+        format!(
+            "const: {{{}}}",
+            self.value
+                .iter()
+                .map(|(key, value)| format!(r#""{}":{}"#, key, value))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+
+    #[inline]
+    fn is_valid_array(&self, _: &JSONSchema, _: &Value, _: &[Value]) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_boolean(&self, _: &JSONSchema, _: &Value, _: bool) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_null(&self, _: &JSONSchema, _: &Value, _: ()) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_number(&self, _: &JSONSchema, _: &Value, _: f64) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_object(
+        &self,
+        _: &JSONSchema,
+        _: &Value,
+        instance_value: &Map<String, Value>,
+    ) -> bool {
+        &self.value == instance_value
+    }
+    #[inline]
+    fn is_valid_signed_integer(&self, _: &JSONSchema, _: &Value, _: i64) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_string(&self, _: &JSONSchema, _: &Value, _: &str) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_unsigned_integer(&self, _: &JSONSchema, _: &Value, _: u64) -> bool {
+        false
+    }
+}
+
+struct ConstStringValidator {
+    value: String,
+}
+impl ConstStringValidator {
+    #[inline]
+    pub(crate) fn compile(value: &str) -> CompilationResult {
+        Ok(Box::new(ConstStringValidator {
+            value: value.to_string(),
+        }))
+    }
+}
+impl Validate for ConstStringValidator {
+    #[inline]
+    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
+        ValidationError::constant_string(instance, &self.value)
+    }
+
+    fn name(&self) -> String {
+        format!(r#"const: "{}""#, self.value)
+    }
+
+    #[inline]
+    fn is_valid_array(&self, _: &JSONSchema, _: &Value, _: &[Value]) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_boolean(&self, _: &JSONSchema, _: &Value, _: bool) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_null(&self, _: &JSONSchema, _: &Value, _: ()) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_number(&self, _: &JSONSchema, _: &Value, _: f64) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_object(&self, _: &JSONSchema, _: &Value, _: &Map<String, Value>) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_signed_integer(&self, _: &JSONSchema, _: &Value, _: i64) -> bool {
+        false
+    }
+    #[inline]
+    fn is_valid_string(&self, _: &JSONSchema, _: &Value, instance_value: &str) -> bool {
+        self.value == instance_value
+    }
+    #[inline]
+    fn is_valid_unsigned_integer(&self, _: &JSONSchema, _: &Value, _: u64) -> bool {
+        false
+    }
+}
+
 #[inline]
 pub fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     _: &CompilationContext,
 ) -> Option<CompilationResult> {
-    Some(ConstValidator::compile(schema))
+    match schema {
+        Value::Array(items) => Some(ConstArrayValidator::compile(items)),
+        Value::Bool(item) => Some(ConstBooleanValidator::compile(*item)),
+        Value::Null => Some(ConstNullValidator::compile()),
+        Value::Number(item) => Some(ConstNumberValidator::compile(item)),
+        Value::Object(map) => Some(ConstObjectValidator::compile(map)),
+        Value::String(string) => Some(ConstStringValidator::compile(string)),
+    }
 }
