@@ -36,10 +36,7 @@ impl Validate for MultipleTypesValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::multiple_type_error(
-                instance,
-                self.types,
-            ))
+            error(ValidationError::multiple_type_error(instance, self.types))
         }
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
