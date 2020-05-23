@@ -231,11 +231,11 @@ mod tests {
         let errors: Vec<ValidationError> = result.unwrap_err().collect();
         assert_eq!(errors.len(), 2);
         assert_eq!(
-            format!("{}", errors[0]),
+            errors[0].to_string(),
             r#"{"a":3} has less than 2 properties"#
         );
         assert_eq!(
-            format!("{}", errors[1]),
+            errors[1].to_string(),
             r#"'"a"' is shorter than 3 characters"#
         );
     }

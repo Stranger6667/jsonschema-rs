@@ -40,7 +40,7 @@ impl Validate for EnumValidator {
             "enum: [{}]",
             self.items
                 .iter()
-                .map(|item| format!("{}", item))
+                .map(Value::to_string)
                 .collect::<Vec<String>>()
                 .join(", ")
         )
