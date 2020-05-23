@@ -41,7 +41,8 @@
     clippy::option_unwrap_used,
     clippy::option_map_unwrap_or_else,
     clippy::option_map_unwrap_or,
-    clippy::trivially_copy_pass_by_ref
+    clippy::trivially_copy_pass_by_ref,
+    clippy::needless_pass_by_value
 )]
 mod compilation;
 mod error;

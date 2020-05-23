@@ -80,19 +80,21 @@ impl<'a> Resolver<'a> {
         match self.resolve_url(&resource, schema)? {
             Cow::Borrowed(document) => match pointer(draft, document, fragment.as_ref()) {
                 Some((folders, resolved)) => {
-                    Ok((join_folders(resource, folders)?, Cow::Borrowed(resolved)))
+                    Ok((join_folders(resource, &folders)?, Cow::Borrowed(resolved)))
                 }
                 None => Err(ValidationError::invalid_reference(url.as_str().to_string())),
             },
             Cow::Owned(document) => match pointer(draft, &document, fragment.as_ref()) {
-                Some((folders, x)) => Ok((join_folders(resource, folders)?, Cow::Owned(x.clone()))),
+                Some((folders, x)) => {
+                    Ok((join_folders(resource, &folders)?, Cow::Owned(x.clone())))
+                }
                 None => Err(ValidationError::invalid_reference(url.as_str().to_string())),
             },
         }
     }
 }
 
-fn join_folders(mut resource: Url, folders: Vec<&str>) -> Result<Url, url::ParseError> {
+fn join_folders(mut resource: Url, folders: &[&str]) -> Result<Url, url::ParseError> {
     if folders.len() > 1 {
         for i in folders.iter().skip(1) {
             resource = resource.join(i)?;
