@@ -1,12 +1,9 @@
 use heck::{SnakeCase, TitleCase};
 use proc_macro::TokenStream;
-use proc_macro2::Span;
-use proc_macro2::TokenStream as TokenStream2;
+use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use serde_json::{from_reader, Value};
-use std::fs;
-use std::fs::File;
-use std::path::Path;
+use std::{fs, fs::File, path::Path};
 use syn::{
     braced,
     parse::{Parse, ParseStream},
