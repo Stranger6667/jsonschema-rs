@@ -2,9 +2,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use jsonschema::*;
 use jsonschema_valid::schemas;
 use serde_json::{from_str, json, Value};
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
+use std::{fs::File, io::Read, path::Path};
 use valico::json_schema;
 
 fn read_json(filepath: &str) -> Value {
@@ -36,20 +34,20 @@ macro_rules! bench {
               let schema = json!($schema);
               let validator = JSONSchema::compile(&schema, None).unwrap();
               let suffix = strip_characters(stringify!($schema));
-              c.bench_function(format!("{}{}{}", $name, " compile ", suffix).as_str(), |b| b.iter(|| JSONSchema::compile(&schema, None).unwrap()));
+              c.bench_function(format!("jsonschema-rs {} compile {}", $name, suffix).as_str(), |b| b.iter(|| JSONSchema::compile(&schema, None).unwrap()));
               $(
                    let instance = black_box(json!($valid));
                    assert!(validator.is_valid(&instance));
                    let suffix = strip_characters(stringify!($valid));
-                   c.bench_function(format!("{}{}{}", $name, " is_valid valid ", suffix).as_str(), |b| b.iter(|| validator.is_valid(&instance)));
-                   c.bench_function(format!("{}{}{}", $name, " validate valid ", suffix).as_str(), |b| b.iter(|| validator.validate(&instance).ok()));
+                   c.bench_function(format!("jsonschema-rs {} is_valid valid {}", $name, suffix).as_str(), |b| b.iter(|| validator.is_valid(&instance)));
+                   c.bench_function(format!("jsonschema-rs {} validate valid {}", $name, suffix).as_str(), |b| b.iter(|| validator.validate(&instance).ok()));
               )*
               $(
                    let instance = black_box(json!($invalid));
                    assert!(!validator.is_valid(&instance));
                    let suffix = strip_characters(stringify!($invalid));
-                   c.bench_function(format!("{}{}{}", $name, " is_valid invalid ", suffix).as_str(), |b| b.iter(|| validator.is_valid(&instance)));
-                   c.bench_function(format!("{}{}{}", $name, " validate invalid ", suffix).as_str(), |b| b.iter(|| {
+                   c.bench_function(format!("jsonschema-rs {} is_valid invalid {}", $name, suffix).as_str(), |b| b.iter(|| validator.is_valid(&instance)));
+                   c.bench_function(format!("jsonschema-rs {} validate invalid {}", $name, suffix).as_str(), |b| b.iter(|| {
                         let _: Vec<_> = validator.validate(&instance).unwrap_err().collect();
                    }));
               )*
@@ -66,13 +64,13 @@ macro_rules! bench {
               let schema = json!($schema);
               let validator = JSONSchema::compile(&schema, None).unwrap();
               let suffix = strip_characters(stringify!($schema));
-              c.bench_function(format!("{}{}{}", $name, " compile ", suffix).as_str(), |b| b.iter(|| JSONSchema::compile(&schema, None).unwrap()));
+              c.bench_function(format!("jsonschema-rs {} compile {}", $name, suffix).as_str(), |b| b.iter(|| JSONSchema::compile(&schema, None).unwrap()));
               $(
                    let instance = black_box(json!($invalid));
                    assert!(!validator.is_valid(&instance));
                    let suffix = strip_characters(stringify!($invalid));
-                   c.bench_function(format!("{}{}{}", $name, " is_valid invalid ", suffix).as_str(), |b| b.iter(|| validator.is_valid(&instance)));
-                   c.bench_function(format!("{}{}{}", $name, " validate invalid ", suffix).as_str(), |b| b.iter(|| {
+                   c.bench_function(format!("jsonschema-rs {} is_valid invalid {}", $name, suffix).as_str(), |b| b.iter(|| validator.is_valid(&instance)));
+                   c.bench_function(format!("jsonschema-rs {} validate invalid {}", $name, suffix).as_str(), |b| b.iter(|| {
                         let _: Vec<_> = validator.validate(&instance).unwrap_err().collect();
                    }));
               )*
@@ -88,37 +86,37 @@ fn big_schema(c: &mut Criterion) {
 
     // jsonschema
     let validator = JSONSchema::compile(&schema, None).unwrap();
-    c.bench_function("jsonschema big schema compile", |b| {
+    c.bench_function("compare jsonschema-rs big schema compile", |b| {
         b.iter(|| JSONSchema::compile(&schema, None).unwrap())
     });
-    c.bench_function("jsonschema big schema is_valid", |b| {
+    c.bench_function("compare jsonschema-rs big schema is_valid", |b| {
         b.iter(|| validator.is_valid(&instance))
     });
-    c.bench_function("jsonschema big schema validate", |b| {
+    c.bench_function("compare jsonschema-rs big schema validate", |b| {
         b.iter(|| validator.validate(&instance).ok())
     });
 
     // jsonschema_valid
     let cfg = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap();
-    c.bench_function("jsonschema_valid big schema compile", |b| {
+    c.bench_function("compare jsonschema_valid big schema compile", |b| {
         b.iter(|| {
             jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap()
         })
     });
-    c.bench_function("jsonschema_valid big schema validate", |b| {
+    c.bench_function("compare jsonschema_valid big schema validate", |b| {
         b.iter(|| jsonschema_valid::validate(&cfg, &instance))
     });
 
     // valico
     let mut scope = json_schema::Scope::new();
     let compiled = scope.compile_and_return(schema.clone(), false).unwrap();
-    c.bench_function("valico big schema compile", |b| {
+    c.bench_function("compare valico big schema compile", |b| {
         b.iter(|| {
             let mut scope = json_schema::Scope::new();
             scope.compile_and_return(schema.clone(), false).unwrap();
         })
     });
-    c.bench_function("valico big schema validate", |b| {
+    c.bench_function("compare valico big schema validate", |b| {
         b.iter(|| compiled.validate(&instance).is_valid())
     });
 }
@@ -133,19 +131,19 @@ fn small_schema(c: &mut Criterion) {
 
     // jsonschema
     let validator = JSONSchema::compile(&schema, None).unwrap();
-    c.bench_function("jsonschema small schema compile", |b| {
+    c.bench_function("compare jsonschema-rs small schema compile", |b| {
         b.iter(|| JSONSchema::compile(&schema, None).unwrap())
     });
-    c.bench_function("jsonschema small schema is_valid valid", |b| {
+    c.bench_function("compare jsonschema-rs small schema is_valid valid", |b| {
         b.iter(|| validator.is_valid(&valid))
     });
-    c.bench_function("jsonschema small schema validate valid", |b| {
+    c.bench_function("compare jsonschema-rs small schema validate valid", |b| {
         b.iter(|| validator.validate(&valid).ok())
     });
-    c.bench_function("jsonschema small schema is_valid invalid", |b| {
+    c.bench_function("compare jsonschema-rs small schema is_valid invalid", |b| {
         b.iter(|| validator.is_valid(&invalid))
     });
-    c.bench_function("jsonschema small schema validate invalid", |b| {
+    c.bench_function("compare jsonschema-rs small schema validate invalid", |b| {
         b.iter(|| {
             let _: Vec<_> = validator.validate(&invalid).unwrap_err().collect();
         })
@@ -153,31 +151,33 @@ fn small_schema(c: &mut Criterion) {
 
     // jsonschema_valid
     let cfg = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap();
-    c.bench_function("jsonschema_valid small schema compile", |b| {
+    c.bench_function("compare jsonschema_valid small schema compile", |b| {
         b.iter(|| {
             jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap()
         })
     });
-    c.bench_function("jsonschema_valid small schema validate valid", |b| {
-        b.iter(|| jsonschema_valid::validate(&cfg, &valid))
-    });
-    c.bench_function("jsonschema_valid small schema validate invalid", |b| {
-        b.iter(|| jsonschema_valid::validate(&cfg, &invalid).ok())
-    });
+    c.bench_function(
+        "compare jsonschema_valid small schema validate valid",
+        |b| b.iter(|| jsonschema_valid::validate(&cfg, &valid)),
+    );
+    c.bench_function(
+        "compare jsonschema_valid small schema validate invalid",
+        |b| b.iter(|| jsonschema_valid::validate(&cfg, &invalid).ok()),
+    );
 
     // valico
     let mut scope = json_schema::Scope::new();
     let compiled = scope.compile_and_return(schema.clone(), false).unwrap();
-    c.bench_function("valico small schema compile", |b| {
+    c.bench_function("compare valico small schema compile", |b| {
         b.iter(|| {
             let mut scope = json_schema::Scope::new();
             scope.compile_and_return(schema.clone(), false).unwrap();
         })
     });
-    c.bench_function("valico small schema validate valid", |b| {
+    c.bench_function("compare valico small schema validate valid", |b| {
         b.iter(|| compiled.validate(&valid).is_valid())
     });
-    c.bench_function("valico small schema validate invalid", |b| {
+    c.bench_function("compare valico small schema validate invalid", |b| {
         b.iter(|| compiled.validate(&invalid).is_valid())
     });
 }
