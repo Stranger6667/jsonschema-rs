@@ -46,29 +46,29 @@ impl TryFrom<&str> for PrimitiveType {
 }
 
 #[inline(always)]
-fn primitive_type_to_bit_map_representation(primitive_type: &PrimitiveType) -> u8 {
+fn primitive_type_to_bit_map_representation(primitive_type: PrimitiveType) -> u8 {
     match primitive_type {
-        PrimitiveType::Array   => 1,
+        PrimitiveType::Array => 1,
         PrimitiveType::Boolean => 2,
         PrimitiveType::Integer => 4,
-        PrimitiveType::Null    => 8,
-        PrimitiveType::Number  => 16,
-        PrimitiveType::Object  => 32,
-        PrimitiveType::String  => 64,
+        PrimitiveType::Null => 8,
+        PrimitiveType::Number => 16,
+        PrimitiveType::Object => 32,
+        PrimitiveType::String => 64,
     }
 }
 
 #[inline(always)]
 fn bit_map_representation_primitive_type(bit_representation: u8) -> PrimitiveType {
     match bit_representation {
-        1  => PrimitiveType::Array,
-        2  => PrimitiveType::Boolean,
-        4  => PrimitiveType::Integer,
-        8  => PrimitiveType::Null,
+        1 => PrimitiveType::Array,
+        2 => PrimitiveType::Boolean,
+        4 => PrimitiveType::Integer,
+        8 => PrimitiveType::Null,
         16 => PrimitiveType::Number,
         32 => PrimitiveType::Object,
         64 => PrimitiveType::String,
-        _ => unreachable!("This shoud never be possible")
+        _ => unreachable!("This shoud never be possible"),
     }
 }
 
@@ -82,20 +82,20 @@ impl PrimitiveTypesBitMap {
     }
 
     #[inline]
-    pub(crate) fn add_type(mut self, primitive_type: &PrimitiveType) -> Self {
+    pub(crate) fn add_type(mut self, primitive_type: PrimitiveType) -> Self {
         self.inner |= primitive_type_to_bit_map_representation(primitive_type);
         self
     }
 
     #[inline(always)]
-    pub(crate) fn contains_type(&self, primitive_type: &PrimitiveType) -> bool {
+    pub(crate) fn contains_type(self, primitive_type: PrimitiveType) -> bool {
         primitive_type_to_bit_map_representation(primitive_type) & self.inner != 0
     }
 }
 impl BitOrAssign<PrimitiveType> for PrimitiveTypesBitMap {
     #[inline]
     fn bitor_assign(&mut self, rhs: PrimitiveType) {
-        *self = self.add_type(&rhs);
+        *self = self.add_type(rhs);
     }
 }
 impl IntoIterator for PrimitiveTypesBitMap {
@@ -104,7 +104,7 @@ impl IntoIterator for PrimitiveTypesBitMap {
     fn into_iter(self) -> Self::IntoIter {
         PrimitiveTypesBitMapIterator {
             range: 1..7,
-            bit_map: self
+            bit_map: self,
         }
     }
 }
@@ -125,12 +125,13 @@ pub struct PrimitiveTypesBitMapIterator {
 }
 impl Iterator for PrimitiveTypesBitMapIterator {
     type Item = PrimitiveType;
+    #[allow(clippy::integer_arithmetic)]
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             if let Some(value) = self.range.next() {
-                let bit_value = 1<<value;
+                let bit_value = 1 << value;
                 if self.bit_map.inner & bit_value != 0 {
-                    return Some(bit_map_representation_primitive_type(bit_value))
+                    return Some(bit_map_representation_primitive_type(bit_value));
                 }
             } else {
                 return None;
