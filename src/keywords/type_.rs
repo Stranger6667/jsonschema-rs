@@ -36,23 +36,20 @@ impl Validate for MultipleTypesValidator {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::multiple_type_error(
-                instance,
-                self.types,
-            ))
+            error(ValidationError::multiple_type_error(instance, self.types))
         }
     }
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         match instance {
-            Value::Array(_) => self.types.contains_type(&PrimitiveType::Array),
-            Value::Bool(_) => self.types.contains_type(&PrimitiveType::Boolean),
-            Value::Null => self.types.contains_type(&PrimitiveType::Null),
+            Value::Array(_) => self.types.contains_type(PrimitiveType::Array),
+            Value::Bool(_) => self.types.contains_type(PrimitiveType::Boolean),
+            Value::Null => self.types.contains_type(PrimitiveType::Null),
             Value::Number(num) => {
-                self.types.contains_type(&PrimitiveType::Number)
-                    || (self.types.contains_type(&PrimitiveType::Integer) && is_integer(num))
+                self.types.contains_type(PrimitiveType::Number)
+                    || (self.types.contains_type(PrimitiveType::Integer) && is_integer(num))
             }
-            Value::Object(_) => self.types.contains_type(&PrimitiveType::Object),
-            Value::String(_) => self.types.contains_type(&PrimitiveType::String),
+            Value::Object(_) => self.types.contains_type(PrimitiveType::Object),
+            Value::String(_) => self.types.contains_type(PrimitiveType::String),
         }
     }
 
