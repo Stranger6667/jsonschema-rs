@@ -216,7 +216,7 @@ mod tests {
     fn error_message(schema: Value, instance: Value, expected: &str) {
         let compiled = JSONSchema::compile(&schema, None).unwrap();
         let errors: Vec<_> = compiled.validate(&instance).unwrap_err().collect();
-        assert_eq!(format!("{}", errors[0]), expected);
+        assert_eq!(errors[0].to_string(), expected);
     }
 
     // Extra cases not covered by JSON test suite

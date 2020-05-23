@@ -589,8 +589,7 @@ mod tests {
     fn single_type_error() {
         let instance = json!(42);
         let err = ValidationError::single_type_error(&instance, PrimitiveType::String);
-        let repr = format!("{}", err);
-        assert_eq!(repr, "'42' is not of type 'string'")
+        assert_eq!(err.to_string(), "'42' is not of type 'string'")
     }
 
     #[test]
@@ -600,7 +599,6 @@ mod tests {
             &instance,
             vec![PrimitiveType::String, PrimitiveType::Number].into(),
         );
-        let repr = format!("{}", err);
-        assert_eq!(repr, "'42' is not of types 'number', 'string'")
+        assert_eq!(err.to_string(), "'42' is not of types 'number', 'string'")
     }
 }
