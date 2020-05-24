@@ -6,6 +6,8 @@ use crate::{
 };
 use regex::Regex;
 use serde_json::{Map, Value};
+use std::collections::BTreeSet;
+use std::iter::FromIterator;
 
 pub struct AdditionalPropertiesValidator {
     validators: Validators,
@@ -85,7 +87,7 @@ impl Validate for AdditionalPropertiesFalseValidator {
 }
 
 pub struct AdditionalPropertiesNotEmptyFalseValidator {
-    properties: Map<String, Value>,
+    properties: BTreeSet<String>,
 }
 
 impl AdditionalPropertiesNotEmptyFalseValidator {
@@ -93,7 +95,7 @@ impl AdditionalPropertiesNotEmptyFalseValidator {
     pub(crate) fn compile(properties: &Value) -> CompilationResult {
         if let Value::Object(properties) = properties {
             return Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
-                properties: properties.clone(),
+                properties: BTreeSet::from_iter(properties.keys().cloned()),
             }));
         }
         Err(CompilationError::SchemaError)
@@ -104,7 +106,7 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             for property in item.keys() {
-                if !self.properties.contains_key(property) {
+                if !self.properties.contains(property) {
                     // No extra properties are allowed
                     let property_value = Value::String(property.to_string());
                     return error(ValidationError::false_schema(&property_value).into_owned());
@@ -117,7 +119,7 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             for property in item.keys() {
-                if !self.properties.contains_key(property) {
+                if !self.properties.contains(property) {
                     // No extra properties are allowed
                     return false;
                 }
@@ -133,7 +135,7 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
 
 pub struct AdditionalPropertiesNotEmptyValidator {
     validators: Validators,
-    properties: Map<String, Value>,
+    properties: BTreeSet<String>,
 }
 
 impl AdditionalPropertiesNotEmptyValidator {
@@ -145,7 +147,7 @@ impl AdditionalPropertiesNotEmptyValidator {
     ) -> CompilationResult {
         if let Value::Object(properties) = properties {
             return Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
-                properties: properties.clone(),
+                properties: BTreeSet::from_iter(properties.keys().cloned()),
                 validators: compile_validators(schema, context)?,
             }));
         }
@@ -161,7 +163,7 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
                 .iter()
                 .flat_map(move |validator| {
                     item.iter()
-                        .filter(move |(property, _)| !self.properties.contains_key(*property))
+                        .filter(move |(property, _)| !self.properties.contains(*property))
                         .flat_map(move |(_, value)| validator.validate(schema, value))
                 })
                 .collect();
@@ -174,7 +176,7 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
         if let Value::Object(ref item) = instance {
             return self.validators.iter().all(move |validator| {
                 item.iter()
-                    .filter(move |(property, _)| !self.properties.contains_key(*property))
+                    .filter(move |(property, _)| !self.properties.contains(*property))
                     .all(move |(_, value)| validator.is_valid(schema, value))
             });
         }
@@ -288,7 +290,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
 
 pub struct AdditionalPropertiesWithPatternsNotEmptyValidator {
     validators: Validators,
-    properties: Map<String, Value>,
+    properties: BTreeSet<String>,
     pattern: Regex,
 }
 
@@ -304,7 +306,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator {
             return Ok(Box::new(
                 AdditionalPropertiesWithPatternsNotEmptyValidator {
                     validators: compile_validators(schema, context)?,
-                    properties: properties.clone(),
+                    properties: BTreeSet::from_iter(properties.keys().cloned()),
                     pattern,
                 },
             ));
@@ -322,8 +324,8 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
                 .flat_map(move |validator| {
                     item.iter()
                         .filter(move |(property, _)| {
-                            !self.properties.contains_key(*property)
-                                && !self.pattern.is_match(property)
+                            !(self.properties.contains(*property)
+                                || self.pattern.is_match(property))
                         })
                         .flat_map(move |(_, value)| validator.validate(schema, value))
                 })
@@ -338,7 +340,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
             return self.validators.iter().all(move |validator| {
                 item.iter()
                     .filter(move |(property, _)| {
-                        !self.properties.contains_key(*property) && !self.pattern.is_match(property)
+                        !(self.properties.contains(*property) || self.pattern.is_match(property))
                     })
                     .all(move |(_, value)| validator.is_valid(schema, value))
             });
@@ -355,7 +357,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
 }
 
 pub struct AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
-    properties: Map<String, Value>,
+    properties: BTreeSet<String>,
     pattern: Regex,
 }
 
@@ -365,7 +367,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
         if let Value::Object(properties) = properties {
             return Ok(Box::new(
                 AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
-                    properties: properties.clone(),
+                    properties: BTreeSet::from_iter(properties.keys().cloned()),
                     pattern,
                 },
             ));
@@ -378,7 +380,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             for property in item.keys() {
-                if !self.properties.contains_key(property) && !self.pattern.is_match(property) {
+                if !self.properties.contains(property) && !self.pattern.is_match(property) {
                     let property_value = Value::String(property.to_string());
                     return error(ValidationError::false_schema(&property_value).into_owned());
                 }
@@ -390,7 +392,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             for property in item.keys() {
-                if !self.properties.contains_key(property) && !self.pattern.is_match(property) {
+                if !self.properties.contains(property) && !self.pattern.is_match(property) {
                     return false;
                 }
             }
