@@ -29,6 +29,7 @@
 - Reuse parsed `DEFAULT_ROOT_URL` in `JSONSchema::compile`.
 - Avoid string allocation during `scope` parsing in `JSONSchema::compile`.
 - Refactor benchmark suite
+- Use `BTreeSet` in `additionalProperties` keyword during compilation to reduce the amount of copied data. [#91](https://github.com/Stranger6667/jsonschema-rs/pull/91)
 
 ## Fixed
 
