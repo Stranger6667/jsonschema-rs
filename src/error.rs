@@ -10,8 +10,13 @@ use std::{
     string::FromUtf8Error,
 };
 
+/// The error type that happens when the input schema is not valid.
+///
+/// It includes cases when during validation a reference is resolved into an invalid schema,
+/// which we can't know upfront because schemas can be in remote locations.
 #[derive(Debug, PartialEq)]
 pub enum CompilationError {
+    /// Invalid schema structure
     SchemaError,
 }
 
@@ -44,6 +49,26 @@ pub struct ValidationError<'a> {
     kind: ValidationErrorKind,
 }
 
+/// An iterator over instances of `ValidationError` that represent validation error for the
+/// input instance.
+///
+/// # Examples
+///
+/// ```rust
+/// use jsonschema::JSONSchema;
+/// use serde_json::json;
+///
+/// let schema = json!({"maxLength": 5});
+/// let instance = json!("foo");
+/// if let Ok(compiled) = JSONSchema::compile(&schema, None) {
+///     let result = compiled.validate(&instance);
+///     if let Err(errors) = result {
+///         for error in errors {
+///             println!("Validation error: {}", error)
+///         }   
+///     }
+/// }
+/// ```
 pub type ErrorIterator<'a> = Box<dyn Iterator<Item = ValidationError<'a>> + Sync + Send + 'a>;
 
 // Empty iterator means no error happened
