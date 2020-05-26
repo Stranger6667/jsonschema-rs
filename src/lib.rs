@@ -44,7 +44,13 @@
     clippy::trivially_copy_pass_by_ref,
     clippy::needless_pass_by_value,
     missing_docs,
-    missing_debug_implementations
+    missing_debug_implementations,
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_extern_crates,
+    unused_import_braces,
+    unused_qualifications,
+    variant_size_differences
 )]
 mod compilation;
 mod error;

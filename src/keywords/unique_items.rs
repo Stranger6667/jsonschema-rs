@@ -16,7 +16,7 @@ pub struct HashedValue<'a>(&'a Value);
 
 impl Eq for HashedValue<'_> {}
 
-impl<'a> Hash for HashedValue<'a> {
+impl Hash for HashedValue<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self.0 {
             Value::Null => state.write_u32(3_221_225_473), // chosen randomly
