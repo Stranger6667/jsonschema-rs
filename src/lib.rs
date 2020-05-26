@@ -44,6 +44,7 @@
     clippy::trivially_copy_pass_by_ref,
     clippy::needless_pass_by_value
 )]
+#![deny(warnings, missing_docs)]
 mod compilation;
 mod error;
 mod keywords;

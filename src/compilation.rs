@@ -14,7 +14,7 @@ use url::{ParseError, Url};
 
 pub const DEFAULT_ROOT_URL: &str = "json-schema:///";
 
-// Stores validators tree and runs validation on input documents
+/// The structure that holds a JSON Schema compiled into a validation tree
 pub struct JSONSchema<'a> {
     pub(crate) draft: schemas::Draft,
     pub(crate) schema: &'a Value,
@@ -27,6 +27,7 @@ lazy_static! {
 }
 
 impl<'a> JSONSchema<'a> {
+    /// Compile the input schema into a validation tree
     pub fn compile(
         schema: &'a Value,
         draft: Option<schemas::Draft>,
