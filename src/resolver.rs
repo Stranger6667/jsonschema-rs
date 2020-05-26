@@ -9,6 +9,7 @@ use serde_json::Value;
 use std::{borrow::Cow, collections::HashMap};
 use url::Url;
 
+#[derive(Debug)]
 pub struct Resolver<'a> {
     // canonical_id: sub-schema mapping to resolve documents by their ID
     // canonical_id is composed with the root document id

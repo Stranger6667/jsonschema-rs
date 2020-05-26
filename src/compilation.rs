@@ -15,6 +15,7 @@ use url::{ParseError, Url};
 pub const DEFAULT_ROOT_URL: &str = "json-schema:///";
 
 /// The structure that holds a JSON Schema compiled into a validation tree
+#[derive(Debug)]
 pub struct JSONSchema<'a> {
     pub(crate) draft: schemas::Draft,
     pub(crate) schema: &'a Value,
