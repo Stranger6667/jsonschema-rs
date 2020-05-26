@@ -394,44 +394,44 @@ impl<'a> ValidationError<'a> {
     }
 }
 
-impl<'a> From<CompilationError> for ValidationError<'a> {
+impl From<CompilationError> for ValidationError<'_> {
     #[inline]
     fn from(_: CompilationError) -> Self {
         ValidationError::schema()
     }
 }
-impl<'a> error::Error for ValidationError<'a> {}
-impl<'a> From<serde_json::Error> for ValidationError<'a> {
+impl error::Error for ValidationError<'_> {}
+impl From<serde_json::Error> for ValidationError<'_> {
     #[inline]
     fn from(err: serde_json::Error) -> Self {
         ValidationError::json_parse(err)
     }
 }
-impl<'a> From<io::Error> for ValidationError<'a> {
+impl From<io::Error> for ValidationError<'_> {
     #[inline]
     fn from(err: io::Error) -> Self {
         ValidationError::file_not_found(err)
     }
 }
-impl<'a> From<FromUtf8Error> for ValidationError<'a> {
+impl From<FromUtf8Error> for ValidationError<'_> {
     #[inline]
     fn from(err: FromUtf8Error) -> Self {
         ValidationError::from_utf8(err)
     }
 }
-impl<'a> From<Utf8Error> for ValidationError<'a> {
+impl From<Utf8Error> for ValidationError<'_> {
     #[inline]
     fn from(err: Utf8Error) -> Self {
         ValidationError::utf8(err)
     }
 }
-impl<'a> From<url::ParseError> for ValidationError<'a> {
+impl From<url::ParseError> for ValidationError<'_> {
     #[inline]
     fn from(err: url::ParseError) -> Self {
         ValidationError::invalid_url(err)
     }
 }
-impl<'a> From<reqwest::Error> for ValidationError<'a> {
+impl From<reqwest::Error> for ValidationError<'_> {
     #[inline]
     fn from(err: reqwest::Error) -> Self {
         ValidationError::reqwest(err)
@@ -439,7 +439,7 @@ impl<'a> From<reqwest::Error> for ValidationError<'a> {
 }
 
 /// Textual representation of various validation errors.
-impl<'a> fmt::Display for ValidationError<'a> {
+impl fmt::Display for ValidationError<'_> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match &self.kind {

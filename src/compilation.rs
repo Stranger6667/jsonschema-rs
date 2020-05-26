@@ -105,7 +105,7 @@ impl<'a> CompilationContext<'a> {
     ///
     /// In other words it keeps track of sub-folders during compilation.
     #[inline]
-    pub(crate) fn push(&'a self, schema: &Value) -> Result<Self, url::ParseError> {
+    pub(crate) fn push(&'a self, schema: &Value) -> Result<Self, ParseError> {
         if let Some(id) = schemas::id_of(self.draft, schema) {
             let scope = Url::options().base_url(Some(&self.scope)).parse(id)?;
             Ok(CompilationContext {
