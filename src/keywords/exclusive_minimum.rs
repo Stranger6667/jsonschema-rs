@@ -3,53 +3,92 @@ use crate::{
     compilation::{CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
 };
+use num_cmp::NumCmp;
 use serde_json::{Map, Value};
 
-pub struct ExclusiveMinimumValidator {
+pub struct ExclusiveMinimumU64Validator {
+    limit: u64,
+}
+pub struct ExclusiveMinimumI64Validator {
+    limit: i64,
+}
+pub struct ExclusiveMinimumF64Validator {
     limit: f64,
 }
 
-impl ExclusiveMinimumValidator {
-    #[inline]
-    pub(crate) fn compile(schema: &Value) -> CompilationResult {
-        if let Value::Number(limit) = schema {
-            let limit = limit.as_f64().expect("Always valid");
-            return Ok(Box::new(ExclusiveMinimumValidator { limit }));
-        }
-        Err(CompilationError::SchemaError)
-    }
-}
+macro_rules! validate {
+    ($validator: ty) => {
+        impl Validate for $validator {
+            fn validate<'a>(
+                &self,
+                schema: &'a JSONSchema,
+                instance: &'a Value,
+            ) -> ErrorIterator<'a> {
+                if self.is_valid(schema, instance) {
+                    no_error()
+                } else {
+                    error(ValidationError::exclusive_minimum(
+                        instance,
+                        self.limit as f64,
+                    )) // do not cast
+                }
+            }
 
-impl Validate for ExclusiveMinimumValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Number(item) = instance {
-            let item = item.as_f64().expect("Always valid");
-            if item <= self.limit {
-                return error(ValidationError::exclusive_minimum(instance, self.limit));
+            fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+                if let Value::Number(item) = instance {
+                    return if let Some(item) = item.as_u64() {
+                        NumCmp::num_gt(item, self.limit)
+                    } else if let Some(item) = item.as_i64() {
+                        NumCmp::num_gt(item, self.limit)
+                    } else {
+                        let item = item.as_f64().expect("Always valid");
+                        NumCmp::num_gt(item, self.limit)
+                    };
+                }
+                true
+            }
+
+            fn name(&self) -> String {
+                format!("exclusiveMinimum: {}", self.limit)
             }
         }
-        no_error()
-    }
-
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Number(item) = instance {
-            let item = item.as_f64().expect("Always valid");
-            if item <= self.limit {
-                return false;
-            }
-        }
-        true
-    }
-
-    fn name(&self) -> String {
-        format!("exclusiveMinimum: {}", self.limit)
-    }
+    };
 }
+
+validate!(ExclusiveMinimumU64Validator);
+validate!(ExclusiveMinimumI64Validator);
+validate!(ExclusiveMinimumF64Validator);
+
 #[inline]
 pub fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     _: &CompilationContext,
 ) -> Option<CompilationResult> {
-    Some(ExclusiveMinimumValidator::compile(schema))
+    if let Value::Number(limit) = schema {
+        return if let Some(limit) = limit.as_u64() {
+            Some(Ok(Box::new(ExclusiveMinimumU64Validator { limit })))
+        } else if let Some(limit) = limit.as_i64() {
+            Some(Ok(Box::new(ExclusiveMinimumI64Validator { limit })))
+        } else {
+            let limit = limit.as_f64().expect("Always valid");
+            Some(Ok(Box::new(ExclusiveMinimumF64Validator { limit })))
+        };
+    }
+    Some(Err(CompilationError::SchemaError))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_util;
+    use serde_json::{json, Value};
+    use test_case::test_case;
+
+    #[test_case(json!({"exclusiveMinimum": 1u64 << 54}), json!(1u64 << 54))]
+    #[test_case(json!({"exclusiveMinimum": 1i64 << 54}), json!(1i64 << 54))]
+    #[test_case(json!({"exclusiveMinimum": 1u64 << 54}), json!(1u64 << 54 - 1))]
+    #[test_case(json!({"exclusiveMinimum": 1i64 << 54}), json!(1i64 << 54 - 1))]
+    fn is_not_valid(schema: Value, instance: Value) {
+        tests_util::is_not_valid(schema, instance)
+    }
 }

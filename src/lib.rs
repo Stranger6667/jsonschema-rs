@@ -46,7 +46,6 @@
     missing_docs,
     missing_debug_implementations,
     trivial_casts,
-    trivial_numeric_casts,
     unused_extern_crates,
     unused_import_braces,
     unused_qualifications,
@@ -80,6 +79,21 @@ extern crate lazy_static;
 pub fn is_valid(schema: &Value, instance: &Value) -> bool {
     let compiled = JSONSchema::compile(schema, None).expect("Invalid schema");
     compiled.is_valid(instance)
+}
+
+#[cfg(test)]
+mod tests_util {
+    use super::JSONSchema;
+    use serde_json::Value;
+
+    pub fn is_not_valid(schema: Value, instance: Value) {
+        let compiled = JSONSchema::compile(&schema, None).unwrap();
+        assert!(!compiled.is_valid(&instance), "{} should not be valid");
+        assert!(
+            compiled.validate(&instance).is_err(),
+            "{} should not be valid"
+        );
+    }
 }
 
 #[cfg(test)]
