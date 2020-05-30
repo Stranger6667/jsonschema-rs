@@ -1,6 +1,6 @@
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
-    error::ErrorIterator,
+    error::{no_error, ErrorIterator},
     keywords::{
         boolean::TrueValidator, format_validators, format_vec_of_validators, CompilationResult,
         Validators,
@@ -40,6 +40,14 @@ impl Validate for ItemsArrayValidator {
                     .all(move |validator| validator.is_valid(schema, item))
             })
     }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(instance_value) = instance {
+            self.is_valid_array(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
 
     #[inline]
     fn validate_array<'a>(
@@ -60,6 +68,14 @@ impl Validate for ItemsArrayValidator {
                 .collect::<Vec<_>>()
                 .into_iter(),
         )
+    }
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Array(instance_value) = instance {
+            self.validate_array(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 
@@ -94,6 +110,14 @@ impl Validate for ItemsObjectValidator {
             })
         }
     }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(instance_value) = instance {
+            self.is_valid_array(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
 
     #[inline]
     fn validate_array<'a>(
@@ -123,6 +147,14 @@ impl Validate for ItemsObjectValidator {
                 .collect()
         };
         Box::new(errors.into_iter())
+    }
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Array(instance_value) = instance {
+            self.validate_array(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 

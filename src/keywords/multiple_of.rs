@@ -1,6 +1,6 @@
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{CompilationError, ValidationError},
+    error::{no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -53,6 +53,23 @@ impl Validate for MultipleOfFloatValidator {
         #[allow(clippy::cast_precision_loss)]
         self.is_valid_number(schema, instance, instance_value as f64)
     }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Some(instance_value) = instance.as_f64() {
+            self.is_valid_number(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
+
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Some(instance_value) = instance.as_f64() {
+            self.validate_number(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
+    }
 }
 
 pub struct MultipleOfIntegerValidator {
@@ -104,6 +121,23 @@ impl Validate for MultipleOfIntegerValidator {
     ) -> bool {
         #[allow(clippy::cast_precision_loss)]
         self.is_valid_number(schema, instance, instance_value as f64)
+    }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Some(instance_value) = instance.as_f64() {
+            self.is_valid_number(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
+
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Some(instance_value) = instance.as_f64() {
+            self.validate_number(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 

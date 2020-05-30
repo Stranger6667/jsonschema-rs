@@ -1,6 +1,6 @@
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
-    error::ValidationError,
+    error::{no_error, ErrorIterator, ValidationError},
     keywords::{format_validators, CompilationResult, Validators},
     validator::Validate,
 };
@@ -41,6 +41,23 @@ impl Validate for ContainsValidator {
             }
         }
         false
+    }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(instance_value) = instance {
+            self.is_valid_array(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
+
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Array(instance_value) = instance {
+            self.validate_array(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{CompilationError, ValidationError},
+    error::{no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -20,6 +20,7 @@ pub struct ExclusiveMaximumF64Validator {
 macro_rules! validate {
     ($validator: ty) => {
         impl Validate for $validator {
+            #[inline]
             fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
                 #[allow(trivial_numeric_casts)]
                 ValidationError::exclusive_maximum(instance, self.limit as f64)
@@ -50,6 +51,43 @@ macro_rules! validate {
                 instance_value: u64,
             ) -> bool {
                 NumCmp::num_lt(instance_value, self.limit)
+            }
+            #[inline]
+            fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+                if let Some(instance_value) = instance.as_u64() {
+                    self.is_valid_unsigned_integer(schema, instance, instance_value)
+                } else if let Some(instance_value) = instance.as_i64() {
+                    self.is_valid_signed_integer(schema, instance, instance_value)
+                } else if let Some(instance_value) = instance.as_f64() {
+                    self.is_valid_number(schema, instance, instance_value)
+                } else {
+                    true
+                }
+            }
+
+            #[inline]
+            fn validate<'a>(
+                &self,
+                schema: &'a JSONSchema,
+                instance: &'a Value,
+            ) -> ErrorIterator<'a> {
+                if let Value::Number(instance_number) = instance {
+                    if let Some(instance_unsigned_integer) = instance_number.as_u64() {
+                        self.validate_unsigned_integer(schema, instance, instance_unsigned_integer)
+                    } else if let Some(instance_signed_integer) = instance_number.as_i64() {
+                        self.validate_signed_integer(schema, instance, instance_signed_integer)
+                    } else {
+                        self.validate_number(
+                            schema,
+                            instance,
+                            instance_number
+                                .as_f64()
+                                .expect("A JSON number will always be representabe as f64"),
+                        )
+                    }
+                } else {
+                    no_error()
+                }
             }
         }
     };

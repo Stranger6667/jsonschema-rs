@@ -40,6 +40,14 @@ impl Validate for AdditionalPropertiesValidator {
                 .all(move |value| validator.is_valid(schema, value))
         })
     }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(instance_value) = instance {
+            self.is_valid_object(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
 
     #[inline]
     fn validate_object<'a>(
@@ -59,6 +67,14 @@ impl Validate for AdditionalPropertiesValidator {
                 .collect::<Vec<_>>()
                 .into_iter(),
         )
+    }
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(instance_value) = instance {
+            self.validate_object(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 
@@ -87,6 +103,14 @@ impl Validate for AdditionalPropertiesFalseValidator {
         instance_value: &Map<String, Value>,
     ) -> bool {
         instance_value.is_empty()
+    }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(instance_value) = instance {
+            self.is_valid_object(schema, instance, instance_value)
+        } else {
+            true
+        }
     }
 }
 
@@ -120,6 +144,14 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
             .keys()
             .all(|property| self.properties.contains(property))
     }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(instance_value) = instance {
+            self.is_valid_object(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
 
     #[inline]
     fn validate_object<'a>(
@@ -136,6 +168,14 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
             }
         }
         no_error()
+    }
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(instance_value) = instance {
+            self.validate_object(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 
@@ -181,6 +221,14 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
                 .all(move |(_, value)| validator.is_valid(schema, value))
         })
     }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(instance_value) = instance {
+            self.is_valid_object(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
 
     #[inline]
     fn validate_object<'a>(
@@ -201,6 +249,14 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
                 .collect::<Vec<_>>()
                 .into_iter(),
         )
+    }
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(instance_value) = instance {
+            self.validate_object(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 
@@ -243,6 +299,14 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
                 .all(move |(_, value)| validator.is_valid(schema, value))
         })
     }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(instance_value) = instance {
+            self.is_valid_object(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
 
     #[inline]
     fn validate_object<'a>(
@@ -263,6 +327,14 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
                 .collect::<Vec<_>>()
                 .into_iter(),
         )
+    }
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(instance_value) = instance {
+            self.validate_object(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 
@@ -293,6 +365,14 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
             .keys()
             .all(|property| self.pattern.is_match(property))
     }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(instance_value) = instance {
+            self.is_valid_object(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
 
     #[inline]
     fn validate_object<'a>(
@@ -310,6 +390,14 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
                         .into_owned(),
                 )
             })
+    }
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(instance_value) = instance {
+            self.validate_object(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 
@@ -362,6 +450,14 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
                 .all(move |(_, value)| validator.is_valid(schema, value))
         })
     }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(instance_value) = instance {
+            self.is_valid_object(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
 
     #[inline]
     fn validate_object<'a>(
@@ -385,6 +481,14 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
                 .collect::<Vec<_>>()
                 .into_iter(),
         )
+    }
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(instance_value) = instance {
+            self.validate_object(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 
@@ -422,6 +526,14 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
             .keys()
             .all(|property| self.properties.contains(property) || self.pattern.is_match(property))
     }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(instance_value) = instance {
+            self.is_valid_object(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
 
     #[inline]
     fn validate_object<'a>(
@@ -441,6 +553,14 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
                         .into_owned(),
                 )
             })
+    }
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(instance_value) = instance {
+            self.validate_object(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 
