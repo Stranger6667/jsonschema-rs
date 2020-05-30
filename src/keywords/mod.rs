@@ -11,7 +11,6 @@ pub mod enum_;
 pub mod exclusive_maximum;
 pub mod exclusive_minimum;
 pub mod format;
-pub mod helpers;
 pub mod if_;
 pub mod items;
 pub mod legacy;
@@ -196,7 +195,13 @@ mod tests {
     #[test_case(json!({"uniqueItems": true}), json!([1, 1]), r#"'[1,1]' has non-unique elements"#)]
     fn error_message(schema: Value, instance: Value, expected: &str) {
         let compiled = JSONSchema::compile(&schema, None).unwrap();
-        let errors: Vec<_> = compiled.validate(&instance).unwrap_err().collect();
+        let errors: Vec<_> = compiled
+            .validate(&instance)
+            .expect_err(&format!(
+                "Validation error is expected. Schema=`{:?}` Instance=`{:?}`",
+                schema, instance
+            ))
+            .collect();
         assert_eq!(errors[0].to_string(), expected);
     }
 

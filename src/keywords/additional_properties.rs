@@ -6,13 +6,11 @@ use crate::{
 };
 use regex::Regex;
 use serde_json::{Map, Value};
-use std::collections::BTreeSet;
-use std::iter::FromIterator;
+use std::{collections::BTreeSet, iter::FromIterator};
 
 pub struct AdditionalPropertiesValidator {
     validators: Validators,
 }
-
 impl AdditionalPropertiesValidator {
     #[inline]
     pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
@@ -21,75 +19,80 @@ impl AdditionalPropertiesValidator {
         }))
     }
 }
-
 impl Validate for AdditionalPropertiesValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
-            let errors: Vec<_> = self
-                .validators
-                .iter()
-                .flat_map(move |validator| {
-                    item.values()
-                        .flat_map(move |value| validator.validate(schema, value))
-                })
-                .collect();
-            return Box::new(errors.into_iter());
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
-            return self.validators.iter().all(move |validator| {
-                item.values()
-                    .all(move |value| validator.is_valid(schema, value))
-            });
-        }
-        true
-    }
-
     fn name(&self) -> String {
         format!(
             "additionalProperties: {}",
             format_validators(&self.validators)
         )
     }
-}
-pub struct AdditionalPropertiesFalseValidator {}
 
+    #[inline]
+    fn is_valid_object(
+        &self,
+        schema: &JSONSchema,
+        _: &Value,
+        instance_value: &Map<String, Value>,
+    ) -> bool {
+        self.validators.iter().all(move |validator| {
+            instance_value
+                .values()
+                .all(move |value| validator.is_valid(schema, value))
+        })
+    }
+
+    #[inline]
+    fn validate_object<'a>(
+        &self,
+        schema: &'a JSONSchema,
+        _: &'a Value,
+        instance_value: &'a Map<String, Value>,
+    ) -> ErrorIterator<'a> {
+        Box::new(
+            self.validators
+                .iter()
+                .flat_map(move |validator| {
+                    instance_value
+                        .values()
+                        .flat_map(move |value| validator.validate(schema, value))
+                })
+                .collect::<Vec<_>>()
+                .into_iter(),
+        )
+    }
+}
+
+pub struct AdditionalPropertiesFalseValidator {}
 impl AdditionalPropertiesFalseValidator {
     #[inline]
     pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(AdditionalPropertiesFalseValidator {}))
     }
 }
-
 impl Validate for AdditionalPropertiesFalseValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
-            if let Some((_, value)) = item.iter().next() {
-                return error(ValidationError::false_schema(value));
-            }
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
-            return item.iter().next().is_none();
-        }
-        true
+    #[inline]
+    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
+        ValidationError::false_schema(instance)
     }
 
     fn name(&self) -> String {
         "additionalProperties: false".to_string()
+    }
+
+    #[inline]
+    fn is_valid_object(
+        &self,
+        _: &JSONSchema,
+        _: &Value,
+        instance_value: &Map<String, Value>,
+    ) -> bool {
+        instance_value.is_empty()
     }
 }
 
 pub struct AdditionalPropertiesNotEmptyFalseValidator {
     properties: BTreeSet<String>,
 }
-
 impl AdditionalPropertiesNotEmptyFalseValidator {
     #[inline]
     pub(crate) fn compile(properties: &Value) -> CompilationResult {
@@ -101,35 +104,38 @@ impl AdditionalPropertiesNotEmptyFalseValidator {
         Err(CompilationError::SchemaError)
     }
 }
-
 impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
-            for property in item.keys() {
-                if !self.properties.contains(property) {
-                    // No extra properties are allowed
-                    let property_value = Value::String(property.to_string());
-                    return error(ValidationError::false_schema(&property_value).into_owned());
-                }
+    fn name(&self) -> String {
+        "additionalProperties: false".to_string()
+    }
+
+    #[inline]
+    fn is_valid_object(
+        &self,
+        _: &JSONSchema,
+        _: &Value,
+        instance_value: &Map<String, Value>,
+    ) -> bool {
+        instance_value
+            .keys()
+            .all(|property| self.properties.contains(property))
+    }
+
+    #[inline]
+    fn validate_object<'a>(
+        &self,
+        _: &'a JSONSchema,
+        _: &'a Value,
+        instance_value: &'a Map<String, Value>,
+    ) -> ErrorIterator<'a> {
+        for property in instance_value.keys() {
+            if !self.properties.contains(property) {
+                // No extra properties are allowed
+                let property_value = Value::String(property.to_string());
+                return error(ValidationError::false_schema(&property_value).into_owned());
             }
         }
         no_error()
-    }
-
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
-            for property in item.keys() {
-                if !self.properties.contains(property) {
-                    // No extra properties are allowed
-                    return false;
-                }
-            }
-        }
-        true
-    }
-
-    fn name(&self) -> String {
-        "additionalProperties: false".to_string()
     }
 }
 
@@ -137,7 +143,6 @@ pub struct AdditionalPropertiesNotEmptyValidator {
     validators: Validators,
     properties: BTreeSet<String>,
 }
-
 impl AdditionalPropertiesNotEmptyValidator {
     #[inline]
     pub(crate) fn compile(
@@ -154,39 +159,47 @@ impl AdditionalPropertiesNotEmptyValidator {
         Err(CompilationError::SchemaError)
     }
 }
-
 impl Validate for AdditionalPropertiesNotEmptyValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(ref item) = instance {
-            let errors: Vec<_> = self
-                .validators
-                .iter()
-                .flat_map(move |validator| {
-                    item.iter()
-                        .filter(move |(property, _)| !self.properties.contains(*property))
-                        .flat_map(move |(_, value)| validator.validate(schema, value))
-                })
-                .collect();
-            return Box::new(errors.into_iter());
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(ref item) = instance {
-            return self.validators.iter().all(move |validator| {
-                item.iter()
-                    .filter(move |(property, _)| !self.properties.contains(*property))
-                    .all(move |(_, value)| validator.is_valid(schema, value))
-            });
-        }
-        true
-    }
-
     fn name(&self) -> String {
         format!(
             "additionalProperties: {}",
             format_validators(&self.validators)
+        )
+    }
+
+    #[inline]
+    fn is_valid_object(
+        &self,
+        schema: &JSONSchema,
+        _: &Value,
+        instance_value: &Map<String, Value>,
+    ) -> bool {
+        self.validators.iter().all(move |validator| {
+            instance_value
+                .iter()
+                .filter(move |(property, _)| !self.properties.contains(*property))
+                .all(move |(_, value)| validator.is_valid(schema, value))
+        })
+    }
+
+    #[inline]
+    fn validate_object<'a>(
+        &self,
+        schema: &'a JSONSchema,
+        _: &'a Value,
+        instance_value: &'a Map<String, Value>,
+    ) -> ErrorIterator<'a> {
+        Box::new(
+            self.validators
+                .iter()
+                .flat_map(move |validator| {
+                    instance_value
+                        .iter()
+                        .filter(move |(property, _)| !self.properties.contains(*property))
+                        .flat_map(move |(_, value)| validator.validate(schema, value))
+                })
+                .collect::<Vec<_>>()
+                .into_iter(),
         )
     }
 }
@@ -195,7 +208,6 @@ pub struct AdditionalPropertiesWithPatternsValidator {
     validators: Validators,
     pattern: Regex,
 }
-
 impl AdditionalPropertiesWithPatternsValidator {
     #[inline]
     pub(crate) fn compile(
@@ -209,39 +221,47 @@ impl AdditionalPropertiesWithPatternsValidator {
         }))
     }
 }
-
 impl Validate for AdditionalPropertiesWithPatternsValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
-            let errors: Vec<_> = self
-                .validators
-                .iter()
-                .flat_map(move |validator| {
-                    item.iter()
-                        .filter(move |(property, _)| !self.pattern.is_match(property))
-                        .flat_map(move |(_, value)| validator.validate(schema, value))
-                })
-                .collect();
-            return Box::new(errors.into_iter());
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
-            return self.validators.iter().all(move |validator| {
-                item.iter()
-                    .filter(move |(property, _)| !self.pattern.is_match(property))
-                    .all(move |(_, value)| validator.is_valid(schema, value))
-            });
-        }
-        true
-    }
-
     fn name(&self) -> String {
         format!(
             "additionalProperties: {}",
             format_validators(&self.validators)
+        )
+    }
+
+    #[inline]
+    fn is_valid_object(
+        &self,
+        schema: &JSONSchema,
+        _: &Value,
+        instance_value: &Map<String, Value>,
+    ) -> bool {
+        self.validators.iter().all(move |validator| {
+            instance_value
+                .iter()
+                .filter(move |(property, _)| !self.pattern.is_match(property))
+                .all(move |(_, value)| validator.is_valid(schema, value))
+        })
+    }
+
+    #[inline]
+    fn validate_object<'a>(
+        &self,
+        schema: &'a JSONSchema,
+        _: &'a Value,
+        instance_value: &'a Map<String, Value>,
+    ) -> ErrorIterator<'a> {
+        Box::new(
+            self.validators
+                .iter()
+                .flat_map(move |validator| {
+                    instance_value
+                        .iter()
+                        .filter(move |(property, _)| !self.pattern.is_match(property))
+                        .flat_map(move |(_, value)| validator.validate(schema, value))
+                })
+                .collect::<Vec<_>>()
+                .into_iter(),
         )
     }
 }
@@ -249,7 +269,6 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
 pub struct AdditionalPropertiesWithPatternsFalseValidator {
     pattern: Regex,
 }
-
 impl AdditionalPropertiesWithPatternsFalseValidator {
     #[inline]
     pub(crate) fn compile(pattern: Regex) -> CompilationResult {
@@ -258,33 +277,39 @@ impl AdditionalPropertiesWithPatternsFalseValidator {
         }))
     }
 }
-
 impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
-            for (property, _) in item {
-                if !self.pattern.is_match(property) {
-                    let property_value = Value::String(property.to_string());
-                    return error(ValidationError::false_schema(&property_value).into_owned());
-                }
-            }
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
-            for (property, _) in item {
-                if !self.pattern.is_match(property) {
-                    return false;
-                }
-            }
-        }
-        true
-    }
-
     fn name(&self) -> String {
         "additionalProperties: false".to_string()
+    }
+
+    #[inline]
+    fn is_valid_object(
+        &self,
+        _: &JSONSchema,
+        _: &Value,
+        instance_value: &Map<String, Value>,
+    ) -> bool {
+        instance_value
+            .keys()
+            .all(|property| self.pattern.is_match(property))
+    }
+
+    #[inline]
+    fn validate_object<'a>(
+        &self,
+        _: &'a JSONSchema,
+        _: &'a Value,
+        instance_value: &'a Map<String, Value>,
+    ) -> ErrorIterator<'a> {
+        instance_value
+            .keys()
+            .find(|property| !self.pattern.is_match(property))
+            .map_or_else(no_error, |property| {
+                error(
+                    ValidationError::false_schema(&Value::String(property.to_string()))
+                        .into_owned(),
+                )
+            })
     }
 }
 
@@ -293,7 +318,6 @@ pub struct AdditionalPropertiesWithPatternsNotEmptyValidator {
     properties: BTreeSet<String>,
     pattern: Regex,
 }
-
 impl AdditionalPropertiesWithPatternsNotEmptyValidator {
     #[inline]
     pub(crate) fn compile(
@@ -314,44 +338,52 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator {
         Err(CompilationError::SchemaError)
     }
 }
-
 impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
-            let errors: Vec<_> = self
-                .validators
+    fn name(&self) -> String {
+        format!(
+            "additionalProperties: {}",
+            format_validators(&self.validators)
+        )
+    }
+
+    #[inline]
+    fn is_valid_object(
+        &self,
+        schema: &JSONSchema,
+        _: &Value,
+        instance_value: &Map<String, Value>,
+    ) -> bool {
+        self.validators.iter().all(move |validator| {
+            instance_value
+                .iter()
+                .filter(move |(property, _)| {
+                    !self.properties.contains(*property) && !self.pattern.is_match(property)
+                })
+                .all(move |(_, value)| validator.is_valid(schema, value))
+        })
+    }
+
+    #[inline]
+    fn validate_object<'a>(
+        &self,
+        schema: &'a JSONSchema,
+        _: &'a Value,
+        instance_value: &'a Map<String, Value>,
+    ) -> ErrorIterator<'a> {
+        Box::new(
+            self.validators
                 .iter()
                 .flat_map(move |validator| {
-                    item.iter()
+                    instance_value
+                        .iter()
                         .filter(move |(property, _)| {
                             !(self.properties.contains(*property)
                                 || self.pattern.is_match(property))
                         })
                         .flat_map(move |(_, value)| validator.validate(schema, value))
                 })
-                .collect();
-            return Box::new(errors.into_iter());
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
-            return self.validators.iter().all(move |validator| {
-                item.iter()
-                    .filter(move |(property, _)| {
-                        !(self.properties.contains(*property) || self.pattern.is_match(property))
-                    })
-                    .all(move |(_, value)| validator.is_valid(schema, value))
-            });
-        }
-        true
-    }
-
-    fn name(&self) -> String {
-        format!(
-            "additionalProperties: {}",
-            format_validators(&self.validators)
+                .collect::<Vec<_>>()
+                .into_iter(),
         )
     }
 }
@@ -360,7 +392,6 @@ pub struct AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
     properties: BTreeSet<String>,
     pattern: Regex,
 }
-
 impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
     #[inline]
     pub(crate) fn compile(properties: &Value, pattern: Regex) -> CompilationResult {
@@ -375,33 +406,41 @@ impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
         Err(CompilationError::SchemaError)
     }
 }
-
 impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
-            for property in item.keys() {
-                if !self.properties.contains(property) && !self.pattern.is_match(property) {
-                    let property_value = Value::String(property.to_string());
-                    return error(ValidationError::false_schema(&property_value).into_owned());
-                }
-            }
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
-            for property in item.keys() {
-                if !self.properties.contains(property) && !self.pattern.is_match(property) {
-                    return false;
-                }
-            }
-        }
-        true
-    }
-
     fn name(&self) -> String {
         "additionalProperties: false".to_string()
+    }
+
+    #[inline]
+    fn is_valid_object(
+        &self,
+        _: &JSONSchema,
+        _: &Value,
+        instance_value: &Map<String, Value>,
+    ) -> bool {
+        instance_value
+            .keys()
+            .all(|property| self.properties.contains(property) || self.pattern.is_match(property))
+    }
+
+    #[inline]
+    fn validate_object<'a>(
+        &self,
+        _: &'a JSONSchema,
+        _: &'a Value,
+        instance_value: &'a Map<String, Value>,
+    ) -> ErrorIterator<'a> {
+        instance_value
+            .keys()
+            .find(|property| {
+                !self.properties.contains(*property) && !self.pattern.is_match(property)
+            })
+            .map_or_else(no_error, |property| {
+                error(
+                    ValidationError::false_schema(&Value::String(property.to_string()))
+                        .into_owned(),
+                )
+            })
     }
 }
 

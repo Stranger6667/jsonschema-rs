@@ -1,7 +1,7 @@
 //! Validator for `format` keyword.
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{CompilationError, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -11,7 +11,7 @@ use serde_json::{Map, Value};
 use std::{net::IpAddr, str::FromStr};
 use url::Url;
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref IRI_REFERENCE_RE: Regex =
         Regex::new(r"^(\w+:(/?/?))?[^#\\\s]*(#[^\\\s]*)?\z").expect("Is a valid regex");
     static ref JSON_POINTER_RE: Regex = Regex::new(r"^(/(([^/~])|(~[01]))*)*\z").expect("Is a valid regex");
@@ -29,241 +29,108 @@ lazy_static! {
     .expect("Is a valid regex");
 }
 
-macro_rules! format_validator {
-    ($name:ident) => {
+macro_rules! generic_format_validator {
+    ($name:ident, $format_name:tt => $($validate_components_extra:tt)*) => {
         struct $name {}
-
         impl $name {
             pub(crate) fn compile() -> CompilationResult {
                 Ok(Box::new($name {}))
             }
         }
-    };
-}
-
-macro_rules! validate {
-    ($format:expr) => {
-        fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-            if let Value::String(_item) = instance {
-                if !self.is_valid(schema, instance) {
-                    return error(ValidationError::format(instance, $format));
-                }
+        impl Validate for $name {
+            #[inline]
+            fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
+                ValidationError::format(instance, $format_name)
             }
-            no_error()
-        }
-
-        fn name(&self) -> String {
-            concat!("format: ", $format).to_string()
+            fn name(&self) -> String {
+                concat!("format: ", $format_name).to_string()
+            }
+            $($validate_components_extra)*
         }
     };
 }
 
-format_validator!(DateValidator);
-impl Validate for DateValidator {
-    validate!("date");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            return NaiveDate::parse_from_str(item, "%Y-%m-%d").is_ok();
-        }
-        true
-    }
-}
-format_validator!(DateTimeValidator);
-impl Validate for DateTimeValidator {
-    validate!("date-time");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            return DateTime::parse_from_rfc3339(item).is_ok();
-        }
-        true
-    }
-}
-format_validator!(EmailValidator);
-impl Validate for EmailValidator {
-    validate!("email");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            return item.contains('@');
-        }
-        true
-    }
-}
-format_validator!(IDNEmailValidator);
-impl Validate for IDNEmailValidator {
-    validate!("idn-email");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            return item.contains('@');
-        }
-        true
-    }
-}
-format_validator!(HostnameValidator);
-impl Validate for HostnameValidator {
-    validate!("hostname");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            return !(item.ends_with('-')
-                || item.starts_with('-')
-                || item.is_empty()
-                || item.chars().count() > 255
-                || item
-                    .chars()
-                    .any(|c| !(c.is_alphanumeric() || c == '-' || c == '.'))
-                || item.split('.').any(|part| part.chars().count() > 63));
-        }
-        true
-    }
-}
-format_validator!(IDNHostnameValidator);
-impl Validate for IDNHostnameValidator {
-    validate!("idn-hostname");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            return !(item.ends_with('-')
-                || item.starts_with('-')
-                || item.is_empty()
-                || item.chars().count() > 255
-                || item
-                    .chars()
-                    .any(|c| !(c.is_alphanumeric() || c == '-' || c == '.'))
-                || item.split('.').any(|part| part.chars().count() > 63));
-        }
-        true
-    }
-}
-format_validator!(IpV4Validator);
-impl Validate for IpV4Validator {
-    validate!("ipv4");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            return match IpAddr::from_str(item.as_str()) {
-                Ok(i) => match i {
-                    IpAddr::V4(_) => true,
-                    IpAddr::V6(_) => false,
-                },
-                Err(_) => false,
-            };
-        }
-        true
-    }
+macro_rules! string_format_validator {
+    ($name:ident, $format_name:tt, $check:expr) => {
+        generic_format_validator!(
+            $name,
+            $format_name =>
+            #[inline]
+            fn is_valid_string(&self, _: &JSONSchema, _: &Value, instance_string: &str) -> bool {
+                $check(instance_string)
+            }
+        );
+    };
 }
 
-format_validator!(IpV6Validator);
-impl Validate for IpV6Validator {
-    validate!("ipv6");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            return match IpAddr::from_str(item.as_str()) {
-                Ok(i) => match i {
-                    IpAddr::V4(_) => false,
-                    IpAddr::V6(_) => true,
-                },
-                Err(_) => false,
-            };
-        }
+#[inline]
+fn is_valid_email(string: &str) -> bool {
+    string.contains('@')
+}
+#[inline]
+fn is_valid_hostname(string: &str) -> bool {
+    !(string.ends_with('-')
+        || string.starts_with('-')
+        || string.is_empty()
+        || string.chars().count() > 255
+        || string
+            .chars()
+            .any(|c| !(c.is_alphanumeric() || c == '-' || c == '.'))
+        || string.split('.').any(|part| part.chars().count() > 63))
+}
+
+string_format_validator!(DateValidator, "date", |instance_string| {
+    NaiveDate::parse_from_str(instance_string, "%Y-%m-%d").is_ok()
+});
+string_format_validator!(DateTimeValidator, "date-time", |instance_string| {
+    DateTime::parse_from_rfc3339(instance_string).is_ok()
+});
+string_format_validator!(EmailValidator, "email", is_valid_email);
+string_format_validator!(IDNEmailValidator, "idn-email", is_valid_email);
+string_format_validator!(HostnameValidator, "hostname", is_valid_hostname);
+string_format_validator!(IDNHostnameValidator, "idn-hostname", is_valid_hostname);
+string_format_validator!(IpV4Validator, "ipv4", |instance_string| {
+    if let Ok(IpAddr::V4(_)) = IpAddr::from_str(instance_string) {
         true
+    } else {
+        false
     }
-}
-format_validator!(IRIValidator);
-impl Validate for IRIValidator {
-    validate!("iri");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            Url::from_str(item).is_ok()
-        } else {
-            true
-        }
+});
+string_format_validator!(IpV6Validator, "ipv6", |instance_string| {
+    if let Ok(IpAddr::V6(_)) = IpAddr::from_str(instance_string) {
+        true
+    } else {
+        false
     }
-}
-format_validator!(URIValidator);
-impl Validate for URIValidator {
-    validate!("uri");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            Url::from_str(item).is_ok()
-        } else {
-            true
-        }
-    }
-}
-format_validator!(IRIReferenceValidator);
-impl Validate for IRIReferenceValidator {
-    validate!("iri-reference");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            IRI_REFERENCE_RE.is_match(item)
-        } else {
-            true
-        }
-    }
-}
-format_validator!(JSONPointerValidator);
-impl Validate for JSONPointerValidator {
-    validate!("json-pointer");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            JSON_POINTER_RE.is_match(item)
-        } else {
-            true
-        }
-    }
-}
-format_validator!(RegexValidator);
-impl Validate for RegexValidator {
-    validate!("regex");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            Regex::new(item).is_ok()
-        } else {
-            true
-        }
-    }
-}
-format_validator!(RelativeJSONPointerValidator);
-impl Validate for RelativeJSONPointerValidator {
-    validate!("relative-json-pointer");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            RELATIVE_JSON_POINTER_RE.is_match(item)
-        } else {
-            true
-        }
-    }
-}
-format_validator!(TimeValidator);
-impl Validate for TimeValidator {
-    validate!("time");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            TIME_RE.is_match(item)
-        } else {
-            true
-        }
-    }
-}
-format_validator!(URIReferenceValidator);
-impl Validate for URIReferenceValidator {
-    validate!("uri-reference");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            URI_REFERENCE_RE.is_match(item)
-        } else {
-            true
-        }
-    }
-}
-format_validator!(URITemplateValidator);
-impl Validate for URITemplateValidator {
-    validate!("uri-template");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            URI_TEMPLATE_RE.is_match(item)
-        } else {
-            true
-        }
-    }
-}
+});
+string_format_validator!(IRIValidator, "iri", |instance_string| {
+    Url::from_str(instance_string).is_ok()
+});
+string_format_validator!(URIValidator, "uri", |instance_string| {
+    Url::from_str(instance_string).is_ok()
+});
+string_format_validator!(IRIReferenceValidator, "iri-reference", |instance_value| {
+    IRI_REFERENCE_RE.is_match(instance_value)
+});
+string_format_validator!(JSONPointerValidator, "json-pointer", |instance_value| {
+    JSON_POINTER_RE.is_match(instance_value)
+});
+string_format_validator!(RegexValidator, "regex", |instance_value| {
+    Regex::new(instance_value).is_ok()
+});
+string_format_validator!(
+    RelativeJSONPointerValidator,
+    "relative-json-pointer",
+    |instance_value| RELATIVE_JSON_POINTER_RE.is_match(instance_value)
+);
+string_format_validator!(TimeValidator, "time", |instance_value| TIME_RE
+    .is_match(instance_value));
+string_format_validator!(URIReferenceValidator, "uri-reference", |instance_value| {
+    URI_REFERENCE_RE.is_match(instance_value)
+});
+string_format_validator!(URITemplateValidator, "uri-template", |instance_value| {
+    URI_TEMPLATE_RE.is_match(instance_value)
+});
 
 #[inline]
 pub fn compile(

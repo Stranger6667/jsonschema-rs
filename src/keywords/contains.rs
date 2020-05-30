@@ -1,6 +1,6 @@
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
-    error::{error, no_error, ErrorIterator, ValidationError},
+    error::ValidationError,
     keywords::{format_validators, CompilationResult, Validators},
     validator::Validate,
 };
@@ -20,40 +20,27 @@ impl ContainsValidator {
 }
 
 impl Validate for ContainsValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Array(items) = instance {
-            for item in items {
-                if self
-                    .validators
-                    .iter()
-                    .all(|validator| validator.is_valid(schema, item))
-                {
-                    return no_error();
-                }
-            }
-            return error(ValidationError::contains(instance));
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Array(items) = instance {
-            for item in items {
-                if self
-                    .validators
-                    .iter()
-                    .all(|validator| validator.is_valid(schema, item))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-        true
+    #[inline]
+    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
+        ValidationError::contains(instance)
     }
 
     fn name(&self) -> String {
         format!("contains: {}", format_validators(&self.validators))
+    }
+
+    #[inline]
+    fn is_valid_array(&self, schema: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
+        for item in instance_value {
+            if self
+                .validators
+                .iter()
+                .all(|validator| validator.is_valid(schema, item))
+            {
+                return true;
+            }
+        }
+        false
     }
 }
 

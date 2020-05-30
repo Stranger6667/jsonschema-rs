@@ -25,37 +25,63 @@ impl IfThenValidator {
     }
 }
 
+macro_rules! if_then_impl_is_valid {
+    ($method_suffix:tt, $instance_type: ty) => {
+        paste::item! {
+            #[inline]
+            fn [<is_valid_ $method_suffix>](
+                &self,
+                schema: &JSONSchema,
+                instance: &Value,
+                instance_value: $instance_type,
+            ) -> bool {
+                if self
+                    .schema
+                    .iter()
+                    .all(|validator| validator.[<is_valid_ $method_suffix>](schema, instance, instance_value))
+                {
+                    self.then_schema
+                        .iter()
+                        .all(move |validator| validator.[<is_valid_ $method_suffix>](schema, instance, instance_value))
+                } else {
+                    true
+                }
+            }
+        }
+    };
+}
+macro_rules! if_then_impl_validate {
+    ($method_suffix:tt, $instance_type: ty) => {
+        paste::item! {
+            #[inline]
+            fn [<validate_ $method_suffix>]<'a>(
+                &self,
+                schema: &'a JSONSchema,
+                instance: &'a Value,
+                instance_value: $instance_type,
+            ) -> ErrorIterator<'a> {
+                if self
+                    .schema
+                    .iter()
+                    .all(|validator| validator.[<is_valid_ $method_suffix>](schema, instance, instance_value))
+                {
+                    Box::new(
+                        self
+                            .then_schema
+                            .iter()
+                            .flat_map(move |validator| validator.[<validate_ $method_suffix>](schema, instance, instance_value))
+                            .collect::<Vec<_>>()
+                            .into_iter()
+                        )
+                } else {
+                    no_error()
+                }
+            }
+        }
+    };
+}
+
 impl Validate for IfThenValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if self
-            .schema
-            .iter()
-            .all(|validator| validator.is_valid(schema, instance))
-        {
-            let errors: Vec<_> = self
-                .then_schema
-                .iter()
-                .flat_map(move |validator| validator.validate(schema, instance))
-                .collect();
-            return Box::new(errors.into_iter());
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if self
-            .schema
-            .iter()
-            .all(|validator| validator.is_valid(schema, instance))
-        {
-            return self
-                .then_schema
-                .iter()
-                .all(move |validator| validator.is_valid(schema, instance));
-        }
-        true
-    }
-
     fn name(&self) -> String {
         format!(
             "if: {}, then: {}",
@@ -63,6 +89,24 @@ impl Validate for IfThenValidator {
             format_validators(&self.then_schema)
         )
     }
+
+    if_then_impl_is_valid!(array, &[Value]);
+    if_then_impl_is_valid!(boolean, bool);
+    if_then_impl_is_valid!(null, ());
+    if_then_impl_is_valid!(number, f64);
+    if_then_impl_is_valid!(object, &Map<String, Value>);
+    if_then_impl_is_valid!(signed_integer, i64);
+    if_then_impl_is_valid!(string, &str);
+    if_then_impl_is_valid!(unsigned_integer, u64);
+
+    if_then_impl_validate!(array, &'a [Value]);
+    if_then_impl_validate!(boolean, bool);
+    if_then_impl_validate!(null, ());
+    if_then_impl_validate!(number, f64);
+    if_then_impl_validate!(object, &'a Map<String, Value>);
+    if_then_impl_validate!(signed_integer, i64);
+    if_then_impl_validate!(string, &'a str);
+    if_then_impl_validate!(unsigned_integer, u64);
 }
 
 pub struct IfElseValidator {
@@ -70,9 +114,9 @@ pub struct IfElseValidator {
     else_schema: Validators,
 }
 
-impl<'a> IfElseValidator {
+impl IfElseValidator {
     #[inline]
-    pub(crate) fn compile(
+    pub(crate) fn compile<'a>(
         schema: &'a Value,
         else_schema: &'a Value,
         context: &CompilationContext,
@@ -84,37 +128,63 @@ impl<'a> IfElseValidator {
     }
 }
 
+macro_rules! if_else_impl_is_valid {
+    ($method_suffix:tt, $instance_type: ty) => {
+        paste::item! {
+            #[inline]
+            fn [<is_valid_ $method_suffix>](
+                &self,
+                schema: &JSONSchema,
+                instance: &Value,
+                instance_value: $instance_type,
+            ) -> bool {
+                if self
+                    .schema
+                    .iter()
+                    .all(|validator| validator.[<is_valid_ $method_suffix>](schema, instance, instance_value))
+                {
+                    true
+                } else {
+                    self.else_schema
+                        .iter()
+                        .all(move |validator| validator.[<is_valid_ $method_suffix>](schema, instance, instance_value))
+                }
+            }
+        }
+    };
+}
+macro_rules! if_else_impl_validate {
+    ($method_suffix:tt, $instance_type: ty) => {
+        paste::item! {
+            #[inline]
+            fn [<validate_ $method_suffix>]<'a>(
+                &self,
+                schema: &'a JSONSchema,
+                instance: &'a Value,
+                instance_value: $instance_type,
+            ) -> ErrorIterator<'a> {
+                if self
+                    .schema
+                    .iter()
+                    .all(|validator| validator.[<is_valid_ $method_suffix>](schema, instance, instance_value))
+                {
+                    no_error()
+                } else {
+                    Box::new(
+                        self
+                            .else_schema
+                            .iter()
+                            .flat_map(move |validator| validator.[<validate_ $method_suffix>](schema, instance, instance_value))
+                            .collect::<Vec<_>>()
+                            .into_iter()
+                        )
+                }
+            }
+        }
+    };
+}
+
 impl Validate for IfElseValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if self
-            .schema
-            .iter()
-            .any(|validator| !validator.is_valid(schema, instance))
-        {
-            let errors: Vec<_> = self
-                .else_schema
-                .iter()
-                .flat_map(move |validator| validator.validate(schema, instance))
-                .collect();
-            return Box::new(errors.into_iter());
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if self
-            .schema
-            .iter()
-            .any(|validator| !validator.is_valid(schema, instance))
-        {
-            return self
-                .else_schema
-                .iter()
-                .all(move |validator| validator.is_valid(schema, instance));
-        }
-        true
-    }
-
     fn name(&self) -> String {
         format!(
             "if: {}, else: {}",
@@ -122,6 +192,24 @@ impl Validate for IfElseValidator {
             format_validators(&self.else_schema)
         )
     }
+
+    if_else_impl_is_valid!(array, &[Value]);
+    if_else_impl_is_valid!(boolean, bool);
+    if_else_impl_is_valid!(null, ());
+    if_else_impl_is_valid!(number, f64);
+    if_else_impl_is_valid!(object, &Map<String, Value>);
+    if_else_impl_is_valid!(signed_integer, i64);
+    if_else_impl_is_valid!(string, &str);
+    if_else_impl_is_valid!(unsigned_integer, u64);
+
+    if_else_impl_validate!(array, &'a [Value]);
+    if_else_impl_validate!(boolean, bool);
+    if_else_impl_validate!(null, ());
+    if_else_impl_validate!(number, f64);
+    if_else_impl_validate!(object, &'a Map<String, Value>);
+    if_else_impl_validate!(signed_integer, i64);
+    if_else_impl_validate!(string, &'a str);
+    if_else_impl_validate!(unsigned_integer, u64);
 }
 
 pub struct IfThenElseValidator {
@@ -146,45 +234,72 @@ impl IfThenElseValidator {
     }
 }
 
+macro_rules! if_then_else_impl_is_valid {
+    ($method_suffix:tt, $instance_type: ty) => {
+        paste::item! {
+            #[inline]
+            fn [<is_valid_ $method_suffix>](
+                &self,
+                schema: &JSONSchema,
+                instance: &Value,
+                instance_value: $instance_type,
+            ) -> bool {
+                if self
+                    .schema
+                    .iter()
+                    .all(|validator| validator.[<is_valid_ $method_suffix>](schema, instance, instance_value))
+                {
+                    self.then_schema
+                        .iter()
+                        .all(move |validator| validator.[<is_valid_ $method_suffix>](schema, instance, instance_value))
+                } else {
+                    self.else_schema
+                        .iter()
+                        .all(move |validator| validator.[<is_valid_ $method_suffix>](schema, instance, instance_value))
+                }
+            }
+        }
+    };
+}
+macro_rules! if_then_else_impl_validate {
+    ($method_suffix:tt, $instance_type: ty) => {
+        paste::item! {
+            #[inline]
+            fn [<validate_ $method_suffix>]<'a>(
+                &self,
+                schema: &'a JSONSchema,
+                instance: &'a Value,
+                instance_value: $instance_type,
+            ) -> ErrorIterator<'a> {
+                if self
+                    .schema
+                    .iter()
+                    .all(|validator| validator.[<is_valid_ $method_suffix>](schema, instance, instance_value))
+                {
+                    Box::new(
+                        self
+                            .then_schema
+                            .iter()
+                            .flat_map(move |validator| validator.[<validate_ $method_suffix>](schema, instance, instance_value))
+                            .collect::<Vec<_>>()
+                            .into_iter()
+                    )
+                } else {
+                    Box::new(
+                        self
+                            .else_schema
+                            .iter()
+                            .flat_map(move |validator| validator.[<validate_ $method_suffix>](schema, instance, instance_value))
+                            .collect::<Vec<_>>()
+                            .into_iter()
+                        )
+                }
+            }
+        }
+    };
+}
+
 impl Validate for IfThenElseValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if self
-            .schema
-            .iter()
-            .all(|validator| validator.is_valid(schema, instance))
-        {
-            let errors: Vec<_> = self
-                .then_schema
-                .iter()
-                .flat_map(move |validator| validator.validate(schema, instance))
-                .collect();
-            Box::new(errors.into_iter())
-        } else {
-            let errors: Vec<_> = self
-                .else_schema
-                .iter()
-                .flat_map(move |validator| validator.validate(schema, instance))
-                .collect();
-            Box::new(errors.into_iter())
-        }
-    }
-
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if self
-            .schema
-            .iter()
-            .all(|validator| validator.is_valid(schema, instance))
-        {
-            self.then_schema
-                .iter()
-                .all(move |validator| validator.is_valid(schema, instance))
-        } else {
-            self.else_schema
-                .iter()
-                .all(move |validator| validator.is_valid(schema, instance))
-        }
-    }
-
     fn name(&self) -> String {
         format!(
             "if: {}, then: {}, else: {}",
@@ -193,6 +308,24 @@ impl Validate for IfThenElseValidator {
             format_validators(&self.else_schema)
         )
     }
+
+    if_then_else_impl_is_valid!(array, &[Value]);
+    if_then_else_impl_is_valid!(boolean, bool);
+    if_then_else_impl_is_valid!(null, ());
+    if_then_else_impl_is_valid!(number, f64);
+    if_then_else_impl_is_valid!(object, &Map<String, Value>);
+    if_then_else_impl_is_valid!(signed_integer, i64);
+    if_then_else_impl_is_valid!(string, &str);
+    if_then_else_impl_is_valid!(unsigned_integer, u64);
+
+    if_then_else_impl_validate!(array, &'a [Value]);
+    if_then_else_impl_validate!(boolean, bool);
+    if_then_else_impl_validate!(null, ());
+    if_then_else_impl_validate!(number, f64);
+    if_then_else_impl_validate!(object, &'a Map<String, Value>);
+    if_then_else_impl_validate!(signed_integer, i64);
+    if_then_else_impl_validate!(string, &'a str);
+    if_then_else_impl_validate!(unsigned_integer, u64);
 }
 
 #[inline]

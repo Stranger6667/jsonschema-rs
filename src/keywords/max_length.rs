@@ -1,6 +1,6 @@
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{CompilationError, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -21,28 +21,21 @@ impl MaxLengthValidator {
 }
 
 impl Validate for MaxLengthValidator {
-    fn validate<'a>(&self, _schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::String(item) = instance {
-            if (item.chars().count() as u64) > self.limit {
-                return error(ValidationError::max_length(instance, self.limit));
-            }
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            if (item.chars().count() as u64) > self.limit {
-                return false;
-            }
-        }
-        true
+    #[inline]
+    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
+        ValidationError::max_length(instance, self.limit)
     }
 
     fn name(&self) -> String {
         format!("maxLength: {}", self.limit)
     }
+
+    #[inline]
+    fn is_valid_string(&self, _: &JSONSchema, _: &Value, instance_value: &str) -> bool {
+        instance_value.chars().count() as u64 <= self.limit
+    }
 }
+
 #[inline]
 pub fn compile(
     _: &Map<String, Value>,

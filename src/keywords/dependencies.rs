@@ -1,6 +1,6 @@
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
-    error::{no_error, CompilationError, ErrorIterator},
+    error::{CompilationError, ErrorIterator},
     keywords::{
         format_key_value_validators, required::RequiredValidator, CompilationResult, Validators,
     },
@@ -31,43 +31,49 @@ impl DependenciesValidator {
 }
 
 impl Validate for DependenciesValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
-            let errors: Vec<_> = self
-                .dependencies
-                .iter()
-                .filter(|(property, _)| item.contains_key(property))
-                .flat_map(move |(_, validators)| {
-                    validators
-                        .iter()
-                        .flat_map(move |validator| validator.validate(schema, instance))
-                })
-                .collect();
-            // TODO. custom error message for "required" case
-            return Box::new(errors.into_iter());
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
-            return self
-                .dependencies
-                .iter()
-                .filter(|(property, _)| item.contains_key(property))
-                .all(move |(_, validators)| {
-                    validators
-                        .iter()
-                        .all(move |validator| validator.is_valid(schema, instance))
-                });
-        }
-        true
-    }
-
     fn name(&self) -> String {
         format!(
             "dependencies: {{{}}}",
             format_key_value_validators(&self.dependencies)
+        )
+    }
+
+    #[inline]
+    fn is_valid_object(
+        &self,
+        schema: &JSONSchema,
+        instance: &Value,
+        instance_value: &Map<String, Value>,
+    ) -> bool {
+        self.dependencies
+            .iter()
+            .filter(|(property, _)| instance_value.contains_key(property))
+            .all(move |(_, validators)| {
+                validators.iter().all(move |validator| {
+                    validator.is_valid_object(schema, instance, instance_value)
+                })
+            })
+    }
+
+    #[inline]
+    fn validate_object<'a>(
+        &self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        instance_value: &'a Map<String, Value>,
+    ) -> ErrorIterator<'a> {
+        // TODO. custom error message for "required" case
+        Box::new(
+            self.dependencies
+                .iter()
+                .filter(|(property, _)| instance_value.contains_key(property))
+                .flat_map(move |(_, validators)| {
+                    validators.iter().flat_map(move |validator| {
+                        validator.validate_object(schema, instance, instance_value)
+                    })
+                })
+                .collect::<Vec<_>>()
+                .into_iter(),
         )
     }
 }

@@ -23,7 +23,7 @@ pub struct JSONSchema<'a> {
     pub(crate) resolver: Resolver<'a>,
 }
 
-lazy_static! {
+lazy_static::lazy_static! {
     pub static ref DEFAULT_SCOPE: Url = url::Url::parse(DEFAULT_ROOT_URL).expect("Is a valid URL");
 }
 
@@ -46,7 +46,10 @@ impl<'a> JSONSchema<'a> {
         };
         let resolver = Resolver::new(draft, &scope, schema)?;
         let context = CompilationContext::new(scope, draft);
-        let validators = compile_validators(schema, &context)?;
+
+        let mut validators = compile_validators(schema, &context)?;
+        validators.shrink_to_fit();
+
         Ok(JSONSchema {
             draft,
             schema,
@@ -56,6 +59,7 @@ impl<'a> JSONSchema<'a> {
     }
 
     /// Run validation against `input` and return an iterator over `ValidationError` in the error case.
+    #[inline]
     pub fn validate(&'a self, instance: &'a Value) -> Result<(), ErrorIterator<'a>> {
         let mut errors = self
             .validators
@@ -72,6 +76,8 @@ impl<'a> JSONSchema<'a> {
     /// Run validation against `instance` but return a boolean result instead of an iterator.
     /// It is useful for cases, where it is important to only know the fact if the data is valid or not.
     /// This approach is much faster, than `validate`.
+    #[must_use]
+    #[inline]
     pub fn is_valid(&self, instance: &Value) -> bool {
         self.validators
             .iter()
@@ -189,7 +195,7 @@ mod tests {
         // And only this validator
         assert_eq!(compiled.validators.len(), 1);
         assert!(compiled.validate(&value1).is_ok());
-        assert!(compiled.validate(&value2).is_err())
+        assert!(compiled.validate(&value2).is_err());
     }
 
     #[test]
