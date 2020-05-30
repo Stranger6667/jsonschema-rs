@@ -1,6 +1,6 @@
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
-    error::{CompilationError, ErrorIterator},
+    error::{no_error, CompilationError, ErrorIterator},
     keywords::{format_validators, CompilationResult, Validators},
     validator::Validate,
 };
@@ -51,12 +51,20 @@ impl Validate for PatternPropertiesValidator {
             instance_value
                 .iter()
                 .filter(|(key, _)| re.is_match(key))
-                .all(|(_key, value)| {
+                .all(|(_, value)| {
                     validators
                         .iter()
                         .all(|validator| validator.is_valid(schema, value))
                 })
         })
+    }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(instance_value) = instance {
+            self.is_valid_object(schema, instance, instance_value)
+        } else {
+            true
+        }
     }
 
     #[inline]
@@ -82,6 +90,14 @@ impl Validate for PatternPropertiesValidator {
                 .collect::<Vec<_>>()
                 .into_iter(),
         )
+    }
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(instance_value) = instance {
+            self.validate_object(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 

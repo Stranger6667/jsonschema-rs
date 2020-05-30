@@ -1,6 +1,6 @@
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{CompilationError, ValidationError},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::{type_, CompilationResult},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
@@ -125,6 +125,27 @@ impl Validate for IntegerTypeValidator {
     #[inline]
     fn is_valid_string(&self, _: &JSONSchema, _: &Value, _: &str) -> bool {
         false
+    }
+    #[inline]
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Number(instance_number) = instance {
+            instance_number.is_u64() || instance_number.is_i64()
+        } else {
+            false
+        }
+    }
+
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Number(_) = instance {
+            if self.is_valid(schema, instance) {
+                no_error()
+            } else {
+                error(self.build_validation_error(instance))
+            }
+        } else {
+            error(self.build_validation_error(instance))
+        }
     }
 }
 

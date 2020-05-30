@@ -45,6 +45,14 @@ impl Validate for RequiredValidator {
             .iter()
             .all(|property_name| instance_value.contains_key(property_name))
     }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(instance_value) = instance {
+            self.is_valid_object(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
 
     #[inline]
     fn validate_object<'a>(
@@ -59,6 +67,14 @@ impl Validate for RequiredValidator {
             }
         }
         no_error()
+    }
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(instance_value) = instance {
+            self.validate_object(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 

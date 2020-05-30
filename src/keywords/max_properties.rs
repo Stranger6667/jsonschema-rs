@@ -1,6 +1,6 @@
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{CompilationError, ValidationError},
+    error::{no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -38,6 +38,23 @@ impl Validate for MaxPropertiesValidator {
         instance_value: &Map<String, Value>,
     ) -> bool {
         (instance_value.len() as u64) <= self.limit
+    }
+    #[inline]
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(instance_value) = instance {
+            instance_value.len() as u64 <= self.limit
+        } else {
+            true
+        }
+    }
+
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(instance_value) = instance {
+            self.validate_object(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 

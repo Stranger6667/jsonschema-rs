@@ -1,5 +1,7 @@
 use crate::{
-    compilation::JSONSchema, error::ValidationError, keywords::CompilationResult,
+    compilation::JSONSchema,
+    error::{error, no_error, ErrorIterator, ValidationError},
+    keywords::CompilationResult,
     validator::Validate,
 };
 use serde_json::{Map, Value};
@@ -14,6 +16,16 @@ impl TrueValidator {
 impl Validate for TrueValidator {
     fn name(&self) -> String {
         "true".to_string()
+    }
+
+    #[inline]
+    fn is_valid(&self, _: &JSONSchema, _: &Value) -> bool {
+        true
+    }
+
+    #[inline]
+    fn validate<'a>(&self, _: &'a JSONSchema, _: &'a Value) -> ErrorIterator<'a> {
+        no_error()
     }
 }
 
@@ -67,6 +79,15 @@ impl Validate for FalseValidator {
     #[inline]
     fn is_valid_unsigned_integer(&self, _: &JSONSchema, _: &Value, _: u64) -> bool {
         false
+    }
+    #[inline]
+    fn is_valid(&self, _: &JSONSchema, _: &Value) -> bool {
+        false
+    }
+
+    #[inline]
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        error(self.build_validation_error(instance))
     }
 }
 

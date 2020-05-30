@@ -1,6 +1,6 @@
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{CompilationError, ValidationError},
+    error::{no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -33,6 +33,23 @@ impl Validate for MaxItemsValidator {
     #[inline]
     fn is_valid_array(&self, _: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
         instance_value.len() as u64 <= self.limit
+    }
+    #[inline]
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(instance_value) = instance {
+            instance_value.len() as u64 <= self.limit
+        } else {
+            true
+        }
+    }
+
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Array(instance_value) = instance {
+            self.validate_array(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 

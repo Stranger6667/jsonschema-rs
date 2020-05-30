@@ -1,6 +1,6 @@
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
-    error::{CompilationError, ErrorIterator},
+    error::{no_error, CompilationError, ErrorIterator},
     keywords::{
         format_key_value_validators, required::RequiredValidator, CompilationResult, Validators,
     },
@@ -54,6 +54,14 @@ impl Validate for DependenciesValidator {
                 })
             })
     }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(instance_value) = instance {
+            self.is_valid_object(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
 
     #[inline]
     fn validate_object<'a>(
@@ -75,6 +83,14 @@ impl Validate for DependenciesValidator {
                 .collect::<Vec<_>>()
                 .into_iter(),
         )
+    }
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(instance_value) = instance {
+            self.validate_object(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 

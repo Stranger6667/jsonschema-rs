@@ -1,7 +1,7 @@
 //! Validator for `format` keyword.
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{CompilationError, ValidationError},
+    error::{no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -58,6 +58,23 @@ macro_rules! string_format_validator {
             #[inline]
             fn is_valid_string(&self, _: &JSONSchema, _: &Value, instance_string: &str) -> bool {
                 $check(instance_string)
+            }
+            #[inline]
+            fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+                if let Value::String(instance_string) = instance {
+                    self.is_valid_string(schema, instance, instance_string)
+                } else {
+                    true
+                }
+            }
+
+            #[inline]
+            fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+                if let Value::String(instance_value) = instance {
+                    self.validate_string(schema, instance, instance_value)
+                } else {
+                    no_error()
+                }
             }
         );
     };

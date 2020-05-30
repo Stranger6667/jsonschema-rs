@@ -1,6 +1,6 @@
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::ValidationError,
+    error::{no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -53,6 +53,7 @@ impl Hash for HashedValue<'_> {
     }
 }
 
+#[inline]
 pub fn is_unique(items: &[Value]) -> bool {
     let mut seen = HashSet::with_capacity(items.len());
     items.iter().map(HashedValue).all(move |x| seen.insert(x))
@@ -80,6 +81,23 @@ impl Validate for UniqueItemsValidator {
     #[inline]
     fn is_valid_array(&self, _: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
         is_unique(instance_value)
+    }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(instance_value) = instance {
+            self.is_valid_array(schema, instance, instance_value)
+        } else {
+            false
+        }
+    }
+
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Array(instance_value) = instance {
+            self.validate_array(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 

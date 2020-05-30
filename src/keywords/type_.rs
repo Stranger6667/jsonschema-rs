@@ -1,6 +1,6 @@
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{CompilationError, ValidationError},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
@@ -131,6 +131,23 @@ impl Validate for NullTypeValidator {
     fn is_valid_unsigned_integer(&self, _: &JSONSchema, _: &Value, _: u64) -> bool {
         false
     }
+    #[inline]
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Null = instance {
+            true
+        } else {
+            false
+        }
+    }
+
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Null = instance {
+            self.validate_null(schema, instance, ())
+        } else {
+            error(self.build_validation_error(instance))
+        }
+    }
 }
 
 pub struct BooleanTypeValidator {}
@@ -179,6 +196,23 @@ impl Validate for BooleanTypeValidator {
     #[inline]
     fn is_valid_unsigned_integer(&self, _: &JSONSchema, _: &Value, _: u64) -> bool {
         false
+    }
+    #[inline]
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Bool(_) = instance {
+            true
+        } else {
+            false
+        }
+    }
+
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Bool(instance_value) = instance {
+            self.validate_boolean(schema, instance, *instance_value)
+        } else {
+            error(self.build_validation_error(instance))
+        }
     }
 }
 
@@ -229,6 +263,23 @@ impl Validate for StringTypeValidator {
     fn is_valid_unsigned_integer(&self, _: &JSONSchema, _: &Value, _: u64) -> bool {
         false
     }
+    #[inline]
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(_) = instance {
+            true
+        } else {
+            false
+        }
+    }
+
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::String(instance_value) = instance {
+            self.validate_string(schema, instance, instance_value)
+        } else {
+            error(self.build_validation_error(instance))
+        }
+    }
 }
 
 pub struct ArrayTypeValidator {}
@@ -277,6 +328,23 @@ impl Validate for ArrayTypeValidator {
     #[inline]
     fn is_valid_unsigned_integer(&self, _: &JSONSchema, _: &Value, _: u64) -> bool {
         false
+    }
+    #[inline]
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(_) = instance {
+            true
+        } else {
+            false
+        }
+    }
+
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Array(instance_value) = instance {
+            self.validate_array(schema, instance, instance_value)
+        } else {
+            error(self.build_validation_error(instance))
+        }
     }
 }
 
@@ -327,6 +395,23 @@ impl Validate for ObjectTypeValidator {
     fn is_valid_unsigned_integer(&self, _: &JSONSchema, _: &Value, _: u64) -> bool {
         false
     }
+    #[inline]
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(_) = instance {
+            true
+        } else {
+            false
+        }
+    }
+
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(instance_value) = instance {
+            self.validate_object(schema, instance, instance_value)
+        } else {
+            error(self.build_validation_error(instance))
+        }
+    }
 }
 
 pub struct NumberTypeValidator {}
@@ -367,6 +452,23 @@ impl Validate for NumberTypeValidator {
     #[inline]
     fn is_valid_string(&self, _: &JSONSchema, _: &Value, _: &str) -> bool {
         false
+    }
+    #[inline]
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Number(_) = instance {
+            true
+        } else {
+            false
+        }
+    }
+
+    #[inline]
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Number(_) = instance {
+            no_error()
+        } else {
+            error(self.build_validation_error(instance))
+        }
     }
 }
 
@@ -413,6 +515,29 @@ impl Validate for IntegerTypeValidator {
     #[inline]
     fn is_valid_string(&self, _: &JSONSchema, _: &Value, _: &str) -> bool {
         false
+    }
+    #[inline]
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Number(instance_number) = instance {
+            instance_number.is_u64()
+                || instance_number.is_i64()
+                || instance_number.as_f64().map_or(false, |f| f.fract() == 0.)
+        } else {
+            false
+        }
+    }
+
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Number(_) = instance {
+            if self.is_valid(schema, instance) {
+                no_error()
+            } else {
+                error(self.build_validation_error(instance))
+            }
+        } else {
+            error(self.build_validation_error(instance))
+        }
     }
 }
 

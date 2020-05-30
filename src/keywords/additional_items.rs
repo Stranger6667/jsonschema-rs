@@ -1,6 +1,6 @@
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
-    error::{CompilationError, ErrorIterator, ValidationError},
+    error::{no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::{boolean::TrueValidator, format_validators, CompilationResult, Validators},
     validator::Validate,
 };
@@ -37,6 +37,14 @@ impl Validate for AdditionalItemsObjectValidator {
                 .all(move |validator| validator.is_valid(schema, item))
         })
     }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(instance_value) = instance {
+            self.is_valid_array(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
 
     #[inline]
     fn validate_array<'a>(
@@ -57,6 +65,14 @@ impl Validate for AdditionalItemsObjectValidator {
                 .collect::<Vec<_>>()
                 .into_iter(),
         )
+    }
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Array(instance_value) = instance {
+            self.validate_array(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 
@@ -82,6 +98,14 @@ impl Validate for AdditionalItemsBooleanValidator {
     #[inline]
     fn is_valid_array(&self, _: &JSONSchema, _: &Value, instance_array: &[Value]) -> bool {
         instance_array.len() <= self.items_count
+    }
+    #[inline]
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(instance_array) = instance {
+            instance_array.len() <= self.items_count
+        } else {
+            true
+        }
     }
 }
 

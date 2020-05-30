@@ -36,6 +36,14 @@ impl Validate for ContentMediaTypeValidator {
     fn is_valid_string(&self, _: &JSONSchema, instance: &Value, instance_value: &str) -> bool {
         (self.func)(instance, instance_value).next().is_none()
     }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(instance_value) = instance {
+            self.is_valid_string(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
 
     #[inline]
     fn validate_string<'a>(
@@ -45,6 +53,14 @@ impl Validate for ContentMediaTypeValidator {
         instance_value: &'a str,
     ) -> ErrorIterator<'a> {
         (self.func)(instance, instance_value)
+    }
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::String(instance_value) = instance {
+            self.validate_string(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 
@@ -76,6 +92,14 @@ impl Validate for ContentEncodingValidator {
     fn is_valid_string(&self, _: &JSONSchema, instance: &Value, instance_value: &str) -> bool {
         (self.func)(instance, instance_value).next().is_none()
     }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(instance_value) = instance {
+            self.is_valid_string(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
 
     #[inline]
     fn validate_string<'a>(
@@ -85,6 +109,14 @@ impl Validate for ContentEncodingValidator {
         instance_value: &'a str,
     ) -> ErrorIterator<'a> {
         (self.func)(instance, instance_value)
+    }
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::String(instance_value) = instance {
+            self.validate_string(schema, instance, instance_value)
+        } else {
+            no_error()
+        }
     }
 }
 
@@ -129,6 +161,14 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
             Err(_) => false,
         }
     }
+    #[inline]
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(instance_value) = instance {
+            self.is_valid_string(schema, instance, instance_value)
+        } else {
+            true
+        }
+    }
 
     #[inline]
     fn validate_string<'a>(
@@ -145,6 +185,14 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
                 Box::new(errors.into_iter())
             }
             Err(e) => error(e),
+        }
+    }
+    #[inline]
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::String(instance_value) = instance {
+            self.validate_string(schema, instance, instance_value)
+        } else {
+            no_error()
         }
     }
 }
