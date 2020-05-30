@@ -1,6 +1,6 @@
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{CompilationError, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -9,7 +9,7 @@ use serde_json::{Map, Value};
 
 use std::ops::Index;
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref CONTROL_GROUPS_RE: Regex = Regex::new(r"\\c[A-Za-z]").expect("Is a valid regex");
 }
 
@@ -35,26 +35,18 @@ impl PatternValidator {
 }
 
 impl Validate for PatternValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::String(item) = instance {
-            if !self.pattern.is_match(item) {
-                return error(ValidationError::pattern(instance, self.original.clone()));
-            }
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            if !self.pattern.is_match(item) {
-                return false;
-            }
-        }
-        true
+    #[inline]
+    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
+        ValidationError::pattern(instance, self.original.clone())
     }
 
     fn name(&self) -> String {
         format!("pattern: {}", self.pattern)
+    }
+
+    #[inline]
+    fn is_valid_string(&self, _: &JSONSchema, _: &Value, instance_value: &str) -> bool {
+        self.pattern.is_match(instance_value)
     }
 }
 

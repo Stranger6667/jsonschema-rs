@@ -1,6 +1,6 @@
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
-    error::{no_error, CompilationError, ErrorIterator},
+    error::{CompilationError, ErrorIterator},
     keywords::{format_validators, CompilationResult, Validators},
     validator::Validate,
 };
@@ -29,41 +29,6 @@ impl PatternPropertiesValidator {
 }
 
 impl Validate for PatternPropertiesValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
-            let errors: Vec<_> = self
-                .patterns
-                .iter()
-                .flat_map(move |(re, validators)| {
-                    item.iter()
-                        .filter(move |(key, _)| re.is_match(key))
-                        .flat_map(move |(_key, value)| {
-                            validators
-                                .iter()
-                                .flat_map(move |validator| validator.validate(schema, value))
-                        })
-                })
-                .collect();
-            return Box::new(errors.into_iter());
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
-            return self.patterns.iter().all(move |(re, validators)| {
-                item.iter()
-                    .filter(move |(key, _)| re.is_match(key))
-                    .all(move |(_key, value)| {
-                        validators
-                            .iter()
-                            .all(move |validator| validator.is_valid(schema, value))
-                    })
-            });
-        }
-        true
-    }
-
     fn name(&self) -> String {
         format!(
             "patternProperties: {{{}}}",
@@ -72,6 +37,50 @@ impl Validate for PatternPropertiesValidator {
                 .map(|(key, validators)| { format!("{}: {}", key, format_validators(validators)) })
                 .collect::<Vec<String>>()
                 .join(", ")
+        )
+    }
+
+    #[inline]
+    fn is_valid_object(
+        &self,
+        schema: &JSONSchema,
+        _: &Value,
+        instance_value: &Map<String, Value>,
+    ) -> bool {
+        self.patterns.iter().all(|(re, validators)| {
+            instance_value
+                .iter()
+                .filter(|(key, _)| re.is_match(key))
+                .all(|(_key, value)| {
+                    validators
+                        .iter()
+                        .all(|validator| validator.is_valid(schema, value))
+                })
+        })
+    }
+
+    #[inline]
+    fn validate_object<'a>(
+        &self,
+        schema: &'a JSONSchema,
+        _: &'a Value,
+        instance_value: &'a Map<String, Value>,
+    ) -> ErrorIterator<'a> {
+        Box::new(
+            self.patterns
+                .iter()
+                .flat_map(|(re, validators)| {
+                    instance_value
+                        .iter()
+                        .filter(move |(key, _)| re.is_match(key))
+                        .flat_map(move |(_key, value)| {
+                            validators
+                                .iter()
+                                .flat_map(move |validator| validator.validate(schema, value))
+                        })
+                })
+                .collect::<Vec<_>>()
+                .into_iter(),
         )
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{error, no_error, ErrorIterator, ValidationError},
+    error::ValidationError,
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -68,25 +68,18 @@ impl UniqueItemsValidator {
 }
 
 impl Validate for UniqueItemsValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if self.is_valid(schema, instance) {
-            no_error()
-        } else {
-            error(ValidationError::unique_items(instance))
-        }
-    }
-
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Array(items) = instance {
-            if !is_unique(items) {
-                return false;
-            }
-        }
-        true
+    #[inline]
+    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
+        ValidationError::unique_items(instance)
     }
 
     fn name(&self) -> String {
         "uniqueItems: true".to_string()
+    }
+
+    #[inline]
+    fn is_valid_array(&self, _: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
+        is_unique(instance_value)
     }
 }
 

@@ -1,11 +1,10 @@
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
-    error::{error, no_error, ErrorIterator, ValidationError},
+    error::{ErrorIterator, ValidationError},
     keywords::{format_validators, CompilationResult, Validators},
     validator::Validate,
 };
 use serde_json::{Map, Value};
-use std::borrow::Borrow;
 
 pub struct PropertyNamesObjectValidator {
     validators: Validators,
@@ -21,41 +20,47 @@ impl PropertyNamesObjectValidator {
 }
 
 impl Validate for PropertyNamesObjectValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = &instance.borrow() {
-            let errors: Vec<_> = self
-                .validators
+    fn name(&self) -> String {
+        format!("propertyNames: {}", format_validators(&self.validators))
+    }
+
+    #[inline]
+    fn is_valid_object(
+        &self,
+        schema: &JSONSchema,
+        _: &Value,
+        instance_value: &Map<String, Value>,
+    ) -> bool {
+        self.validators.iter().all(move |validator| {
+            instance_value.keys().all(move |key| {
+                validator.is_valid_string(schema, &Value::String(key.to_string()), key)
+            })
+        })
+    }
+
+    #[inline]
+    fn validate_object<'a>(
+        &self,
+        schema: &'a JSONSchema,
+        _: &'a Value,
+        instance_value: &Map<String, Value>,
+    ) -> ErrorIterator<'a> {
+        Box::new(
+            self.validators
                 .iter()
                 .flat_map(move |validator| {
-                    item.keys().flat_map(move |key| {
+                    instance_value.keys().flat_map(move |key| {
                         let wrapper = Value::String(key.to_string());
                         let errors: Vec<_> = validator
-                            .validate(schema, &wrapper)
+                            .validate_string(schema, &wrapper, key)
                             .map(ValidationError::into_owned)
                             .collect();
                         errors.into_iter()
                     })
                 })
-                .collect();
-            return Box::new(errors.into_iter());
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = &instance.borrow() {
-            return self.validators.iter().all(move |validator| {
-                item.keys().all(move |key| {
-                    let wrapper = Value::String(key.to_string());
-                    validator.is_valid(schema, &wrapper)
-                })
-            });
-        }
-        true
-    }
-
-    fn name(&self) -> String {
-        format!("propertyNames: {}", format_validators(&self.validators))
+                .collect::<Vec<_>>()
+                .into_iter(),
+        )
     }
 }
 
@@ -69,25 +74,23 @@ impl PropertyNamesBooleanValidator {
 }
 
 impl Validate for PropertyNamesBooleanValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if self.is_valid(schema, instance) {
-            no_error()
-        } else {
-            error(ValidationError::false_schema(instance))
-        }
-    }
-
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
-            if !item.is_empty() {
-                return false;
-            }
-        }
-        true
+    #[inline]
+    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
+        ValidationError::false_schema(instance)
     }
 
     fn name(&self) -> String {
         "propertyNames: false".to_string()
+    }
+
+    #[inline]
+    fn is_valid_object(
+        &self,
+        _: &JSONSchema,
+        _: &Value,
+        instance_value: &Map<String, Value>,
+    ) -> bool {
+        instance_value.is_empty()
     }
 }
 

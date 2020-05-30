@@ -1,6 +1,6 @@
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{CompilationError, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -19,30 +19,39 @@ impl MultipleOfFloatValidator {
 }
 
 impl Validate for MultipleOfFloatValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Number(item) = instance {
-            let item = item.as_f64().expect("Always valid");
-            let remainder = (item / self.multiple_of) % 1.;
-            if !(remainder < EPSILON && remainder < (1. - EPSILON)) {
-                return error(ValidationError::multiple_of(instance, self.multiple_of));
-            }
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Number(item) = instance {
-            let item = item.as_f64().expect("Always valid");
-            let remainder = (item / self.multiple_of) % 1.;
-            if !(remainder < EPSILON && remainder < (1. - EPSILON)) {
-                return false;
-            }
-        }
-        true
+    #[inline]
+    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
+        ValidationError::multiple_of(instance, self.multiple_of)
     }
 
     fn name(&self) -> String {
         format!("multipleOf: {}", self.multiple_of)
+    }
+
+    #[inline]
+    fn is_valid_number(&self, _: &JSONSchema, _: &Value, instance_value: f64) -> bool {
+        let remainder = (instance_value / self.multiple_of) % 1.;
+        remainder < EPSILON && remainder < (1. - EPSILON)
+    }
+    #[inline]
+    fn is_valid_signed_integer(
+        &self,
+        schema: &JSONSchema,
+        instance: &Value,
+        instance_value: i64,
+    ) -> bool {
+        #[allow(clippy::cast_precision_loss)]
+        self.is_valid_number(schema, instance, instance_value as f64)
+    }
+    #[inline]
+    fn is_valid_unsigned_integer(
+        &self,
+        schema: &JSONSchema,
+        instance: &Value,
+        instance_value: u64,
+    ) -> bool {
+        #[allow(clippy::cast_precision_loss)]
+        self.is_valid_number(schema, instance, instance_value as f64)
     }
 }
 
@@ -58,40 +67,43 @@ impl MultipleOfIntegerValidator {
 }
 
 impl Validate for MultipleOfIntegerValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Number(item) = instance {
-            let item = item.as_f64().expect("Always valid");
-            let is_multiple = if item.fract() == 0. {
-                (item % self.multiple_of) == 0.
-            } else {
-                let remainder = (item / self.multiple_of) % 1.;
-                remainder < EPSILON && remainder < (1. - EPSILON)
-            };
-            if !is_multiple {
-                return error(ValidationError::multiple_of(instance, self.multiple_of));
-            }
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Number(item) = instance {
-            let item = item.as_f64().expect("Always valid");
-            let is_multiple = if item.fract() == 0. {
-                (item % self.multiple_of) == 0.
-            } else {
-                let remainder = (item / self.multiple_of) % 1.;
-                remainder < EPSILON && remainder < (1. - EPSILON)
-            };
-            if !is_multiple {
-                return false;
-            }
-        }
-        true
+    #[inline]
+    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
+        ValidationError::multiple_of(instance, self.multiple_of)
     }
 
     fn name(&self) -> String {
         format!("multipleOf: {}", self.multiple_of)
+    }
+
+    #[inline]
+    fn is_valid_number(&self, _: &JSONSchema, _: &Value, instance_value: f64) -> bool {
+        if instance_value.fract() == 0. {
+            (instance_value % self.multiple_of) == 0.
+        } else {
+            let remainder = (instance_value / self.multiple_of) % 1.;
+            remainder < EPSILON && remainder < (1. - EPSILON)
+        }
+    }
+    #[inline]
+    fn is_valid_signed_integer(
+        &self,
+        schema: &JSONSchema,
+        instance: &Value,
+        instance_value: i64,
+    ) -> bool {
+        #[allow(clippy::cast_precision_loss)]
+        self.is_valid_number(schema, instance, instance_value as f64)
+    }
+    #[inline]
+    fn is_valid_unsigned_integer(
+        &self,
+        schema: &JSONSchema,
+        instance: &Value,
+        instance_value: u64,
+    ) -> bool {
+        #[allow(clippy::cast_precision_loss)]
+        self.is_valid_number(schema, instance, instance_value as f64)
     }
 }
 

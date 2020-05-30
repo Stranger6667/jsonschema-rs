@@ -1,6 +1,6 @@
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{CompilationError, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -20,34 +20,36 @@ pub struct MinimumF64Validator {
 macro_rules! validate {
     ($validator: ty) => {
         impl Validate for $validator {
-            fn validate<'a>(
-                &self,
-                schema: &'a JSONSchema,
-                instance: &'a Value,
-            ) -> ErrorIterator<'a> {
-                if self.is_valid(schema, instance) {
-                    no_error()
-                } else {
-                    error(ValidationError::minimum(instance, self.limit as f64)) // do not cast
-                }
-            }
-
-            fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-                if let Value::Number(item) = instance {
-                    return if let Some(item) = item.as_u64() {
-                        !NumCmp::num_lt(item, self.limit)
-                    } else if let Some(item) = item.as_i64() {
-                        !NumCmp::num_lt(item, self.limit)
-                    } else {
-                        let item = item.as_f64().expect("Always valid");
-                        !NumCmp::num_lt(item, self.limit)
-                    };
-                }
-                true
+            fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
+                #[allow(trivial_numeric_casts)]
+                ValidationError::minimum(instance, self.limit as f64)
             }
 
             fn name(&self) -> String {
                 format!("minimum: {}", self.limit)
+            }
+
+            #[inline]
+            fn is_valid_number(&self, _: &JSONSchema, _: &Value, instance_value: f64) -> bool {
+                NumCmp::num_ge(instance_value, self.limit)
+            }
+            #[inline]
+            fn is_valid_signed_integer(
+                &self,
+                _: &JSONSchema,
+                _: &Value,
+                instance_value: i64,
+            ) -> bool {
+                NumCmp::num_ge(instance_value, self.limit)
+            }
+            #[inline]
+            fn is_valid_unsigned_integer(
+                &self,
+                _: &JSONSchema,
+                _: &Value,
+                instance_value: u64,
+            ) -> bool {
+                NumCmp::num_ge(instance_value, self.limit)
             }
         }
     };

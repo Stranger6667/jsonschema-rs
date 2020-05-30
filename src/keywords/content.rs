@@ -28,22 +28,23 @@ impl ContentMediaTypeValidator {
 
 /// Validator delegates validation to the stored function.
 impl Validate for ContentMediaTypeValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::String(item) = instance {
-            return (self.func)(instance, item);
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            return (self.func)(instance, item).next().is_none();
-        }
-        true
-    }
-
     fn name(&self) -> String {
         format!("contentMediaType: {}", self.media_type)
+    }
+
+    #[inline]
+    fn is_valid_string(&self, _: &JSONSchema, instance: &Value, instance_value: &str) -> bool {
+        (self.func)(instance, instance_value).next().is_none()
+    }
+
+    #[inline]
+    fn validate_string<'a>(
+        &self,
+        _: &'a JSONSchema,
+        instance: &'a Value,
+        instance_value: &'a str,
+    ) -> ErrorIterator<'a> {
+        (self.func)(instance, instance_value)
     }
 }
 
@@ -67,22 +68,23 @@ impl ContentEncodingValidator {
 }
 
 impl Validate for ContentEncodingValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::String(item) = instance {
-            return (self.func)(instance, item);
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            return (self.func)(instance, item).next().is_none();
-        }
-        true
-    }
-
     fn name(&self) -> String {
         format!("contentEncoding: {}", self.encoding)
+    }
+
+    #[inline]
+    fn is_valid_string(&self, _: &JSONSchema, instance: &Value, instance_value: &str) -> bool {
+        (self.func)(instance, instance_value).next().is_none()
+    }
+
+    #[inline]
+    fn validate_string<'a>(
+        &self,
+        _: &'a JSONSchema,
+        instance: &'a Value,
+        instance_value: &'a str,
+    ) -> ErrorIterator<'a> {
+        (self.func)(instance, instance_value)
     }
 }
 
@@ -113,36 +115,37 @@ impl ContentMediaTypeAndEncodingValidator {
 
 /// Decode the input value & check media type
 impl Validate for ContentMediaTypeAndEncodingValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::String(item) = instance {
-            // TODO. Avoid explicit `error` call. It might be done if `converter` will
-            // return a proper type
-            return match (self.converter)(instance, item) {
-                Ok(converted) => {
-                    let errors: Vec<_> = (self.func)(instance, &converted).collect();
-                    Box::new(errors.into_iter())
-                }
-                Err(e) => error(e),
-            };
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            return match (self.converter)(instance, item) {
-                Ok(converted) => (self.func)(instance, &converted).next().is_none(),
-                Err(_) => false,
-            };
-        }
-        true
-    }
-
     fn name(&self) -> String {
         format!(
             "{{contentMediaType: {}, contentEncoding: {}}}",
             self.media_type, self.encoding
         )
+    }
+
+    #[inline]
+    fn is_valid_string(&self, _: &JSONSchema, instance: &Value, instance_value: &str) -> bool {
+        match (self.converter)(instance, instance_value) {
+            Ok(converted) => (self.func)(instance, &converted).next().is_none(),
+            Err(_) => false,
+        }
+    }
+
+    #[inline]
+    fn validate_string<'a>(
+        &self,
+        _: &'a JSONSchema,
+        instance: &'a Value,
+        instance_value: &'a str,
+    ) -> ErrorIterator<'a> {
+        // TODO. Avoid explicit `error` call. It might be done if `converter` will
+        // return a proper type
+        match (self.converter)(instance, instance_value) {
+            Ok(converted) => {
+                let errors: Vec<_> = (self.func)(instance, &converted).collect();
+                Box::new(errors.into_iter())
+            }
+            Err(e) => error(e),
+        }
     }
 }
 

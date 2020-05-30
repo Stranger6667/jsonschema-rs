@@ -48,7 +48,9 @@ impl<'a> Resolver<'a> {
                         let document: Value = response.json()?;
                         Ok(Cow::Owned(document))
                     }
-                    scheme => Err(ValidationError::unknown_reference_scheme(scheme.to_owned())),
+                    http_scheme => Err(ValidationError::unknown_reference_scheme(
+                        http_scheme.to_owned(),
+                    )),
                 },
             },
         }
@@ -217,7 +219,7 @@ mod tests {
         Resolver::new(
             Draft::Draft7,
             &Url::parse("json-schema:///").unwrap(),
-            &schema,
+            schema,
         )
         .unwrap()
     }

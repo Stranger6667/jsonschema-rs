@@ -25,9 +25,9 @@ rayon = "1"
 reqwest = { version = ">= 0.10", features = ["blocking", "json"]}
 parking_lot = ">= 0.1"
 num-cmp = ">= 0.1"
+paste = ">= 0.1"
 
 [dev-dependencies]
-paste = ">= 0.1"
 criterion = ">= 0.1"
 draft = {path = "draft"}
 jsonschema-valid = ">= 0.1"

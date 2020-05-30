@@ -46,6 +46,7 @@
     missing_docs,
     missing_debug_implementations,
     trivial_casts,
+    trivial_numeric_casts,
     unused_extern_crates,
     unused_import_braces,
     unused_qualifications,
@@ -63,9 +64,6 @@ pub use error::{CompilationError, ErrorIterator, ValidationError};
 pub use schemas::Draft;
 use serde_json::Value;
 
-#[macro_use]
-extern crate lazy_static;
-
 /// Validates `instance` against `schema`. Draft version is detected automatically.
 /// ```rust
 /// use jsonschema::is_valid;
@@ -76,6 +74,7 @@ extern crate lazy_static;
 /// let instance = json!("foo");
 /// assert!(is_valid(&schema, &instance));
 /// ```
+#[must_use]
 #[inline]
 pub fn is_valid(schema: &Value, instance: &Value) -> bool {
     let compiled = JSONSchema::compile(schema, None).expect("Invalid schema");

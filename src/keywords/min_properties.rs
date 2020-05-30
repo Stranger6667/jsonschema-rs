@@ -1,6 +1,6 @@
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{CompilationError, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -21,26 +21,23 @@ impl MinPropertiesValidator {
 }
 
 impl Validate for MinPropertiesValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(item) = instance {
-            if (item.len() as u64) < self.limit {
-                return error(ValidationError::min_properties(instance, self.limit));
-            }
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
-            if (item.len() as u64) < self.limit {
-                return false;
-            }
-        }
-        true
+    #[inline]
+    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
+        ValidationError::min_properties(instance, self.limit)
     }
 
     fn name(&self) -> String {
         format!("minProperties: {}", self.limit)
+    }
+
+    #[inline]
+    fn is_valid_object(
+        &self,
+        _: &JSONSchema,
+        _: &Value,
+        instance_value: &Map<String, Value>,
+    ) -> bool {
+        instance_value.len() as u64 >= self.limit
     }
 }
 

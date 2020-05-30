@@ -151,6 +151,9 @@ pub enum ValidationErrorKind {
     UniqueItems,
     /// Reference contains unknown scheme.
     UnknownReferenceScheme { scheme: String },
+
+    /// Unexpected error. This usually represent a bug into the validation
+    Unexpected { validator_representation: String },
 }
 
 #[derive(Debug)]
@@ -386,6 +389,17 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::UnknownReferenceScheme { scheme },
         }
     }
+    pub(crate) fn unexpected(
+        instance: &'a Value,
+        validator_representation: &str,
+    ) -> ValidationError<'a> {
+        ValidationError {
+            instance: Cow::Borrowed(instance),
+            kind: ValidationErrorKind::Unexpected {
+                validator_representation: validator_representation.to_string(),
+            },
+        }
+    }
     pub(crate) fn utf8(error: Utf8Error) -> ValidationError<'a> {
         ValidationError {
             instance: Cow::Owned(Value::Null),
@@ -440,6 +454,7 @@ impl From<reqwest::Error> for ValidationError<'_> {
 
 /// Textual representation of various validation errors.
 impl fmt::Display for ValidationError<'_> {
+    #[allow(clippy::too_many_lines)] // The function is long but it does formatting only
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match &self.kind {
@@ -601,6 +616,13 @@ impl fmt::Display for ValidationError<'_> {
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
+            ValidationErrorKind::Unexpected { validator_representation } => write!(
+                f,
+                "Unexpected validation error. Usually this reflect a bug in the keywords implementation. Please make sure to report the problem to {}. Instance: {}, Validator: {}",
+                env!("CARGO_PKG_REPOSITORY"),
+                self.instance,
+                validator_representation,
+            )
         }
     }
 }

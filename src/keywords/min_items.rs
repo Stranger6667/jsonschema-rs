@@ -1,6 +1,6 @@
 use crate::{
     compilation::{CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{CompilationError, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -21,28 +21,21 @@ impl MinItemsValidator {
 }
 
 impl Validate for MinItemsValidator {
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Array(items) = instance {
-            if (items.len() as u64) < self.limit {
-                return error(ValidationError::min_items(instance, self.limit));
-            }
-        }
-        no_error()
-    }
-
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Array(items) = instance {
-            if (items.len() as u64) < self.limit {
-                return false;
-            }
-        }
-        true
+    #[inline]
+    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
+        ValidationError::min_items(instance, self.limit)
     }
 
     fn name(&self) -> String {
         format!("minItems: {}", self.limit)
     }
+
+    #[inline]
+    fn is_valid_array(&self, _: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
+        instance_value.len() as u64 >= self.limit
+    }
 }
+
 #[inline]
 pub fn compile(
     _: &Map<String, Value>,

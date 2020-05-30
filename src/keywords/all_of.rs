@@ -25,32 +25,75 @@ impl AllOfValidator {
     }
 }
 
+macro_rules! all_of_impl_is_valid {
+    ($method_suffix:tt, $instance_type: ty) => {
+        paste::item! {
+            #[inline]
+            fn [<is_valid_ $method_suffix>](
+                &self,
+                schema: &JSONSchema,
+                instance: &Value,
+                instance_value: $instance_type,
+            ) -> bool {
+                self.schemas.iter().all(move |validators| {
+                    validators.iter().all(move |validator| {
+                        validator.[<is_valid_ $method_suffix>](schema, instance, instance_value)
+                    })
+                })
+            }
+        }
+    };
+}
+macro_rules! all_of_impl_validate {
+    ($method_suffix:tt, $instance_type: ty) => {
+        paste::item! {
+            #[inline]
+            fn [<validate_ $method_suffix>]<'a>(
+                &self,
+                schema: &'a JSONSchema,
+                instance: &'a Value,
+                instance_value: $instance_type,
+            ) -> ErrorIterator<'a> {
+                Box::new(
+                    self.schemas
+                        .iter()
+                        .flat_map(move |validators| {
+                            validators.iter().flat_map(move |validator| {
+                                validator.[<validate_ $method_suffix>](schema, instance, instance_value)
+                            })
+                        })
+                        .collect::<Vec<_>>()
+                        .into_iter(),
+                )
+            }
+        }
+    };
+}
+
 impl Validate for AllOfValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        let errors: Vec<_> = self
-            .schemas
-            .iter()
-            .flat_map(move |validators| {
-                validators
-                    .iter()
-                    .flat_map(move |validator| validator.validate(schema, instance))
-            })
-            .collect();
-        Box::new(errors.into_iter())
-    }
-
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        self.schemas.iter().all(move |validators| {
-            validators
-                .iter()
-                .all(move |validator| validator.is_valid(schema, instance))
-        })
-    }
-
     fn name(&self) -> String {
         format!("allOf: [{}]", format_vec_of_validators(&self.schemas))
     }
+
+    all_of_impl_is_valid!(array, &[Value]);
+    all_of_impl_is_valid!(boolean, bool);
+    all_of_impl_is_valid!(null, ());
+    all_of_impl_is_valid!(number, f64);
+    all_of_impl_is_valid!(object, &Map<String, Value>);
+    all_of_impl_is_valid!(signed_integer, i64);
+    all_of_impl_is_valid!(string, &str);
+    all_of_impl_is_valid!(unsigned_integer, u64);
+
+    all_of_impl_validate!(array, &'a [Value]);
+    all_of_impl_validate!(boolean, bool);
+    all_of_impl_validate!(null, ());
+    all_of_impl_validate!(number, f64);
+    all_of_impl_validate!(object, &'a Map<String, Value>);
+    all_of_impl_validate!(signed_integer, i64);
+    all_of_impl_validate!(string, &'a str);
+    all_of_impl_validate!(unsigned_integer, u64);
 }
+
 #[inline]
 pub fn compile(
     _: &Map<String, Value>,
