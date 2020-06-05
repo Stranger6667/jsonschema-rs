@@ -10,6 +10,7 @@
 - Use `rayon` in `items` keyword validation.
 - Various `clippy` lints. [#66](https://github.com/Stranger6667/jsonschema-rs/pull/66)
 - `Debug` implementation for `JSONSchema` and  `Resolver`. [#97](https://github.com/Stranger6667/jsonschema-rs/pull/97)
+- `Default` implementation for `Draft`.
 
 ### Changed
 
