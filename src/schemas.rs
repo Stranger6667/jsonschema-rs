@@ -12,6 +12,12 @@ pub enum Draft {
     Draft7,
 }
 
+impl Default for Draft {
+    fn default() -> Self {
+        Draft::Draft7
+    }
+}
+
 type CompileFunc =
     fn(&Map<String, Value>, &Value, &CompilationContext) -> Option<keywords::CompilationResult>;
 
@@ -135,5 +141,10 @@ mod tests {
     #[test_case(json!({"$schema": "http://example.com/custom/schema#"}), None)]
     fn test_draft_from_schema(schema: Value, draft: Option<Draft>) {
         assert_eq!(draft_from_schema(&schema), draft)
+    }
+
+    #[test]
+    fn test_default() {
+        assert_eq!(Draft::default(), Draft::Draft7)
     }
 }
