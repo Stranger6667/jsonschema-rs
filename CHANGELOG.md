@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2020-06-08
+
 ### Added
 
 - JSONSchema Draft 4 support (except one optional case). [#34](https://github.com/Stranger6667/jsonschema-rs/pull/34)
@@ -59,5 +61,6 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Stranger6667/jsonschema-rs/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Stranger6667/jsonschema-rs/compare/v0.1.0...v0.2.0
