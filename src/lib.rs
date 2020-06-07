@@ -64,16 +64,17 @@ pub use error::{CompilationError, ErrorIterator, ValidationError};
 pub use schemas::Draft;
 use serde_json::Value;
 
-/// Validates `instance` against `schema`. Draft version is detected automatically.
+/// A shortcut for validating `instance` against `schema`. Draft version is detected automatically.
 /// ```rust
 /// use jsonschema::is_valid;
 /// use serde_json::json;
-///
 ///
 /// let schema = json!({"maxLength": 5});
 /// let instance = json!("foo");
 /// assert!(is_valid(&schema, &instance));
 /// ```
+///
+/// This function panics if an invalid schema is passed.
 #[must_use]
 #[inline]
 pub fn is_valid(schema: &Value, instance: &Value) -> bool {
