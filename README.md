@@ -91,6 +91,6 @@ a validator is compiled every time.
 | Small valid   | 3.02 us   (**x1.13**)   | 118.09 us (**x44.22**)  | 2.67 us     |
 | Small invalid | 1.17 us   (**x0.46**)   | 81.95 us  (**x32.26**)  | 2.54 us     |
 
-You can find benchmark code in `benches/jsonschema.rs`
+You can find benchmark code in `benches/jsonschema.rs`, Rust version is `1.44`
 
 **NOTE**. This library is in early development.
