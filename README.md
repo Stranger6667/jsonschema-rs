@@ -76,14 +76,20 @@ Performance of `jsonschema::JSONSchema.is_valid`. Ratios are given against compi
 - Small valid input (`small_schema.json` and `small_valid.json`)
 - Small invalid input (`small_schema.json` and `small_invalid.json`)
 
-| Case          | jsonschema_valid       | valico                  | jsonschema (not compiled) | jsonschema (compiled) |
-| ------------- | ---------------------- | ----------------------- | ------------------------- | --------------------- |
-| Big valid     | 56.746 ms (**x187.2**) | 149.49 ms (**x493.17**) | 317.14 us (**x1.04**)     | 303.12 us             |
-| Small valid   | 2.23 us   (**x14.92**) | 3.87 us   (**x25.9**)   | 3.76 us   (**x25.17**)    | 149.38 ns             |
-| Small invalid | 515.22 ns (**x85.58**) | 4.08 us   (**x677.74**) | 3.63 us   (**x602.99**)   | 6.02 ns               |
+| Case          | jsonschema_valid        | valico                  | jsonschema   |
+| ------------- | ----------------------- | ----------------------- | ------------ |
+| Big valid     | 56.746 ms (**x185.65**) | 149.49 ms (**x489.07**) | 305.66 us    |
+| Small valid   | 2.23 us   (**x17.15**)  | 3.87 us   (**x29.77**)  | 129.97 ns    |
+| Small invalid | 515.22 ns (**x96.3**)   | 4.08 us   (**x762.61**) | 5.35 ns      |
 
-As you can see the compiled version is faster, especially for large inputs. However, not-compiled version is slower
-on smaller inputs than `jsonschema_valid`.
+All libraries were used in their "compiled" form, where a validator is prepared before usage. Here is comparison when
+a validator is compiled every time.
+
+| Case          | jsonschema_valid        | valico                  | jsonschema  |
+| ------------- | ----------------------- | ----------------------- | ----------- |
+| Big valid     | 56.714 ms (**x183.72**) | 146.82 ms (**x475.62**) | 308.69 us   |
+| Small valid   | 3.02 us   (**x1.13**)   | 118.09 us (**x44.22**)  | 2.67 us     |
+| Small invalid | 1.17 us   (**x0.46**)   | 81.95 us  (**x32.26**)  | 2.54 us     |
 
 You can find benchmark code in `benches/jsonschema.rs`
 
