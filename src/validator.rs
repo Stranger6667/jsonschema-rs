@@ -98,7 +98,7 @@ pub trait Validate: Send + Sync {
                         instance,
                         instance_number
                             .as_f64()
-                            .expect("A JSON number will always be representabe as f64"),
+                            .expect("A JSON number will always be representable as f64"),
                     )
                 }
             }
