@@ -6,3 +6,5 @@ Cargo.lock
 .tox
 *.tar.gz
 *.egg-info
+__pycache__/
+*.py[cod]

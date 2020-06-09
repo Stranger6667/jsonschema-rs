@@ -12,6 +12,7 @@ Supported drafts:
 - Draft 4
 
 There are some notable restrictions at the moment:
+
 - The underlying crate doesn't support arbitrary precision integers yet, which may lead to ``SystemError`` when such value is used;
 - ``multipleOf`` keyword validation may produce false-negative results on some input. See `#84 <https://github.com/Stranger6667/jsonschema-rs/issues/84>`_ for more details
 
@@ -86,7 +87,7 @@ The code in this project is licensed under `MIT license`_.
 By contributing to ``jsonschema-rs``, you agree that your contributions
 will be licensed under its MIT license.
  
-.. |Build| image:: https://github.com/Stranger6667/jsonschema-rs/workflows/build/badge.svg
+.. |Build| image:: https://github.com/Stranger6667/jsonschema-rs/workflows/ci/badge.svg
    :target: https://github.com/Stranger6667/jsonschema-rs/actions
 .. |Version| image:: https://img.shields.io/pypi/v/jsonschema-rs.svg
    :target: https://pypi.org/project/jsonschema-rs/

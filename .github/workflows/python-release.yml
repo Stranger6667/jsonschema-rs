@@ -14,15 +14,15 @@ jobs:
     steps:
       - uses: actions/checkout@v1
 
-      - run: /usr/bin/env python3 -m pip install setuptools_rust twine
-
       - name: Build and audit wheels
         working-directory: ./python
         run: sh build-wheels.sh
 
+      - run: /opt/python/cp37-cp37m/bin/pip install twine
+
       - name: Upload package
         working-directory: ./python
-        run: twine upload ./dist/* --username=${PYPI_USERNAME} --password=${PYPI_PASSWORD}
+        run: /opt/python/cp37-cp37m/bin/twine upload ./dist/* --username=${PYPI_USERNAME} --password=${PYPI_PASSWORD}
         env:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
@@ -33,7 +33,11 @@ jobs:
     steps:
       - uses: actions/checkout@v1
 
-      - run: /usr/bin/env python3 -m pip install setuptools_rust twine
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+
+      - run: pip install setuptools-rust twine
 
       - name: Build sdist
         working-directory: ./python
