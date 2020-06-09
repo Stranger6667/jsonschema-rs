@@ -58,7 +58,7 @@ impl<'a> JSONSchema<'a> {
         })
     }
 
-    /// Run validation against `input` and return an iterator over `ValidationError` in the error case.
+    /// Run validation against `instance` and return an iterator over `ValidationError` in the error case.
     #[inline]
     pub fn validate(&'a self, instance: &'a Value) -> Result<(), ErrorIterator<'a>> {
         let mut errors = self
