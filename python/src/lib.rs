@@ -17,7 +17,7 @@
 use jsonschema::Draft;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
-use pyo3::{exceptions, wrap_pyfunction, PyObjectProtocol};
+use pyo3::{create_exception, exceptions, wrap_pyfunction, PyObjectProtocol};
 use serde_json::Value;
 
 mod ser;
@@ -25,9 +25,12 @@ mod string;
 mod types;
 
 const MODULE_DOCSTRING: &str = "JSON Schema validation for Python written in Rust.";
+const VALIDATION_ERROR_DOCSTRING: &str = "An error that can occur during validation";
 const DRAFT7: u8 = 7;
 const DRAFT6: u8 = 6;
 const DRAFT4: u8 = 4;
+
+create_exception!(jsonschema_rs, ValidationError, exceptions::ValueError);
 
 #[derive(Debug)]
 enum JSONSchemaError {
@@ -118,6 +121,28 @@ impl JSONSchema {
         let instance = ser::to_value(instance).unwrap();
         self.schema.is_valid(&instance)
     }
+
+    /// Validate the input instance and raise `ValidationError` in the error case
+    ///
+    ///     >>> compiled = JSONSchema({"minimum": 5})
+    ///     >>> compiled.is_valid(3)
+    ///     ...
+    ///     ValidationError: 3 is less than the minimum of 5
+    ///
+    /// If the input instance is invalid, only the first occurred error is raised.
+    #[text_signature = "(instance)"]
+    fn validate(&self, instance: &PyAny) -> PyResult<()> {
+        let instance = ser::to_value(instance).unwrap();
+        let result = self.schema.validate(&instance);
+        let error = if let Some(mut errors) = result.err() {
+            // If we have `Err` case, then the iterator is not empty
+            let error = errors.next().expect("Iterator should not be empty");
+            Some(error.to_string())
+        } else {
+            None
+        };
+        error.map_or_else(|| Ok(()), |message| Err(ValidationError::py_err(message)))
+    }
 }
 
 const SCHEMA_LENGTH_LIMIT: usize = 32;
@@ -142,10 +167,13 @@ impl Drop for JSONSchema {
 }
 
 #[pymodule]
-fn jsonschema_rs(_py: Python, module: &PyModule) -> PyResult<()> {
+fn jsonschema_rs(py: Python, module: &PyModule) -> PyResult<()> {
     types::init();
     module.add_wrapped(wrap_pyfunction!(is_valid))?;
     module.add_class::<JSONSchema>()?;
+    let validation_error = py.get_type::<ValidationError>();
+    validation_error.setattr("__doc__", VALIDATION_ERROR_DOCSTRING)?;
+    module.add("ValidationError", validation_error)?;
     module.add("Draft4", DRAFT4)?;
     module.add("Draft6", DRAFT6)?;
     module.add("Draft7", DRAFT7)?;
