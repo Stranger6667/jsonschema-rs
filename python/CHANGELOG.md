@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2020-06-11
+
+### Fixed
+
+- Copying not needed compiled files to the wheel distribution files. [#109](https://github.com/Stranger6667/jsonschema-rs/issues/109)
+
 ## [0.2.0] - 2020-06-11
 
 ### Added
@@ -17,5 +23,6 @@
 
 - Initial public release
 
-[0.2.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.1.0...HEAD
+[0.3.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.3.0...HEAD
+[0.2.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.2.0...python-v0.3.0
 [Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.1.0...python-v0.2.0
