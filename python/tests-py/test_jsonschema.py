@@ -4,7 +4,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from jsonschema_rs import JSONSchema, is_valid
+from jsonschema_rs import JSONSchema, ValidationError, is_valid
 
 json = st.recursive(
     st.none() | st.booleans() | st.floats() | st.integers() | st.text(),
@@ -36,6 +36,12 @@ def test_invalid_type():
 
 def test_repr():
     assert repr(JSONSchema({"minimum": 5})) == '<JSONSchema: {"minimum":5}>'
+
+
+def test_validate():
+    schema = JSONSchema({"minimum": 5})
+    with pytest.raises(ValidationError, match="2 is less than the minimum of 5"):
+        schema.validate(2)
 
 
 def test_recursive_dict():
