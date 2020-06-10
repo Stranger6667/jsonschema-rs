@@ -35,7 +35,7 @@
 - Refactor benchmark suite
 - Use `BTreeSet` in `additionalProperties` keyword during compilation to reduce the amount of copied data. [#91](https://github.com/Stranger6667/jsonschema-rs/pull/91)
 
-## Fixed
+### Fixed
 
 - Wrong implementation of `is_valid` for `additionalProperties: false` keyword case. [#61](https://github.com/Stranger6667/jsonschema-rs/pull/61)
 - Possible panic due to type conversion in some numeric validators. [#72](https://github.com/Stranger6667/jsonschema-rs/pull/72)
@@ -43,17 +43,17 @@
 
 ## [0.2.0] - 2020-03-30
 
-## Added
+### Added
 
 - Implement `is_valid` for various validators.
 - Implement `Error` and `Display` for `CompilationError`
 
-## Changed
+### Changed
 
 - Debug representation & error messages in various validators.
 - Make `ErrorIterator` `Sync` and `Send`.
 
-## Fixed
+### Fixed
 
 - Return `CompilationError` on invalid input schemas instead of panic.
 
