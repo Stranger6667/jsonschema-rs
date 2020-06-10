@@ -61,6 +61,8 @@ fn get_draft(draft: Option<u8>) -> PyResult<Draft> {
     }
 }
 
+/// is_valid(schema, instance, draft=None)
+///
 /// A shortcut for validating the input instance against the schema.
 ///
 ///     >>> is_valid({"minimum": 5}, 3)
@@ -79,6 +81,8 @@ fn is_valid(schema: &PyAny, instance: &PyAny, draft: Option<u8>) -> PyResult<boo
     Ok(compiled.is_valid(&instance))
 }
 
+/// JSONSchema(schema, draft=None)
+///
 /// JSON Schema compiled into a validation tree.
 ///
 ///     >>> compiled = JSONSchema({"minimum": 5})
@@ -109,6 +113,8 @@ impl JSONSchema {
         })
     }
 
+    /// is_valid(instance)
+    ///
     /// Perform fast validation against the compiled schema.
     ///
     ///     >>> compiled = JSONSchema({"minimum": 5})
@@ -122,6 +128,8 @@ impl JSONSchema {
         self.schema.is_valid(&instance)
     }
 
+    /// validate(instance)
+    ///
     /// Validate the input instance and raise `ValidationError` in the error case
     ///
     ///     >>> compiled = JSONSchema({"minimum": 5})
@@ -168,6 +176,8 @@ impl Drop for JSONSchema {
 
 #[pymodule]
 fn jsonschema_rs(py: Python, module: &PyModule) -> PyResult<()> {
+    // To provide proper signatures for PyCharm, all the functions have their signatures as the
+    // first line in docstrings. The idea is taken from NumPy.
     types::init();
     module.add_wrapped(wrap_pyfunction!(is_valid))?;
     module.add_class::<JSONSchema>()?;
