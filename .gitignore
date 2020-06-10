@@ -8,3 +8,6 @@ Cargo.lock
 *.egg-info
 __pycache__/
 *.py[cod]
+python/build
+python/dist
+python/target
