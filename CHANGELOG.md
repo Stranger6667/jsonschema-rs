@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Enable Link-Time Optimizations and set `codegen-units` to 1. [#104](https://github.com/Stranger6667/jsonschema-rs/issues/104)
+
 ## [0.3.0] - 2020-06-08
 
 ### Added

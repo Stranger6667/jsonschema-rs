@@ -39,3 +39,7 @@ classifier = [
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: Implementation :: CPython",
 ]
+
+[profile.release]
+codegen-units = 1
+lto = "on"

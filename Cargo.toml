@@ -37,3 +37,7 @@ test-case = "1"
 [[bench]]
 name = "jsonschema"
 harness = false
+
+[profile.release]
+codegen-units = 1
+lto = "on"
