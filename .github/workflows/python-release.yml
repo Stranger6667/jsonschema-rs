@@ -6,46 +6,132 @@ on:
       - python-v*
 
 jobs:
+  create_and_upload_macos_and_windows_wheels:
+    name: Wheels for Python ${{ matrix.python-version }} / ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+        python-version: ['3.5', '3.6', '3.7', '3.8']
+        architecture: [x86, x64]
+        exclude:
+        - os: macos-latest
+          architecture: x86
+        - os: windows-latest
+          # TODO: Re-enable windows 32bits
+          architecture: x86
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.architecture }}
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+
+      - name: Install Tox
+        run: pip install tox
+
+      - name: Build wheel
+        working-directory: ./python
+        run: tox -e build-wheel
+
+      - name: Publish distribution package to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.2.2
+        with:
+          user: ${{ secrets.PYPI_USERNAME }}
+          password: ${{ secrets.PYPI_PASSWORD }}
+          packages_dir: python/dist/
 
   create_wheels_manylinux:
     runs-on: ubuntu-latest
-    name: Create wheels for manylinux
-    container: quay.io/pypa/manylinux2010_x86_64
+    name: Wheels for Python ${{ matrix.PYTHON_IMPLEMENTATION_ABI }} / Linux
+    container: quay.io/pypa/manylinux2014_x86_64  # Builds wheels on CentOS 7 (supported until 2024)
+    strategy:
+      fail-fast: false
+      matrix:
+        # List of the language-implementation API pairs to publish wheels for
+        # The list of supported is obtainable by running `docker run quay.io/pypa/manylinux2014_x86_64 ls /opt/python`
+        PYTHON_IMPLEMENTATION_ABI: [cp35-cp35m, cp36-cp36m, cp37-cp37m, cp38-cp38]
+    env:
+      # Variable needed for PyO3 to properly identify the python interpreter
+      PYTHON_SYS_EXECUTABLE: /opt/python/${{ matrix.PYTHON_IMPLEMENTATION_ABI }}/bin/python
     steps:
-      - uses: actions/checkout@v1
 
-      - name: Build and audit wheels
+      - uses: actions/checkout@v2
+
+      - name: Install/Update OpenSSL
+        run: |
+          retryCount=0
+          # yum install seems to be flakey (due to network timeouts)
+          # retry up to 5 times with a 10s sleep in case of failure
+          until yum install openssl-devel --assumeyes --noplugins; do
+            # For some reason the install has failed
+            if [ ${retryCount} -eq 5 ]; then
+                false
+            else
+              retryCount=$((${retryCount}+1))
+            fi
+            sleep 10
+          done
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+
+      - name: Install Tox
+        run: ${{ env.PYTHON_SYS_EXECUTABLE }} -m pip install tox
+
+      - name: Build wheel
         working-directory: ./python
-        run: sh build-wheels.sh
+        run: |
+          ${{ env.PYTHON_SYS_EXECUTABLE }} -m tox -e build-wheel
+          # Ensure that the wheel is tagged as manylinux2014 platform
+          auditwheel repair \
+            --wheel-dir=./dist \
+            --plat manylinux2014_x86_64 \
+            ./dist/jsonschema_rs-*-${{ matrix.PYTHON_IMPLEMENTATION_ABI }}-linux_x86_64.whl
 
-      - run: /opt/python/cp37-cp37m/bin/pip install twine
+      - name: Publish distribution package to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.2.2
+        with:
+          user: ${{ secrets.PYPI_USERNAME }}
+          password: ${{ secrets.PYPI_PASSWORD }}
+          packages_dir: python/dist/
 
-      - name: Upload package
-        working-directory: ./python
-        run: /opt/python/cp37-cp37m/bin/twine upload ./dist/* --username=${PYPI_USERNAME} --password=${PYPI_PASSWORD}
-        env:
-          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-
-  create_source_dist:
+  create_and_upload_source_dist:
     name: Create sdist package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
 
-      - uses: actions/setup-python@v1
+      - uses: actions/setup-python@v2
         with:
           python-version: 3.7
 
-      - run: pip install setuptools-rust twine
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+
+      - name: Install Tox
+        run: pip install tox
 
       - name: Build sdist
         working-directory: ./python
-        run: sh build-sdist.sh
+        run: tox -e build-sdist
 
-      - name: Upload package
-        working-directory: ./python
-        run: twine upload ./dist/* --username=${PYPI_USERNAME} --password=${PYPI_PASSWORD}
-        env:
-          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      - name: Publish distribution package to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.2.2
+        with:
+          user: ${{ secrets.PYPI_USERNAME }}
+          password: ${{ secrets.PYPI_PASSWORD }}
+          packages_dir: python/dist/

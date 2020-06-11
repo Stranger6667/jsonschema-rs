@@ -2,5 +2,5 @@ include Cargo.toml
 include pyproject.toml
 include rust-toolchain
 recursive-include src *
-recursive-include jsonschema/src/ *
+recursive-include jsonschema/src *
 include jsonschema/Cargo.toml

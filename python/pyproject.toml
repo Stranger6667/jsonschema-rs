@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel", "setuptools-rust"]
+requires = ["setuptools", "setuptools-rust", "toml", "wheel"]
 
 [tool.black]
 line-length = 120
