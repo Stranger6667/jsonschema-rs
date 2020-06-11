@@ -174,6 +174,11 @@ impl Drop for JSONSchema {
     }
 }
 
+#[allow(dead_code)]
+mod build {
+    include!(concat!(env!("OUT_DIR"), "/built.rs"));
+}
+
 #[pymodule]
 fn jsonschema_rs(py: Python, module: &PyModule) -> PyResult<()> {
     // To provide proper signatures for PyCharm, all the functions have their signatures as the
@@ -188,5 +193,9 @@ fn jsonschema_rs(py: Python, module: &PyModule) -> PyResult<()> {
     module.add("Draft6", DRAFT6)?;
     module.add("Draft7", DRAFT7)?;
     module.add("__doc__", MODULE_DOCSTRING)?;
+
+    // Add build metadata to ease triaging incoming issues
+    module.add("__build__", pyo3_built::pyo3_built!(py, build))?;
+
     Ok(())
 }
