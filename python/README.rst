@@ -37,7 +37,16 @@ To check if the input document is valid:
     validator = jsonschema_rs.JSONSchema({"minimum": 42})
     validator.is_valid(45)  # True
 
-**NOTE**. This library is in early development and not yet provide a way to show validation errors (even though it is implemented in the underlying Rust crate).
+or:
+
+.. code:: python
+
+    import jsonschema_rs
+
+    validator = jsonschema_rs.JSONSchema({"minimum": 42})
+    validator.validate(41)  # raises ValidationError
+
+**NOTE**. This library is in early development.
 
 Performance
 -----------
