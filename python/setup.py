@@ -1,5 +1,21 @@
+from textwrap import dedent
+
 from setuptools import find_packages, setup
-from setuptools_rust import Binding, RustExtension
+
+try:
+    from setuptools_rust import Binding, RustExtension
+except ImportError:
+    raise ImportError(
+        dedent(
+            """
+            `setuptools-rust` is a required dependency to run `setup.py`.
+            This should not happen if you're using `pip>=10` as it honors `pyproject.toml`.
+            This usually (at least on our workflows) might happen while
+            building source-distribution.
+            """
+        )
+    )
+
 
 setup(
     name="jsonschema_rs",
@@ -16,7 +32,6 @@ setup(
     url="https://github.com/Stranger6667/jsonschema-rs/python",
     license="MIT",
     rust_extensions=[RustExtension("jsonschema_rs.jsonschema_rs", binding=Binding.PyO3)],
-    extras={"tests": ["pytest", "hypothesis"], "bench": ["pytest-benchmark"]},
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",

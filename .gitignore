@@ -1,13 +1,7 @@
+# Rust
 /target
-Cargo.lock
-.idea
-*.so
-.hypothesis
-.tox
-*.tar.gz
-*.egg-info
-__pycache__/
-*.py[cod]
-python/build
-python/dist
-python/target
+/Cargo.lock
+
+# IDEs
+/.idea
+/.vscode

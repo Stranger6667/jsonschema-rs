@@ -1,0 +1,24 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Rust
+/target
+
+# Distribution / packaging
+/dist/
+/build/
+/.eggs/
+*.egg-info/
+
+# Rust
+/target
+*.so
+
+# Testing
+.hypothesis
+.tox
