@@ -6,7 +6,7 @@ on:
       - python-v*
 
 jobs:
-  create_and_upload_macos_and_windows_wheels:
+  create_macos_and_windows_wheels:
     name: Wheels for Python ${{ matrix.python-version }} / ${{ matrix.os }}
     strategy:
       matrix:
@@ -19,53 +19,43 @@ jobs:
         - os: windows-latest
           # TODO: Re-enable windows 32bits
           architecture: x86
-
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
-
       - uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
-
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: nightly
           override: true
-
       - name: Install Tox
         run: pip install tox
-
       - name: Build wheel
         working-directory: ./python
         run: tox -e build-wheel
-
-      - name: Publish distribution package to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.2.2
+      - uses: actions/upload-artifact@v2
         with:
-          user: ${{ secrets.PYPI_USERNAME }}
-          password: ${{ secrets.PYPI_PASSWORD }}
-          packages_dir: python/dist/
+          name: Distribution Artifacts
+          path: python/dist/
 
   create_wheels_manylinux:
-    runs-on: ubuntu-latest
     name: Wheels for Python ${{ matrix.PYTHON_IMPLEMENTATION_ABI }} / Linux
-    container: quay.io/pypa/manylinux2014_x86_64  # Builds wheels on CentOS 7 (supported until 2024)
     strategy:
       fail-fast: false
       matrix:
         # List of the language-implementation API pairs to publish wheels for
         # The list of supported is obtainable by running `docker run quay.io/pypa/manylinux2014_x86_64 ls /opt/python`
         PYTHON_IMPLEMENTATION_ABI: [cp35-cp35m, cp36-cp36m, cp37-cp37m, cp38-cp38]
+    runs-on: ubuntu-latest
+    container: quay.io/pypa/manylinux2014_x86_64  # Builds wheels on CentOS 7 (supported until 2024)
     env:
       # Variable needed for PyO3 to properly identify the python interpreter
       PYTHON_SYS_EXECUTABLE: /opt/python/${{ matrix.PYTHON_IMPLEMENTATION_ABI }}/bin/python
     steps:
-
       - uses: actions/checkout@v2
-
       - name: Install/Update OpenSSL
         run: |
           retryCount=0
@@ -85,10 +75,8 @@ jobs:
           profile: minimal
           toolchain: nightly
           override: true
-
       - name: Install Tox
         run: ${{ env.PYTHON_SYS_EXECUTABLE }} -m pip install tox
-
       - name: Build wheel
         working-directory: ./python
         run: |
@@ -98,40 +86,52 @@ jobs:
             --wheel-dir=./dist \
             --plat manylinux2014_x86_64 \
             ./dist/jsonschema_rs-*-${{ matrix.PYTHON_IMPLEMENTATION_ABI }}-linux_x86_64.whl
-
-      - name: Publish distribution package to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.2.2
+          # Remove `linux_x86_64` tagged wheels as they are not supported by https://pypi.org
+          # Example https://github.com/Stranger6667/jsonschema-rs/runs/766075274
+          rm ./dist/jsonschema_rs-*-${{ matrix.PYTHON_IMPLEMENTATION_ABI }}-linux_x86_64.whl
+      - uses: actions/upload-artifact@v2
         with:
-          user: ${{ secrets.PYPI_USERNAME }}
-          password: ${{ secrets.PYPI_PASSWORD }}
-          packages_dir: python/dist/
+          name: Distribution Artifacts
+          path: python/dist/
 
-  create_and_upload_source_dist:
+  create_source_dist:
     name: Create sdist package
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
-
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: nightly
           override: true
-
       - name: Install Tox
         run: pip install tox
-
       - name: Build sdist
         working-directory: ./python
         run: tox -e build-sdist
-
-      - name: Publish distribution package to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.2.2
+      - uses: actions/upload-artifact@v2
         with:
-          user: ${{ secrets.PYPI_USERNAME }}
-          password: ${{ secrets.PYPI_PASSWORD }}
-          packages_dir: python/dist/
+          name: Distribution Artifacts
+          path: python/dist/
+
+  upload_to_pypi:
+    needs:
+    - create_macos_and_windows_wheels
+    - create_wheels_manylinux
+    - create_source_dist
+    name: Upload Artifacts to PyPi
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/download-artifact@v2
+      with:
+        name: Distribution Artifacts
+        path: python/dist/
+    - name: Publish distribution package to PyPI
+      uses: pypa/gh-action-pypi-publish@v1.2.2
+      with:
+        user: ${{ secrets.PYPI_USERNAME }}
+        password: ${{ secrets.PYPI_PASSWORD }}
+        packages_dir: python/dist/
