@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added `jsonschema_rs.__build__` which contains useful build information. [#111](https://github.com/Stranger6667/jsonschema-rs/pulls/111)
+- Wheels for Mac OS and Windows. [#110](https://github.com/Stranger6667/jsonschema-rs/issues/110)
+
+### Changed
+
+- Linux wheels are `manylinux2014` compatible. Previously they were `manylinux2010` compatible. [#111](https://github.com/Stranger6667/jsonschema-rs/pulls/111)
+
 ## [0.3.0] - 2020-06-11
 
 ### Fixed
