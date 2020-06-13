@@ -32,7 +32,7 @@ def call_setup():
         maintainer="Dmitry Dygalo",
         maintainer_email="dadygalo@gmail.com",
         python_requires=">=3.5",
-        url="https://github.com/Stranger6667/jsonschema-rs/python",
+        url="https://github.com/Stranger6667/jsonschema-rs/tree/master/python",
         license="MIT",
         rust_extensions=[RustExtension("jsonschema_rs.jsonschema_rs", binding=Binding.PyO3)],
         classifiers=[
