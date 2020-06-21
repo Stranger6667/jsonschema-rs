@@ -77,8 +77,14 @@ fn convert_regex(pattern: &str) -> Result<Regex, regex::Error> {
             .replace(r"\D", "[^0-9]")
             .replace(r"\w", "[A-Za-z]")
             .replace(r"\W", "[^A-Za-z]")
-            .replace(r"\s", "[ \t\n\r\x0b\x0c]")
-            .replace(r"\S", "[^ \t\n\r\x0b\x0c]"),
+            .replace(
+                r"\s",
+                "[ \t\n\r\u{000b}\u{000c}\u{2003}\u{feff}\u{2029}\u{00a0}]",
+            )
+            .replace(
+                r"\S",
+                "[^ \t\n\r\u{000b}\u{000c}\u{2003}\u{feff}\u{2029}\u{00a0}]",
+            ),
     )
 }
 
