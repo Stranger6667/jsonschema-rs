@@ -4,6 +4,7 @@ use crate::{
     error::{no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
+    Draft,
 };
 use chrono::{DateTime, NaiveDate};
 use regex::Regex;
@@ -153,27 +154,39 @@ string_format_validator!(URITemplateValidator, "uri-template", |instance_value| 
 pub fn compile(
     _: &Map<String, Value>,
     schema: &Value,
-    _: &CompilationContext,
+    context: &CompilationContext,
 ) -> Option<CompilationResult> {
     if let Value::String(format) = schema {
         match format.as_str() {
-            "date" => Some(DateValidator::compile()),
             "date-time" => Some(DateTimeValidator::compile()),
+            "date" => Some(DateValidator::compile()),
             "email" => Some(EmailValidator::compile()),
             "hostname" => Some(HostnameValidator::compile()),
             "idn-email" => Some(IDNEmailValidator::compile()),
-            "idn-hostname" => Some(IDNHostnameValidator::compile()),
+            "idn-hostname" if context.draft == Draft::Draft7 => {
+                Some(IDNHostnameValidator::compile())
+            }
             "ipv4" => Some(IpV4Validator::compile()),
             "ipv6" => Some(IpV6Validator::compile()),
-            "iri" => Some(IRIValidator::compile()),
-            "iri-reference" => Some(IRIReferenceValidator::compile()),
-            "json-pointer" => Some(JSONPointerValidator::compile()),
+            "iri-reference" if context.draft == Draft::Draft7 => {
+                Some(IRIReferenceValidator::compile())
+            }
+            "iri" if context.draft == Draft::Draft7 => Some(IRIValidator::compile()),
+            "json-pointer" if context.draft == Draft::Draft6 || context.draft == Draft::Draft7 => {
+                Some(JSONPointerValidator::compile())
+            }
             "regex" => Some(RegexValidator::compile()),
-            "relative-json-pointer" => Some(RelativeJSONPointerValidator::compile()),
+            "relative-json-pointer" if context.draft == Draft::Draft7 => {
+                Some(RelativeJSONPointerValidator::compile())
+            }
             "time" => Some(TimeValidator::compile()),
+            "uri-reference" if context.draft == Draft::Draft6 || context.draft == Draft::Draft7 => {
+                Some(URIReferenceValidator::compile())
+            }
+            "uri-template" if context.draft == Draft::Draft6 || context.draft == Draft::Draft7 => {
+                Some(URITemplateValidator::compile())
+            }
             "uri" => Some(URIValidator::compile()),
-            "uri-reference" => Some(URIReferenceValidator::compile()),
-            "uri-template" => Some(URITemplateValidator::compile()),
             _ => None,
         }
     } else {
