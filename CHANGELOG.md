@@ -5,6 +5,7 @@
 ### Fixed
 
 - ECMAScript regex support
+- Formats should be associated to Draft versions (ie. `idn-hostname` is not defined on draft 4 and draft 6)
 
 ## [0.3.1] - 2020-06-21
 
