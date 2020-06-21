@@ -2,10 +2,15 @@
 
 ## [Unreleased]
 
+## [0.3.1] - 2020-06-21
+
 ### Changed
 
 - Enable Link-Time Optimizations and set `codegen-units` to 1. [#104](https://github.com/Stranger6667/jsonschema-rs/issues/104)
-- fix: `items` allows the presence of boolean schemas. [#115](https://github.com/Stranger6667/jsonschema-rs/pull/115)
+
+### Fixed
+
+- `items` allows the presence of boolean schemas. [#115](https://github.com/Stranger6667/jsonschema-rs/pull/115)
 
 ## [0.3.0] - 2020-06-08
 
@@ -66,6 +71,7 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/Stranger6667/jsonschema-rs/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Stranger6667/jsonschema-rs/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Stranger6667/jsonschema-rs/compare/v0.1.0...v0.2.0
