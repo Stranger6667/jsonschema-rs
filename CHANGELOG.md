@@ -5,6 +5,7 @@
 ### Changed
 
 - Enable Link-Time Optimizations and set `codegen-units` to 1. [#104](https://github.com/Stranger6667/jsonschema-rs/issues/104)
+- fix: `items` allows the presence of boolean schemas. [#115](https://github.com/Stranger6667/jsonschema-rs/pull/115)
 
 ## [0.3.0] - 2020-06-08
 

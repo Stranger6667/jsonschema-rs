@@ -15,9 +15,9 @@
     clippy::option_map_unwrap_or
 )]
 use jsonschema::Draft;
-use pyo3::prelude::*;
-use pyo3::types::PyAny;
-use pyo3::{create_exception, exceptions, wrap_pyfunction, PyObjectProtocol};
+use pyo3::{
+    create_exception, exceptions, prelude::*, types::PyAny, wrap_pyfunction, PyObjectProtocol,
+};
 use serde_json::Value;
 
 mod ser;

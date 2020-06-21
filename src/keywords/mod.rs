@@ -241,6 +241,7 @@ mod tests {
     }
 
     #[test_case(json!({"additionalProperties": false}), json!({}))]
+    #[test_case(json!({"additionalItems": false, "items": true}), json!([]))]
     fn is_valid(schema: Value, instance: Value) {
         let data = json!(instance);
         let compiled = JSONSchema::compile(&schema, None).unwrap();

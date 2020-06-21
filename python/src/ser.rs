@@ -1,10 +1,8 @@
-use pyo3::exceptions;
-use pyo3::ffi::*;
-use pyo3::prelude::*;
-use pyo3::types::PyAny;
-use pyo3::AsPyPointer;
-use serde::ser::{self, Serialize, SerializeMap, SerializeSeq};
-use serde::Serializer;
+use pyo3::{exceptions, ffi::*, prelude::*, types::PyAny, AsPyPointer};
+use serde::{
+    ser::{self, Serialize, SerializeMap, SerializeSeq},
+    Serializer,
+};
 
 use crate::{string, types};
 use std::ffi::CStr;

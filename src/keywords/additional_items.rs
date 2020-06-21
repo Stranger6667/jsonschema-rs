@@ -1,7 +1,10 @@
 use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
     error::{no_error, CompilationError, ErrorIterator, ValidationError},
-    keywords::{boolean::TrueValidator, format_validators, CompilationResult, Validators},
+    keywords::{
+        boolean::{FalseValidator, TrueValidator},
+        format_validators, CompilationResult, Validators,
+    },
     validator::Validate,
 };
 use serde_json::{Map, Value};
@@ -131,6 +134,13 @@ pub fn compile(
                         Some(AdditionalItemsBooleanValidator::compile(items_count))
                     }
                     _ => None,
+                }
+            }
+            Value::Bool(value) => {
+                if *value {
+                    Some(TrueValidator::compile())
+                } else {
+                    Some(FalseValidator::compile())
                 }
             }
             _ => Some(Err(CompilationError::SchemaError)),
