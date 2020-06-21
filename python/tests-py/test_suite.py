@@ -8,7 +8,11 @@ import jsonschema_rs
 
 IS_WINDOWS = sys.platform == "win32"
 SUPPORTED_DRAFTS = (4, 6, 7)
-NOT_SUPPORTED_CASES = {4: ("bignum.json",), 6: ("bignum.json",), 7: ("bignum.json",)}
+NOT_SUPPORTED_CASES = {
+    4: ("bignum.json",),
+    6: ("bignum.json",),
+    7: ("bignum.json", "idn-hostname.json"),  # https://github.com/Stranger6667/jsonschema-rs/issues/101
+}
 
 
 def load_file(path):
