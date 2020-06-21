@@ -1,12 +1,22 @@
 import json
 import os
+import subprocess
 import sys
 
 import pytest
 
 import jsonschema_rs
 
-IS_WINDOWS = sys.platform == "win32"
+
+@pytest.fixture(scope="session", autouse=True)
+def mock_server():
+    try:
+        process = subprocess.Popen(args=[sys.executable, "../tests/suite/bin/jsonschema_suite", "serve"])
+        yield
+    finally:
+        process.terminate()
+
+
 SUPPORTED_DRAFTS = (4, 6, 7)
 NOT_SUPPORTED_CASES = {
     4: ("bignum.json",),
@@ -22,21 +32,10 @@ def load_file(path):
 
 
 def maybe_optional(draft, schema, instance, expected, description, filename):
-    output = (draft, schema, instance, expected, description)
+    output = (filename, draft, schema, instance, expected, description)
     if filename in NOT_SUPPORTED_CASES.get(draft, ()):
         output = pytest.param(
             *output, marks=pytest.mark.skip(reason="{filename} is not supported".format(filename=filename))
-        )
-    if IS_WINDOWS and "$ref" in repr(schema):
-        # TODO: Try to fix https://github.com/json-schema-org/JSON-Schema-Test-Suite.git to allow tests to
-        # correctly run on Windows. The current state seems that flask has issues if there is a path separator
-        # while running on Windows (as it would expect `\` instead of `/`)
-        # We know that this is not ideal, but it should be good enough for now
-        output = pytest.param(
-            *output,
-            marks=pytest.mark.skip(
-                reason="{schema} contains $ref and is not yet supported for test on windows".format(schema=schema)
-            ),
         )
     return output
 
@@ -50,16 +49,18 @@ def pytest_generate_tests(metafunc):
         for block in load_file(os.path.join(root, filename))
         for test in block["tests"]
     ]
-    metafunc.parametrize("draft, schema, instance, expected, description", cases)
+    metafunc.parametrize("filename, draft, schema, instance, expected, description", cases)
 
 
-def test_draft(draft, schema, instance, expected, description):
+def test_draft(filename, draft, schema, instance, expected, description):
     try:
         result = jsonschema_rs.is_valid(schema, instance, int(draft))
-        assert result is expected, "{description}: {schema} | {instance}".format(
-            description=description, schema=schema, instance=instance
+        assert result is expected, "[{filename}] {description}: {schema} | {instance}".format(
+            description=description, schema=schema, instance=instance, filename=filename,
         )
     except ValueError:
         pytest.fail(
-            "{description}: {schema} | {instance}".format(description=description, schema=schema, instance=instance)
+            "[{filename}] {description}: {schema} | {instance}".format(
+                description=description, schema=schema, instance=instance, filename=filename
+            )
         )
