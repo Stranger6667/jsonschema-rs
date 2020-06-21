@@ -202,18 +202,8 @@ fn parse_index(s: &str) -> Option<usize> {
 mod tests {
     use super::*;
     use serde_json::*;
-    use std::{borrow::Cow, fs::File, io::Read, path::Path};
+    use std::borrow::Cow;
     use url::Url;
-
-    fn load(path: &str, idx: usize) -> Value {
-        let path = Path::new(path);
-        let mut file = File::open(&path).unwrap();
-        let mut content = String::new();
-        file.read_to_string(&mut content).ok().unwrap();
-        let data: Value = from_str(&content).unwrap();
-        let case = &data.as_array().unwrap()[idx];
-        case.get("schema").unwrap().clone()
-    }
 
     fn make_resolver(schema: &Value) -> Resolver {
         Resolver::new(
@@ -236,7 +226,12 @@ mod tests {
     #[test]
     fn sub_schema_in_object() {
         // When only one sub-schema is specified inside an object
-        let schema = load("tests/suite/tests/draft7/ref.json", 12);
+        let schema = json!({
+            "allOf": [{"$ref": "#foo"}],
+            "definitions": {
+                "A": {"$id": "#foo", "type": "integer"}
+            }
+        });
         let resolver = make_resolver(&schema);
         // Then in the resolver schema there should be only this schema
         assert_eq!(resolver.schemas.len(), 1);
@@ -273,7 +268,31 @@ mod tests {
     #[test]
     fn root_schema_id() {
         // When the root schema has an ID
-        let schema = load("tests/suite/tests/draft7/ref.json", 10);
+        let schema = json!({
+            "$id": "http://localhost:1234/tree",
+            "definitions": {
+                "node": {
+                    "$id": "http://localhost:1234/node",
+                    "description": "node",
+                    "properties": {
+                        "subtree": {"$ref": "tree"},
+                        "value": {"type": "number"}
+                    },
+                    "required": ["value"],
+                    "type": "object"
+                }
+            },
+            "description": "tree of nodes",
+            "properties": {
+                "meta": {"type": "string"},
+                "nodes": {
+                    "items": {"$ref": "node"},
+                    "type": "array"
+                }
+            },
+            "required": ["meta", "nodes"],
+            "type": "object"
+        });
         let resolver = make_resolver(&schema);
         // Then in the resolver schema there should be root & sub-schema
         assert_eq!(resolver.schemas.len(), 2);
@@ -289,7 +308,12 @@ mod tests {
 
     #[test]
     fn location_independent_with_absolute_uri() {
-        let schema = load("tests/suite/tests/draft7/ref.json", 13);
+        let schema = json!({
+            "allOf": [{"$ref": "http://localhost:1234/bar#foo"}],
+            "definitions": {
+                "A": {"$id": "http://localhost:1234/bar#foo", "type": "integer"}
+            }
+        });
         let resolver = make_resolver(&schema);
         assert_eq!(resolver.schemas.len(), 1);
         assert_eq!(
@@ -300,7 +324,21 @@ mod tests {
 
     #[test]
     fn location_independent_with_absolute_uri_base_change() {
-        let schema = load("tests/suite/tests/draft7/ref.json", 14);
+        let schema = json!({
+            "$id": "http://localhost:1234/root",
+            "allOf":[{"$ref": "http://localhost:1234/nested.json#foo"}],
+            "definitions": {
+                "A": {
+                    "$id": "nested.json",
+                    "definitions": {
+                        "B": {
+                            "$id": "#foo",
+                            "type": "integer"
+                        }
+                    }
+                }
+            }
+        });
         let resolver = make_resolver(&schema);
         assert_eq!(resolver.schemas.len(), 3);
         assert_eq!(
@@ -321,7 +359,13 @@ mod tests {
 
     #[test]
     fn base_uri_change() {
-        let schema = load("tests/suite/tests/draft7/refRemote.json", 3);
+        let schema = json!({
+            "$id": "http://localhost:1234/",
+            "items": {
+                "$id":"folder/",
+                "items": {"$ref": "folderInteger.json"}
+            }
+        });
         let resolver = make_resolver(&schema);
         assert_eq!(resolver.schemas.len(), 2);
         assert_eq!(
@@ -336,7 +380,20 @@ mod tests {
 
     #[test]
     fn base_uri_change_folder() {
-        let schema = load("tests/suite/tests/draft7/refRemote.json", 4);
+        let schema = json!({
+            "$id": "http://localhost:1234/scope_change_defs1.json",
+            "definitions": {
+                "baz": {
+                    "$id": "folder/",
+                    "items": {"$ref": "folderInteger.json"},
+                    "type":"array"
+                }
+            },
+            "properties": {
+                "list": {"$ref": "#/definitions/baz"}
+            },
+            "type": "object"
+        });
         let resolver = make_resolver(&schema);
         assert_eq!(resolver.schemas.len(), 2);
         assert_eq!(
@@ -353,7 +410,14 @@ mod tests {
 
     #[test]
     fn resolve_ref() {
-        let schema = load("tests/suite/tests/draft7/ref.json", 4);
+        let schema = json!({
+            "$ref": "#/definitions/c",
+            "definitions": {
+                "a": {"type": "integer"},
+                "b": {"$ref": "#/definitions/a"},
+                "c": {"$ref": "#/definitions/b"}
+            }
+        });
         let resolver = make_resolver(&schema);
         let url = Url::parse("json-schema:///#/definitions/a").unwrap();
         if let (resource, Cow::Borrowed(resolved)) = resolver
