@@ -46,10 +46,6 @@ impl Validate for NotValidator {
         ValidationError::not(instance, self.original.clone())
     }
 
-    fn name(&self) -> String {
-        format!("not: {}", format_validators(&self.validators))
-    }
-
     not_impl_is_valid!(array, &[Value]);
     not_impl_is_valid!(boolean, bool);
     not_impl_is_valid!(null, ());
@@ -58,6 +54,11 @@ impl Validate for NotValidator {
     not_impl_is_valid!(signed_integer, i64);
     not_impl_is_valid!(string, &str);
     not_impl_is_valid!(unsigned_integer, u64);
+}
+impl ToString for NotValidator {
+    fn to_string(&self) -> String {
+        format!("not: {}", format_validators(&self.validators))
+    }
 }
 
 #[inline]

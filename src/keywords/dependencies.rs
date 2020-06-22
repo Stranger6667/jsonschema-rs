@@ -31,13 +31,6 @@ impl DependenciesValidator {
 }
 
 impl Validate for DependenciesValidator {
-    fn name(&self) -> String {
-        format!(
-            "dependencies: {{{}}}",
-            format_key_value_validators(&self.dependencies)
-        )
-    }
-
     #[inline]
     fn is_valid_object(
         &self,
@@ -91,6 +84,14 @@ impl Validate for DependenciesValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for DependenciesValidator {
+    fn to_string(&self) -> String {
+        format!(
+            "dependencies: {{{}}}",
+            format_key_value_validators(&self.dependencies)
+        )
     }
 }
 

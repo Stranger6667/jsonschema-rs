@@ -27,13 +27,6 @@ impl PropertiesValidator {
 }
 
 impl Validate for PropertiesValidator {
-    fn name(&self) -> String {
-        format!(
-            "properties: {{{}}}",
-            format_key_value_validators(&self.properties)
-        )
-    }
-
     #[inline]
     fn is_valid_object(
         &self,
@@ -89,6 +82,14 @@ impl Validate for PropertiesValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for PropertiesValidator {
+    fn to_string(&self) -> String {
+        format!(
+            "properties: {{{}}}",
+            format_key_value_validators(&self.properties)
+        )
     }
 }
 

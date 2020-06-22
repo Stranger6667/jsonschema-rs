@@ -74,10 +74,6 @@ impl Validate for UniqueItemsValidator {
         ValidationError::unique_items(instance)
     }
 
-    fn name(&self) -> String {
-        "uniqueItems: true".to_string()
-    }
-
     #[inline]
     fn is_valid_array(&self, _: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
         is_unique(instance_value)
@@ -100,7 +96,11 @@ impl Validate for UniqueItemsValidator {
         }
     }
 }
-
+impl ToString for UniqueItemsValidator {
+    fn to_string(&self) -> String {
+        "uniqueItems: true".to_string()
+    }
+}
 #[inline]
 pub fn compile(
     _: &Map<String, Value>,

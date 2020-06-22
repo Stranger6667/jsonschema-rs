@@ -20,13 +20,6 @@ impl AdditionalPropertiesValidator {
     }
 }
 impl Validate for AdditionalPropertiesValidator {
-    fn name(&self) -> String {
-        format!(
-            "additionalProperties: {}",
-            format_validators(&self.validators)
-        )
-    }
-
     #[inline]
     fn is_valid_object(
         &self,
@@ -77,6 +70,14 @@ impl Validate for AdditionalPropertiesValidator {
         }
     }
 }
+impl ToString for AdditionalPropertiesValidator {
+    fn to_string(&self) -> String {
+        format!(
+            "additionalProperties: {}",
+            format_validators(&self.validators)
+        )
+    }
+}
 
 pub struct AdditionalPropertiesFalseValidator {}
 impl AdditionalPropertiesFalseValidator {
@@ -89,10 +90,6 @@ impl Validate for AdditionalPropertiesFalseValidator {
     #[inline]
     fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
         ValidationError::false_schema(instance)
-    }
-
-    fn name(&self) -> String {
-        "additionalProperties: false".to_string()
     }
 
     #[inline]
@@ -113,6 +110,11 @@ impl Validate for AdditionalPropertiesFalseValidator {
         }
     }
 }
+impl ToString for AdditionalPropertiesFalseValidator {
+    fn to_string(&self) -> String {
+        "additionalProperties: false".to_string()
+    }
+}
 
 pub struct AdditionalPropertiesNotEmptyFalseValidator {
     properties: BTreeSet<String>,
@@ -129,10 +131,6 @@ impl AdditionalPropertiesNotEmptyFalseValidator {
     }
 }
 impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
-    fn name(&self) -> String {
-        "additionalProperties: false".to_string()
-    }
-
     #[inline]
     fn is_valid_object(
         &self,
@@ -178,6 +176,11 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
         }
     }
 }
+impl ToString for AdditionalPropertiesNotEmptyFalseValidator {
+    fn to_string(&self) -> String {
+        "additionalProperties: false".to_string()
+    }
+}
 
 pub struct AdditionalPropertiesNotEmptyValidator {
     validators: Validators,
@@ -200,13 +203,6 @@ impl AdditionalPropertiesNotEmptyValidator {
     }
 }
 impl Validate for AdditionalPropertiesNotEmptyValidator {
-    fn name(&self) -> String {
-        format!(
-            "additionalProperties: {}",
-            format_validators(&self.validators)
-        )
-    }
-
     #[inline]
     fn is_valid_object(
         &self,
@@ -259,6 +255,14 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
         }
     }
 }
+impl ToString for AdditionalPropertiesNotEmptyValidator {
+    fn to_string(&self) -> String {
+        format!(
+            "additionalProperties: {}",
+            format_validators(&self.validators)
+        )
+    }
+}
 
 pub struct AdditionalPropertiesWithPatternsValidator {
     validators: Validators,
@@ -278,13 +282,6 @@ impl AdditionalPropertiesWithPatternsValidator {
     }
 }
 impl Validate for AdditionalPropertiesWithPatternsValidator {
-    fn name(&self) -> String {
-        format!(
-            "additionalProperties: {}",
-            format_validators(&self.validators)
-        )
-    }
-
     #[inline]
     fn is_valid_object(
         &self,
@@ -337,6 +334,14 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
         }
     }
 }
+impl ToString for AdditionalPropertiesWithPatternsValidator {
+    fn to_string(&self) -> String {
+        format!(
+            "additionalProperties: {}",
+            format_validators(&self.validators)
+        )
+    }
+}
 
 pub struct AdditionalPropertiesWithPatternsFalseValidator {
     pattern: Regex,
@@ -350,10 +355,6 @@ impl AdditionalPropertiesWithPatternsFalseValidator {
     }
 }
 impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
-    fn name(&self) -> String {
-        "additionalProperties: false".to_string()
-    }
-
     #[inline]
     fn is_valid_object(
         &self,
@@ -400,6 +401,11 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
         }
     }
 }
+impl ToString for AdditionalPropertiesWithPatternsFalseValidator {
+    fn to_string(&self) -> String {
+        "additionalProperties: false".to_string()
+    }
+}
 
 pub struct AdditionalPropertiesWithPatternsNotEmptyValidator {
     validators: Validators,
@@ -427,13 +433,6 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator {
     }
 }
 impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
-    fn name(&self) -> String {
-        format!(
-            "additionalProperties: {}",
-            format_validators(&self.validators)
-        )
-    }
-
     #[inline]
     fn is_valid_object(
         &self,
@@ -491,6 +490,14 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
         }
     }
 }
+impl ToString for AdditionalPropertiesWithPatternsNotEmptyValidator {
+    fn to_string(&self) -> String {
+        format!(
+            "additionalProperties: {}",
+            format_validators(&self.validators)
+        )
+    }
+}
 
 pub struct AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
     properties: BTreeSet<String>,
@@ -511,10 +518,6 @@ impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
     }
 }
 impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
-    fn name(&self) -> String {
-        "additionalProperties: false".to_string()
-    }
-
     #[inline]
     fn is_valid_object(
         &self,
@@ -561,6 +564,11 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
+    fn to_string(&self) -> String {
+        "additionalProperties: false".to_string()
     }
 }
 

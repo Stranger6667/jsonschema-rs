@@ -26,10 +26,6 @@ impl Validate for MinPropertiesValidator {
         ValidationError::min_properties(instance, self.limit)
     }
 
-    fn name(&self) -> String {
-        format!("minProperties: {}", self.limit)
-    }
-
     #[inline]
     fn is_valid_object(
         &self,
@@ -55,6 +51,11 @@ impl Validate for MinPropertiesValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for MinPropertiesValidator {
+    fn to_string(&self) -> String {
+        format!("minProperties: {}", self.limit)
     }
 }
 

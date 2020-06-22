@@ -82,14 +82,6 @@ macro_rules! if_then_impl_validate {
 }
 
 impl Validate for IfThenValidator {
-    fn name(&self) -> String {
-        format!(
-            "if: {}, then: {}",
-            format_validators(&self.schema),
-            format_validators(&self.then_schema)
-        )
-    }
-
     if_then_impl_is_valid!(array, &[Value]);
     if_then_impl_is_valid!(boolean, bool);
     if_then_impl_is_valid!(null, ());
@@ -107,6 +99,15 @@ impl Validate for IfThenValidator {
     if_then_impl_validate!(signed_integer, i64);
     if_then_impl_validate!(string, &'a str);
     if_then_impl_validate!(unsigned_integer, u64);
+}
+impl ToString for IfThenValidator {
+    fn to_string(&self) -> String {
+        format!(
+            "if: {}, then: {}",
+            format_validators(&self.schema),
+            format_validators(&self.then_schema)
+        )
+    }
 }
 
 pub struct IfElseValidator {
@@ -185,14 +186,6 @@ macro_rules! if_else_impl_validate {
 }
 
 impl Validate for IfElseValidator {
-    fn name(&self) -> String {
-        format!(
-            "if: {}, else: {}",
-            format_validators(&self.schema),
-            format_validators(&self.else_schema)
-        )
-    }
-
     if_else_impl_is_valid!(array, &[Value]);
     if_else_impl_is_valid!(boolean, bool);
     if_else_impl_is_valid!(null, ());
@@ -210,6 +203,15 @@ impl Validate for IfElseValidator {
     if_else_impl_validate!(signed_integer, i64);
     if_else_impl_validate!(string, &'a str);
     if_else_impl_validate!(unsigned_integer, u64);
+}
+impl ToString for IfElseValidator {
+    fn to_string(&self) -> String {
+        format!(
+            "if: {}, else: {}",
+            format_validators(&self.schema),
+            format_validators(&self.else_schema)
+        )
+    }
 }
 
 pub struct IfThenElseValidator {
@@ -300,15 +302,6 @@ macro_rules! if_then_else_impl_validate {
 }
 
 impl Validate for IfThenElseValidator {
-    fn name(&self) -> String {
-        format!(
-            "if: {}, then: {}, else: {}",
-            format_validators(&self.schema),
-            format_validators(&self.then_schema),
-            format_validators(&self.else_schema)
-        )
-    }
-
     if_then_else_impl_is_valid!(array, &[Value]);
     if_then_else_impl_is_valid!(boolean, bool);
     if_then_else_impl_is_valid!(null, ());
@@ -326,6 +319,16 @@ impl Validate for IfThenElseValidator {
     if_then_else_impl_validate!(signed_integer, i64);
     if_then_else_impl_validate!(string, &'a str);
     if_then_else_impl_validate!(unsigned_integer, u64);
+}
+impl ToString for IfThenElseValidator {
+    fn to_string(&self) -> String {
+        format!(
+            "if: {}, then: {}, else: {}",
+            format_validators(&self.schema),
+            format_validators(&self.then_schema),
+            format_validators(&self.else_schema)
+        )
+    }
 }
 
 #[inline]

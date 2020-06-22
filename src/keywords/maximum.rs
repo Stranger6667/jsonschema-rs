@@ -26,10 +26,6 @@ macro_rules! validate {
                 ValidationError::maximum(instance, self.limit as f64)
             }
 
-            fn name(&self) -> String {
-                format!("maximum: {}", self.limit)
-            }
-
             #[inline]
             fn is_valid_number(&self, _: &JSONSchema, _: &Value, instance_value: f64) -> bool {
                 NumCmp::num_le(instance_value, self.limit)
@@ -88,6 +84,11 @@ macro_rules! validate {
                 } else {
                     no_error()
                 }
+            }
+        }
+        impl ToString for $validator {
+            fn to_string(&self) -> String {
+                format!("maximum: {}", self.limit)
             }
         }
     };

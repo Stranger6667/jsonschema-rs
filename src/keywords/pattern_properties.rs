@@ -29,17 +29,6 @@ impl PatternPropertiesValidator {
 }
 
 impl Validate for PatternPropertiesValidator {
-    fn name(&self) -> String {
-        format!(
-            "patternProperties: {{{}}}",
-            self.patterns
-                .iter()
-                .map(|(key, validators)| { format!("{}: {}", key, format_validators(validators)) })
-                .collect::<Vec<String>>()
-                .join(", ")
-        )
-    }
-
     #[inline]
     fn is_valid_object(
         &self,
@@ -98,6 +87,18 @@ impl Validate for PatternPropertiesValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for PatternPropertiesValidator {
+    fn to_string(&self) -> String {
+        format!(
+            "patternProperties: {{{}}}",
+            self.patterns
+                .iter()
+                .map(|(key, validators)| { format!("{}: {}", key, format_validators(validators)) })
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
     }
 }
 

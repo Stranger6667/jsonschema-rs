@@ -5,12 +5,11 @@ use crate::{
 use serde_json::{Map, Value};
 use std::fmt;
 
-pub trait Validate: Send + Sync {
+pub trait Validate: Send + Sync + ToString {
     #[inline]
     fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
-        ValidationError::unexpected(instance, &self.name())
+        ValidationError::unexpected(instance, &self.to_string())
     }
-    fn name(&self) -> String;
 
     #[inline]
     fn is_valid_array(
@@ -250,6 +249,6 @@ pub trait Validate: Send + Sync {
 
 impl fmt::Debug for dyn Validate + Send + Sync {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.name())
+        f.write_str(&self.to_string())
     }
 }

@@ -30,10 +30,6 @@ impl RequiredValidator {
 }
 
 impl Validate for RequiredValidator {
-    fn name(&self) -> String {
-        format!("required: [{}]", self.required.join(", "))
-    }
-
     #[inline]
     fn is_valid_object(
         &self,
@@ -75,6 +71,11 @@ impl Validate for RequiredValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for RequiredValidator {
+    fn to_string(&self) -> String {
+        format!("required: [{}]", self.required.join(", "))
     }
 }
 

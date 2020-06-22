@@ -38,17 +38,6 @@ impl Validate for MultipleTypesValidator {
         ValidationError::multiple_type_error(instance, self.types)
     }
 
-    fn name(&self) -> String {
-        format!(
-            "type: [{}]",
-            self.types
-                .into_iter()
-                .map(|type_| format!("{}", type_))
-                .collect::<Vec<String>>()
-                .join(", ")
-        )
-    }
-
     #[inline]
     fn is_valid_array(&self, _: &JSONSchema, _: &Value, _: &[Value]) -> bool {
         self.types.contains_type(PrimitiveType::Array)
@@ -82,7 +71,18 @@ impl Validate for MultipleTypesValidator {
         self.types.contains_type(PrimitiveType::Integer)
     }
 }
-
+impl ToString for MultipleTypesValidator {
+    fn to_string(&self) -> String {
+        format!(
+            "type: [{}]",
+            self.types
+                .into_iter()
+                .map(|type_| format!("{}", type_))
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
+    }
+}
 pub struct IntegerTypeValidator {}
 
 impl IntegerTypeValidator {
@@ -96,10 +96,6 @@ impl Validate for IntegerTypeValidator {
     #[inline]
     fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
         ValidationError::single_type_error(instance, PrimitiveType::Integer)
-    }
-
-    fn name(&self) -> String {
-        "type: integer".to_string()
     }
 
     #[inline]
@@ -146,6 +142,11 @@ impl Validate for IntegerTypeValidator {
         } else {
             error(self.build_validation_error(instance))
         }
+    }
+}
+impl ToString for IntegerTypeValidator {
+    fn to_string(&self) -> String {
+        "type: integer".to_string()
     }
 }
 

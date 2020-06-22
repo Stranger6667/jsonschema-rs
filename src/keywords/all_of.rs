@@ -71,10 +71,6 @@ macro_rules! all_of_impl_validate {
 }
 
 impl Validate for AllOfValidator {
-    fn name(&self) -> String {
-        format!("allOf: [{}]", format_vec_of_validators(&self.schemas))
-    }
-
     all_of_impl_is_valid!(array, &[Value]);
     all_of_impl_is_valid!(boolean, bool);
     all_of_impl_is_valid!(null, ());
@@ -92,6 +88,11 @@ impl Validate for AllOfValidator {
     all_of_impl_validate!(signed_integer, i64);
     all_of_impl_validate!(string, &'a str);
     all_of_impl_validate!(unsigned_integer, u64);
+}
+impl ToString for AllOfValidator {
+    fn to_string(&self) -> String {
+        format!("allOf: [{}]", format_vec_of_validators(&self.schemas))
+    }
 }
 
 #[inline]

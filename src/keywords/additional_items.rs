@@ -28,10 +28,6 @@ impl AdditionalItemsObjectValidator {
     }
 }
 impl Validate for AdditionalItemsObjectValidator {
-    fn name(&self) -> String {
-        format!("additionalItems: {}", format_validators(&self.validators))
-    }
-
     #[inline]
     fn is_valid_array(&self, schema: &JSONSchema, _: &Value, instance_array: &[Value]) -> bool {
         instance_array.iter().skip(self.items_count).all(|item| {
@@ -78,6 +74,11 @@ impl Validate for AdditionalItemsObjectValidator {
         }
     }
 }
+impl ToString for AdditionalItemsObjectValidator {
+    fn to_string(&self) -> String {
+        format!("additionalItems: {}", format_validators(&self.validators))
+    }
+}
 
 pub struct AdditionalItemsBooleanValidator {
     items_count: usize,
@@ -94,10 +95,6 @@ impl Validate for AdditionalItemsBooleanValidator {
         ValidationError::additional_items(instance, self.items_count)
     }
 
-    fn name(&self) -> String {
-        "additionalItems: false".to_string()
-    }
-
     #[inline]
     fn is_valid_array(&self, _: &JSONSchema, _: &Value, instance_array: &[Value]) -> bool {
         instance_array.len() <= self.items_count
@@ -109,6 +106,11 @@ impl Validate for AdditionalItemsBooleanValidator {
         } else {
             true
         }
+    }
+}
+impl ToString for AdditionalItemsBooleanValidator {
+    fn to_string(&self) -> String {
+        "additionalItems: false".to_string()
     }
 }
 

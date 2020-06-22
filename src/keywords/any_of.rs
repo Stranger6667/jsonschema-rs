@@ -51,10 +51,6 @@ impl Validate for AnyOfValidator {
         ValidationError::any_of(instance)
     }
 
-    fn name(&self) -> String {
-        format!("anyOf: [{}]", format_vec_of_validators(&self.schemas))
-    }
-
     any_of_impl_is_valid!(array, &[Value]);
     any_of_impl_is_valid!(boolean, bool);
     any_of_impl_is_valid!(null, ());
@@ -63,6 +59,11 @@ impl Validate for AnyOfValidator {
     any_of_impl_is_valid!(signed_integer, i64);
     any_of_impl_is_valid!(string, &str);
     any_of_impl_is_valid!(unsigned_integer, u64);
+}
+impl ToString for AnyOfValidator {
+    fn to_string(&self) -> String {
+        format!("anyOf: [{}]", format_vec_of_validators(&self.schemas))
+    }
 }
 
 #[inline]

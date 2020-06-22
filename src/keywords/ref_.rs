@@ -104,10 +104,6 @@ macro_rules! ref_impl_validate {
 }
 
 impl Validate for RefValidator {
-    fn name(&self) -> String {
-        format!("$ref: {}", self.reference)
-    }
-
     ref_impl_is_valid!(array, &[Value]);
     ref_impl_is_valid!(boolean, bool);
     ref_impl_is_valid!(null, ());
@@ -125,6 +121,11 @@ impl Validate for RefValidator {
     ref_impl_validate!(signed_integer, i64);
     ref_impl_validate!(string, &'a str);
     ref_impl_validate!(unsigned_integer, u64);
+}
+impl ToString for RefValidator {
+    fn to_string(&self) -> String {
+        format!("$ref: {}", self.reference)
+    }
 }
 
 #[inline]

@@ -28,10 +28,6 @@ impl ContentMediaTypeValidator {
 
 /// Validator delegates validation to the stored function.
 impl Validate for ContentMediaTypeValidator {
-    fn name(&self) -> String {
-        format!("contentMediaType: {}", self.media_type)
-    }
-
     #[inline]
     fn is_valid_string(&self, _: &JSONSchema, instance: &Value, instance_value: &str) -> bool {
         (self.func)(instance, instance_value).next().is_none()
@@ -61,6 +57,11 @@ impl Validate for ContentMediaTypeValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for ContentMediaTypeValidator {
+    fn to_string(&self) -> String {
+        format!("contentMediaType: {}", self.media_type)
     }
 }
 
@@ -84,10 +85,6 @@ impl ContentEncodingValidator {
 }
 
 impl Validate for ContentEncodingValidator {
-    fn name(&self) -> String {
-        format!("contentEncoding: {}", self.encoding)
-    }
-
     #[inline]
     fn is_valid_string(&self, _: &JSONSchema, instance: &Value, instance_value: &str) -> bool {
         (self.func)(instance, instance_value).next().is_none()
@@ -117,6 +114,11 @@ impl Validate for ContentEncodingValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for ContentEncodingValidator {
+    fn to_string(&self) -> String {
+        format!("contentEncoding: {}", self.encoding)
     }
 }
 
@@ -147,13 +149,6 @@ impl ContentMediaTypeAndEncodingValidator {
 
 /// Decode the input value & check media type
 impl Validate for ContentMediaTypeAndEncodingValidator {
-    fn name(&self) -> String {
-        format!(
-            "{{contentMediaType: {}, contentEncoding: {}}}",
-            self.media_type, self.encoding
-        )
-    }
-
     #[inline]
     fn is_valid_string(&self, _: &JSONSchema, instance: &Value, instance_value: &str) -> bool {
         match (self.converter)(instance, instance_value) {
@@ -194,6 +189,14 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for ContentMediaTypeAndEncodingValidator {
+    fn to_string(&self) -> String {
+        format!(
+            "{{contentMediaType: {}, contentEncoding: {}}}",
+            self.media_type, self.encoding
+        )
     }
 }
 

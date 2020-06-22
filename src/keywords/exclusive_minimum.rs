@@ -26,10 +26,6 @@ macro_rules! validate {
                 ValidationError::exclusive_minimum(instance, self.limit as f64)
             }
 
-            fn name(&self) -> String {
-                format!("exclusiveMinimum: {}", self.limit)
-            }
-
             #[inline]
             fn is_valid_number(&self, _: &JSONSchema, _: &Value, instance_value: f64) -> bool {
                 NumCmp::num_gt(instance_value, self.limit)
@@ -88,6 +84,11 @@ macro_rules! validate {
                 } else {
                     no_error()
                 }
+            }
+        }
+        impl ToString for $validator {
+            fn to_string(&self) -> String {
+                format!("exclusiveMinimum: {}", self.limit)
             }
         }
     };

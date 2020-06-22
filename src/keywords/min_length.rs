@@ -26,10 +26,6 @@ impl Validate for MinLengthValidator {
         ValidationError::min_length(instance, self.limit)
     }
 
-    fn name(&self) -> String {
-        format!("minLength: {}", self.limit)
-    }
-
     #[inline]
     fn is_valid_string(&self, _: &JSONSchema, _: &Value, instance_value: &str) -> bool {
         instance_value.chars().count() as u64 >= self.limit
@@ -50,6 +46,11 @@ impl Validate for MinLengthValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for MinLengthValidator {
+    fn to_string(&self) -> String {
+        format!("minLength: {}", self.limit)
     }
 }
 
