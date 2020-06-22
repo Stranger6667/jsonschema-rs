@@ -89,10 +89,15 @@ mod tests_util {
 
     pub fn is_not_valid(schema: Value, instance: Value) {
         let compiled = JSONSchema::compile(&schema, None).unwrap();
-        assert!(!compiled.is_valid(&instance), "{} should not be valid");
+        assert!(
+            !compiled.is_valid(&instance),
+            "{} should not be valid",
+            instance
+        );
         assert!(
             compiled.validate(&instance).is_err(),
-            "{} should not be valid"
+            "{} should not be valid",
+            instance
         );
     }
 }

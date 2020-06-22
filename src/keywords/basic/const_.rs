@@ -402,7 +402,7 @@ impl ToString for ConstObjectValidator {
     }
 }
 
-struct ConstStringValidator {
+pub(crate) struct ConstStringValidator {
     value: String,
 }
 impl ConstStringValidator {

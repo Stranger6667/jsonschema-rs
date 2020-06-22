@@ -28,10 +28,6 @@ impl ContentMediaTypeValidator {
 
 /// Validator delegates validation to the stored function.
 impl Validate for ContentMediaTypeValidator {
-    fn name(&self) -> String {
-        format!("contentMediaType: {}", self.media_type)
-    }
-
     #[inline]
     fn is_valid_string(&self, _: &JSONSchema, instance: &Value, instance_value: &str) -> bool {
         (self.func)(instance, instance_value).next().is_none()
@@ -61,6 +57,11 @@ impl Validate for ContentMediaTypeValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for ContentMediaTypeValidator {
+    fn to_string(&self) -> String {
+        format!("contentMediaType: {}", self.media_type)
     }
 }
 

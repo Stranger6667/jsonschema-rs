@@ -42,13 +42,6 @@ impl ContentEncodingAndContentMediaTypeValidator {
 }
 /// Decode the input value & check media type
 impl Validate for ContentEncodingAndContentMediaTypeValidator {
-    fn name(&self) -> String {
-        format!(
-            "{{contentMediaType: {}, contentEncoding: {}}}",
-            self.media_type, self.encoding
-        )
-    }
-
     #[inline]
     fn is_valid_string(&self, _: &JSONSchema, instance: &Value, instance_value: &str) -> bool {
         match (self.converter)(instance, instance_value) {
@@ -89,6 +82,14 @@ impl Validate for ContentEncodingAndContentMediaTypeValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for ContentEncodingAndContentMediaTypeValidator {
+    fn to_string(&self) -> String {
+        format!(
+            "{{contentMediaType: {}, contentEncoding: {}}}",
+            self.media_type, self.encoding
+        )
     }
 }
 

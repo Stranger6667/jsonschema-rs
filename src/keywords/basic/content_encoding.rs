@@ -27,10 +27,6 @@ impl ContentEncodingValidator {
 }
 
 impl Validate for ContentEncodingValidator {
-    fn name(&self) -> String {
-        format!("contentEncoding: {}", self.encoding)
-    }
-
     #[inline]
     fn is_valid_string(&self, _: &JSONSchema, instance: &Value, instance_value: &str) -> bool {
         (self.func)(instance, instance_value).next().is_none()
@@ -60,6 +56,12 @@ impl Validate for ContentEncodingValidator {
         } else {
             no_error()
         }
+    }
+}
+
+impl ToString for ContentEncodingValidator {
+    fn to_string(&self) -> String {
+        format!("contentEncoding: {}", self.encoding)
     }
 }
 
