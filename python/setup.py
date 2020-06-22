@@ -22,7 +22,7 @@ except ImportError:
 def call_setup():
     setup(
         name="jsonschema_rs",
-        version="0.3.2",
+        version="0.3.3",
         description="Fast JSON Schema validation for Python implemented in Rust",
         long_description=open("README.rst", encoding="utf-8").read(),
         long_description_content_type="text/x-rst",
