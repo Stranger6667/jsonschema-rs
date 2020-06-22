@@ -2,7 +2,7 @@ use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
     error::{no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::{
-        boolean::{FalseValidator, TrueValidator},
+        basic::boolean::{FalseValidator, TrueValidator},
         format_validators, CompilationResult, Validators,
     },
     validator::Validate,

@@ -2,8 +2,8 @@ use crate::{
     compilation::{compile_validators, CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator},
     keywords::{
-        boolean::TrueValidator, format_validators, format_vec_of_validators, CompilationResult,
-        Validators,
+        basic::boolean::TrueValidator, format_validators, format_vec_of_validators,
+        CompilationResult, Validators,
     },
     validator::Validate,
 };

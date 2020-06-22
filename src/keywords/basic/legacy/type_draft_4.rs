@@ -1,7 +1,7 @@
 use crate::{
     compilation::{CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
-    keywords::{type_, CompilationResult},
+    keywords::{basic::type_, CompilationResult},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
 };

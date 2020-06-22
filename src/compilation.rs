@@ -4,7 +4,9 @@
 use crate::{
     error::{CompilationError, ErrorIterator},
     keywords,
-    keywords::Validators,
+    keywords::{
+        basic::compile_basic_validators, combined::compile_combined_validators, Validators,
+    },
     resolver::Resolver,
     schemas,
 };
@@ -92,6 +94,15 @@ pub struct CompilationContext<'a> {
     pub(crate) draft: schemas::Draft,
 }
 
+impl<'a> Default for CompilationContext<'a> {
+    fn default() -> Self {
+        Self {
+            scope: Cow::Borrowed(&DEFAULT_SCOPE),
+            draft: schemas::Draft::default(),
+        }
+    }
+}
+
 impl<'a> CompilationContext<'a> {
     pub(crate) fn new(scope: Url, draft: schemas::Draft) -> Self {
         CompilationContext {
@@ -141,25 +152,24 @@ pub fn compile_validators(
     let context = context.push(schema)?;
     match schema {
         Value::Bool(value) => Ok(vec![
-            keywords::boolean::compile(*value).expect("Should always compile")?
+            keywords::basic::boolean::compile(*value).expect("Should always compile")?
         ]),
         Value::Object(object) => {
             if let Some(reference) = object.get("$ref") {
                 if let Value::String(reference) = reference {
-                    Ok(vec![keywords::ref_::compile(schema, reference, &context)
-                        .expect("Should always return Some")?])
+                    Ok(vec![keywords::basic::ref_::compile(
+                        schema, reference, &context,
+                    )
+                    .expect("Should always return Some")?])
                 } else {
                     Err(CompilationError::SchemaError)
                 }
             } else {
                 let mut validators = Vec::with_capacity(object.len());
-                for (keyword, subschema) in object {
-                    if let Some(compilation_func) = context.draft.get_validator(keyword) {
-                        if let Some(validator) = compilation_func(object, subschema, &context) {
-                            validators.push(validator?)
-                        }
-                    }
-                }
+                let unprocessed_keywords =
+                    compile_combined_validators(&mut validators, &context, object);
+                compile_basic_validators(&mut validators, &unprocessed_keywords, &context, object)?;
+                validators.shrink_to_fit();
                 Ok(validators)
             }
         }

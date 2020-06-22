@@ -1,6 +1,9 @@
 use crate::{
     compilation::CompilationContext,
-    keywords::{exclusive_minimum, minimum, CompilationResult},
+    keywords::{
+        basic::{exclusive_minimum, minimum},
+        CompilationResult,
+    },
 };
 use serde_json::{Map, Value};
 

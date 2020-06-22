@@ -1,6 +1,9 @@
 use crate::{
     compilation::CompilationContext,
-    keywords::{exclusive_maximum, maximum, CompilationResult},
+    keywords::{
+        basic::{exclusive_maximum, maximum},
+        CompilationResult,
+    },
 };
 use serde_json::{Map, Value};
 
