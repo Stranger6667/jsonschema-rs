@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- ECMAScript regex support
+
 ## [0.3.1] - 2020-06-21
 
 ### Changed
