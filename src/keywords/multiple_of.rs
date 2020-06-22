@@ -24,10 +24,6 @@ impl Validate for MultipleOfFloatValidator {
         ValidationError::multiple_of(instance, self.multiple_of)
     }
 
-    fn name(&self) -> String {
-        format!("multipleOf: {}", self.multiple_of)
-    }
-
     #[inline]
     fn is_valid_number(&self, _: &JSONSchema, _: &Value, instance_value: f64) -> bool {
         let remainder = (instance_value / self.multiple_of) % 1.;
@@ -71,6 +67,11 @@ impl Validate for MultipleOfFloatValidator {
         }
     }
 }
+impl ToString for MultipleOfFloatValidator {
+    fn to_string(&self) -> String {
+        format!("multipleOf: {}", self.multiple_of)
+    }
+}
 
 pub struct MultipleOfIntegerValidator {
     multiple_of: f64,
@@ -87,10 +88,6 @@ impl Validate for MultipleOfIntegerValidator {
     #[inline]
     fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
         ValidationError::multiple_of(instance, self.multiple_of)
-    }
-
-    fn name(&self) -> String {
-        format!("multipleOf: {}", self.multiple_of)
     }
 
     #[inline]
@@ -138,6 +135,11 @@ impl Validate for MultipleOfIntegerValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for MultipleOfIntegerValidator {
+    fn to_string(&self) -> String {
+        format!("multipleOf: {}", self.multiple_of)
     }
 }
 

@@ -85,10 +85,6 @@ macro_rules! one_of_impl_validate {
     };
 }
 impl Validate for OneOfValidator {
-    fn name(&self) -> String {
-        format!("oneOf: [{}]", format_vec_of_validators(&self.schemas))
-    }
-
     one_of_impl_is_valid!(array, &[Value]);
     one_of_impl_is_valid!(boolean, bool);
     one_of_impl_is_valid!(null, ());
@@ -106,6 +102,11 @@ impl Validate for OneOfValidator {
     one_of_impl_validate!(signed_integer, i64);
     one_of_impl_validate!(string, &str);
     one_of_impl_validate!(unsigned_integer, u64);
+}
+impl ToString for OneOfValidator {
+    fn to_string(&self) -> String {
+        format!("oneOf: [{}]", format_vec_of_validators(&self.schemas))
+    }
 }
 
 #[inline]

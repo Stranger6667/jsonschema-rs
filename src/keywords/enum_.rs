@@ -32,17 +32,6 @@ impl Validate for EnumValidator {
         ValidationError::enumeration(instance, &self.options)
     }
 
-    fn name(&self) -> String {
-        format!(
-            "enum: [{}]",
-            self.items
-                .iter()
-                .map(Value::to_string)
-                .collect::<Vec<String>>()
-                .join(", ")
-        )
-    }
-
     #[inline]
     fn is_valid_array(&self, _: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
         self.items.iter().any(|item| {
@@ -112,6 +101,18 @@ impl Validate for EnumValidator {
             item.as_u64()
                 .map_or_else(|| false, |value| value == instance_value)
         })
+    }
+}
+impl ToString for EnumValidator {
+    fn to_string(&self) -> String {
+        format!(
+            "enum: [{}]",
+            self.items
+                .iter()
+                .map(Value::to_string)
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
     }
 }
 

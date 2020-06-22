@@ -14,10 +14,6 @@ impl TrueValidator {
     }
 }
 impl Validate for TrueValidator {
-    fn name(&self) -> String {
-        "true".to_string()
-    }
-
     #[inline]
     fn is_valid(&self, _: &JSONSchema, _: &Value) -> bool {
         true
@@ -28,24 +24,23 @@ impl Validate for TrueValidator {
         no_error()
     }
 }
+impl ToString for TrueValidator {
+    fn to_string(&self) -> String {
+        "true".to_string()
+    }
+}
 
 pub struct FalseValidator {}
-
 impl FalseValidator {
     #[inline]
     pub(crate) fn compile() -> CompilationResult {
         Ok(Box::new(FalseValidator {}))
     }
 }
-
 impl Validate for FalseValidator {
     #[inline]
     fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
         ValidationError::false_schema(instance)
-    }
-
-    fn name(&self) -> String {
-        "false".to_string()
     }
 
     #[inline]
@@ -88,6 +83,11 @@ impl Validate for FalseValidator {
     #[inline]
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         error(self.build_validation_error(instance))
+    }
+}
+impl ToString for FalseValidator {
+    fn to_string(&self) -> String {
+        "false".to_string()
     }
 }
 

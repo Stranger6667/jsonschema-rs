@@ -20,10 +20,6 @@ impl PropertyNamesObjectValidator {
 }
 
 impl Validate for PropertyNamesObjectValidator {
-    fn name(&self) -> String {
-        format!("propertyNames: {}", format_validators(&self.validators))
-    }
-
     #[inline]
     fn is_valid_object(
         &self,
@@ -79,6 +75,11 @@ impl Validate for PropertyNamesObjectValidator {
         }
     }
 }
+impl ToString for PropertyNamesObjectValidator {
+    fn to_string(&self) -> String {
+        format!("propertyNames: {}", format_validators(&self.validators))
+    }
+}
 
 pub struct PropertyNamesBooleanValidator {}
 
@@ -93,10 +94,6 @@ impl Validate for PropertyNamesBooleanValidator {
     #[inline]
     fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
         ValidationError::false_schema(instance)
-    }
-
-    fn name(&self) -> String {
-        "propertyNames: false".to_string()
     }
 
     #[inline]
@@ -115,6 +112,11 @@ impl Validate for PropertyNamesBooleanValidator {
         } else {
             true
         }
+    }
+}
+impl ToString for PropertyNamesBooleanValidator {
+    fn to_string(&self) -> String {
+        "propertyNames: false".to_string()
     }
 }
 

@@ -24,17 +24,6 @@ impl Validate for ConstArrayValidator {
         ValidationError::constant_array(instance, &self.value)
     }
 
-    fn name(&self) -> String {
-        format!(
-            "const: [{}]",
-            self.value
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(", ")
-        )
-    }
-
     #[inline]
     fn is_valid_array(&self, _: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
         self.value == instance_value
@@ -85,6 +74,18 @@ impl Validate for ConstArrayValidator {
         }
     }
 }
+impl ToString for ConstArrayValidator {
+    fn to_string(&self) -> String {
+        format!(
+            "const: [{}]",
+            self.value
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+}
 
 struct ConstBooleanValidator {
     value: bool,
@@ -99,10 +100,6 @@ impl Validate for ConstBooleanValidator {
     #[inline]
     fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
         ValidationError::constant_boolean(instance, self.value)
-    }
-
-    fn name(&self) -> String {
-        format!("const: {}", self.value)
     }
 
     #[inline]
@@ -155,6 +152,11 @@ impl Validate for ConstBooleanValidator {
         }
     }
 }
+impl ToString for ConstBooleanValidator {
+    fn to_string(&self) -> String {
+        format!("const: {}", self.value)
+    }
+}
 
 struct ConstNullValidator {}
 impl ConstNullValidator {
@@ -167,10 +169,6 @@ impl Validate for ConstNullValidator {
     #[inline]
     fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
         ValidationError::constant_null(instance)
-    }
-
-    fn name(&self) -> String {
-        format!("const: {}", Value::Null)
     }
 
     #[inline]
@@ -223,6 +221,11 @@ impl Validate for ConstNullValidator {
         }
     }
 }
+impl ToString for ConstNullValidator {
+    fn to_string(&self) -> String {
+        format!("const: {}", Value::Null)
+    }
+}
 
 struct ConstNumberValidator {
     // This is saved in order to ensure that the error message is not altered by precision loss
@@ -244,10 +247,6 @@ impl Validate for ConstNumberValidator {
     #[inline]
     fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
         ValidationError::constant_number(instance, &self.original_value)
-    }
-
-    fn name(&self) -> String {
-        format!("const: {}", self.original_value)
     }
 
     #[inline]
@@ -312,6 +311,11 @@ impl Validate for ConstNumberValidator {
         }
     }
 }
+impl ToString for ConstNumberValidator {
+    fn to_string(&self) -> String {
+        format!("const: {}", self.original_value)
+    }
+}
 
 struct ConstObjectValidator {
     value: Map<String, Value>,
@@ -328,17 +332,6 @@ impl Validate for ConstObjectValidator {
     #[inline]
     fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
         ValidationError::constant_object(instance, &self.value)
-    }
-
-    fn name(&self) -> String {
-        format!(
-            "const: {{{}}}",
-            self.value
-                .iter()
-                .map(|(key, value)| format!(r#""{}":{}"#, key, value))
-                .collect::<Vec<_>>()
-                .join(", ")
-        )
     }
 
     #[inline]
@@ -396,6 +389,18 @@ impl Validate for ConstObjectValidator {
         }
     }
 }
+impl ToString for ConstObjectValidator {
+    fn to_string(&self) -> String {
+        format!(
+            "const: {{{}}}",
+            self.value
+                .iter()
+                .map(|(key, value)| format!(r#""{}":{}"#, key, value))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+}
 
 struct ConstStringValidator {
     value: String,
@@ -412,10 +417,6 @@ impl Validate for ConstStringValidator {
     #[inline]
     fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
         ValidationError::constant_string(instance, &self.value)
-    }
-
-    fn name(&self) -> String {
-        format!(r#"const: "{}""#, self.value)
     }
 
     #[inline]
@@ -466,6 +467,11 @@ impl Validate for ConstStringValidator {
         } else {
             error(self.build_validation_error(instance))
         }
+    }
+}
+impl ToString for ConstStringValidator {
+    fn to_string(&self) -> String {
+        format!(r#"const: "{}""#, self.value)
     }
 }
 

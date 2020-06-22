@@ -43,7 +43,7 @@ fn format_validators(validators: &[BoxedValidator]) -> String {
     match validators.len() {
         0 => "{}".to_string(),
         1 => {
-            let name = validators[0].name();
+            let name = validators[0].to_string();
             match name.as_str() {
                 // boolean validators are represented as is, without brackets because if they
                 // occur in a vector, then the schema is not a key/value mapping

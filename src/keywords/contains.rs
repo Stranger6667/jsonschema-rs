@@ -25,10 +25,6 @@ impl Validate for ContainsValidator {
         ValidationError::contains(instance)
     }
 
-    fn name(&self) -> String {
-        format!("contains: {}", format_validators(&self.validators))
-    }
-
     #[inline]
     fn is_valid_array(&self, schema: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
         for item in instance_value {
@@ -58,6 +54,11 @@ impl Validate for ContainsValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for ContainsValidator {
+    fn to_string(&self) -> String {
+        format!("contains: {}", format_validators(&self.validators))
     }
 }
 

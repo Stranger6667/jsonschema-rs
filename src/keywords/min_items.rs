@@ -26,10 +26,6 @@ impl Validate for MinItemsValidator {
         ValidationError::min_items(instance, self.limit)
     }
 
-    fn name(&self) -> String {
-        format!("minItems: {}", self.limit)
-    }
-
     #[inline]
     fn is_valid_array(&self, _: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
         instance_value.len() as u64 >= self.limit
@@ -50,6 +46,11 @@ impl Validate for MinItemsValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for MinItemsValidator {
+    fn to_string(&self) -> String {
+        format!("minItems: {}", self.limit)
     }
 }
 

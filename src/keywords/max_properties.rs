@@ -26,10 +26,6 @@ impl Validate for MaxPropertiesValidator {
         ValidationError::max_properties(instance, self.limit)
     }
 
-    fn name(&self) -> String {
-        format!("maxProperties: {}", self.limit)
-    }
-
     #[inline]
     fn is_valid_object(
         &self,
@@ -55,6 +51,11 @@ impl Validate for MaxPropertiesValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for MaxPropertiesValidator {
+    fn to_string(&self) -> String {
+        format!("maxProperties: {}", self.limit)
     }
 }
 

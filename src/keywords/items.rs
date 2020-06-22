@@ -25,10 +25,6 @@ impl ItemsArrayValidator {
     }
 }
 impl Validate for ItemsArrayValidator {
-    fn name(&self) -> String {
-        format!("items: [{}]", format_vec_of_validators(&self.items))
-    }
-
     #[inline]
     fn is_valid_array(&self, schema: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
         instance_value
@@ -78,6 +74,11 @@ impl Validate for ItemsArrayValidator {
         }
     }
 }
+impl ToString for ItemsArrayValidator {
+    fn to_string(&self) -> String {
+        format!("items: [{}]", format_vec_of_validators(&self.items))
+    }
+}
 
 pub struct ItemsObjectValidator {
     validators: Validators,
@@ -90,10 +91,6 @@ impl ItemsObjectValidator {
     }
 }
 impl Validate for ItemsObjectValidator {
-    fn name(&self) -> String {
-        format!("items: {}", format_validators(&self.validators))
-    }
-
     #[inline]
     fn is_valid_array(&self, schema: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
         if instance_value.len() > 8 {
@@ -155,6 +152,11 @@ impl Validate for ItemsObjectValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for ItemsObjectValidator {
+    fn to_string(&self) -> String {
+        format!("items: {}", format_validators(&self.validators))
     }
 }
 

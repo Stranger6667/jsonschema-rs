@@ -30,30 +30,32 @@ lazy_static::lazy_static! {
 }
 
 macro_rules! generic_format_validator {
-    ($name:ident, $format_name:tt => $($validate_components_extra:tt)*) => {
-        struct $name {}
-        impl $name {
+    ($validator:ident, $format_name:tt => $($validate_components_extra:tt)*) => {
+        struct $validator {}
+        impl $validator {
             pub(crate) fn compile() -> CompilationResult {
-                Ok(Box::new($name {}))
+                Ok(Box::new($validator {}))
             }
         }
-        impl Validate for $name {
+        impl Validate for $validator {
             #[inline]
             fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
                 ValidationError::format(instance, $format_name)
             }
-            fn name(&self) -> String {
+            $($validate_components_extra)*
+        }
+        impl ToString for $validator {
+            fn to_string(&self) -> String {
                 concat!("format: ", $format_name).to_string()
             }
-            $($validate_components_extra)*
         }
     };
 }
 
 macro_rules! string_format_validator {
-    ($name:ident, $format_name:tt, $check:expr) => {
+    ($validator:ident, $format_name:tt, $check:expr) => {
         generic_format_validator!(
-            $name,
+            $validator,
             $format_name =>
             #[inline]
             fn is_valid_string(&self, _: &JSONSchema, _: &Value, instance_string: &str) -> bool {

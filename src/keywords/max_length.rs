@@ -26,10 +26,6 @@ impl Validate for MaxLengthValidator {
         ValidationError::max_length(instance, self.limit)
     }
 
-    fn name(&self) -> String {
-        format!("maxLength: {}", self.limit)
-    }
-
     #[inline]
     fn is_valid_string(&self, _: &JSONSchema, _: &Value, instance_value: &str) -> bool {
         instance_value.chars().count() as u64 <= self.limit
@@ -50,6 +46,11 @@ impl Validate for MaxLengthValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for MaxLengthValidator {
+    fn to_string(&self) -> String {
+        format!("maxLength: {}", self.limit)
     }
 }
 

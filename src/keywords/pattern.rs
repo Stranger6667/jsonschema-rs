@@ -40,10 +40,6 @@ impl Validate for PatternValidator {
         ValidationError::pattern(instance, self.original.clone())
     }
 
-    fn name(&self) -> String {
-        format!("pattern: {}", self.pattern)
-    }
-
     #[inline]
     fn is_valid_string(&self, _: &JSONSchema, _: &Value, instance_value: &str) -> bool {
         self.pattern.is_match(instance_value)
@@ -64,6 +60,11 @@ impl Validate for PatternValidator {
         } else {
             no_error()
         }
+    }
+}
+impl ToString for PatternValidator {
+    fn to_string(&self) -> String {
+        format!("pattern: {}", self.pattern)
     }
 }
 
