@@ -133,10 +133,6 @@ jobs:
           toolchain: nightly-2020-06-11
           override: true
 
-      # Use the unreleased version of jsonschema rust library
-      # The UNRELEASED_JSONSCHEMA_PATH variable is used by `python/setup.py`
-      - run: echo "::set-env name=UNRELEASED_JSONSCHEMA_PATH::$(pwd)"
-
       - name: Run ${{ matrix.python }} tox job
         run: tox -e py
         working-directory: ./python

@@ -54,52 +54,5 @@ def call_setup():
     )
 
 
-if "UNRELEASED_JSONSCHEMA_PATH" in os.environ:
-    import sys
-
-    from contextlib import contextmanager
-    from tempfile import NamedTemporaryFile
-    import toml
-
-    # Modify Cargo.toml to apply crates.io patch to link jsonschema to the version available
-    # on the repository.
-    # This is done by using a contextmanager in order to ensure that the Cargo.toml modification
-    # is discarded once setup.py ends (regardless of success or failure)
-    @contextmanager
-    def cargo_toml_context():
-        tmp_file = NamedTemporaryFile(buffering=False)
-        with open("Cargo.toml", "rb") as f:
-            tmp_file.writelines(f.readlines())
-
-        cargo_file = toml.load("Cargo.toml")
-
-        cargo_file.setdefault("patch", {}).setdefault("crates-io", {})["jsonschema"] = {
-            "path": os.environ["UNRELEASED_JSONSCHEMA_PATH"],
-        }
-
-        with open("Cargo.toml", "w") as f:
-            toml.dump(cargo_file, f)
-
-        try:
-            print(
-                "Modified Cargo.toml file by patching jsonschema dependency to {}".format(
-                    os.environ["UNRELEASED_JSONSCHEMA_PATH"]
-                ),
-                file=sys.stderr,
-            )
-            yield
-        except:
-            print("Cargo.toml used during the build", file=sys.stderr)
-            with open("Cargo.toml", "r") as f:
-                print(f.read(), file=sys.stderr)
-
-            raise
-        finally:
-            with open("Cargo.toml", "wb") as f:
-                tmp_file.seek(0)
-                f.writelines(tmp_file.readlines())
-
-    with cargo_toml_context():
-        call_setup()
-else:
+if __name__ == "__main__":
     call_setup()
