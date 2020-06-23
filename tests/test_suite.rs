@@ -29,7 +29,7 @@ fn test_draft(_server_address: &str, test_case: TestCase) {
                     "Schema: {}\nInstance: {}\nError: {:?}",
                     test_case.schema, test_case.instance, first_error,
                 )
-            )
+            );
         }
     } else {
         assert!(
@@ -40,4 +40,7 @@ fn test_draft(_server_address: &str, test_case: TestCase) {
             )
         );
     }
+
+    // Ensure that `JSONSchema::is_valid` is in sync with the validity expectation
+    assert_eq!(compiled.is_valid(&test_case.instance), test_case.is_valid);
 }
