@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- `ToString` trait implementation for validators.
+
 ### Fixed
 
 - ECMAScript regex support
