@@ -98,6 +98,10 @@ fn is_valid_hostname(string: &str) -> bool {
             .any(|c| !(c.is_alphanumeric() || c == '-' || c == '.'))
         || string.split('.').any(|part| part.chars().count() > 63))
 }
+#[inline]
+fn is_valid_idn_hostname(string: &str) -> bool {
+    is_valid_hostname(string) && idna::domain_to_unicode(string).1.is_ok()
+}
 
 string_format_validator!(DateValidator, "date", |instance_string| {
     NaiveDate::parse_from_str(instance_string, "%Y-%m-%d").is_ok()
@@ -108,7 +112,7 @@ string_format_validator!(DateTimeValidator, "date-time", |instance_string| {
 string_format_validator!(EmailValidator, "email", is_valid_email);
 string_format_validator!(IDNEmailValidator, "idn-email", is_valid_email);
 string_format_validator!(HostnameValidator, "hostname", is_valid_hostname);
-string_format_validator!(IDNHostnameValidator, "idn-hostname", is_valid_hostname);
+string_format_validator!(IDNHostnameValidator, "idn-hostname", is_valid_idn_hostname);
 string_format_validator!(IpV4Validator, "ipv4", |instance_string| {
     if let Ok(IpAddr::V4(_)) = IpAddr::from_str(instance_string) {
         true

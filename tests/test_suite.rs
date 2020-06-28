@@ -4,8 +4,6 @@ use jsonschema::{Draft, JSONSchema};
 #[json_schema_test_suite("tests/suite", "draft4", {"optional_bignum_0_0", "optional_bignum_2_0"})]
 #[json_schema_test_suite("tests/suite", "draft6")]
 #[json_schema_test_suite("tests/suite", "draft7", {
-    "optional_format_idn_hostname_0_11", // https://github.com/Stranger6667/jsonschema-rs/issues/101
-    "optional_format_idn_hostname_0_6",  // https://github.com/Stranger6667/jsonschema-rs/issues/101
     "optional_format_idn_hostname_0_7",  // https://github.com/Stranger6667/jsonschema-rs/issues/101
 })]
 fn test_draft(_server_address: &str, test_case: TestCase) {
