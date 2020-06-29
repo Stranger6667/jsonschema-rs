@@ -8,9 +8,10 @@
 A JSON Schema validator implementation. It compiles schema into a validation tree to have validation as fast as possible.
 
 Supported drafts:
-- Draft 7
+
+- Draft 7 (except optional `idn-hostname.json` test cases)
 - Draft 6
-- Draft 4 (except optional `bignum.json` test case)
+- Draft 4 (except optional `bignum.json` test cases)
 
 ```toml
 # Cargo.toml
@@ -31,10 +32,10 @@ fn main() {
     if let Err(errors) = result {
         for error in errors {
             println!("Validation error: {}", error)
-        }   
+        }
     }
 }
-``` 
+```
 
 If you only need to know whether document is valid or not (which is faster):
 
