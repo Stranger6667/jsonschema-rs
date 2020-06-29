@@ -31,7 +31,7 @@ idna = ">= 0.2"
 [dev-dependencies]
 criterion = ">= 0.1"
 mockito = ">= 0"
-json_schema_test_suite = ">= 0"
+json_schema_test_suite = ">= 0.3"
 jsonschema-valid = ">= 0.1"
 valico = "3"
 test-case = "1"
