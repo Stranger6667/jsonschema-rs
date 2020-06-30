@@ -32,16 +32,13 @@ pub unsafe fn read_utf8_from_str(
     object_pointer: *mut pyo3::ffi::PyObject,
     size: &mut Py_ssize_t,
 ) -> *const u8 {
-    if std::intrinsics::likely(
-        (*object_pointer.cast::<PyASCIIObject>()).state & STATE_ASCII == STATE_ASCII,
-    ) {
+    if (*object_pointer.cast::<PyASCIIObject>()).state & STATE_ASCII == STATE_ASCII {
         *size = (*object_pointer.cast::<PyASCIIObject>()).length;
         object_pointer.cast::<PyASCIIObject>().offset(1) as *const u8
-    } else if std::intrinsics::likely(
-        (*object_pointer.cast::<PyASCIIObject>()).state & STATE_COMPACT == STATE_COMPACT,
-    ) && !(*object_pointer.cast::<PyCompactUnicodeObject>())
-        .utf8
-        .is_null()
+    } else if (*object_pointer.cast::<PyASCIIObject>()).state & STATE_COMPACT == STATE_COMPACT
+        && !(*object_pointer.cast::<PyCompactUnicodeObject>())
+            .utf8
+            .is_null()
     {
         *size = (*object_pointer.cast::<PyCompactUnicodeObject>()).utf8_length;
         (*object_pointer.cast::<PyCompactUnicodeObject>()).utf8 as *const u8
