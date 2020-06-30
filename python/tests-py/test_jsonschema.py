@@ -83,3 +83,10 @@ def test_maximum(maximum):
 def test_multiple_of(multiple_of):
     with suppress(SystemError):
         assert is_valid({"multipleOf": multiple_of}, multiple_of * 3)
+
+
+@pytest.mark.parametrize("method", ("is_valid", "validate"))
+def test_invalid_value(method):
+    schema = JSONSchema({"minimum": 42})
+    with pytest.raises(ValueError, match="Unsupported type: 'object'"):
+        getattr(schema, method)(object())
