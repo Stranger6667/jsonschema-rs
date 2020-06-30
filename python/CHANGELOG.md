@@ -12,6 +12,7 @@
 
 - ECMAScript regex support
 - Formats should be associated to Draft versions (ie. `idn-hostname` is not defined on draft 4 and draft 6)
+- Handle errors during conversion to `Value` instead of using `unwrap` in `JSONSchema::is_valid` and `JSONSchema::validate`. [#127](https://github.com/Stranger6667/jsonschema-rs/issues/127)
 
 ## [0.3.3] - 2020-06-22
 

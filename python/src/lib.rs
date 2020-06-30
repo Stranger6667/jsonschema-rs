@@ -122,9 +122,9 @@ impl JSONSchema {
     ///
     /// The output is a boolean value, that indicates whether the instance is valid or not.
     #[text_signature = "(instance)"]
-    fn is_valid(&self, instance: &PyAny) -> bool {
-        let instance = ser::to_value(instance).unwrap();
-        self.schema.is_valid(&instance)
+    fn is_valid(&self, instance: &PyAny) -> PyResult<bool> {
+        let instance = ser::to_value(instance)?;
+        Ok(self.schema.is_valid(&instance))
     }
 
     /// validate(instance)
@@ -139,7 +139,7 @@ impl JSONSchema {
     /// If the input instance is invalid, only the first occurred error is raised.
     #[text_signature = "(instance)"]
     fn validate(&self, instance: &PyAny) -> PyResult<()> {
-        let instance = ser::to_value(instance).unwrap();
+        let instance = ser::to_value(instance)?;
         let result = self.schema.validate(&instance);
         let error = if let Some(mut errors) = result.err() {
             // If we have `Err` case, then the iterator is not empty
