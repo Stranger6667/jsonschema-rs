@@ -1,4 +1,3 @@
-#![feature(core_intrinsics)]
 #![warn(
     clippy::doc_markdown,
     clippy::redundant_closure,

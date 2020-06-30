@@ -105,11 +105,11 @@ impl Serialize for SerializePyObject {
             ObjectType::Bool => serializer.serialize_bool(self.object == unsafe { types::TRUE }),
             ObjectType::None => serializer.serialize_unit(),
             ObjectType::Dict => {
-                if std::intrinsics::unlikely(self.recursion_depth == RECURSION_LIMIT) {
+                if self.recursion_depth == RECURSION_LIMIT {
                     return Err(ser::Error::custom("Recursion limit reached"));
                 }
                 let length = unsafe { (*self.object.cast::<PyDictObject>()).ma_used } as usize;
-                if std::intrinsics::unlikely(length == 0) {
+                if length == 0 {
                     serializer.serialize_map(Some(0))?.end()
                 } else {
                     let mut map = serializer.serialize_map(Some(length))?;
@@ -138,11 +138,11 @@ impl Serialize for SerializePyObject {
                 }
             }
             ObjectType::List => {
-                if std::intrinsics::unlikely(self.recursion_depth == RECURSION_LIMIT) {
+                if self.recursion_depth == RECURSION_LIMIT {
                     return Err(ser::Error::custom("Recursion limit reached"));
                 }
                 let length = unsafe { PyList_GET_SIZE(self.object) } as usize;
-                if std::intrinsics::unlikely(length == 0) {
+                if length == 0 {
                     serializer.serialize_seq(Some(0))?.end()
                 } else {
                     let mut type_ptr = std::ptr::null_mut();

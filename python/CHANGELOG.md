@@ -5,6 +5,8 @@
 ### Changed
 
 - Remove not needed `__init__.py` file. It improves performance for compiled schemas. [#121](https://github.com/Stranger6667/jsonschema-rs/issues/121)
+- Update `PyO3` to `0.11`. [#125](https://github.com/Stranger6667/jsonschema-rs/issues/125)
+- Use stable Rust.
 
 ### Fixed
 
