@@ -34,7 +34,7 @@ def call_setup():
         python_requires=">=3.5",
         url="https://github.com/Stranger6667/jsonschema-rs/tree/master/python",
         license="MIT",
-        rust_extensions=[RustExtension("jsonschema_rs.jsonschema_rs", binding=Binding.PyO3)],
+        rust_extensions=[RustExtension("jsonschema_rs", binding=Binding.PyO3)],
         classifiers=[
             "Development Status :: 3 - Alpha",
             "Intended Audience :: Developers",
@@ -48,8 +48,6 @@ def call_setup():
             "Programming Language :: Python :: Implementation :: CPython",
             "Programming Language :: Rust",
         ],
-        packages=find_packages(where="pysrc"),
-        package_dir={"": "pysrc"},
         zip_safe=False,
     )
 
