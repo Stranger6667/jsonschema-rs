@@ -91,6 +91,8 @@ pub(crate) enum ValidationErrorKind {
     Constant { expected_value: Value },
     /// The input array doesn't contain items conforming to the specified schema.
     Contains,
+    /// Ths input value does not respect the defined contentMediaType
+    ContentMediaType { content_media_type: String },
     /// The input value doesn't match any of specified options.
     Enum { options: Value },
     /// Value is too large.
@@ -250,6 +252,14 @@ impl<'a> ValidationError<'a> {
         ValidationError {
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Contains,
+        }
+    }
+    pub(crate) fn content_media_type(instance: &'a Value, media_type: &str) -> ValidationError<'a> {
+        ValidationError {
+            instance: Cow::Borrowed(instance),
+            kind: ValidationErrorKind::ContentMediaType {
+                content_media_type: media_type.to_string(),
+            },
         }
     }
     pub(crate) fn enumeration(instance: &'a Value, options: &Value) -> ValidationError<'a> {
@@ -564,6 +574,9 @@ impl fmt::Display for ValidationError<'_> {
             ),
             ValidationErrorKind::Constant { expected_value } => {
                 write!(f, "'{}' was expected", expected_value)
+            }
+            ValidationErrorKind::ContentMediaType { content_media_type } => {
+                write!(f, "'{}' is not compliant with media_type={}", self.instance, content_media_type)
             }
             ValidationErrorKind::FromUtf8 { error } => write!(f, "{}", error),
             ValidationErrorKind::Utf8 { error } => write!(f, "{}", error),

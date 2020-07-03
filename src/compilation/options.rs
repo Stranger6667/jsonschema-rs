@@ -1,11 +1,12 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema, DEFAULT_SCOPE},
+    content_media_type::{ContentMediaTypeCheckType, DEFAULT_CONTENT_MEDIA_TYPE_CHECKS},
     error::CompilationError,
     resolver::Resolver,
     schemas,
 };
 use serde_json::Value;
-use std::{borrow::Cow, fmt};
+use std::{borrow::Cow, collections::HashMap, fmt};
 
 /// Full configuration to guide the `JSONSchema` compilation.
 ///
@@ -14,6 +15,7 @@ use std::{borrow::Cow, fmt};
 #[derive(Clone, Default)]
 pub struct CompilationOptions {
     draft: Option<schemas::Draft>,
+    content_media_type_checks: HashMap<&'static str, Option<ContentMediaTypeCheckType>>,
 }
 
 impl CompilationOptions {
@@ -73,12 +75,68 @@ impl CompilationOptions {
         self.draft = Some(draft);
         self
     }
+
+    pub(crate) fn content_media_type_check(
+        &self,
+        media_type: &str,
+    ) -> Option<ContentMediaTypeCheckType> {
+        if let Some(value) = self.content_media_type_checks.get(media_type) {
+            *value
+        } else if let Some(value) = DEFAULT_CONTENT_MEDIA_TYPE_CHECKS.get(media_type) {
+            Some(*value)
+        } else {
+            None
+        }
+    }
+
+    /// Ensure that compiled schema is going to support the provided content media type.
+    ///
+    /// Arguments:
+    /// * `media_type`: Name of the content media type to support (ie. "application/json")
+    /// * `media_type_check`: Method checking the validity of the input string according to
+    ///     the media type.
+    ///     The method should return `true` if the input is valid, `false` otherwise.
+    ///
+    /// Example:
+    /// ```rust
+    /// # use jsonschema::CompilationOptions;
+    /// # let mut options = CompilationOptions::default();
+    /// fn check_custom_media_type(instance_string: &str) -> bool {
+    ///     // In reality the check might be a bit more different ;)
+    ///     instance_string != "not good"
+    /// }
+    /// // Add support for application/jsonschema-test
+    /// options.with_content_media_type("application/jsonschema-test", check_custom_media_type);
+    /// ```
+    pub fn with_content_media_type(
+        &mut self,
+        media_type: &'static str,
+        media_type_check: ContentMediaTypeCheckType,
+    ) -> &mut Self {
+        self.content_media_type_checks
+            .insert(media_type, Some(media_type_check));
+        self
+    }
+
+    /// Ensure that compiled schema is not supporting the provided content media type.
+    ///
+    /// ```rust
+    /// # use jsonschema::CompilationOptions;
+    /// # let mut options = CompilationOptions::default();
+    /// // Disable support for application/json (which is supported by jsonschema crate)
+    /// options.without_content_media_type_support("application/json");
+    /// ```
+    pub fn without_content_media_type_support(&mut self, media_type: &'static str) -> &mut Self {
+        self.content_media_type_checks.insert(media_type, None);
+        self
+    }
 }
 
 impl fmt::Debug for CompilationOptions {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_struct("CompilationConfig")
             .field("draft", &self.draft)
+            .field("content_media_type", &self.content_media_type_checks.keys())
             .finish()
     }
 }

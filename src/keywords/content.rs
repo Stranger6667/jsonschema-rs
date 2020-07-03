@@ -1,24 +1,22 @@
 //! Validators for `contentMediaType` and `contentEncoding` keywords.
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
+    content_media_type::ContentMediaTypeCheckType,
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
-use serde_json::{from_str, Map, Value};
+use serde_json::{Map, Value};
 
 /// Validator for `contentMediaType` keyword.
 pub(crate) struct ContentMediaTypeValidator {
     media_type: String,
-    func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
+    func: ContentMediaTypeCheckType,
 }
 
 impl ContentMediaTypeValidator {
     #[inline]
-    pub(crate) fn compile(
-        media_type: &str,
-        func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
-    ) -> CompilationResult {
+    pub(crate) fn compile(media_type: &str, func: ContentMediaTypeCheckType) -> CompilationResult {
         Ok(Box::new(ContentMediaTypeValidator {
             media_type: media_type.to_string(),
             func,
@@ -29,8 +27,8 @@ impl ContentMediaTypeValidator {
 /// Validator delegates validation to the stored function.
 impl Validate for ContentMediaTypeValidator {
     #[inline]
-    fn is_valid_string(&self, _: &JSONSchema, instance: &Value, instance_value: &str) -> bool {
-        (self.func)(instance, instance_value).next().is_none()
+    fn is_valid_string(&self, _: &JSONSchema, _: &Value, instance_value: &str) -> bool {
+        (self.func)(instance_value)
     }
     #[inline]
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
@@ -48,7 +46,14 @@ impl Validate for ContentMediaTypeValidator {
         instance: &'a Value,
         instance_value: &'a str,
     ) -> ErrorIterator<'a> {
-        (self.func)(instance, instance_value)
+        if (self.func)(instance_value) {
+            no_error()
+        } else {
+            error(ValidationError::content_media_type(
+                instance,
+                &self.media_type,
+            ))
+        }
     }
     #[inline]
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
@@ -126,7 +131,7 @@ impl ToString for ContentEncodingValidator {
 pub(crate) struct ContentMediaTypeAndEncodingValidator {
     media_type: String,
     encoding: String,
-    func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
+    func: ContentMediaTypeCheckType,
     converter: for<'a> fn(&'a Value, &str) -> Result<String, ValidationError<'a>>,
 }
 
@@ -135,7 +140,7 @@ impl ContentMediaTypeAndEncodingValidator {
     pub(crate) fn compile(
         media_type: &str,
         encoding: &str,
-        func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
+        func: ContentMediaTypeCheckType,
         converter: for<'a> fn(&'a Value, &str) -> Result<String, ValidationError<'a>>,
     ) -> CompilationResult {
         Ok(Box::new(ContentMediaTypeAndEncodingValidator {
@@ -152,7 +157,7 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
     #[inline]
     fn is_valid_string(&self, _: &JSONSchema, instance: &Value, instance_value: &str) -> bool {
         match (self.converter)(instance, instance_value) {
-            Ok(converted) => (self.func)(instance, &converted).next().is_none(),
+            Ok(converted) => (self.func)(&converted),
             Err(_) => false,
         }
     }
@@ -176,8 +181,14 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
         // return a proper type
         match (self.converter)(instance, instance_value) {
             Ok(converted) => {
-                let errors: Vec<_> = (self.func)(instance, &converted).collect();
-                Box::new(errors.into_iter())
+                if (self.func)(&converted) {
+                    no_error()
+                } else {
+                    error(ValidationError::content_media_type(
+                        instance,
+                        &self.media_type,
+                    ))
+                }
             }
             Err(e) => error(e),
         }
@@ -198,13 +209,6 @@ impl ToString for ContentMediaTypeAndEncodingValidator {
             self.media_type, self.encoding
         )
     }
-}
-
-pub(crate) fn is_json<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
-    if from_str::<Value>(instance_string).is_err() {
-        return error(ValidationError::format(instance, "application/json"));
-    }
-    no_error()
 }
 
 pub(crate) fn is_base64<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
@@ -228,13 +232,13 @@ pub(crate) fn from_base64<'a>(
 pub(crate) fn compile_media_type(
     schema: &Map<String, Value>,
     subschema: &Value,
-    _: &CompilationContext,
+    context: &CompilationContext,
 ) -> Option<CompilationResult> {
     match subschema {
         Value::String(media_type) => {
-            let func = match media_type.as_str() {
-                "application/json" => is_json,
-                _ => return None,
+            let func = match context.config.content_media_type_check(media_type.as_str()) {
+                Some(f) => f,
+                None => return None,
             };
             if let Some(content_encoding) = schema.get("contentEncoding") {
                 match content_encoding {
@@ -280,5 +284,41 @@ pub(crate) fn compile_content_encoding(
             Some(ContentEncodingValidator::compile(content_encoding, func))
         }
         _ => Some(Err(CompilationError::SchemaError)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        error::{error, no_error, ErrorIterator, ValidationError},
+        JSONSchema,
+    };
+    use serde_json::{json, Value};
+    use test_case::test_case;
+
+    #[test_case(&json!({"contentMediaType": "application/json"}), &json!("{}") => true)]
+    #[test_case(&json!({"contentMediaType": "application/json"}), &json!("{") => false)]
+    #[test_case(&json!({"contentMediaType": "test_media_type"}), &json!("whatever") => true)]
+    #[test_case(&json!({"contentMediaType": "test_media_type"}), &json!("error") => false)]
+    fn test_with_content_media_type(schema: &Value, instance: &Value) -> bool {
+        fn test_content_media_type_check(instance_string: &str) -> bool {
+            instance_string != "error"
+        }
+
+        let compiled = JSONSchema::options()
+            .with_content_media_type("test_media_type", test_content_media_type_check)
+            .compile(schema)
+            .unwrap();
+        compiled.is_valid(instance)
+    }
+
+    #[test_case(&json!({"contentMediaType": "application/json"}), &json!(false))]
+    #[test_case(&json!({"contentMediaType": "application/json"}), &json!("{"))]
+    fn test_without_content_media_type_support(schema: &Value, instance: &Value) {
+        let compiled = JSONSchema::options()
+            .without_content_media_type_support("application/json")
+            .compile(schema)
+            .unwrap();
+        assert!(compiled.is_valid(instance))
     }
 }
