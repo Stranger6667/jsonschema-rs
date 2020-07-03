@@ -55,6 +55,7 @@
     variant_size_differences
 )]
 mod compilation;
+mod content_media_type;
 mod error;
 mod keywords;
 mod primitive_type;

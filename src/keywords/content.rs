@@ -5,7 +5,7 @@ use crate::{
     keywords::CompilationResult,
     validator::Validate,
 };
-use serde_json::{from_str, Map, Value};
+use serde_json::{Map, Value};
 
 /// Validator for `contentMediaType` keyword.
 pub struct ContentMediaTypeValidator {
@@ -200,13 +200,6 @@ impl ToString for ContentMediaTypeAndEncodingValidator {
     }
 }
 
-pub fn is_json<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
-    if from_str::<Value>(instance_string).is_err() {
-        return error(ValidationError::format(instance, "application/json"));
-    }
-    no_error()
-}
-
 pub fn is_base64<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
     if base64::decode(instance_string).is_err() {
         return error(ValidationError::format(instance, "base64"));
@@ -228,13 +221,13 @@ pub fn from_base64<'a>(
 pub fn compile_media_type(
     schema: &Map<String, Value>,
     subschema: &Value,
-    _: &CompilationContext,
+    context: &CompilationContext,
 ) -> Option<CompilationResult> {
     match subschema {
         Value::String(media_type) => {
-            let func = match media_type.as_str() {
-                "application/json" => is_json,
-                _ => return None,
+            let func = match context.config.content_media_type_check(media_type.as_str()) {
+                Some(f) => f,
+                None => return None,
             };
             if let Some(content_encoding) = schema.get("contentEncoding") {
                 match content_encoding {
@@ -280,5 +273,49 @@ pub fn compile_content_encoding(
             Some(ContentEncodingValidator::compile(content_encoding, func))
         }
         _ => Some(Err(CompilationError::SchemaError)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        error::{error, no_error, ErrorIterator, ValidationError},
+        CompilationConfig, JSONSchema,
+    };
+    use serde_json::{json, Value};
+    use test_case::test_case;
+
+    #[test_case(&json!({"contentMediaType": "application/json"}), &json!("{}") => true)]
+    #[test_case(&json!({"contentMediaType": "application/json"}), &json!("{") => false)]
+    #[test_case(&json!({"contentMediaType": "test_media_type"}), &json!("whatever") => true)]
+    #[test_case(&json!({"contentMediaType": "test_media_type"}), &json!("error") => false)]
+    fn test_custom_content_media_type(schema: &Value, instance: &Value) -> bool {
+        fn test_content_media_type_check<'a>(
+            instance: &'a Value,
+            instance_string: &str,
+        ) -> ErrorIterator<'a> {
+            if instance_string == "error" {
+                error(ValidationError::unexpected(
+                    instance,
+                    "We're intentionally failing",
+                ))
+            } else {
+                no_error()
+            }
+        }
+
+        let mut config = CompilationConfig::default();
+        config.add_content_media_type_check("test_media_type", Some(test_content_media_type_check));
+        let compiled = JSONSchema::compile(schema, Some(config)).unwrap();
+        compiled.is_valid(instance)
+    }
+
+    #[test_case(&json!({"contentMediaType": "application/json"}), &json!(false))]
+    #[test_case(&json!({"contentMediaType": "application/json"}), &json!("{"))]
+    fn test_custom_content_type_set_to_none_removes_the_handler(schema: &Value, instance: &Value) {
+        let mut config = CompilationConfig::default();
+        config.add_content_media_type_check("application/json", None);
+        let compiled = JSONSchema::compile(schema, Some(config)).unwrap();
+        assert!(compiled.is_valid(instance))
     }
 }
