@@ -91,6 +91,8 @@ pub(crate) enum ValidationErrorKind {
     Constant { expected_value: Value },
     /// The input array doesn't contain items conforming to the specified schema.
     Contains,
+    /// Ths input value does not respect the defined contentEncoding
+    ContentEncoding { content_encoding: String },
     /// Ths input value does not respect the defined contentMediaType
     ContentMediaType { content_media_type: String },
     /// The input value doesn't match any of specified options.
@@ -252,6 +254,14 @@ impl<'a> ValidationError<'a> {
         ValidationError {
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Contains,
+        }
+    }
+    pub(crate) fn content_encoding(instance: &'a Value, encoding: &str) -> ValidationError<'a> {
+        ValidationError {
+            instance: Cow::Borrowed(instance),
+            kind: ValidationErrorKind::ContentEncoding {
+                content_encoding: encoding.to_string(),
+            },
         }
     }
     pub(crate) fn content_media_type(instance: &'a Value, media_type: &str) -> ValidationError<'a> {
@@ -454,10 +464,10 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::UnknownReferenceScheme { scheme },
         }
     }
-    pub(crate) fn unexpected(
-        instance: &'a Value,
-        validator_representation: &str,
-    ) -> ValidationError<'a> {
+    /// Unexpected `ValidationError`
+    ///
+    /// This validation error is the only `ValidationError` that can be created by external crates.
+    pub fn unexpected(instance: &'a Value, validator_representation: &str) -> ValidationError<'a> {
         ValidationError {
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Unexpected {
@@ -574,6 +584,9 @@ impl fmt::Display for ValidationError<'_> {
             ),
             ValidationErrorKind::Constant { expected_value } => {
                 write!(f, "'{}' was expected", expected_value)
+            }
+            ValidationErrorKind::ContentEncoding { content_encoding } => {
+                write!(f, "'{}' is not compliant with encoding={}", self.instance, content_encoding)
             }
             ValidationErrorKind::ContentMediaType { content_media_type } => {
                 write!(f, "'{}' is not compliant with media_type={}", self.instance, content_media_type)

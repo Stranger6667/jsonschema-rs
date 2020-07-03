@@ -76,6 +76,7 @@
 #![cfg(not(test))]
 #![allow(clippy::integer_arithmetic, clippy::unwrap_used)]
 mod compilation;
+mod content_encoding;
 mod content_media_type;
 mod error;
 mod keywords;
