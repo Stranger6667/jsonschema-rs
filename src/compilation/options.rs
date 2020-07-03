@@ -1,5 +1,9 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema, DEFAULT_SCOPE},
+    content_encoding::{
+        ContentEncodingCheckType, ContentEncodingConverterType,
+        DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS,
+    },
     content_media_type::{ContentMediaTypeCheckType, DEFAULT_CONTENT_MEDIA_TYPE_CHECKS},
     error::CompilationError,
     resolver::Resolver,
@@ -16,6 +20,8 @@ use std::{borrow::Cow, collections::HashMap, fmt};
 pub struct CompilationOptions {
     draft: Option<schemas::Draft>,
     content_media_type_checks: HashMap<&'static str, Option<ContentMediaTypeCheckType>>,
+    content_encoding_checks_and_converters:
+        HashMap<&'static str, Option<(ContentEncodingCheckType, ContentEncodingConverterType)>>,
 }
 
 impl CompilationOptions {
@@ -130,6 +136,121 @@ impl CompilationOptions {
         self.content_media_type_checks.insert(media_type, None);
         self
     }
+
+    #[inline]
+    fn content_encoding_check_and_converter(
+        &self,
+        content_encoding: &str,
+    ) -> Option<(ContentEncodingCheckType, ContentEncodingConverterType)> {
+        if let Some(value) = self
+            .content_encoding_checks_and_converters
+            .get(content_encoding)
+        {
+            *value
+        } else if let Some(value) =
+            DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS.get(content_encoding)
+        {
+            Some(*value)
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn content_encoding_check(
+        &self,
+        content_encoding: &str,
+    ) -> Option<ContentEncodingCheckType> {
+        if let Some((check, _)) = self.content_encoding_check_and_converter(content_encoding) {
+            Some(check)
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn content_encoding_convert(
+        &self,
+        content_encoding: &str,
+    ) -> Option<ContentEncodingConverterType> {
+        if let Some((_, converter)) = self.content_encoding_check_and_converter(content_encoding) {
+            Some(converter)
+        } else {
+            None
+        }
+    }
+
+    /// Ensure that compiled schema is going to support the provided content encoding.
+    ///
+    /// Arguments:
+    /// * `content_encoding`: Name of the content encoding to support (ie. "base64")
+    /// * `content_encoding_check`: Method checking the validity of the input string
+    ///     according to content encoding.
+    ///     The method should return `true` if the input is valid, `false` otherwise.
+    /// * `content_encoding_converter`: Method converting the input string into a string
+    ///     representation (generally output of the decoding of the content encoding).
+    ///     The method should return:
+    ///     * `Err(ValidationError instance)`: in case of a `jsonschema` crate supported error (obtained via `?` or `From::from` APIs)
+    ///     * `Ok(None)`: if the input string is not valid according to the content encoding
+    ///     * `Ok(Some(content))`: if the input string is valid according to the content encoding, `content` will contain
+    ///         the string representation of the decoded input
+    ///
+    /// Example:
+    /// ```rust
+    /// # use jsonschema::{CompilationOptions, ValidationError};
+    /// # let mut options = CompilationOptions::default();
+    /// // The instance_string contains a number (representing the length of the string)
+    /// // a space and then the string (whose length should match the expectation).
+    /// // Example: "3 The" or "4  123"
+    /// fn check_custom_encoding(instance_string: &str) -> bool {
+    ///     if let Some(first_space_index) = instance_string.find(' ') {
+    ///         if let Ok(value) = instance_string[..first_space_index].parse::<u64>() {
+    ///             return instance_string[(first_space_index + 1)..].chars().count() == value as usize;
+    ///         }
+    ///     }
+    ///     false
+    /// }
+    /// fn converter_custom_encoding(instance_string: &str) -> Result<Option<String>, ValidationError<'static>> {
+    ///     if let Some(first_space_index) = instance_string.find(' ') {
+    ///         if let Ok(value) = instance_string[..first_space_index].parse::<u64>() {
+    ///             if instance_string[(first_space_index + 1)..].chars().count() == value as usize {
+    ///                 return Ok(Some(instance_string[(first_space_index + 1)..].to_string()));
+    ///             }
+    ///         }
+    ///     }
+    ///     Ok(None)
+    /// }
+    /// // Add support for prefix-length-string
+    /// options.with_content_encoding("prefix-length-string", check_custom_encoding, converter_custom_encoding);
+    /// ```
+    pub fn with_content_encoding(
+        &mut self,
+        content_encoding: &'static str,
+        content_encoding_check: ContentEncodingCheckType,
+        content_encoding_converter: ContentEncodingConverterType,
+    ) -> &mut Self {
+        self.content_encoding_checks_and_converters.insert(
+            content_encoding,
+            Some((content_encoding_check, content_encoding_converter)),
+        );
+        self
+    }
+
+    /// Ensure that compiled schema is not supporting the provided content encoding.
+    ///
+    /// ```rust
+    /// # use jsonschema::CompilationOptions;
+    /// # use serde_json::Value;
+    /// # let mut options = CompilationOptions::default();
+    /// // Disable support for base64 (which is supported by jsonschema crate)
+    /// options.without_content_encoding_support("base64");
+    /// ```
+    pub fn without_content_encoding_support(
+        &mut self,
+        content_encoding: &'static str,
+    ) -> &mut Self {
+        self.content_encoding_checks_and_converters
+            .insert(content_encoding, None);
+        self
+    }
 }
 
 impl fmt::Debug for CompilationOptions {
@@ -137,6 +258,10 @@ impl fmt::Debug for CompilationOptions {
         fmt.debug_struct("CompilationConfig")
             .field("draft", &self.draft)
             .field("content_media_type", &self.content_media_type_checks.keys())
+            .field(
+                "content_encoding",
+                &self.content_encoding_checks_and_converters.keys(),
+            )
             .finish()
     }
 }

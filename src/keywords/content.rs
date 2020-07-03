@@ -1,6 +1,7 @@
 //! Validators for `contentMediaType` and `contentEncoding` keywords.
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
+    content_encoding::{ContentEncodingCheckType, ContentEncodingConverterType},
     content_media_type::ContentMediaTypeCheckType,
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::CompilationResult,
@@ -73,15 +74,12 @@ impl ToString for ContentMediaTypeValidator {
 /// Validator for `contentEncoding` keyword.
 pub(crate) struct ContentEncodingValidator {
     encoding: String,
-    func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
+    func: ContentEncodingCheckType,
 }
 
 impl ContentEncodingValidator {
     #[inline]
-    pub(crate) fn compile(
-        encoding: &str,
-        func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
-    ) -> CompilationResult {
+    pub(crate) fn compile(encoding: &str, func: ContentEncodingCheckType) -> CompilationResult {
         Ok(Box::new(ContentEncodingValidator {
             encoding: encoding.to_string(),
             func,
@@ -91,8 +89,8 @@ impl ContentEncodingValidator {
 
 impl Validate for ContentEncodingValidator {
     #[inline]
-    fn is_valid_string(&self, _: &JSONSchema, instance: &Value, instance_value: &str) -> bool {
-        (self.func)(instance, instance_value).next().is_none()
+    fn is_valid_string(&self, _: &JSONSchema, _: &Value, instance_value: &str) -> bool {
+        (self.func)(instance_value)
     }
     #[inline]
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
@@ -110,7 +108,11 @@ impl Validate for ContentEncodingValidator {
         instance: &'a Value,
         instance_value: &'a str,
     ) -> ErrorIterator<'a> {
-        (self.func)(instance, instance_value)
+        if (self.func)(instance_value) {
+            no_error()
+        } else {
+            error(ValidationError::content_encoding(instance, &self.encoding))
+        }
     }
     #[inline]
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
@@ -132,7 +134,7 @@ pub(crate) struct ContentMediaTypeAndEncodingValidator {
     media_type: String,
     encoding: String,
     func: ContentMediaTypeCheckType,
-    converter: for<'a> fn(&'a Value, &str) -> Result<String, ValidationError<'a>>,
+    converter: ContentEncodingConverterType,
 }
 
 impl ContentMediaTypeAndEncodingValidator {
@@ -141,7 +143,7 @@ impl ContentMediaTypeAndEncodingValidator {
         media_type: &str,
         encoding: &str,
         func: ContentMediaTypeCheckType,
-        converter: for<'a> fn(&'a Value, &str) -> Result<String, ValidationError<'a>>,
+        converter: ContentEncodingConverterType,
     ) -> CompilationResult {
         Ok(Box::new(ContentMediaTypeAndEncodingValidator {
             media_type: media_type.to_string(),
@@ -155,10 +157,10 @@ impl ContentMediaTypeAndEncodingValidator {
 /// Decode the input value & check media type
 impl Validate for ContentMediaTypeAndEncodingValidator {
     #[inline]
-    fn is_valid_string(&self, _: &JSONSchema, instance: &Value, instance_value: &str) -> bool {
-        match (self.converter)(instance, instance_value) {
-            Ok(converted) => (self.func)(&converted),
-            Err(_) => false,
+    fn is_valid_string(&self, _: &JSONSchema, _: &Value, instance_value: &str) -> bool {
+        match (self.converter)(instance_value) {
+            Ok(None) | Err(_) => false,
+            Ok(Some(converted)) => (self.func)(&converted),
         }
     }
     #[inline]
@@ -179,8 +181,9 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
     ) -> ErrorIterator<'a> {
         // TODO. Avoid explicit `error` call. It might be done if `converter` will
         // return a proper type
-        match (self.converter)(instance, instance_value) {
-            Ok(converted) => {
+        match (self.converter)(instance_value) {
+            Ok(None) => error(ValidationError::content_encoding(instance, &self.encoding)),
+            Ok(Some(converted)) => {
                 if (self.func)(&converted) {
                     no_error()
                 } else {
@@ -211,23 +214,6 @@ impl ToString for ContentMediaTypeAndEncodingValidator {
     }
 }
 
-pub(crate) fn is_base64<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
-    if base64::decode(instance_string).is_err() {
-        return error(ValidationError::format(instance, "base64"));
-    }
-    no_error()
-}
-
-pub(crate) fn from_base64<'a>(
-    instance: &'a Value,
-    instance_string: &str,
-) -> Result<String, ValidationError<'a>> {
-    match base64::decode(instance_string) {
-        Ok(value) => Ok(String::from_utf8(value)?),
-        Err(_) => Err(ValidationError::format(instance, "base64")),
-    }
-}
-
 #[inline]
 pub(crate) fn compile_media_type(
     schema: &Map<String, Value>,
@@ -243,9 +229,12 @@ pub(crate) fn compile_media_type(
             if let Some(content_encoding) = schema.get("contentEncoding") {
                 match content_encoding {
                     Value::String(content_encoding) => {
-                        let converter = match content_encoding.as_str() {
-                            "base64" => from_base64,
-                            _ => return None,
+                        let converter = match context
+                            .config
+                            .content_encoding_convert(content_encoding.as_str())
+                        {
+                            Some(f) => f,
+                            None => return None,
                         };
                         Some(ContentMediaTypeAndEncodingValidator::compile(
                             media_type,
@@ -268,7 +257,7 @@ pub(crate) fn compile_media_type(
 pub(crate) fn compile_content_encoding(
     schema: &Map<String, Value>,
     subschema: &Value,
-    _: &CompilationContext,
+    context: &CompilationContext,
 ) -> Option<CompilationResult> {
     // Performed during media type validation
     if schema.get("contentMediaType").is_some() {
@@ -277,9 +266,12 @@ pub(crate) fn compile_content_encoding(
     }
     match subschema {
         Value::String(content_encoding) => {
-            let func = match content_encoding.as_str() {
-                "base64" => is_base64,
-                _ => return None,
+            let func = match context
+                .config
+                .content_encoding_check(content_encoding.as_str())
+            {
+                Some(f) => f,
+                None => return None,
             };
             Some(ContentEncodingValidator::compile(content_encoding, func))
         }
@@ -289,12 +281,30 @@ pub(crate) fn compile_content_encoding(
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        error::{error, no_error, ErrorIterator, ValidationError},
-        JSONSchema,
-    };
+    use crate::{error::ValidationError, JSONSchema};
     use serde_json::{json, Value};
     use test_case::test_case;
+    fn converter_custom_encoding(
+        instance_string: &str,
+    ) -> Result<Option<String>, ValidationError<'static>> {
+        if let Some(first_space_index) = instance_string.find(' ') {
+            if let Ok(value) = instance_string[..first_space_index].parse::<u64>() {
+                if instance_string[first_space_index..].chars().count() == value as usize {
+                    return Ok(Some(instance_string[first_space_index..].to_string()));
+                }
+            }
+        }
+        Ok(None)
+    }
+    fn check_custom_encoding(instance_string: &str) -> bool {
+        if let Some(first_space_index) = instance_string.find(' ') {
+            if let Ok(value) = instance_string[..first_space_index].parse::<u64>() {
+                return instance_string[(first_space_index + 1)..].chars().count()
+                    == value as usize;
+            }
+        }
+        false
+    }
 
     #[test_case(&json!({"contentMediaType": "application/json"}), &json!("{}") => true)]
     #[test_case(&json!({"contentMediaType": "application/json"}), &json!("{") => false)]
@@ -320,5 +330,54 @@ mod tests {
             .compile(schema)
             .unwrap();
         assert!(compiled.is_valid(instance))
+    }
+
+    #[test_case(&json!({"contentEncoding": "base64"}), &json!("NDIK") => true)] // `echo "42" | base64` == "NDIK"
+    #[test_case(&json!({"contentEncoding": "base64"}), &json!("a non-base64 string") => false)]
+    #[test_case(&json!({"contentEncoding": "test_content_encoding"}), &json!("whatever") => false)]
+    #[test_case(&json!({"contentEncoding": "test_content_encoding"}), &json!("1 a") => true)]
+    #[test_case(&json!({"contentEncoding": "test_content_encoding"}), &json!("3 some") => false)]
+    fn test_custom_content_encoding(schema: &Value, instance: &Value) -> bool {
+        let compiled = JSONSchema::options()
+            .with_content_encoding(
+                "test_content_encoding",
+                check_custom_encoding,
+                converter_custom_encoding,
+            )
+            .compile(schema)
+            .unwrap();
+        compiled.is_valid(instance)
+    }
+
+    #[test_case(&json!({"contentEncoding": "base64"}), &json!("NDIK"))] // `echo "42" | base64` == "NDIK"
+    #[test_case(&json!({"contentEncoding": "base64"}), &json!("a non-base64 string"))]
+    fn test_custom_content_encoding_set_to_none_removes_the_handler(
+        schema: &Value,
+        instance: &Value,
+    ) {
+        let compiled = JSONSchema::options()
+            .without_content_encoding_support("base64")
+            .compile(schema)
+            .unwrap();
+        assert!(compiled.is_valid(instance))
+    }
+
+    #[test_case("2 {" => false)] // Content Encoding not respected
+    #[test_case("2 {a" => false)] // Content Media Type not respected
+    #[test_case("2 {}" => true)]
+    fn test_custom_media_type_and_encoding(instance: &Value) -> bool {
+        let schema = json!({
+            "contentMediaType": "application/json",
+            "contentEncoding": "prefix-string"
+        });
+        let compiled = JSONSchema::options()
+            .with_content_encoding(
+                "prefix-string",
+                check_custom_encoding,
+                converter_custom_encoding,
+            )
+            .compile(&schema)
+            .unwrap();
+        compiled.is_valid(instance)
     }
 }
