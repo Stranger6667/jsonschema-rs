@@ -1,8 +1,9 @@
 use crate::error::{error, no_error, ErrorIterator, ValidationError};
 use serde_json::Value;
+use std::collections::HashMap;
 
 pub(crate) type ContentTypeCheckType = for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>;
-pub(crate) type ContentTypeConvertType =
+pub(crate) type ContentTypeConverterType =
     for<'a> fn(&'a Value, &str) -> Result<String, ValidationError<'a>>;
 
 pub fn is_base64<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
@@ -22,8 +23,16 @@ pub fn from_base64<'a>(
     }
 }
 
-pub(crate) static CONTENT_TYPE_CHECK_BUILDER: &[(&str, ContentTypeCheckType)] =
-    &[("base64", is_base64)];
+lazy_static::lazy_static! {
+    pub(crate) static ref DEFAULT_CONTENT_ENCODING_CHECKS: HashMap<&'static str, ContentTypeCheckType> = {
+        let mut map: HashMap<&'static str, ContentTypeCheckType> = HashMap::with_capacity(1);
+        map.insert("base64", is_base64);
+        map
+    };
 
-pub(crate) static CONTENT_TYPE_CONVERT_BUILDER: &[(&str, ContentTypeConvertType)] =
-    &[("base64", from_base64)];
+    pub(crate) static ref DEFAULT_CONTENT_ENCODING_CONVERTERS: HashMap<&'static str, ContentTypeConverterType> = {
+        let mut map: HashMap<&'static str, ContentTypeConverterType> = HashMap::with_capacity(1);
+        map.insert("base64", from_base64);
+        map
+    };
+}

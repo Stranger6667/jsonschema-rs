@@ -200,23 +200,6 @@ impl ToString for ContentMediaTypeAndEncodingValidator {
     }
 }
 
-pub fn is_base64<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
-    if base64::decode(instance_string).is_err() {
-        return error(ValidationError::format(instance, "base64"));
-    }
-    no_error()
-}
-
-pub fn from_base64<'a>(
-    instance: &'a Value,
-    instance_string: &str,
-) -> Result<String, ValidationError<'a>> {
-    match base64::decode(instance_string) {
-        Ok(value) => Ok(String::from_utf8(value)?),
-        Err(_) => Err(ValidationError::format(instance, "base64")),
-    }
-}
-
 #[inline]
 pub fn compile_media_type(
     schema: &Map<String, Value>,
@@ -232,9 +215,12 @@ pub fn compile_media_type(
             if let Some(content_encoding) = schema.get("contentEncoding") {
                 match content_encoding {
                     Value::String(content_encoding) => {
-                        let converter = match content_encoding.as_str() {
-                            "base64" => from_base64,
-                            _ => return None,
+                        let converter = match context
+                            .config
+                            .content_encoding_convert(content_encoding.as_str())
+                        {
+                            Some(f) => f,
+                            None => return None,
                         };
                         Some(ContentMediaTypeAndEncodingValidator::compile(
                             media_type,
@@ -257,7 +243,7 @@ pub fn compile_media_type(
 pub fn compile_content_encoding(
     schema: &Map<String, Value>,
     subschema: &Value,
-    _: &CompilationContext,
+    context: &CompilationContext,
 ) -> Option<CompilationResult> {
     // Performed during media type validation
     if schema.get("contentMediaType").is_some() {
@@ -266,9 +252,12 @@ pub fn compile_content_encoding(
     }
     match subschema {
         Value::String(content_encoding) => {
-            let func = match content_encoding.as_str() {
-                "base64" => is_base64,
-                _ => return None,
+            let func = match context
+                .config
+                .content_encoding_check(content_encoding.as_str())
+            {
+                Some(f) => f,
+                None => return None,
             };
             Some(ContentEncodingValidator::compile(content_encoding, func))
         }
@@ -315,6 +304,44 @@ mod tests {
     fn test_custom_content_type_set_to_none_removes_the_handler(schema: &Value, instance: &Value) {
         let mut config = CompilationConfig::default();
         config.add_content_media_type_check("application/json", None);
+        let compiled = JSONSchema::compile(schema, Some(config)).unwrap();
+        assert!(compiled.is_valid(instance))
+    }
+
+    #[test_case(&json!({"contentEncoding": "base64"}), &json!("NDIK") => true)] // `echo "42" | base64` == "NDIK"
+    #[test_case(&json!({"contentEncoding": "base64"}), &json!("a non-base64 string") => false)]
+    #[test_case(&json!({"contentEncoding": "test_content_encoding"}), &json!("whatever") => true)]
+    #[test_case(&json!({"contentEncoding": "test_content_encoding"}), &json!("error") => false)]
+    fn test_custom_content_encoding(schema: &Value, instance: &Value) -> bool {
+        fn test_content_encoding_check<'a>(
+            instance: &'a Value,
+            instance_string: &str,
+        ) -> ErrorIterator<'a> {
+            if instance_string == "error" {
+                error(ValidationError::unexpected(
+                    instance,
+                    "We're intentionally failing",
+                ))
+            } else {
+                no_error()
+            }
+        }
+
+        let mut config = CompilationConfig::default();
+        config
+            .add_content_encoding_check("test_content_encoding", Some(test_content_encoding_check));
+        let compiled = JSONSchema::compile(schema, Some(config)).unwrap();
+        compiled.is_valid(instance)
+    }
+
+    #[test_case(&json!({"contentEncoding": "base64"}), &json!("NDIK"))] // `echo "42" | base64` == "NDIK"
+    #[test_case(&json!({"contentEncoding": "base64"}), &json!("a non-base64 string"))]
+    fn test_custom_content_encoding_set_to_none_removes_the_handler(
+        schema: &Value,
+        instance: &Value,
+    ) {
+        let mut config = CompilationConfig::default();
+        config.add_content_encoding_check("base64", None);
         let compiled = JSONSchema::compile(schema, Some(config)).unwrap();
         assert!(compiled.is_valid(instance))
     }
