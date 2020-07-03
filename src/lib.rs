@@ -7,25 +7,50 @@
 //!   - JSON Schema drafts 6, 7 (all test cases);
 //!   - Loading remote documents via HTTP(S);
 //!
-//! ## Example:
-//!
+//! ## Usage Examples:
+//! A schema can be compiled with two main flavours:
+//!  * using default configurations
 //! ```rust
-//! use jsonschema::{JSONSchema, Draft, CompilationError};
+//! # use jsonschema::{CompilationError, Draft, JSONSchema};
+//! # use serde_json::json;
+//! # fn foo() -> Result<(), CompilationError> {
+//! # let schema = json!({"maxLength": 5});
+//! let compiled_schema = JSONSchema::compile(&schema)?;
+//! # Ok(())
+//! # }
+//! ```
+//!  * using custom configurations (such as define a Draft version)
+//! ```rust
+//! # use jsonschema::{CompilationError, Draft, JSONSchema};
+//! # use serde_json::json;
+//! # fn foo() -> Result<(), CompilationError> {
+//! # let schema = json!({"maxLength": 5});
+//! let compiled_schema = JSONSchema::options()
+//!     .with_draft(Draft::Draft7)
+//!     .compile(&schema)?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Example (CLI tool to highlight print errors)
+//! ```rust
+//! use jsonschema::{CompilationError, Draft, JSONSchema};
 //! use serde_json::json;
 //!
-//!fn main() -> Result<(), CompilationError> {
-//!    let schema = json!({"maxLength": 5});
-//!    let instance = json!("foo");
-//!    let compiled = JSONSchema::compile(&schema, Some(Draft::Draft7))?;
-//!    let result = compiled.validate(&instance);
-//!    if let Err(errors) = result {
-//!        for error in errors {
-//!            println!("Validation error: {}", error)
-//!        }
-//!    }
-//!    Ok(())
+//! fn main() -> Result<(), CompilationError> {
+//!     let schema = json!({"maxLength": 5});
+//!     let instance = json!("foo");
+//!     let compiled = JSONSchema::options()
+//!         .with_draft(Draft::Draft7)
+//!         .compile(&schema)?;
+//!     let result = compiled.validate(&instance);
+//!     if let Err(errors) = result {
+//!         for error in errors {
+//!             println!("Validation error: {}", error)
+//!         }
+//!     }
+//!     Ok(())
 //! }
-//!
 //! ```
 #![warn(
     clippy::cast_possible_truncation,
@@ -57,7 +82,7 @@ mod primitive_type;
 mod resolver;
 mod schemas;
 mod validator;
-pub use compilation::JSONSchema;
+pub use compilation::{options::CompilationOptions, JSONSchema};
 pub use error::{CompilationError, ErrorIterator, ValidationError};
 pub use schemas::Draft;
 use serde_json::Value;
@@ -76,7 +101,7 @@ use serde_json::Value;
 #[must_use]
 #[inline]
 pub fn is_valid(schema: &Value, instance: &Value) -> bool {
-    let compiled = JSONSchema::compile(schema, None).expect("Invalid schema");
+    let compiled = JSONSchema::compile(schema).expect("Invalid schema");
     compiled.is_valid(instance)
 }
 
@@ -86,7 +111,7 @@ mod tests_util {
     use serde_json::Value;
 
     pub(crate) fn is_not_valid(schema: Value, instance: Value) {
-        let compiled = JSONSchema::compile(&schema, None).unwrap();
+        let compiled = JSONSchema::compile(&schema).unwrap();
         assert!(!compiled.is_valid(&instance), "{} should not be valid");
         assert!(
             compiled.validate(&instance).is_err(),
@@ -97,7 +122,7 @@ mod tests_util {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::is_valid;
     use serde_json::json;
 
     #[test]

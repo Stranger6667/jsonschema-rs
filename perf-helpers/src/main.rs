@@ -15,7 +15,7 @@ fn main() -> Result<(), Error> {
     eprintln!("Instance {}", instance);
     eprintln!("Number of Iterations {}", number_of_iterations);
 
-    let compiled = JSONSchema::compile(&schema, None).unwrap();
+    let compiled = JSONSchema::compile(&schema).unwrap();
     for _ in 0..number_of_iterations {
         compiled.is_valid(&instance);
     }

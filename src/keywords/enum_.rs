@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{CompilationContext, JSONSchema},
+    compilation::{context::CompilationContext, JSONSchema},
     error::{CompilationError, ValidationError},
     keywords::CompilationResult,
     validator::Validate,

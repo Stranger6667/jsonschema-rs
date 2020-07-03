@@ -14,7 +14,10 @@ fn test_draft(_server_address: &str, test_case: TestCase) {
         _ => panic!("Unsupported draft"),
     };
 
-    let compiled = JSONSchema::compile(&test_case.schema, Some(draft_version)).unwrap();
+    let compiled = JSONSchema::options()
+        .with_draft(draft_version)
+        .compile(&test_case.schema)
+        .unwrap();
 
     let result = compiled.validate(&test_case.instance);
 

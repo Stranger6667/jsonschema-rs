@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use jsonschema::*;
+use jsonschema::JSONSchema;
 use jsonschema_valid::schemas;
 use serde_json::{from_str, json, Value};
 use std::{fs::File, io::Read, path::Path};
@@ -32,9 +32,9 @@ macro_rules! bench {
           #[allow(dead_code)]
           fn [<bench_ $name>](c: &mut Criterion) {
               let schema = json!($schema);
-              let validator = JSONSchema::compile(&schema, None).unwrap();
+              let validator = JSONSchema::compile(&schema).unwrap();
               let suffix = strip_characters(stringify!($schema));
-              c.bench_function(format!("jsonschema-rs {} compile {}", $name, suffix).as_str(), |b| b.iter(|| JSONSchema::compile(&schema, None).unwrap()));
+              c.bench_function(format!("jsonschema-rs {} compile {}", $name, suffix).as_str(), |b| b.iter(|| JSONSchema::compile(&schema).unwrap()));
               $(
                    let instance = black_box(json!($valid));
                    assert!(validator.is_valid(&instance));
@@ -62,9 +62,9 @@ macro_rules! bench {
         paste::item! {
           fn [<bench_ $name>](c: &mut Criterion) {
               let schema = json!($schema);
-              let validator = JSONSchema::compile(&schema, None).unwrap();
+              let validator = JSONSchema::compile(&schema).unwrap();
               let suffix = strip_characters(stringify!($schema));
-              c.bench_function(format!("jsonschema-rs {} compile {}", $name, suffix).as_str(), |b| b.iter(|| JSONSchema::compile(&schema, None).unwrap()));
+              c.bench_function(format!("jsonschema-rs {} compile {}", $name, suffix).as_str(), |b| b.iter(|| JSONSchema::compile(&schema).unwrap()));
               $(
                    let instance = black_box(json!($invalid));
                    assert!(!validator.is_valid(&instance));
@@ -85,9 +85,9 @@ fn big_schema(c: &mut Criterion) {
     let instance = black_box(read_json("benches/canada.json"));
 
     // jsonschema
-    let validator = JSONSchema::compile(&schema, None).unwrap();
+    let validator = JSONSchema::compile(&schema).unwrap();
     c.bench_function("compare jsonschema-rs big schema compile", |b| {
-        b.iter(|| JSONSchema::compile(&schema, None).unwrap())
+        b.iter(|| JSONSchema::compile(&schema).unwrap())
     });
     c.bench_function("compare jsonschema-rs big schema is_valid", |b| {
         b.iter(|| validator.is_valid(&instance))
@@ -130,9 +130,9 @@ fn small_schema(c: &mut Criterion) {
         black_box(json!([10, "world", [1, "a", true], {"a": "a", "b": "b", "c": "xy"}, "str", 5]));
 
     // jsonschema
-    let validator = JSONSchema::compile(&schema, None).unwrap();
+    let validator = JSONSchema::compile(&schema).unwrap();
     c.bench_function("compare jsonschema-rs small schema compile", |b| {
-        b.iter(|| JSONSchema::compile(&schema, None).unwrap())
+        b.iter(|| JSONSchema::compile(&schema).unwrap())
     });
     c.bench_function("compare jsonschema-rs small schema is_valid valid", |b| {
         b.iter(|| validator.is_valid(&valid))
