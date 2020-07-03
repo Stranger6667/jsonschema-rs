@@ -1,5 +1,5 @@
 use json_schema_test_suite::{json_schema_test_suite, TestCase};
-use jsonschema::{Draft, JSONSchema};
+use jsonschema::{CompilationConfig, Draft, JSONSchema};
 
 #[json_schema_test_suite("tests/suite", "draft4", {"optional_bignum_0_0", "optional_bignum_2_0"})]
 #[json_schema_test_suite("tests/suite", "draft6")]
@@ -14,7 +14,10 @@ fn test_draft(_server_address: &str, test_case: TestCase) {
         _ => panic!("Unsupported draft"),
     };
 
-    let compiled = JSONSchema::compile(&test_case.schema, Some(draft_version)).unwrap();
+    let mut schema_compile_config = CompilationConfig::default();
+    schema_compile_config.set_draft(draft_version);
+
+    let compiled = JSONSchema::compile(&test_case.schema, Some(schema_compile_config)).unwrap();
 
     let result = compiled.validate(&test_case.instance);
 

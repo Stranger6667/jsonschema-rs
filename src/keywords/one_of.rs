@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{compile_validators, CompilationContext, JSONSchema},
+    compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::{format_vec_of_validators, CompilationResult, Validators},
     validator::Validate,

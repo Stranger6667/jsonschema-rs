@@ -1,6 +1,6 @@
 //! Validators for `contentMediaType` and `contentEncoding` keywords.
 use crate::{
-    compilation::{CompilationContext, JSONSchema},
+    compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     validator::Validate,

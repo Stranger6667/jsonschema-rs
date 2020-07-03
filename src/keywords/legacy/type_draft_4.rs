@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{CompilationContext, JSONSchema},
+    compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::{type_, CompilationResult},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},

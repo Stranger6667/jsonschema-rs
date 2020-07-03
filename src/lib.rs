@@ -10,13 +10,15 @@
 //! ## Example:
 //!
 //! ```rust
-//! use jsonschema::{JSONSchema, Draft, CompilationError};
+//! use jsonschema::{CompilationError, Draft, JSONSchema, CompilationConfig};
 //! use serde_json::json;
 //!
 //!fn main() -> Result<(), CompilationError> {
 //!    let schema = json!({"maxLength": 5});
 //!    let instance = json!("foo");
-//!    let compiled = JSONSchema::compile(&schema, Some(Draft::Draft7))?;
+//!    let mut schema_compile_config = CompilationConfig::default();
+//!    schema_compile_config.set_draft(Draft::Draft7);
+//!    let compiled = JSONSchema::compile(&schema, Some(schema_compile_config))?;
 //!    let result = compiled.validate(&instance);
 //!    if let Err(errors) = result {
 //!        for error in errors {
@@ -59,7 +61,7 @@ mod primitive_type;
 mod resolver;
 mod schemas;
 mod validator;
-pub use compilation::JSONSchema;
+pub use compilation::{config::CompilationConfig, JSONSchema};
 pub use error::{CompilationError, ErrorIterator, ValidationError};
 pub use schemas::Draft;
 use serde_json::Value;

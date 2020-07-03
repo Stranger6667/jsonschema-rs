@@ -1,5 +1,5 @@
 use crate::{
-    compilation::CompilationContext,
+    compilation::context::CompilationContext,
     keywords::{exclusive_minimum, minimum, CompilationResult},
 };
 use serde_json::{Map, Value};

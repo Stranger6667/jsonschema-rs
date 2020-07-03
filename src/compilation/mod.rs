@@ -1,6 +1,9 @@
 //! Schema compilation.
 //! The main idea is to compile the input JSON Schema to a validators tree that will contain
 //! everything needed to perform such validation in runtime.
+pub(crate) mod config;
+pub(crate) mod context;
+
 use crate::{
     error::{CompilationError, ErrorIterator},
     keywords,
@@ -8,19 +11,21 @@ use crate::{
     resolver::Resolver,
     schemas,
 };
+use config::CompilationConfig;
+use context::CompilationContext;
 use serde_json::Value;
 use std::borrow::Cow;
-use url::{ParseError, Url};
+use url::Url;
 
 pub const DEFAULT_ROOT_URL: &str = "json-schema:///";
 
 /// The structure that holds a JSON Schema compiled into a validation tree
 #[derive(Debug)]
 pub struct JSONSchema<'a> {
-    pub(crate) draft: schemas::Draft,
     pub(crate) schema: &'a Value,
     pub(crate) validators: Validators,
     pub(crate) resolver: Resolver<'a>,
+    pub(crate) context: CompilationContext<'a>,
 }
 
 lazy_static::lazy_static! {
@@ -31,30 +36,33 @@ impl<'a> JSONSchema<'a> {
     /// Compile the input schema into a validation tree
     pub fn compile(
         schema: &'a Value,
-        draft: Option<schemas::Draft>,
+        config: Option<CompilationConfig>,
     ) -> Result<JSONSchema<'a>, CompilationError> {
         // Draft is detected in the following precedence order:
         //   - Explicitly specified;
         //   - $schema field in the document;
         //   - Draft7;
-        let draft = draft.unwrap_or_else(|| {
-            schemas::draft_from_schema(schema).unwrap_or(schemas::Draft::Draft7)
-        });
+
+        let mut config = config.unwrap_or_default();
+        config.set_draft_if_missing(schema);
+        let processed_config: Cow<'_, CompilationConfig> = Cow::Owned(config);
+        let draft = processed_config.draft();
+
         let scope = match schemas::id_of(draft, schema) {
             Some(url) => url::Url::parse(url)?,
             None => DEFAULT_SCOPE.clone(),
         };
         let resolver = Resolver::new(draft, &scope, schema)?;
-        let context = CompilationContext::new(scope, draft);
+        let context = CompilationContext::new(scope, processed_config);
 
         let mut validators = compile_validators(schema, &context)?;
         validators.shrink_to_fit();
 
         Ok(JSONSchema {
-            draft,
             schema,
             resolver,
             validators,
+            context,
         })
     }
 
@@ -85,53 +93,6 @@ impl<'a> JSONSchema<'a> {
     }
 }
 
-/// Context holds information about used draft and current scope.
-#[derive(Debug)]
-pub struct CompilationContext<'a> {
-    pub(crate) scope: Cow<'a, Url>,
-    pub(crate) draft: schemas::Draft,
-}
-
-impl<'a> CompilationContext<'a> {
-    pub(crate) fn new(scope: Url, draft: schemas::Draft) -> Self {
-        CompilationContext {
-            scope: Cow::Owned(scope),
-            draft,
-        }
-    }
-
-    #[allow(clippy::doc_markdown)]
-    /// Push a new scope. All URLs built from the new context will have this scope in them.
-    /// Before push:
-    ///    scope = http://example.com/
-    ///    build_url("#/definitions/foo") -> "http://example.com/#/definitions/foo"
-    /// After push this schema - {"$id": "folder/", ...}
-    ///    scope = http://example.com/folder/
-    ///    build_url("#/definitions/foo") -> "http://example.com/folder/#/definitions/foo"
-    ///
-    /// In other words it keeps track of sub-folders during compilation.
-    #[inline]
-    pub(crate) fn push(&'a self, schema: &Value) -> Result<Self, ParseError> {
-        if let Some(id) = schemas::id_of(self.draft, schema) {
-            let scope = Url::options().base_url(Some(&self.scope)).parse(id)?;
-            Ok(CompilationContext {
-                scope: Cow::Owned(scope),
-                draft: self.draft,
-            })
-        } else {
-            Ok(CompilationContext {
-                scope: Cow::Borrowed(self.scope.as_ref()),
-                draft: self.draft,
-            })
-        }
-    }
-
-    /// Build a new URL. Used for `ref` compilation to keep their full paths.
-    pub(crate) fn build_url(&self, reference: &str) -> Result<Url, ParseError> {
-        Url::options().base_url(Some(&self.scope)).parse(reference)
-    }
-}
-
 /// Compile JSON schema into a tree of validators.
 #[inline]
 pub fn compile_validators(
@@ -154,7 +115,7 @@ pub fn compile_validators(
             } else {
                 let mut validators = Vec::with_capacity(object.len());
                 for (keyword, subschema) in object {
-                    if let Some(compilation_func) = context.draft.get_validator(keyword) {
+                    if let Some(compilation_func) = context.config.draft().get_validator(keyword) {
                         if let Some(validator) = compilation_func(object, subschema, &context) {
                             validators.push(validator?)
                         }

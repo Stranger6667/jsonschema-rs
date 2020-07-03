@@ -1,11 +1,12 @@
 use crate::{
-    compilation::{compile_validators, CompilationContext, JSONSchema},
+    compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, ErrorIterator, ValidationError},
     keywords::{CompilationResult, Validators},
     validator::Validate,
 };
 use parking_lot::RwLock;
 use serde_json::{Map, Value};
+use std::borrow::Cow;
 use url::Url;
 
 pub struct RefValidator {
@@ -32,11 +33,12 @@ impl RefValidator {
     #[inline]
     fn ensure_validators<'a>(&self, schema: &'a JSONSchema) -> Result<(), ValidationError<'a>> {
         if self.validators.read().is_none() {
-            let (scope, resolved) =
-                schema
-                    .resolver
-                    .resolve_fragment(schema.draft, &self.reference, schema.schema)?;
-            let context = CompilationContext::new(scope, schema.draft);
+            let (scope, resolved) = schema.resolver.resolve_fragment(
+                schema.context.config.draft(),
+                &self.reference,
+                schema.schema,
+            )?;
+            let context = CompilationContext::new(scope, Cow::Borrowed(&schema.context.config));
             let validators = compile_validators(&resolved, &context)?;
 
             // Inject the validators into self.validators
