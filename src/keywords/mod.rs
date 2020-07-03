@@ -161,7 +161,7 @@ mod tests {
     #[test_case(json!({"type": ["integer", "null"], "$schema": "http://json-schema.org/draft-04/schema#"}), "type: [integer, null]")]
     #[test_case(json!({"uniqueItems": true}), "uniqueItems: true")]
     fn debug_representation(schema: Value, expected: &str) {
-        let compiled = JSONSchema::compile(&schema, None).unwrap();
+        let compiled = JSONSchema::compile(&schema).unwrap();
         assert_eq!(format!("{:?}", compiled.validators[0]), expected);
     }
 
@@ -194,7 +194,7 @@ mod tests {
     #[test_case(json!({"type": ["integer", "string"]}), json!(null), r#"'null' is not of types 'integer', 'string'"#)]
     #[test_case(json!({"uniqueItems": true}), json!([1, 1]), r#"'[1,1]' has non-unique elements"#)]
     fn error_message(schema: Value, instance: Value, expected: &str) {
-        let compiled = JSONSchema::compile(&schema, None).unwrap();
+        let compiled = JSONSchema::compile(&schema).unwrap();
         let errors: Vec<_> = compiled
             .validate(&instance)
             .expect_err(&format!(
@@ -236,7 +236,7 @@ mod tests {
     #[test_case(json!({"propertyNames": {"maxLength": 3}}))]
     fn is_valid_another_type(schema: Value) {
         let instance = json!(null);
-        let compiled = JSONSchema::compile(&schema, None).unwrap();
+        let compiled = JSONSchema::compile(&schema).unwrap();
         assert!(compiled.is_valid(&instance))
     }
 
@@ -244,7 +244,7 @@ mod tests {
     #[test_case(json!({"additionalItems": false, "items": true}), json!([]))]
     fn is_valid(schema: Value, instance: Value) {
         let data = json!(instance);
-        let compiled = JSONSchema::compile(&schema, None).unwrap();
+        let compiled = JSONSchema::compile(&schema).unwrap();
         assert!(compiled.is_valid(&data))
     }
 }

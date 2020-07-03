@@ -1,26 +1,30 @@
 //! Schema compilation.
 //! The main idea is to compile the input JSON Schema to a validators tree that will contain
 //! everything needed to perform such validation in runtime.
+pub(crate) mod context;
+pub(crate) mod options;
+
 use crate::{
     error::{CompilationError, ErrorIterator},
     keywords,
     keywords::Validators,
     resolver::Resolver,
-    schemas,
 };
+use context::CompilationContext;
+use options::CompilationOptions;
 use serde_json::Value;
-use std::borrow::Cow;
-use url::{ParseError, Url};
+
+use url::Url;
 
 pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
 
 /// The structure that holds a JSON Schema compiled into a validation tree
 #[derive(Debug)]
 pub struct JSONSchema<'a> {
-    pub(crate) draft: schemas::Draft,
     pub(crate) schema: &'a Value,
     pub(crate) validators: Validators,
     pub(crate) resolver: Resolver<'a>,
+    pub(crate) context: CompilationContext<'a>,
 }
 
 lazy_static::lazy_static! {
@@ -28,34 +32,29 @@ lazy_static::lazy_static! {
 }
 
 impl<'a> JSONSchema<'a> {
-    /// Compile the input schema into a validation tree
-    pub fn compile(
-        schema: &'a Value,
-        draft: Option<schemas::Draft>,
-    ) -> Result<JSONSchema<'a>, CompilationError> {
-        // Draft is detected in the following precedence order:
-        //   - Explicitly specified;
-        //   - $schema field in the document;
-        //   - Draft7;
-        let draft = draft.unwrap_or_else(|| {
-            schemas::draft_from_schema(schema).unwrap_or(schemas::Draft::Draft7)
-        });
-        let scope = match schemas::id_of(draft, schema) {
-            Some(url) => url::Url::parse(url)?,
-            None => DEFAULT_SCOPE.clone(),
-        };
-        let resolver = Resolver::new(draft, &scope, schema)?;
-        let context = CompilationContext::new(scope, draft);
+    /// Return a default `CompilationOptions` that can configure
+    /// `JSONSchema` compilaton flow.
+    ///
+    /// Using options you will be able to configure the draft version
+    /// to use during `JSONSchema` compilation
+    ///
+    /// Example of usage:
+    /// ```rust
+    /// # use crate::jsonschema::{Draft, JSONSchema};
+    /// # let schema = serde_json::json!({});
+    /// let maybe_jsonschema: Result<JSONSchema, _> = JSONSchema::options()
+    ///     .with_draft(Draft::Draft7)
+    ///     .compile(&schema);
+    /// ```
+    pub fn options() -> CompilationOptions {
+        CompilationOptions::default()
+    }
 
-        let mut validators = compile_validators(schema, &context)?;
-        validators.shrink_to_fit();
-
-        Ok(JSONSchema {
-            draft,
-            schema,
-            resolver,
-            validators,
-        })
+    /// Compile the input schema into a validation tree.
+    ///
+    /// The method is equivalent to `JSONSchema::options().compile(schema)`
+    pub fn compile(schema: &'a Value) -> Result<JSONSchema<'a>, CompilationError> {
+        Self::options().compile(schema)
     }
 
     /// Run validation against `instance` and return an iterator over `ValidationError` in the error case.
@@ -85,53 +84,6 @@ impl<'a> JSONSchema<'a> {
     }
 }
 
-/// Context holds information about used draft and current scope.
-#[derive(Debug)]
-pub(crate) struct CompilationContext<'a> {
-    pub(crate) scope: Cow<'a, Url>,
-    pub(crate) draft: schemas::Draft,
-}
-
-impl<'a> CompilationContext<'a> {
-    pub(crate) fn new(scope: Url, draft: schemas::Draft) -> Self {
-        CompilationContext {
-            scope: Cow::Owned(scope),
-            draft,
-        }
-    }
-
-    #[allow(clippy::doc_markdown)]
-    /// Push a new scope. All URLs built from the new context will have this scope in them.
-    /// Before push:
-    ///    scope = http://example.com/
-    ///    build_url("#/definitions/foo") -> "http://example.com/#/definitions/foo"
-    /// After push this schema - {"$id": "folder/", ...}
-    ///    scope = http://example.com/folder/
-    ///    build_url("#/definitions/foo") -> "http://example.com/folder/#/definitions/foo"
-    ///
-    /// In other words it keeps track of sub-folders during compilation.
-    #[inline]
-    pub(crate) fn push(&'a self, schema: &Value) -> Result<Self, ParseError> {
-        if let Some(id) = schemas::id_of(self.draft, schema) {
-            let scope = Url::options().base_url(Some(&self.scope)).parse(id)?;
-            Ok(CompilationContext {
-                scope: Cow::Owned(scope),
-                draft: self.draft,
-            })
-        } else {
-            Ok(CompilationContext {
-                scope: Cow::Borrowed(self.scope.as_ref()),
-                draft: self.draft,
-            })
-        }
-    }
-
-    /// Build a new URL. Used for `ref` compilation to keep their full paths.
-    pub(crate) fn build_url(&self, reference: &str) -> Result<Url, ParseError> {
-        Url::options().base_url(Some(&self.scope)).parse(reference)
-    }
-}
-
 /// Compile JSON schema into a tree of validators.
 #[inline]
 pub(crate) fn compile_validators(
@@ -154,7 +106,7 @@ pub(crate) fn compile_validators(
             } else {
                 let mut validators = Vec::with_capacity(object.len());
                 for (keyword, subschema) in object {
-                    if let Some(compilation_func) = context.draft.get_validator(keyword) {
+                    if let Some(compilation_func) = context.config.draft().get_validator(keyword) {
                         if let Some(validator) = compilation_func(object, subschema, &context) {
                             validators.push(validator?)
                         }
@@ -169,9 +121,9 @@ pub(crate) fn compile_validators(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::error::ValidationError;
-    use serde_json::*;
+    use super::JSONSchema;
+    use crate::{error::ValidationError, schemas};
+    use serde_json::{from_str, json, Value};
     use std::{borrow::Cow, fs::File, io::Read, path::Path};
     use url::Url;
 
@@ -189,7 +141,7 @@ mod tests {
     fn only_keyword() {
         // When only one keyword is specified
         let schema = json!({"type": "string"});
-        let compiled = JSONSchema::compile(&schema, None).unwrap();
+        let compiled = JSONSchema::compile(&schema).unwrap();
         let value1 = json!("AB");
         let value2 = json!(1);
         // And only this validator
@@ -201,7 +153,7 @@ mod tests {
     #[test]
     fn resolve_ref() {
         let schema = load("tests/suite/tests/draft7/ref.json", 4);
-        let compiled = JSONSchema::compile(&schema, None).unwrap();
+        let compiled = JSONSchema::compile(&schema).unwrap();
         let url = Url::parse("json-schema:///#/definitions/a").unwrap();
         if let (resource, Cow::Borrowed(resolved)) = compiled
             .resolver
@@ -217,7 +169,7 @@ mod tests {
     fn validate_ref() {
         let schema = load("tests/suite/tests/draft7/ref.json", 1);
         let value = json!({"bar": 3});
-        let compiled = JSONSchema::compile(&schema, None).unwrap();
+        let compiled = JSONSchema::compile(&schema).unwrap();
         assert!(compiled.validate(&value).is_ok());
         let value = json!({"bar": true});
         assert!(compiled.validate(&value).is_err());
@@ -226,7 +178,7 @@ mod tests {
     #[test]
     fn wrong_schema_type() {
         let schema = json!([1]);
-        let compiled = JSONSchema::compile(&schema, None);
+        let compiled = JSONSchema::compile(&schema);
         assert!(compiled.is_err());
     }
 
@@ -234,7 +186,7 @@ mod tests {
     fn multiple_errors() {
         let schema = json!({"minProperties": 2, "propertyNames": {"minLength": 3}});
         let value = json!({"a": 3});
-        let compiled = JSONSchema::compile(&schema, None).unwrap();
+        let compiled = JSONSchema::compile(&schema).unwrap();
         let result = compiled.validate(&value);
         let errors: Vec<ValidationError> = result.unwrap_err().collect();
         assert_eq!(errors.len(), 2);

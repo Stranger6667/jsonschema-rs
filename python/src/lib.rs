@@ -44,19 +44,15 @@ impl From<JSONSchemaError> for PyErr {
     }
 }
 
-fn get_draft(draft: Option<u8>) -> PyResult<Draft> {
-    if let Some(value) = draft {
-        match value {
-            DRAFT4 => Ok(jsonschema::Draft::Draft4),
-            DRAFT6 => Ok(jsonschema::Draft::Draft6),
-            DRAFT7 => Ok(jsonschema::Draft::Draft7),
-            _ => Err(exceptions::ValueError::py_err(format!(
-                "Unknown draft: {}",
-                value
-            ))),
-        }
-    } else {
-        Ok(jsonschema::Draft::default())
+fn get_draft(draft: u8) -> PyResult<Draft> {
+    match draft {
+        DRAFT4 => Ok(jsonschema::Draft::Draft4),
+        DRAFT6 => Ok(jsonschema::Draft::Draft6),
+        DRAFT7 => Ok(jsonschema::Draft::Draft7),
+        _ => Err(exceptions::ValueError::py_err(format!(
+            "Unknown draft: {}",
+            draft
+        ))),
     }
 }
 
@@ -72,11 +68,15 @@ fn get_draft(draft: Option<u8>) -> PyResult<Draft> {
 #[pyfunction]
 #[text_signature = "(schema, instance, draft=None)"]
 fn is_valid(schema: &PyAny, instance: &PyAny, draft: Option<u8>) -> PyResult<bool> {
-    let draft = get_draft(draft).map(Some)?;
     let schema = ser::to_value(schema)?;
     let instance = ser::to_value(instance)?;
-    let compiled =
-        jsonschema::JSONSchema::compile(&schema, draft).map_err(JSONSchemaError::Compilation)?;
+    let mut options = jsonschema::JSONSchema::options();
+    if let Some(raw_draft_version) = draft {
+        options.with_draft(get_draft(raw_draft_version)?);
+    }
+    let compiled = options
+        .compile(&schema)
+        .map_err(JSONSchemaError::Compilation)?;
     Ok(compiled.is_valid(&instance))
 }
 
@@ -100,13 +100,17 @@ struct JSONSchema {
 impl JSONSchema {
     #[new]
     fn new(schema: &PyAny, draft: Option<u8>) -> PyResult<Self> {
-        let draft = get_draft(draft).map(Some)?;
         let raw_schema = ser::to_value(schema)?;
+        let mut options = jsonschema::JSONSchema::options();
+        if let Some(raw_draft_version) = draft {
+            options.with_draft(get_draft(raw_draft_version)?);
+        }
         // Currently, it is the simplest way to pass a reference to `JSONSchema`
         // It is cleaned up in the `Drop` implementation
         let schema: &'static Value = Box::leak(Box::new(raw_schema));
         Ok(JSONSchema {
-            schema: jsonschema::JSONSchema::compile(schema, draft)
+            schema: options
+                .compile(schema)
                 .map_err(JSONSchemaError::Compilation)?,
             raw_schema: schema,
         })

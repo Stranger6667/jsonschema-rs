@@ -1,4 +1,4 @@
-use crate::{compilation::CompilationContext, keywords};
+use crate::{compilation::context::CompilationContext, keywords};
 use serde_json::{Map, Value};
 
 /// JSON Schema Draft version

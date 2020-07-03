@@ -1,6 +1,6 @@
 //! Validator for `format` keyword.
 use crate::{
-    compilation::{CompilationContext, JSONSchema},
+    compilation::{context::CompilationContext, JSONSchema},
     error::{no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
@@ -163,33 +163,34 @@ pub(crate) fn compile(
     context: &CompilationContext,
 ) -> Option<CompilationResult> {
     if let Value::String(format) = schema {
+        let draft_version = context.config.draft();
         match format.as_str() {
             "date-time" => Some(DateTimeValidator::compile()),
             "date" => Some(DateValidator::compile()),
             "email" => Some(EmailValidator::compile()),
             "hostname" => Some(HostnameValidator::compile()),
             "idn-email" => Some(IDNEmailValidator::compile()),
-            "idn-hostname" if context.draft == Draft::Draft7 => {
+            "idn-hostname" if draft_version == Draft::Draft7 => {
                 Some(IDNHostnameValidator::compile())
             }
             "ipv4" => Some(IpV4Validator::compile()),
             "ipv6" => Some(IpV6Validator::compile()),
-            "iri-reference" if context.draft == Draft::Draft7 => {
+            "iri-reference" if draft_version == Draft::Draft7 => {
                 Some(IRIReferenceValidator::compile())
             }
-            "iri" if context.draft == Draft::Draft7 => Some(IRIValidator::compile()),
-            "json-pointer" if context.draft == Draft::Draft6 || context.draft == Draft::Draft7 => {
+            "iri" if draft_version == Draft::Draft7 => Some(IRIValidator::compile()),
+            "json-pointer" if draft_version == Draft::Draft6 || draft_version == Draft::Draft7 => {
                 Some(JSONPointerValidator::compile())
             }
             "regex" => Some(RegexValidator::compile()),
-            "relative-json-pointer" if context.draft == Draft::Draft7 => {
+            "relative-json-pointer" if draft_version == Draft::Draft7 => {
                 Some(RelativeJSONPointerValidator::compile())
             }
             "time" => Some(TimeValidator::compile()),
-            "uri-reference" if context.draft == Draft::Draft6 || context.draft == Draft::Draft7 => {
+            "uri-reference" if draft_version == Draft::Draft6 || draft_version == Draft::Draft7 => {
                 Some(URIReferenceValidator::compile())
             }
-            "uri-template" if context.draft == Draft::Draft6 || context.draft == Draft::Draft7 => {
+            "uri-template" if draft_version == Draft::Draft6 || draft_version == Draft::Draft7 => {
                 Some(URITemplateValidator::compile())
             }
             "uri" => Some(URIValidator::compile()),
@@ -209,7 +210,7 @@ mod tests {
     fn ignored_format() {
         let schema = json!({"format": "custom", "type": "string"});
         let instance = json!("foo");
-        let compiled = JSONSchema::compile(&schema, None).unwrap();
+        let compiled = JSONSchema::compile(&schema).unwrap();
         assert!(compiled.is_valid(&instance))
     }
 }

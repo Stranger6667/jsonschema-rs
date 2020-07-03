@@ -60,7 +60,7 @@ pub struct ValidationError<'a> {
 ///
 /// let schema = json!({"maxLength": 5});
 /// let instance = json!("foo");
-/// if let Ok(compiled) = JSONSchema::compile(&schema, None) {
+/// if let Ok(compiled) = JSONSchema::compile(&schema) {
 ///     let result = compiled.validate(&instance);
 ///     if let Err(errors) = result {
 ///         for error in errors {
