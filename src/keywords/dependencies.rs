@@ -8,7 +8,7 @@ use crate::{
 };
 use serde_json::{Map, Value};
 
-pub struct DependenciesValidator {
+pub(crate) struct DependenciesValidator {
     dependencies: Vec<(String, Validators)>,
 }
 
@@ -96,7 +96,7 @@ impl ToString for DependenciesValidator {
 }
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     context: &CompilationContext,

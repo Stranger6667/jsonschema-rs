@@ -5,7 +5,7 @@ use crate::{
 use serde_json::{Map, Value};
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     parent: &Map<String, Value>,
     schema: &Value,
     context: &CompilationContext,

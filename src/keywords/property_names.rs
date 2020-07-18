@@ -6,7 +6,7 @@ use crate::{
 };
 use serde_json::{Map, Value};
 
-pub struct PropertyNamesObjectValidator {
+pub(crate) struct PropertyNamesObjectValidator {
     validators: Validators,
 }
 
@@ -81,7 +81,7 @@ impl ToString for PropertyNamesObjectValidator {
     }
 }
 
-pub struct PropertyNamesBooleanValidator {}
+pub(crate) struct PropertyNamesBooleanValidator {}
 
 impl PropertyNamesBooleanValidator {
     #[inline]
@@ -121,7 +121,7 @@ impl ToString for PropertyNamesBooleanValidator {
 }
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     context: &CompilationContext,

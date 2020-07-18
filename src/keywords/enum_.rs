@@ -8,7 +8,7 @@ use serde_json::{Map, Value};
 use std::f64::EPSILON;
 
 #[derive(Debug)]
-pub struct EnumValidator {
+pub(crate) struct EnumValidator {
     options: Value,
     items: Vec<Value>,
 }
@@ -117,7 +117,7 @@ impl ToString for EnumValidator {
 }
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     _: &CompilationContext,

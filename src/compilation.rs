@@ -12,7 +12,7 @@ use serde_json::Value;
 use std::borrow::Cow;
 use url::{ParseError, Url};
 
-pub const DEFAULT_ROOT_URL: &str = "json-schema:///";
+pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
 
 /// The structure that holds a JSON Schema compiled into a validation tree
 #[derive(Debug)]
@@ -87,7 +87,7 @@ impl<'a> JSONSchema<'a> {
 
 /// Context holds information about used draft and current scope.
 #[derive(Debug)]
-pub struct CompilationContext<'a> {
+pub(crate) struct CompilationContext<'a> {
     pub(crate) scope: Cow<'a, Url>,
     pub(crate) draft: schemas::Draft,
 }
@@ -134,7 +134,7 @@ impl<'a> CompilationContext<'a> {
 
 /// Compile JSON schema into a tree of validators.
 #[inline]
-pub fn compile_validators(
+pub(crate) fn compile_validators(
     schema: &Value,
     context: &CompilationContext,
 ) -> Result<Validators, CompilationError> {

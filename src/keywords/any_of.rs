@@ -6,7 +6,7 @@ use crate::{
 };
 use serde_json::{Map, Value};
 
-pub struct AnyOfValidator {
+pub(crate) struct AnyOfValidator {
     schemas: Vec<Validators>,
 }
 
@@ -67,7 +67,7 @@ impl ToString for AnyOfValidator {
 }
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     context: &CompilationContext,

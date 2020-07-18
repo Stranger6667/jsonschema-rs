@@ -97,7 +97,7 @@ impl Draft {
 
 /// Get the `Draft` from a JSON Schema URL.
 #[inline]
-pub fn draft_from_url(url: &str) -> Option<Draft> {
+pub(crate) fn draft_from_url(url: &str) -> Option<Draft> {
     match url {
         "http://json-schema.org/draft-07/schema#" => Some(Draft::Draft7),
         "http://json-schema.org/draft-06/schema#" => Some(Draft::Draft6),
@@ -108,7 +108,7 @@ pub fn draft_from_url(url: &str) -> Option<Draft> {
 
 /// Get the `Draft` from a JSON Schema.
 #[inline]
-pub fn draft_from_schema(schema: &Value) -> Option<Draft> {
+pub(crate) fn draft_from_schema(schema: &Value) -> Option<Draft> {
     schema
         .get("$schema")
         .and_then(Value::as_str)
@@ -116,7 +116,7 @@ pub fn draft_from_schema(schema: &Value) -> Option<Draft> {
 }
 
 #[inline]
-pub fn id_of(draft: Draft, schema: &Value) -> Option<&str> {
+pub(crate) fn id_of(draft: Draft, schema: &Value) -> Option<&str> {
     if let Value::Object(object) = schema {
         if draft == Draft::Draft4 {
             object.get("id")

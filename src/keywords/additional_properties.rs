@@ -8,7 +8,7 @@ use regex::Regex;
 use serde_json::{Map, Value};
 use std::{collections::BTreeSet, iter::FromIterator};
 
-pub struct AdditionalPropertiesValidator {
+pub(crate) struct AdditionalPropertiesValidator {
     validators: Validators,
 }
 impl AdditionalPropertiesValidator {
@@ -79,7 +79,7 @@ impl ToString for AdditionalPropertiesValidator {
     }
 }
 
-pub struct AdditionalPropertiesFalseValidator {}
+pub(crate) struct AdditionalPropertiesFalseValidator {}
 impl AdditionalPropertiesFalseValidator {
     #[inline]
     pub(crate) fn compile() -> CompilationResult {
@@ -116,7 +116,7 @@ impl ToString for AdditionalPropertiesFalseValidator {
     }
 }
 
-pub struct AdditionalPropertiesNotEmptyFalseValidator {
+pub(crate) struct AdditionalPropertiesNotEmptyFalseValidator {
     properties: BTreeSet<String>,
 }
 impl AdditionalPropertiesNotEmptyFalseValidator {
@@ -182,7 +182,7 @@ impl ToString for AdditionalPropertiesNotEmptyFalseValidator {
     }
 }
 
-pub struct AdditionalPropertiesNotEmptyValidator {
+pub(crate) struct AdditionalPropertiesNotEmptyValidator {
     validators: Validators,
     properties: BTreeSet<String>,
 }
@@ -264,7 +264,7 @@ impl ToString for AdditionalPropertiesNotEmptyValidator {
     }
 }
 
-pub struct AdditionalPropertiesWithPatternsValidator {
+pub(crate) struct AdditionalPropertiesWithPatternsValidator {
     validators: Validators,
     pattern: Regex,
 }
@@ -343,7 +343,7 @@ impl ToString for AdditionalPropertiesWithPatternsValidator {
     }
 }
 
-pub struct AdditionalPropertiesWithPatternsFalseValidator {
+pub(crate) struct AdditionalPropertiesWithPatternsFalseValidator {
     pattern: Regex,
 }
 impl AdditionalPropertiesWithPatternsFalseValidator {
@@ -407,7 +407,7 @@ impl ToString for AdditionalPropertiesWithPatternsFalseValidator {
     }
 }
 
-pub struct AdditionalPropertiesWithPatternsNotEmptyValidator {
+pub(crate) struct AdditionalPropertiesWithPatternsNotEmptyValidator {
     validators: Validators,
     properties: BTreeSet<String>,
     pattern: Regex,
@@ -499,7 +499,7 @@ impl ToString for AdditionalPropertiesWithPatternsNotEmptyValidator {
     }
 }
 
-pub struct AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
+pub(crate) struct AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
     properties: BTreeSet<String>,
     pattern: Regex,
 }
@@ -573,7 +573,7 @@ impl ToString for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
 }
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     parent: &Map<String, Value>,
     schema: &Value,
     context: &CompilationContext,

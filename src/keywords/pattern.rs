@@ -13,7 +13,7 @@ lazy_static::lazy_static! {
     static ref CONTROL_GROUPS_RE: Regex = Regex::new(r"\\c[A-Za-z]").expect("Is a valid regex");
 }
 
-pub struct PatternValidator {
+pub(crate) struct PatternValidator {
     original: String,
     pattern: Regex,
 }
@@ -104,7 +104,7 @@ fn replace_control_group(captures: &Captures) -> String {
 }
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     _: &CompilationContext,

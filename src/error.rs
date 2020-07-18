@@ -72,17 +72,17 @@ pub struct ValidationError<'a> {
 pub type ErrorIterator<'a> = Box<dyn Iterator<Item = ValidationError<'a>> + Sync + Send + 'a>;
 
 // Empty iterator means no error happened
-pub fn no_error<'a>() -> ErrorIterator<'a> {
+pub(crate) fn no_error<'a>() -> ErrorIterator<'a> {
     Box::new(empty())
 }
 // A wrapper for one error
-pub fn error(instance: ValidationError) -> ErrorIterator {
+pub(crate) fn error(instance: ValidationError) -> ErrorIterator {
     Box::new(once(instance))
 }
 
 /// Kinds of errors that may happen during validation
 #[derive(Debug)]
-pub enum ValidationErrorKind {
+pub(crate) enum ValidationErrorKind {
     /// The input array contain more items than expected.
     AdditionalItems { limit: usize },
     /// The input value is not valid under any of the given schemas.
@@ -157,7 +157,7 @@ pub enum ValidationErrorKind {
 }
 
 #[derive(Debug)]
-pub enum TypeKind {
+pub(crate) enum TypeKind {
     Single(PrimitiveType),
     Multiple(PrimitiveTypesBitMap),
 }

@@ -6,7 +6,7 @@ use crate::{
 };
 use serde_json::{Map, Value};
 
-pub struct NotValidator {
+pub(crate) struct NotValidator {
     // needed only for error representation
     original: Value,
     validators: Validators,
@@ -62,7 +62,7 @@ impl ToString for NotValidator {
 }
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     context: &CompilationContext,

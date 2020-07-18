@@ -7,7 +7,7 @@ use crate::{
 use regex::Regex;
 use serde_json::{Map, Value};
 
-pub struct PatternPropertiesValidator {
+pub(crate) struct PatternPropertiesValidator {
     patterns: Vec<(Regex, Validators)>,
 }
 
@@ -103,7 +103,7 @@ impl ToString for PatternPropertiesValidator {
 }
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     context: &CompilationContext,

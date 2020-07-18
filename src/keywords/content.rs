@@ -8,7 +8,7 @@ use crate::{
 use serde_json::{from_str, Map, Value};
 
 /// Validator for `contentMediaType` keyword.
-pub struct ContentMediaTypeValidator {
+pub(crate) struct ContentMediaTypeValidator {
     media_type: String,
     func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
 }
@@ -66,7 +66,7 @@ impl ToString for ContentMediaTypeValidator {
 }
 
 /// Validator for `contentEncoding` keyword.
-pub struct ContentEncodingValidator {
+pub(crate) struct ContentEncodingValidator {
     encoding: String,
     func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
 }
@@ -123,7 +123,7 @@ impl ToString for ContentEncodingValidator {
 }
 
 /// Combined validator for both `contentEncoding` and `contentMediaType` keywords.
-pub struct ContentMediaTypeAndEncodingValidator {
+pub(crate) struct ContentMediaTypeAndEncodingValidator {
     media_type: String,
     encoding: String,
     func: for<'a> fn(&'a Value, &str) -> ErrorIterator<'a>,
@@ -200,21 +200,21 @@ impl ToString for ContentMediaTypeAndEncodingValidator {
     }
 }
 
-pub fn is_json<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
+pub(crate) fn is_json<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
     if from_str::<Value>(instance_string).is_err() {
         return error(ValidationError::format(instance, "application/json"));
     }
     no_error()
 }
 
-pub fn is_base64<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
+pub(crate) fn is_base64<'a>(instance: &'a Value, instance_string: &str) -> ErrorIterator<'a> {
     if base64::decode(instance_string).is_err() {
         return error(ValidationError::format(instance, "base64"));
     }
     no_error()
 }
 
-pub fn from_base64<'a>(
+pub(crate) fn from_base64<'a>(
     instance: &'a Value,
     instance_string: &str,
 ) -> Result<String, ValidationError<'a>> {
@@ -225,7 +225,7 @@ pub fn from_base64<'a>(
 }
 
 #[inline]
-pub fn compile_media_type(
+pub(crate) fn compile_media_type(
     schema: &Map<String, Value>,
     subschema: &Value,
     _: &CompilationContext,
@@ -261,7 +261,7 @@ pub fn compile_media_type(
 }
 
 #[inline]
-pub fn compile_content_encoding(
+pub(crate) fn compile_content_encoding(
     schema: &Map<String, Value>,
     subschema: &Value,
     _: &CompilationContext,

@@ -10,7 +10,7 @@ use crate::{
 use rayon::prelude::*;
 use serde_json::{Map, Value};
 
-pub struct ItemsArrayValidator {
+pub(crate) struct ItemsArrayValidator {
     items: Vec<Validators>,
 }
 impl ItemsArrayValidator {
@@ -80,7 +80,7 @@ impl ToString for ItemsArrayValidator {
     }
 }
 
-pub struct ItemsObjectValidator {
+pub(crate) struct ItemsObjectValidator {
     validators: Validators,
 }
 impl ItemsObjectValidator {
@@ -161,7 +161,7 @@ impl ToString for ItemsObjectValidator {
 }
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     context: &CompilationContext,

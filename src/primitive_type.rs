@@ -3,7 +3,7 @@ use std::{convert::TryFrom, fmt, ops::BitOrAssign};
 /// For faster error handling in "type" keyword validator we have this enum, to match
 /// with it instead of a string.
 #[derive(Debug, Clone, Copy)]
-pub enum PrimitiveType {
+pub(crate) enum PrimitiveType {
     Array,
     Boolean,
     Integer,
@@ -73,7 +73,7 @@ fn bit_map_representation_primitive_type(bit_representation: u8) -> PrimitiveTyp
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct PrimitiveTypesBitMap {
+pub(crate) struct PrimitiveTypesBitMap {
     inner: u8,
 }
 impl PrimitiveTypesBitMap {
@@ -119,7 +119,7 @@ impl From<Vec<PrimitiveType>> for PrimitiveTypesBitMap {
     }
 }
 
-pub struct PrimitiveTypesBitMapIterator {
+pub(crate) struct PrimitiveTypesBitMapIterator {
     range: std::ops::Range<u8>,
     bit_map: PrimitiveTypesBitMap,
 }

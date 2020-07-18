@@ -9,7 +9,7 @@ use crate::{
 };
 use serde_json::{Map, Value};
 
-pub struct AdditionalItemsObjectValidator {
+pub(crate) struct AdditionalItemsObjectValidator {
     validators: Validators,
     items_count: usize,
 }
@@ -80,7 +80,7 @@ impl ToString for AdditionalItemsObjectValidator {
     }
 }
 
-pub struct AdditionalItemsBooleanValidator {
+pub(crate) struct AdditionalItemsBooleanValidator {
     items_count: usize,
 }
 impl AdditionalItemsBooleanValidator {
@@ -115,7 +115,7 @@ impl ToString for AdditionalItemsBooleanValidator {
 }
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     parent: &Map<String, Value>,
     schema: &Value,
     context: &CompilationContext,

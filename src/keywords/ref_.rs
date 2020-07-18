@@ -8,7 +8,7 @@ use parking_lot::RwLock;
 use serde_json::{Map, Value};
 use url::Url;
 
-pub struct RefValidator {
+pub(crate) struct RefValidator {
     reference: Url,
     /// Precomputed validators.
     /// They are behind a RwLock as is not possible to compute them
@@ -129,7 +129,7 @@ impl ToString for RefValidator {
 }
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     _: &Value,
     reference: &str,
     context: &CompilationContext,

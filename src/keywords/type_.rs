@@ -8,7 +8,7 @@ use crate::{
 use serde_json::{Map, Value};
 use std::convert::TryFrom;
 
-pub struct MultipleTypesValidator {
+pub(crate) struct MultipleTypesValidator {
     types: PrimitiveTypesBitMap,
 }
 
@@ -85,7 +85,7 @@ impl ToString for MultipleTypesValidator {
     }
 }
 
-pub struct NullTypeValidator {}
+pub(crate) struct NullTypeValidator {}
 
 impl NullTypeValidator {
     #[inline]
@@ -152,7 +152,7 @@ impl ToString for NullTypeValidator {
     }
 }
 
-pub struct BooleanTypeValidator {}
+pub(crate) struct BooleanTypeValidator {}
 
 impl BooleanTypeValidator {
     #[inline]
@@ -219,7 +219,7 @@ impl ToString for BooleanTypeValidator {
     }
 }
 
-pub struct StringTypeValidator {}
+pub(crate) struct StringTypeValidator {}
 
 impl StringTypeValidator {
     #[inline]
@@ -286,7 +286,7 @@ impl ToString for StringTypeValidator {
     }
 }
 
-pub struct ArrayTypeValidator {}
+pub(crate) struct ArrayTypeValidator {}
 
 impl ArrayTypeValidator {
     #[inline]
@@ -353,7 +353,7 @@ impl ToString for ArrayTypeValidator {
     }
 }
 
-pub struct ObjectTypeValidator {}
+pub(crate) struct ObjectTypeValidator {}
 
 impl ObjectTypeValidator {
     #[inline]
@@ -420,7 +420,7 @@ impl ToString for ObjectTypeValidator {
     }
 }
 
-pub struct NumberTypeValidator {}
+pub(crate) struct NumberTypeValidator {}
 
 impl NumberTypeValidator {
     #[inline]
@@ -478,7 +478,7 @@ impl ToString for NumberTypeValidator {
         "type: number".to_string()
     }
 }
-pub struct IntegerTypeValidator {}
+pub(crate) struct IntegerTypeValidator {}
 
 impl IntegerTypeValidator {
     #[inline]
@@ -549,7 +549,7 @@ impl ToString for IntegerTypeValidator {
 }
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     _: &CompilationContext,
