@@ -47,6 +47,7 @@
     unused_extern_crates,
     unused_import_braces,
     unused_qualifications,
+    unreachable_pub,
     variant_size_differences
 )]
 mod compilation;
@@ -84,7 +85,7 @@ mod tests_util {
     use super::JSONSchema;
     use serde_json::Value;
 
-    pub fn is_not_valid(schema: Value, instance: Value) {
+    pub(crate) fn is_not_valid(schema: Value, instance: Value) {
         let compiled = JSONSchema::compile(&schema, None).unwrap();
         assert!(!compiled.is_valid(&instance), "{} should not be valid");
         assert!(

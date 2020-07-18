@@ -157,7 +157,7 @@ string_format_validator!(URITemplateValidator, "uri-template", |instance_value| 
 });
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     context: &CompilationContext,

@@ -13,7 +13,7 @@ use std::{
 // Based on implementation proposed by Sven Marnach:
 // https://stackoverflow.com/questions/60882381/what-is-the-fastest-correct-way-to-detect-that-there-are-no-duplicates-in-a-json
 #[derive(PartialEq)]
-pub struct HashedValue<'a>(&'a Value);
+pub(crate) struct HashedValue<'a>(&'a Value);
 
 impl Eq for HashedValue<'_> {}
 
@@ -54,12 +54,12 @@ impl Hash for HashedValue<'_> {
 }
 
 #[inline]
-pub fn is_unique(items: &[Value]) -> bool {
+pub(crate) fn is_unique(items: &[Value]) -> bool {
     let mut seen = HashSet::with_capacity(items.len());
     items.iter().map(HashedValue).all(move |x| seen.insert(x))
 }
 
-pub struct UniqueItemsValidator {}
+pub(crate) struct UniqueItemsValidator {}
 
 impl UniqueItemsValidator {
     #[inline]
@@ -102,7 +102,7 @@ impl ToString for UniqueItemsValidator {
     }
 }
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     _: &CompilationContext,

@@ -6,7 +6,7 @@ use crate::{
 };
 use serde_json::{Map, Value};
 
-pub struct IfThenValidator {
+pub(crate) struct IfThenValidator {
     schema: Validators,
     then_schema: Validators,
 }
@@ -110,7 +110,7 @@ impl ToString for IfThenValidator {
     }
 }
 
-pub struct IfElseValidator {
+pub(crate) struct IfElseValidator {
     schema: Validators,
     else_schema: Validators,
 }
@@ -214,7 +214,7 @@ impl ToString for IfElseValidator {
     }
 }
 
-pub struct IfThenElseValidator {
+pub(crate) struct IfThenElseValidator {
     schema: Validators,
     then_schema: Validators,
     else_schema: Validators,
@@ -332,7 +332,7 @@ impl ToString for IfThenElseValidator {
 }
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     parent: &Map<String, Value>,
     schema: &Value,
     context: &CompilationContext,

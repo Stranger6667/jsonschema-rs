@@ -6,7 +6,7 @@ use crate::{
 };
 use serde_json::{Map, Value};
 
-pub struct MaxPropertiesValidator {
+pub(crate) struct MaxPropertiesValidator {
     limit: u64,
 }
 
@@ -60,7 +60,7 @@ impl ToString for MaxPropertiesValidator {
 }
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     _: &CompilationContext,

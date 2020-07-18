@@ -7,7 +7,7 @@ use crate::{
 use serde_json::{Map, Value};
 use std::f64::EPSILON;
 
-pub struct MultipleOfFloatValidator {
+pub(crate) struct MultipleOfFloatValidator {
     multiple_of: f64,
 }
 
@@ -73,7 +73,7 @@ impl ToString for MultipleOfFloatValidator {
     }
 }
 
-pub struct MultipleOfIntegerValidator {
+pub(crate) struct MultipleOfIntegerValidator {
     multiple_of: f64,
 }
 
@@ -144,7 +144,7 @@ impl ToString for MultipleOfIntegerValidator {
 }
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     _: &CompilationContext,

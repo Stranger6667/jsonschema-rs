@@ -6,7 +6,7 @@ use crate::{
 };
 use serde_json::{Map, Value};
 
-pub struct TrueValidator {}
+pub(crate) struct TrueValidator {}
 impl TrueValidator {
     #[inline]
     pub(crate) fn compile() -> CompilationResult {
@@ -30,7 +30,7 @@ impl ToString for TrueValidator {
     }
 }
 
-pub struct FalseValidator {}
+pub(crate) struct FalseValidator {}
 impl FalseValidator {
     #[inline]
     pub(crate) fn compile() -> CompilationResult {
@@ -92,7 +92,7 @@ impl ToString for FalseValidator {
 }
 
 #[inline]
-pub fn compile(value: bool) -> Option<CompilationResult> {
+pub(crate) fn compile(value: bool) -> Option<CompilationResult> {
     if value {
         Some(TrueValidator::compile())
     } else {

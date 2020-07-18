@@ -5,7 +5,7 @@ use crate::{
 use serde_json::{Map, Value};
 use std::fmt;
 
-pub trait Validate: Send + Sync + ToString {
+pub(crate) trait Validate: Send + Sync + ToString {
     #[inline]
     fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
         ValidationError::unexpected(instance, &self.to_string())

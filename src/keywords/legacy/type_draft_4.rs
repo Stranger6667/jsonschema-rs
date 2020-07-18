@@ -8,7 +8,7 @@ use crate::{
 use serde_json::{Map, Value};
 use std::convert::TryFrom;
 
-pub struct MultipleTypesValidator {
+pub(crate) struct MultipleTypesValidator {
     types: PrimitiveTypesBitMap,
 }
 
@@ -83,7 +83,7 @@ impl ToString for MultipleTypesValidator {
         )
     }
 }
-pub struct IntegerTypeValidator {}
+pub(crate) struct IntegerTypeValidator {}
 
 impl IntegerTypeValidator {
     #[inline]
@@ -151,7 +151,7 @@ impl ToString for IntegerTypeValidator {
 }
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     _: &CompilationContext,

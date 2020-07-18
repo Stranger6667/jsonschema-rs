@@ -10,7 +10,7 @@ use std::{borrow::Cow, collections::HashMap};
 use url::Url;
 
 #[derive(Debug)]
-pub struct Resolver<'a> {
+pub(crate) struct Resolver<'a> {
     // canonical_id: sub-schema mapping to resolve documents by their ID
     // canonical_id is composed with the root document id
     // (if not specified, then `DEFAULT_ROOT_URL` is used for this purpose)
@@ -108,7 +108,7 @@ fn join_folders(mut resource: Url, folders: &[&str]) -> Result<Url, url::ParseEr
 
 /// Find all sub-schemas in the document and execute callback on each of them.
 #[inline]
-pub fn find_schemas<'a, F>(
+pub(crate) fn find_schemas<'a, F>(
     draft: Draft,
     schema: &'a Value,
     base_url: &Url,
@@ -153,7 +153,7 @@ where
 }
 
 /// Based on `serde_json`, but tracks folders in the traversed documents.
-pub fn pointer<'a>(
+pub(crate) fn pointer<'a>(
     draft: Draft,
     document: &'a Value,
     pointer: &str,

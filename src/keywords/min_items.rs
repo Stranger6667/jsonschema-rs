@@ -6,7 +6,7 @@ use crate::{
 };
 use serde_json::{Map, Value};
 
-pub struct MinItemsValidator {
+pub(crate) struct MinItemsValidator {
     limit: u64,
 }
 
@@ -55,7 +55,7 @@ impl ToString for MinItemsValidator {
 }
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     _: &CompilationContext,

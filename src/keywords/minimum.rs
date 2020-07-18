@@ -7,13 +7,13 @@ use crate::{
 use num_cmp::NumCmp;
 use serde_json::{Map, Value};
 
-pub struct MinimumU64Validator {
+pub(crate) struct MinimumU64Validator {
     limit: u64,
 }
-pub struct MinimumI64Validator {
+pub(crate) struct MinimumI64Validator {
     limit: i64,
 }
-pub struct MinimumF64Validator {
+pub(crate) struct MinimumF64Validator {
     limit: f64,
 }
 
@@ -99,7 +99,7 @@ validate!(MinimumI64Validator);
 validate!(MinimumF64Validator);
 
 #[inline]
-pub fn compile(
+pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     _: &CompilationContext,
