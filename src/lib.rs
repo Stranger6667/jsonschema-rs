@@ -56,7 +56,6 @@
     clippy::cast_possible_truncation,
     clippy::doc_markdown,
     clippy::explicit_iter_loop,
-    clippy::integer_arithmetic,
     clippy::map_unwrap_or,
     clippy::match_same_arms,
     clippy::needless_borrow,
@@ -64,7 +63,6 @@
     clippy::print_stdout,
     clippy::redundant_closure,
     clippy::trivially_copy_pass_by_ref,
-    clippy::unwrap_used,
     missing_debug_implementations,
     missing_docs,
     trivial_casts,
@@ -75,6 +73,8 @@
     unreachable_pub,
     variant_size_differences
 )]
+#![cfg(not(test))]
+#![allow(clippy::integer_arithmetic, clippy::unwrap_used)]
 mod compilation;
 mod error;
 mod keywords;
@@ -106,16 +106,21 @@ pub fn is_valid(schema: &Value, instance: &Value) -> bool {
 }
 
 #[cfg(test)]
-mod tests_util {
+pub(crate) mod tests_util {
     use super::JSONSchema;
     use serde_json::Value;
 
-    pub(crate) fn is_not_valid(schema: Value, instance: Value) {
-        let compiled = JSONSchema::compile(&schema).unwrap();
-        assert!(!compiled.is_valid(&instance), "{} should not be valid");
+    pub(crate) fn is_not_valid(schema: &Value, instance: &Value) {
+        let compiled = JSONSchema::compile(schema).unwrap();
         assert!(
-            compiled.validate(&instance).is_err(),
-            "{} should not be valid"
+            !compiled.is_valid(instance),
+            "{} should not be valid",
+            instance
+        );
+        assert!(
+            compiled.validate(instance).is_err(),
+            "{} should not be valid",
+            instance
         );
     }
 }

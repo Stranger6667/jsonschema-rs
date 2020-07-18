@@ -135,12 +135,12 @@ mod tests {
     use serde_json::{json, Value};
     use test_case::test_case;
 
-    #[test_case(json!({"$schema": "http://json-schema.org/draft-07/schema#"}), Some(Draft::Draft7))]
-    #[test_case(json!({"$schema": "http://json-schema.org/draft-06/schema#"}), Some(Draft::Draft6))]
-    #[test_case(json!({"$schema": "http://json-schema.org/draft-04/schema#"}), Some(Draft::Draft4))]
-    #[test_case(json!({"$schema": "http://example.com/custom/schema#"}), None)]
-    fn test_draft_from_schema(schema: Value, draft: Option<Draft>) {
-        assert_eq!(draft_from_schema(&schema), draft)
+    #[test_case(&json!({"$schema": "http://json-schema.org/draft-07/schema#"}), Some(Draft::Draft7))]
+    #[test_case(&json!({"$schema": "http://json-schema.org/draft-06/schema#"}), Some(Draft::Draft6))]
+    #[test_case(&json!({"$schema": "http://json-schema.org/draft-04/schema#"}), Some(Draft::Draft4))]
+    #[test_case(&json!({"$schema": "http://example.com/custom/schema#"}), None)]
+    fn test_draft_from_schema(schema: &Value, draft: Option<Draft>) {
+        assert_eq!(draft_from_schema(schema), draft)
     }
 
     #[test]
