@@ -27,16 +27,11 @@ impl Validate for ContainsValidator {
 
     #[inline]
     fn is_valid_array(&self, schema: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
-        for item in instance_value {
-            if self
-                .validators
+        instance_value.iter().any(|item| {
+            self.validators
                 .iter()
                 .all(|validator| validator.is_valid(schema, item))
-            {
-                return true;
-            }
-        }
-        false
+        })
     }
     #[inline]
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {

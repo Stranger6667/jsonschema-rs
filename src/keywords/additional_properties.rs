@@ -159,14 +159,21 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
         _: &'a Value,
         instance_value: &'a Map<String, Value>,
     ) -> ErrorIterator<'a> {
-        for property in instance_value.keys() {
-            if !self.properties.contains(property) {
-                // No extra properties are allowed
-                let property_value = Value::String(property.to_string());
-                return error(ValidationError::false_schema(&property_value).into_owned());
-            }
-        }
-        no_error()
+        instance_value
+            .keys()
+            .filter_map(|property| {
+                if self.properties.contains(property) {
+                    None
+                } else {
+                    // No extra properties are allowed
+                    let property_value = Value::String(property.to_string());
+                    Some(error(
+                        ValidationError::false_schema(&property_value).into_owned(),
+                    ))
+                }
+            })
+            .next()
+            .unwrap_or_else(no_error)
     }
     #[inline]
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {

@@ -57,12 +57,20 @@ impl Validate for RequiredValidator {
         instance: &'a Value,
         instance_value: &'a Map<String, Value>,
     ) -> ErrorIterator<'a> {
-        for property_name in &self.required {
-            if !instance_value.contains_key(property_name) {
-                return error(ValidationError::required(instance, property_name.clone()));
-            }
-        }
-        no_error()
+        self.required
+            .iter()
+            .filter_map(|property_name| {
+                if !instance_value.contains_key(property_name) {
+                    Some(error(ValidationError::required(
+                        instance,
+                        property_name.clone(),
+                    )))
+                } else {
+                    None
+                }
+            })
+            .next()
+            .unwrap_or_else(no_error)
     }
     #[inline]
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
