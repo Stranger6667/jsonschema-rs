@@ -216,33 +216,10 @@ pub(crate) trait Validate: Send + Sync + ToString {
     }
     #[inline]
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        match instance {
-            Value::Array(instance_array) => self.validate_array(schema, instance, instance_array),
-            Value::Bool(instance_boolean) => {
-                self.validate_boolean(schema, instance, *instance_boolean)
-            }
-            Value::Null => self.validate_null(schema, instance, ()),
-            Value::Number(instance_number) => {
-                if let Some(instance_unsigned_integer) = instance_number.as_u64() {
-                    self.validate_unsigned_integer(schema, instance, instance_unsigned_integer)
-                } else if let Some(instance_signed_integer) = instance_number.as_i64() {
-                    self.validate_signed_integer(schema, instance, instance_signed_integer)
-                } else {
-                    self.validate_number(
-                        schema,
-                        instance,
-                        instance_number
-                            .as_f64()
-                            .expect("A JSON number will always be representable as f64"),
-                    )
-                }
-            }
-            Value::Object(instance_object) => {
-                self.validate_object(schema, instance, instance_object)
-            }
-            Value::String(instance_string) => {
-                self.validate_string(schema, instance, instance_string)
-            }
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
+            error(self.build_validation_error(instance))
         }
     }
 }
