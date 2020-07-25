@@ -18,9 +18,10 @@ impl OneOfValidator {
             for item in items {
                 schemas.push(compile_validators(item, context)?)
             }
-            return Ok(Box::new(OneOfValidator { schemas }));
+            Ok(Box::new(OneOfValidator { schemas }))
+        } else {
+            Err(CompilationError::SchemaError)
         }
-        Err(CompilationError::SchemaError)
     }
 }
 

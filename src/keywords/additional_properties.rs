@@ -123,11 +123,12 @@ impl AdditionalPropertiesNotEmptyFalseValidator {
     #[inline]
     pub(crate) fn compile(properties: &Value) -> CompilationResult {
         if let Value::Object(properties) = properties {
-            return Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
+            Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
                 properties: BTreeSet::from_iter(properties.keys().cloned()),
-            }));
+            }))
+        } else {
+            Err(CompilationError::SchemaError)
         }
-        Err(CompilationError::SchemaError)
     }
 }
 impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
@@ -194,12 +195,13 @@ impl AdditionalPropertiesNotEmptyValidator {
         context: &CompilationContext,
     ) -> CompilationResult {
         if let Value::Object(properties) = properties {
-            return Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
+            Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
                 properties: BTreeSet::from_iter(properties.keys().cloned()),
                 validators: compile_validators(schema, context)?,
-            }));
+            }))
+        } else {
+            Err(CompilationError::SchemaError)
         }
-        Err(CompilationError::SchemaError)
     }
 }
 impl Validate for AdditionalPropertiesNotEmptyValidator {
@@ -421,15 +423,16 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator {
         context: &CompilationContext,
     ) -> CompilationResult {
         if let Value::Object(properties) = properties {
-            return Ok(Box::new(
+            Ok(Box::new(
                 AdditionalPropertiesWithPatternsNotEmptyValidator {
                     validators: compile_validators(schema, context)?,
                     properties: BTreeSet::from_iter(properties.keys().cloned()),
                     pattern,
                 },
-            ));
+            ))
+        } else {
+            Err(CompilationError::SchemaError)
         }
-        Err(CompilationError::SchemaError)
     }
 }
 impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
@@ -507,14 +510,15 @@ impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
     #[inline]
     pub(crate) fn compile(properties: &Value, pattern: Regex) -> CompilationResult {
         if let Value::Object(properties) = properties {
-            return Ok(Box::new(
+            Ok(Box::new(
                 AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
                     properties: BTreeSet::from_iter(properties.keys().cloned()),
                     pattern,
                 },
-            ));
+            ))
+        } else {
+            Err(CompilationError::SchemaError)
         }
-        Err(CompilationError::SchemaError)
     }
 }
 impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
@@ -582,7 +586,7 @@ pub(crate) fn compile(
     if let Some(patterns) = parent.get("patternProperties") {
         if let Value::Object(obj) = patterns {
             let pattern = obj.keys().cloned().collect::<Vec<String>>().join("|");
-            return match Regex::new(&pattern) {
+            match Regex::new(&pattern) {
                 Ok(re) => {
                     match schema {
                         Value::Bool(true) => None, // "additionalProperties" are "true" by default
@@ -609,9 +613,10 @@ pub(crate) fn compile(
                     }
                 }
                 Err(_) => Some(Err(CompilationError::SchemaError)),
-            };
+            }
+        } else {
+            Some(Err(CompilationError::SchemaError))
         }
-        Some(Err(CompilationError::SchemaError))
     } else {
         match schema {
             Value::Bool(true) => None, // "additionalProperties" are "true" by default

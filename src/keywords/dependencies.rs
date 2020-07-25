@@ -24,9 +24,10 @@ impl DependenciesValidator {
                 };
                 dependencies.push((key.clone(), s))
             }
-            return Ok(Box::new(DependenciesValidator { dependencies }));
+            Ok(Box::new(DependenciesValidator { dependencies }))
+        } else {
+            Err(CompilationError::SchemaError)
         }
-        Err(CompilationError::SchemaError)
     }
 }
 

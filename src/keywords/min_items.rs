@@ -14,9 +14,10 @@ impl MinItemsValidator {
     #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Some(limit) = schema.as_u64() {
-            return Ok(Box::new(MinItemsValidator { limit }));
+            Ok(Box::new(MinItemsValidator { limit }))
+        } else {
+            Err(CompilationError::SchemaError)
         }
-        Err(CompilationError::SchemaError)
     }
 }
 

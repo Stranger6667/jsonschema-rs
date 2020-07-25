@@ -22,9 +22,10 @@ impl PatternPropertiesValidator {
                     compile_validators(subschema, context)?,
                 ));
             }
-            return Ok(Box::new(PatternPropertiesValidator { patterns }));
+            Ok(Box::new(PatternPropertiesValidator { patterns }))
+        } else {
+            Err(CompilationError::SchemaError)
         }
-        Err(CompilationError::SchemaError)
     }
 }
 
