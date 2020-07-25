@@ -14,9 +14,10 @@ impl MaxItemsValidator {
     #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Some(limit) = schema.as_u64() {
-            return Ok(Box::new(MaxItemsValidator { limit }));
+            Ok(Box::new(MaxItemsValidator { limit }))
+        } else {
+            Err(CompilationError::SchemaError)
         }
-        Err(CompilationError::SchemaError)
     }
 }
 

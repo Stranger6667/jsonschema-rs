@@ -290,11 +290,12 @@ mod tests {
         if let Some(first_space_index) = instance_string.find(' ') {
             if let Ok(value) = instance_string[..first_space_index].parse::<u64>() {
                 if instance_string[first_space_index..].chars().count() == value as usize {
-                    return Ok(Some(instance_string[first_space_index..].to_string()));
+                    Ok(Some(instance_string[first_space_index..].to_string()));
                 }
             }
+        } else {
+            Ok(None)
         }
-        Ok(None)
     }
     fn check_custom_encoding(instance_string: &str) -> bool {
         if let Some(first_space_index) = instance_string.find(' ') {

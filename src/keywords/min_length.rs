@@ -14,9 +14,10 @@ impl MinLengthValidator {
     #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Some(limit) = schema.as_u64() {
-            return Ok(Box::new(MinLengthValidator { limit }));
+            Ok(Box::new(MinLengthValidator { limit }))
+        } else {
+            Err(CompilationError::SchemaError)
         }
-        Err(CompilationError::SchemaError)
     }
 }
 

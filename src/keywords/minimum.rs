@@ -105,16 +105,17 @@ pub(crate) fn compile(
     _: &CompilationContext,
 ) -> Option<CompilationResult> {
     if let Value::Number(limit) = schema {
-        return if let Some(limit) = limit.as_u64() {
+        if let Some(limit) = limit.as_u64() {
             Some(Ok(Box::new(MinimumU64Validator { limit })))
         } else if let Some(limit) = limit.as_i64() {
             Some(Ok(Box::new(MinimumI64Validator { limit })))
         } else {
             let limit = limit.as_f64().expect("Always valid");
             Some(Ok(Box::new(MinimumF64Validator { limit })))
-        };
+        }
+    } else {
+        Some(Err(CompilationError::SchemaError))
     }
-    Some(Err(CompilationError::SchemaError))
 }
 
 #[cfg(test)]

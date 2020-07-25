@@ -14,9 +14,10 @@ impl MinPropertiesValidator {
     #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Some(limit) = schema.as_u64() {
-            return Ok(Box::new(MinPropertiesValidator { limit }));
+            Ok(Box::new(MinPropertiesValidator { limit }))
+        } else {
+            Err(CompilationError::SchemaError)
         }
-        Err(CompilationError::SchemaError)
     }
 }
 

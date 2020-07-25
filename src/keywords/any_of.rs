@@ -19,9 +19,10 @@ impl AnyOfValidator {
                 let validators = compile_validators(item, context)?;
                 schemas.push(validators)
             }
-            return Ok(Box::new(AnyOfValidator { schemas }));
+            Ok(Box::new(AnyOfValidator { schemas }))
+        } else {
+            Err(CompilationError::SchemaError)
         }
-        Err(CompilationError::SchemaError)
     }
 }
 

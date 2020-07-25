@@ -17,12 +17,13 @@ impl EnumValidator {
     #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Value::Array(items) = schema {
-            return Ok(Box::new(EnumValidator {
+            Ok(Box::new(EnumValidator {
                 options: schema.clone(),
                 items: items.clone(),
-            }));
+            }))
+        } else {
+            Err(CompilationError::SchemaError)
         }
-        Err(CompilationError::SchemaError)
     }
 }
 

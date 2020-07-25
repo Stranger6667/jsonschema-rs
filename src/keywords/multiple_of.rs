@@ -151,11 +151,12 @@ pub(crate) fn compile(
 ) -> Option<CompilationResult> {
     if let Value::Number(multiple_of) = schema {
         let multiple_of = multiple_of.as_f64().expect("Always valid");
-        return if multiple_of.fract() == 0. {
+        if multiple_of.fract() == 0. {
             Some(MultipleOfIntegerValidator::compile(multiple_of))
         } else {
             Some(MultipleOfFloatValidator::compile(multiple_of))
-        };
+        }
+    } else {
+        Some(Err(CompilationError::SchemaError))
     }
-    Some(Err(CompilationError::SchemaError))
 }

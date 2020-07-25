@@ -193,9 +193,10 @@ pub(crate) fn pointer<'a>(
 
 fn parse_index(s: &str) -> Option<usize> {
     if s.starts_with('+') || (s.starts_with('0') && s.len() != 1) {
-        return None;
+        None
+    } else {
+        s.parse().ok()
     }
-    s.parse().ok()
 }
 
 #[cfg(test)]
