@@ -73,8 +73,7 @@
     unreachable_pub,
     variant_size_differences
 )]
-#![cfg(not(test))]
-#![allow(clippy::integer_arithmetic, clippy::unwrap_used)]
+#![cfg_attr(not(test), allow(clippy::integer_arithmetic, clippy::unwrap_used))]
 mod compilation;
 mod content_encoding;
 mod content_media_type;
