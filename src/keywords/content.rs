@@ -289,19 +289,17 @@ mod tests {
     ) -> Result<Option<String>, ValidationError<'static>> {
         if let Some(first_space_index) = instance_string.find(' ') {
             if let Ok(value) = instance_string[..first_space_index].parse::<u64>() {
-                if instance_string[first_space_index..].chars().count() == value as usize {
-                    Ok(Some(instance_string[first_space_index..].to_string()));
+                if instance_string[first_space_index + 1..].chars().count() as u64 == value {
+                    return Ok(Some(instance_string[first_space_index + 1..].to_string()));
                 }
             }
-        } else {
-            Ok(None)
         }
+        Ok(None)
     }
     fn check_custom_encoding(instance_string: &str) -> bool {
         if let Some(first_space_index) = instance_string.find(' ') {
             if let Ok(value) = instance_string[..first_space_index].parse::<u64>() {
-                return instance_string[(first_space_index + 1)..].chars().count()
-                    == value as usize;
+                return instance_string[first_space_index + 1..].chars().count() as u64 == value;
             }
         }
         false
@@ -363,9 +361,9 @@ mod tests {
         assert!(compiled.is_valid(instance))
     }
 
-    #[test_case("2 {" => false)] // Content Encoding not respected
-    #[test_case("2 {a" => false)] // Content Media Type not respected
-    #[test_case("2 {}" => true)]
+    #[test_case(&json!("2 {") => false)] // Content Encoding not respected
+    #[test_case(&json!("2 {a") => false)] // Content Media Type not respected
+    #[test_case(&json!("2 {}") => true)]
     fn test_custom_media_type_and_encoding(instance: &Value) -> bool {
         let schema = json!({
             "contentMediaType": "application/json",

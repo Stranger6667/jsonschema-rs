@@ -203,7 +203,7 @@ impl CompilationOptions {
     /// fn check_custom_encoding(instance_string: &str) -> bool {
     ///     if let Some(first_space_index) = instance_string.find(' ') {
     ///         if let Ok(value) = instance_string[..first_space_index].parse::<u64>() {
-    ///             return instance_string[(first_space_index + 1)..].chars().count() == value as usize;
+    ///             return instance_string[first_space_index + 1..].chars().count() == value as usize;
     ///         }
     ///     }
     ///     false
@@ -211,8 +211,8 @@ impl CompilationOptions {
     /// fn converter_custom_encoding(instance_string: &str) -> Result<Option<String>, ValidationError<'static>> {
     ///     if let Some(first_space_index) = instance_string.find(' ') {
     ///         if let Ok(value) = instance_string[..first_space_index].parse::<u64>() {
-    ///             if instance_string[(first_space_index + 1)..].chars().count() == value as usize {
-    ///                 return Ok(Some(instance_string[(first_space_index + 1)..].to_string()));
+    ///             if instance_string[first_space_index + 1..].chars().count() == value as usize {
+    ///                 return Ok(Some(instance_string[first_space_index + 1..].to_string()));
     ///             }
     ///         }
     ///     }
