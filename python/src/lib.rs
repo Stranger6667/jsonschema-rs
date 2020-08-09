@@ -23,7 +23,6 @@ mod ser;
 mod string;
 mod types;
 
-const MODULE_DOCSTRING: &str = "JSON Schema validation for Python written in Rust.";
 const VALIDATION_ERROR_DOCSTRING: &str = "An error that can occur during validation";
 const DRAFT7: u8 = 7;
 const DRAFT6: u8 = 6;
@@ -182,6 +181,7 @@ mod build {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
 
+/// JSON Schema validation for Python written in Rust.
 #[pymodule]
 fn jsonschema_rs(py: Python, module: &PyModule) -> PyResult<()> {
     // To provide proper signatures for PyCharm, all the functions have their signatures as the
@@ -195,7 +195,6 @@ fn jsonschema_rs(py: Python, module: &PyModule) -> PyResult<()> {
     module.add("Draft4", DRAFT4)?;
     module.add("Draft6", DRAFT6)?;
     module.add("Draft7", DRAFT7)?;
-    module.add("__doc__", MODULE_DOCSTRING)?;
 
     // Add build metadata to ease triaging incoming issues
     module.add("__build__", pyo3_built::pyo3_built!(py, build))?;
