@@ -58,7 +58,13 @@ def test_recursive_list():
         is_valid(True, instance)
 
 
-@pytest.mark.parametrize("schema, draft, error", (([], None, "Invalid schema"), ({}, 5, "Unknown draft: 5"),))
+@pytest.mark.parametrize(
+    "schema, draft, error",
+    (
+        ([], None, "Invalid schema"),
+        ({}, 5, "Unknown draft: 5"),
+    ),
+)
 def test_initialization_errors(schema, draft, error):
     with pytest.raises(ValueError, match=error):
         JSONSchema(schema, draft)

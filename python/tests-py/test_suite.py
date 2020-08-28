@@ -56,7 +56,10 @@ def test_draft(filename, draft, schema, instance, expected, description):
     try:
         result = jsonschema_rs.is_valid(schema, instance, int(draft))
         assert result is expected, "[{filename}] {description}: {schema} | {instance}".format(
-            description=description, schema=schema, instance=instance, filename=filename,
+            description=description,
+            schema=schema,
+            instance=instance,
+            filename=filename,
         )
     except ValueError:
         pytest.fail(
