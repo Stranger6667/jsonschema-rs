@@ -4,6 +4,7 @@
 [![codecov](https://codecov.io/gh/Stranger6667/jsonschema-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/Stranger6667/jsonschema-rs)
 [![Crates.io](https://img.shields.io/crates/v/jsonschema.svg)](https://crates.io/crates/jsonschema)
 [![docs.rs](https://docs.rs/jsonschema/badge.svg?version=0.3.0)](https://docs.rs/jsonschema/0.3.0/jsonschema/)
+[![gitter](https://img.shields.io/gitter/room/Stranger6667/jsonschema-rs.svg)](https://gitter.im/Stranger6667/jsonschema-rs)
 
 A JSON Schema validator implementation. It compiles schema into a validation tree to have validation as fast as possible.
 
@@ -95,3 +96,7 @@ a validator is compiled every time.
 You can find benchmark code in `benches/jsonschema.rs`, Rust version is `1.44`
 
 **NOTE**. This library is in early development.
+
+## Support
+
+If you have anything to discuss regarding this library, please, join our [gitter](https://gitter.im/Stranger6667/jsonschema-rs)!
