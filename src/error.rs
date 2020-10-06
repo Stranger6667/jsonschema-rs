@@ -146,6 +146,7 @@ pub(crate) enum ValidationErrorKind {
     /// When a required property is missing.
     Required { property: String },
     /// Any error that happens during network request via `reqwest` crate
+    #[cfg(any(feature = "reqwest", test))]
     Reqwest { error: reqwest::Error },
     /// Resolved schema failed to compile.
     Schema,
@@ -418,6 +419,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Required { property },
         }
     }
+    #[cfg(any(feature = "reqwest", test))]
     pub(crate) fn reqwest(error: reqwest::Error) -> ValidationError<'a> {
         ValidationError {
             instance: Cow::Owned(Value::Null),
@@ -520,6 +522,7 @@ impl From<url::ParseError> for ValidationError<'_> {
         ValidationError::invalid_url(err)
     }
 }
+#[cfg(any(feature = "reqwest", test))]
 impl From<reqwest::Error> for ValidationError<'_> {
     #[inline]
     fn from(err: reqwest::Error) -> Self {
@@ -535,6 +538,7 @@ impl fmt::Display for ValidationError<'_> {
         match &self.kind {
             ValidationErrorKind::Schema => write!(f, "Schema error"),
             ValidationErrorKind::JSONParse { error } => write!(f, "{}", error),
+            #[cfg(any(feature = "reqwest", test))]
             ValidationErrorKind::Reqwest { error } => write!(f, "{}", error),
             ValidationErrorKind::FileNotFound { error } => write!(f, "{}", error),
             ValidationErrorKind::InvalidURL { error } => write!(f, "{}", error),
