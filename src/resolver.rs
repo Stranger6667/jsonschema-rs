@@ -44,9 +44,14 @@ impl<'a> Resolver<'a> {
                 Some(value) => Ok(Cow::Borrowed(value)),
                 None => match url.scheme() {
                     "http" | "https" => {
-                        let response = reqwest::blocking::get(url.as_str())?;
-                        let document: Value = response.json()?;
-                        Ok(Cow::Owned(document))
+                        #[cfg(any(feature = "reqwest", test))]
+                        {
+                            let response = reqwest::blocking::get(url.as_str())?;
+                            let document: Value = response.json()?;
+                            Ok(Cow::Owned(document))
+                        }
+                        #[cfg(not(any(feature = "reqwest", test)))]
+                        panic!("trying to resolve an http(s), but reqwest support has not been included");
                     }
                     http_scheme => Err(ValidationError::unknown_reference_scheme(
                         http_scheme.to_owned(),
