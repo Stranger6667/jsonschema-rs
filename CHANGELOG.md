@@ -4,6 +4,7 @@
 
 ### Added
 
+- Command Line Interface. [#102](https://github.com/Stranger6667/jsonschema-rs/issues/102)
 - `ToString` trait implementation for validators.
 - Define `JSONSchema::options` to customise `JSONSchema` compilation [#131](https://github.com/Stranger6667/jsonschema-rs/issues/131)
 - Allow user-defined `contentEncoding` and `contentMediaType` keywords
