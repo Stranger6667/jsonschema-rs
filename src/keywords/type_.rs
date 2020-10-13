@@ -130,11 +130,7 @@ impl Validate for NullTypeValidator {
     }
     #[inline]
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Null = instance {
-            true
-        } else {
-            false
-        }
+        matches!(instance, Value::Null)
     }
 
     #[inline]
@@ -197,11 +193,7 @@ impl Validate for BooleanTypeValidator {
     }
     #[inline]
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Bool(_) = instance {
-            true
-        } else {
-            false
-        }
+        matches!(instance, Value::Bool(_))
     }
 
     #[inline]
@@ -264,11 +256,7 @@ impl Validate for StringTypeValidator {
     }
     #[inline]
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(_) = instance {
-            true
-        } else {
-            false
-        }
+        matches!(instance, Value::String(_))
     }
 
     #[inline]
@@ -331,11 +319,7 @@ impl Validate for ArrayTypeValidator {
     }
     #[inline]
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Array(_) = instance {
-            true
-        } else {
-            false
-        }
+        matches!(instance, Value::Array(_))
     }
 
     #[inline]
@@ -398,11 +382,7 @@ impl Validate for ObjectTypeValidator {
     }
     #[inline]
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(_) = instance {
-            true
-        } else {
-            false
-        }
+        matches!(instance, Value::Object(_))
     }
 
     #[inline]
@@ -457,11 +437,7 @@ impl Validate for NumberTypeValidator {
     }
     #[inline]
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Number(_) = instance {
-            true
-        } else {
-            false
-        }
+        matches!(instance, Value::Number(_))
     }
 
     #[inline]

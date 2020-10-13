@@ -114,18 +114,10 @@ string_format_validator!(IDNEmailValidator, "idn-email", is_valid_email);
 string_format_validator!(HostnameValidator, "hostname", is_valid_hostname);
 string_format_validator!(IDNHostnameValidator, "idn-hostname", is_valid_idn_hostname);
 string_format_validator!(IpV4Validator, "ipv4", |instance_string| {
-    if let Ok(IpAddr::V4(_)) = IpAddr::from_str(instance_string) {
-        true
-    } else {
-        false
-    }
+    matches!(IpAddr::from_str(instance_string), Ok(IpAddr::V4(_)))
 });
 string_format_validator!(IpV6Validator, "ipv6", |instance_string| {
-    if let Ok(IpAddr::V6(_)) = IpAddr::from_str(instance_string) {
-        true
-    } else {
-        false
-    }
+    matches!(IpAddr::from_str(instance_string), Ok(IpAddr::V6(_)))
 });
 string_format_validator!(IRIValidator, "iri", |instance_string| {
     Url::from_str(instance_string).is_ok()
