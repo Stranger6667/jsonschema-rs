@@ -2,19 +2,26 @@
 
 ## [Unreleased]
 
+### Added
+
+- Python 3.9 support.
+
 ### Changed
 
 - Remove not needed `__init__.py` file. It improves performance for compiled schemas. [#121](https://github.com/Stranger6667/jsonschema-rs/issues/121)
 - Update `PyO3` to `0.12`. [#125](https://github.com/Stranger6667/jsonschema-rs/issues/125)
 - Use stable Rust.
 - Set module documentation only once.
-- Drop Python 3.5 support.
 
 ### Fixed
 
 - ECMAScript regex support
 - Formats should be associated to Draft versions (ie. `idn-hostname` is not defined on draft 4 and draft 6)
 - Handle errors during conversion to `Value` instead of using `unwrap` in `JSONSchema::is_valid` and `JSONSchema::validate`. [#127](https://github.com/Stranger6667/jsonschema-rs/issues/127)
+
+### Removed
+
+- Python 3.5 support.
 
 ## [0.3.3] - 2020-06-22
 

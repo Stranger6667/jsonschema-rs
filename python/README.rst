@@ -88,7 +88,7 @@ Measured with stable Rust 1.44.1, Python 3.8.3 on i8700K (12 cores), 32GB RAM, A
 Python support
 --------------
 
-``jsonschema-rs`` supports Python 3.5, 3.6, 3.7 and 3.8.
+``jsonschema-rs`` supports Python 3.6, 3.7, 3.8 and 3.9.
 
 License
 -------
