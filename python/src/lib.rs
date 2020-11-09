@@ -7,11 +7,8 @@
     clippy::print_stdout,
     clippy::integer_arithmetic,
     clippy::cast_possible_truncation,
-    clippy::result_unwrap_used,
-    clippy::result_map_unwrap_or_else,
-    clippy::option_unwrap_used,
-    clippy::option_map_unwrap_or_else,
-    clippy::option_map_unwrap_or
+    clippy::map_unwrap_or,
+    clippy::unwrap_used
 )]
 use jsonschema::Draft;
 use pyo3::{
