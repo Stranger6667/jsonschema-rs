@@ -28,7 +28,7 @@ const DRAFT7: u8 = 7;
 const DRAFT6: u8 = 6;
 const DRAFT4: u8 = 4;
 
-create_exception!(jsonschema_rs, ValidationError, exceptions::ValueError);
+create_exception!(jsonschema_rs, ValidationError, exceptions::PyValueError);
 
 #[derive(Debug)]
 enum JSONSchemaError {
@@ -37,7 +37,7 @@ enum JSONSchemaError {
 
 impl From<JSONSchemaError> for PyErr {
     fn from(error: JSONSchemaError) -> PyErr {
-        exceptions::ValueError::py_err(match error {
+        exceptions::PyValueError::new_err(match error {
             JSONSchemaError::Compilation(_) => "Invalid schema",
         })
     }
@@ -48,7 +48,7 @@ fn get_draft(draft: u8) -> PyResult<Draft> {
         DRAFT4 => Ok(jsonschema::Draft::Draft4),
         DRAFT6 => Ok(jsonschema::Draft::Draft6),
         DRAFT7 => Ok(jsonschema::Draft::Draft7),
-        _ => Err(exceptions::ValueError::py_err(format!(
+        _ => Err(exceptions::PyValueError::new_err(format!(
             "Unknown draft: {}",
             draft
         ))),
@@ -151,7 +151,7 @@ impl JSONSchema {
         } else {
             None
         };
-        error.map_or_else(|| Ok(()), |message| Err(ValidationError::py_err(message)))
+        error.map_or_else(|| Ok(()), |message| Err(ValidationError::new_err(message)))
     }
 }
 

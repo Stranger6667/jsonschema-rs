@@ -16,7 +16,7 @@ built = { version = "0.4", features = ["chrono"] }
 serde_json = "1"
 serde = "1"
 jsonschema = { path = "../", version = "*" , features = ["reqwest"] }
-pyo3 = { version = "^0.11", features = ["extension-module"] }
+pyo3 = { version = "^0.12", features = ["extension-module"] }
 pyo3-built = "0.4"
 
 [package.metadata.maturin]
