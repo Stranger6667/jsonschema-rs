@@ -15,9 +15,8 @@ built = { version = "0.4", features = ["chrono"] }
 [dependencies]
 serde_json = "1"
 serde = "1"
-# Path is used for local builds, while version is used while publishing the artifact
-jsonschema = { path = "../", version = "= 0.3.1" }
-pyo3 = { version = ">= 0.11", features = ["extension-module"] }
+jsonschema = { path = "../", version = "*" , features = ["reqwest"] }
+pyo3 = { version = "^0.11", features = ["extension-module"] }
 pyo3-built = "0.4"
 
 [package.metadata.maturin]
