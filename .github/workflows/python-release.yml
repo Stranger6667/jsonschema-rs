@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, windows-latest]
-        python-version: ['3.5', '3.6', '3.7', '3.8']
+        python-version: ['3.6', '3.7', '3.8' , '3.9']
         architecture: [x86, x64]
         exclude:
         - os: macos-latest
@@ -29,7 +29,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: stable
           override: true
       - name: Install Tox
         run: pip install tox
@@ -48,7 +48,7 @@ jobs:
       matrix:
         # List of the language-implementation API pairs to publish wheels for
         # The list of supported is obtainable by running `docker run quay.io/pypa/manylinux2014_x86_64 ls /opt/python`
-        PYTHON_IMPLEMENTATION_ABI: [cp35-cp35m, cp36-cp36m, cp37-cp37m, cp38-cp38]
+        PYTHON_IMPLEMENTATION_ABI: [cp36-cp36m, cp37-cp37m, cp38-cp38, cp39-cp39]
     runs-on: ubuntu-latest
     container: quay.io/pypa/manylinux2014_x86_64  # Builds wheels on CentOS 7 (supported until 2024)
     env:
@@ -73,7 +73,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: stable
           override: true
       - name: Install Tox
         run: ${{ env.PYTHON_SYS_EXECUTABLE }} -m pip install tox
@@ -105,7 +105,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: stable
           override: true
       - name: Install Tox
         run: pip install tox
