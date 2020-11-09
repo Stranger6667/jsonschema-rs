@@ -177,6 +177,6 @@ impl Serialize for SerializePyObject {
 pub(crate) fn to_value(object: &PyAny) -> PyResult<serde_json::Value> {
     Ok(
         serde_json::to_value(SerializePyObject::new(object.as_ptr(), 0))
-            .map_err(|err| exceptions::ValueError::py_err(err.to_string()))?,
+            .map_err(|err| exceptions::PyValueError::new_err(err.to_string()))?,
     )
 }
