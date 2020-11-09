@@ -1,6 +1,4 @@
-import os
-
-from setuptools import find_packages, setup
+from setuptools import setup
 
 try:
     from setuptools_rust import Binding, RustExtension
@@ -41,7 +39,6 @@ def call_setup():
             "License :: OSI Approved :: MIT License",
             "Operating System :: OS Independent",
             "Programming Language :: Python :: 3",
-            "Programming Language :: Python :: 3.5",
             "Programming Language :: Python :: 3.6",
             "Programming Language :: Python :: 3.7",
             "Programming Language :: Python :: 3.8",
