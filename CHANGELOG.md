@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2020-11-09
+
 ### Added
 
 - Command Line Interface. [#102](https://github.com/Stranger6667/jsonschema-rs/issues/102)
@@ -83,7 +85,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.4.0...HEAD
+[0.4.0]: https://github.com/Stranger6667/jsonschema-rs/compare/v0.3.1...rust-v0.4.0
 [0.3.1]: https://github.com/Stranger6667/jsonschema-rs/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Stranger6667/jsonschema-rs/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Stranger6667/jsonschema-rs/compare/v0.1.0...v0.2.0
