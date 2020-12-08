@@ -62,6 +62,7 @@ impl Validate for MultipleTypesValidator {
     #[inline]
     fn is_valid_signed_integer(&self, _: &JSONSchema, _: &Value, _: i64) -> bool {
         self.types.contains_type(PrimitiveType::Integer)
+            || self.types.contains_type(PrimitiveType::Number)
     }
     #[inline]
     fn is_valid_string(&self, _: &JSONSchema, _: &Value, _: &str) -> bool {
@@ -70,6 +71,7 @@ impl Validate for MultipleTypesValidator {
     #[inline]
     fn is_valid_unsigned_integer(&self, _: &JSONSchema, _: &Value, _: u64) -> bool {
         self.types.contains_type(PrimitiveType::Integer)
+            || self.types.contains_type(PrimitiveType::Number)
     }
 }
 impl ToString for MultipleTypesValidator {
