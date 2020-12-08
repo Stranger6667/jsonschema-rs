@@ -163,7 +163,7 @@ pub(crate) fn pointer<'a>(
     document: &'a Value,
     pointer: &str,
 ) -> Option<(Vec<&'a str>, &'a Value)> {
-    if pointer == "" {
+    if pointer.is_empty() {
         return Some((vec![], document));
     }
     if !pointer.starts_with('/') {
