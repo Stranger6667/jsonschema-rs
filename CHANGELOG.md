@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Integers not recognized as numbers when the `type` keyword is a list of multiple values. [#147](https://github.com/Stranger6667/jsonschema-rs/issues/147)
+
 ## [0.4.0] - 2020-11-09
 
 ### Added

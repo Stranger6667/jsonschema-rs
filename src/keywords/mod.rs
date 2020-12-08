@@ -245,4 +245,12 @@ mod tests {
         let compiled = JSONSchema::compile(schema).unwrap();
         assert!(compiled.is_valid(instance))
     }
+
+    #[test_case(&json!({"type": "number"}), &json!(42))]
+    #[test_case(&json!({"type": ["number", "null"]}), &json!(42))]
+    fn integer_is_valid_number_multi_type(schema: &Value, instance: &Value) {
+        // Regression: https://github.com/Stranger6667/jsonschema-rs/issues/147
+        let compiled = JSONSchema::compile(schema).unwrap();
+        assert!(compiled.is_valid(instance))
+    }
 }
