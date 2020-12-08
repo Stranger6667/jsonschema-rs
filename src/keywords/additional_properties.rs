@@ -6,7 +6,7 @@ use crate::{
 };
 use regex::Regex;
 use serde_json::{Map, Value};
-use std::{collections::BTreeSet, iter::FromIterator};
+use std::collections::BTreeSet;
 
 pub(crate) struct AdditionalPropertiesValidator {
     validators: Validators,
@@ -124,7 +124,7 @@ impl AdditionalPropertiesNotEmptyFalseValidator {
     pub(crate) fn compile(properties: &Value) -> CompilationResult {
         if let Value::Object(properties) = properties {
             Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
-                properties: BTreeSet::from_iter(properties.keys().cloned()),
+                properties: properties.keys().cloned().collect(),
             }))
         } else {
             Err(CompilationError::SchemaError)
@@ -203,7 +203,7 @@ impl AdditionalPropertiesNotEmptyValidator {
     ) -> CompilationResult {
         if let Value::Object(properties) = properties {
             Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
-                properties: BTreeSet::from_iter(properties.keys().cloned()),
+                properties: properties.keys().cloned().collect(),
                 validators: compile_validators(schema, context)?,
             }))
         } else {
@@ -433,7 +433,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator {
             Ok(Box::new(
                 AdditionalPropertiesWithPatternsNotEmptyValidator {
                     validators: compile_validators(schema, context)?,
-                    properties: BTreeSet::from_iter(properties.keys().cloned()),
+                    properties: properties.keys().cloned().collect(),
                     pattern,
                 },
             ))
@@ -519,7 +519,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
         if let Value::Object(properties) = properties {
             Ok(Box::new(
                 AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
-                    properties: BTreeSet::from_iter(properties.keys().cloned()),
+                    properties: properties.keys().cloned().collect(),
                     pattern,
                 },
             ))
