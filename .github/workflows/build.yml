@@ -99,11 +99,10 @@ jobs:
       - id: coverage
         uses: actions-rs/grcov@v0.1
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1.0.5
+        uses: codecov/codecov-action@v1.0.15
         if: ${{ env.GITHUB_REPOSITORY }} == 'Stranger6667/jsonschema-rs'
         with:
           name: coverage
-          token: ${{ secrets.CODECOV_TOKEN }}
           file: ${{ steps.coverage.outputs.report }}
 
   test-python:
