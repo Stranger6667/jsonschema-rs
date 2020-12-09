@@ -4,7 +4,7 @@
 //! a validation tree, which reduces runtime costs for working with schema parameters.
 //!
 //! Supports:
-//!   - JSON Schema drafts 6, 7 (all test cases);
+//!   - JSON Schema drafts 4, 6, 7 (except some optional test cases);
 //!   - Loading remote documents via HTTP(S);
 //!
 //! ## Usage Examples:
