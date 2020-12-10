@@ -254,4 +254,29 @@ mod tests {
         let compiled = JSONSchema::compile(schema).unwrap();
         assert!(compiled.is_valid(instance))
     }
+    // enum: Number
+    #[test_case(&json!({"enum": [0.0]}), &json!(0))]
+    // enum: Array
+    #[test_case(&json!({"enum": [[1.0]]}), &json!([1]))]
+    // enum: Object
+    #[test_case(&json!({"enum": [{"a": 1.0}]}), &json!({"a": 1}))]
+    // enum:: Object in Array
+    #[test_case(&json!({"enum": [[{"b": 1.0}]]}), &json!([{"b": 1}]))]
+    // enum:: Array in Object
+    #[test_case(&json!({"enum": [{"c": [1.0]}]}), &json!({"c": [1]}))]
+    // const: Number
+    #[test_case(&json!({"const": 0.0}), &json!(0))]
+    // const: Array
+    #[test_case(&json!({"const": [1.0]}), &json!([1]))]
+    // const: Object
+    #[test_case(&json!({"const": {"a": 1.0}}), &json!({"a": 1}))]
+    // const:: Object in Array
+    #[test_case(&json!({"const": [{"b": 1.0}]}), &json!([{"b": 1}]))]
+    // const:: Array in Object
+    #[test_case(&json!({"const": {"c": [1.0]}}), &json!({"c": [1]}))]
+    fn numeric_equivalence(schema: &Value, instance: &Value) {
+        // Regression: https://github.com/Stranger6667/jsonschema-rs/issues/149
+        let compiled = JSONSchema::compile(schema).unwrap();
+        assert!(compiled.is_valid(instance))
+    }
 }
