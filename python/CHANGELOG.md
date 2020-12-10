@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Number comparison for `enum` and `const` keywords. [#149](https://github.com/Stranger6667/jsonschema-rs/issues/149)
+
 ## [0.4.1] - 2020-12-09
 
 ### Fixed

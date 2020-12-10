@@ -1,3 +1,4 @@
+use crate::keywords::helpers;
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
@@ -31,7 +32,7 @@ impl Validate for ConstArrayValidator {
     #[inline]
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::Array(instance_value) = instance {
-            &self.value == instance_value
+            helpers::equal_arrays(&self.value, instance_value)
         } else {
             false
         }
@@ -181,7 +182,7 @@ impl Validate for ConstObjectValidator {
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
-            &self.value == item
+            helpers::equal_objects(&self.value, item)
         } else {
             false
         }
