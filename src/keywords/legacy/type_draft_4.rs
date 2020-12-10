@@ -5,7 +5,7 @@ use crate::{
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
 };
-use serde_json::{Map, Value};
+use serde_json::{Map, Number, Value};
 use std::convert::TryFrom;
 
 pub(crate) struct MultipleTypesValidator {
@@ -33,44 +33,28 @@ impl MultipleTypesValidator {
 }
 
 impl Validate for MultipleTypesValidator {
-    #[inline]
-    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
-        ValidationError::multiple_type_error(instance, self.types)
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        match instance {
+            Value::Array(_) => self.types.contains_type(PrimitiveType::Array),
+            Value::Bool(_) => self.types.contains_type(PrimitiveType::Boolean),
+            Value::Null => self.types.contains_type(PrimitiveType::Null),
+            Value::Number(num) => {
+                self.types.contains_type(PrimitiveType::Number)
+                    || (self.types.contains_type(PrimitiveType::Integer) && is_integer(num))
+            }
+            Value::Object(_) => self.types.contains_type(PrimitiveType::Object),
+            Value::String(_) => self.types.contains_type(PrimitiveType::String),
+        }
     }
-
-    #[inline]
-    fn is_valid_array(&self, _: &JSONSchema, _: &Value, _: &[Value]) -> bool {
-        self.types.contains_type(PrimitiveType::Array)
-    }
-    #[inline]
-    fn is_valid_boolean(&self, _: &JSONSchema, _: &Value, _: bool) -> bool {
-        self.types.contains_type(PrimitiveType::Boolean)
-    }
-    #[inline]
-    fn is_valid_null(&self, _: &JSONSchema, _: &Value, _: ()) -> bool {
-        self.types.contains_type(PrimitiveType::Null)
-    }
-    #[inline]
-    fn is_valid_number(&self, _: &JSONSchema, _: &Value, _: f64) -> bool {
-        self.types.contains_type(PrimitiveType::Number)
-    }
-    #[inline]
-    fn is_valid_object(&self, _: &JSONSchema, _: &Value, _: &Map<String, Value>) -> bool {
-        self.types.contains_type(PrimitiveType::Object)
-    }
-    #[inline]
-    fn is_valid_signed_integer(&self, _: &JSONSchema, _: &Value, _: i64) -> bool {
-        self.types.contains_type(PrimitiveType::Integer)
-    }
-    #[inline]
-    fn is_valid_string(&self, _: &JSONSchema, _: &Value, _: &str) -> bool {
-        self.types.contains_type(PrimitiveType::String)
-    }
-    #[inline]
-    fn is_valid_unsigned_integer(&self, _: &JSONSchema, _: &Value, _: u64) -> bool {
-        self.types.contains_type(PrimitiveType::Integer)
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
+            error(ValidationError::multiple_type_error(instance, self.types))
+        }
     }
 }
+
 impl ToString for MultipleTypesValidator {
     fn to_string(&self) -> String {
         format!(
@@ -83,6 +67,7 @@ impl ToString for MultipleTypesValidator {
         )
     }
 }
+
 pub(crate) struct IntegerTypeValidator {}
 
 impl IntegerTypeValidator {
@@ -93,61 +78,34 @@ impl IntegerTypeValidator {
 }
 
 impl Validate for IntegerTypeValidator {
-    #[inline]
-    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
-        ValidationError::single_type_error(instance, PrimitiveType::Integer)
-    }
-
-    #[inline]
-    fn is_valid_array(&self, _: &JSONSchema, _: &Value, _: &[Value]) -> bool {
-        false
-    }
-    #[inline]
-    fn is_valid_boolean(&self, _: &JSONSchema, _: &Value, _: bool) -> bool {
-        false
-    }
-    #[inline]
-    fn is_valid_null(&self, _: &JSONSchema, _: &Value, _: ()) -> bool {
-        false
-    }
-    #[inline]
-    fn is_valid_number(&self, _: &JSONSchema, _: &Value, _: f64) -> bool {
-        false
-    }
-    #[inline]
-    fn is_valid_object(&self, _: &JSONSchema, _: &Value, _: &Map<String, Value>) -> bool {
-        false
-    }
-    #[inline]
-    fn is_valid_string(&self, _: &JSONSchema, _: &Value, _: &str) -> bool {
-        false
-    }
-    #[inline]
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Number(instance_number) = instance {
-            instance_number.is_u64() || instance_number.is_i64()
+        if let Value::Number(num) = instance {
+            is_integer(num)
         } else {
             false
         }
     }
 
-    #[inline]
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Number(_) = instance {
-            if self.is_valid(schema, instance) {
-                no_error()
-            } else {
-                error(self.build_validation_error(instance))
-            }
+        if self.is_valid(schema, instance) {
+            no_error()
         } else {
-            error(self.build_validation_error(instance))
+            error(ValidationError::single_type_error(
+                instance,
+                PrimitiveType::Integer,
+            ))
         }
     }
 }
+
 impl ToString for IntegerTypeValidator {
     fn to_string(&self) -> String {
         "type: integer".to_string()
     }
+}
+
+fn is_integer(num: &Number) -> bool {
+    num.is_u64() || num.is_i64()
 }
 
 #[inline]

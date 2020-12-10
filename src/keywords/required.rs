@@ -30,57 +30,28 @@ impl RequiredValidator {
 }
 
 impl Validate for RequiredValidator {
-    #[inline]
-    fn is_valid_object(
-        &self,
-        _: &JSONSchema,
-        _: &Value,
-        instance_value: &Map<String, Value>,
-    ) -> bool {
-        self.required
-            .iter()
-            .all(|property_name| instance_value.contains_key(property_name))
-    }
-    #[inline]
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(instance_value) = instance {
-            self.is_valid_object(schema, instance, instance_value)
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = instance {
+            self.required
+                .iter()
+                .all(|property_name| item.contains_key(property_name))
         } else {
             true
         }
     }
 
-    #[inline]
-    fn validate_object<'a>(
-        &self,
-        _: &'a JSONSchema,
-        instance: &'a Value,
-        instance_value: &'a Map<String, Value>,
-    ) -> ErrorIterator<'a> {
-        self.required
-            .iter()
-            .filter_map(|property_name| {
-                if !instance_value.contains_key(property_name) {
-                    Some(error(ValidationError::required(
-                        instance,
-                        property_name.clone(),
-                    )))
-                } else {
-                    None
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(item) = instance {
+            for property_name in &self.required {
+                if !item.contains_key(property_name) {
+                    return error(ValidationError::required(instance, property_name.clone()));
                 }
-            })
-            .next()
-            .unwrap_or_else(no_error)
-    }
-    #[inline]
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(instance_value) = instance {
-            self.validate_object(schema, instance, instance_value)
-        } else {
-            no_error()
+            }
         }
+        no_error()
     }
 }
+
 impl ToString for RequiredValidator {
     fn to_string(&self) -> String {
         format!("required: [{}]", self.required.join(", "))

@@ -1,6 +1,6 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
-    error::{no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -22,33 +22,25 @@ impl MinItemsValidator {
 }
 
 impl Validate for MinItemsValidator {
-    #[inline]
-    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
-        ValidationError::min_items(instance, self.limit)
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(items) = instance {
+            if (items.len() as u64) < self.limit {
+                return false;
+            }
+        }
+        true
     }
 
-    #[inline]
-    fn is_valid_array(&self, _: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
-        instance_value.len() as u64 >= self.limit
-    }
-    #[inline]
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Array(instance_value) = instance {
-            self.is_valid_array(schema, instance, instance_value)
-        } else {
-            true
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Array(items) = instance {
+            if (items.len() as u64) < self.limit {
+                return error(ValidationError::min_items(instance, self.limit));
+            }
         }
-    }
-
-    #[inline]
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Array(instance_value) = instance {
-            self.validate_array(schema, instance, instance_value)
-        } else {
-            no_error()
-        }
+        no_error()
     }
 }
+
 impl ToString for MinItemsValidator {
     fn to_string(&self) -> String {
         format!("minItems: {}", self.limit)

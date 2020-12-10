@@ -1,6 +1,6 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
-    error::{CompilationError, ValidationError},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::{format_vec_of_validators, CompilationResult, Validators},
     validator::Validate,
 };
@@ -26,47 +26,33 @@ impl AnyOfValidator {
     }
 }
 
-macro_rules! any_of_impl_is_valid {
-    ($method_suffix:tt, $instance_type: ty) => {
-        paste::item! {
-            #[inline]
-            fn [<is_valid_ $method_suffix>](
-                &self,
-                schema: &JSONSchema,
-                instance: &Value,
-                instance_value: $instance_type,
-            ) -> bool {
-                self.schemas.iter().any(move |validators| {
-                    validators.iter().all(move |validator| {
-                        validator.[<is_valid_ $method_suffix>](schema, instance, instance_value)
-                    })
-                })
+impl Validate for AnyOfValidator {
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        for validators in &self.schemas {
+            if validators
+                .iter()
+                .all(|validator| validator.is_valid(schema, instance))
+            {
+                return true;
             }
         }
-    };
-}
-
-impl Validate for AnyOfValidator {
-    #[inline]
-    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
-        ValidationError::any_of(instance)
+        false
     }
 
-    any_of_impl_is_valid!(array, &[Value]);
-    any_of_impl_is_valid!(boolean, bool);
-    any_of_impl_is_valid!(null, ());
-    any_of_impl_is_valid!(number, f64);
-    any_of_impl_is_valid!(object, &Map<String, Value>);
-    any_of_impl_is_valid!(signed_integer, i64);
-    any_of_impl_is_valid!(string, &str);
-    any_of_impl_is_valid!(unsigned_integer, u64);
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
+            error(ValidationError::any_of(instance))
+        }
+    }
 }
+
 impl ToString for AnyOfValidator {
     fn to_string(&self) -> String {
         format!("anyOf: [{}]", format_vec_of_validators(&self.schemas))
     }
 }
-
 #[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,

@@ -1,6 +1,6 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
-    error::{no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -22,38 +22,25 @@ impl MinPropertiesValidator {
 }
 
 impl Validate for MinPropertiesValidator {
-    #[inline]
-    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
-        ValidationError::min_properties(instance, self.limit)
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = instance {
+            if (item.len() as u64) < self.limit {
+                return false;
+            }
+        }
+        true
     }
 
-    #[inline]
-    fn is_valid_object(
-        &self,
-        _: &JSONSchema,
-        _: &Value,
-        instance_value: &Map<String, Value>,
-    ) -> bool {
-        instance_value.len() as u64 >= self.limit
-    }
-    #[inline]
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(instance_value) = instance {
-            self.is_valid_object(schema, instance, instance_value)
-        } else {
-            true
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(item) = instance {
+            if (item.len() as u64) < self.limit {
+                return error(ValidationError::min_properties(instance, self.limit));
+            }
         }
-    }
-
-    #[inline]
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(instance_value) = instance {
-            self.validate_object(schema, instance, instance_value)
-        } else {
-            no_error()
-        }
+        no_error()
     }
 }
+
 impl ToString for MinPropertiesValidator {
     fn to_string(&self) -> String {
         format!("minProperties: {}", self.limit)

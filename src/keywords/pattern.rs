@@ -1,6 +1,6 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
-    error::{no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -35,33 +35,25 @@ impl PatternValidator {
 }
 
 impl Validate for PatternValidator {
-    #[inline]
-    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
-        ValidationError::pattern(instance, self.original.clone())
+    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::String(item) = instance {
+            if !self.pattern.is_match(item) {
+                return error(ValidationError::pattern(instance, self.original.clone()));
+            }
+        }
+        no_error()
     }
 
-    #[inline]
-    fn is_valid_string(&self, _: &JSONSchema, _: &Value, instance_value: &str) -> bool {
-        self.pattern.is_match(instance_value)
-    }
-    #[inline]
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::String(instance_value) = instance {
-            self.is_valid_string(schema, instance, instance_value)
-        } else {
-            true
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            if !self.pattern.is_match(item) {
+                return false;
+            }
         }
-    }
-
-    #[inline]
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::String(instance_value) = instance {
-            self.validate_string(schema, instance, instance_value)
-        } else {
-            no_error()
-        }
+        true
     }
 }
+
 impl ToString for PatternValidator {
     fn to_string(&self) -> String {
         format!("pattern: {}", self.pattern)

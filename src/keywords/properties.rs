@@ -27,63 +27,42 @@ impl PropertiesValidator {
 }
 
 impl Validate for PropertiesValidator {
-    #[inline]
-    fn is_valid_object(
-        &self,
-        schema: &JSONSchema,
-        _: &Value,
-        instance_value: &Map<String, Value>,
-    ) -> bool {
-        self.properties.iter().all(|(name, validators)| {
-            instance_value.get(name).into_iter().all(|sub_value| {
-                validators
-                    .iter()
-                    .all(|validator| validator.is_valid(schema, sub_value))
-            })
-        })
-    }
-    #[inline]
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(instance_value) = instance {
-            self.is_valid_object(schema, instance, instance_value)
+        if let Value::Object(item) = instance {
+            self.properties.iter().all(move |(name, validators)| {
+                let option = item.get(name);
+                option.into_iter().all(move |item| {
+                    validators
+                        .iter()
+                        .all(move |validator| validator.is_valid(schema, item))
+                })
+            })
         } else {
             true
         }
     }
 
-    #[inline]
-    fn validate_object<'a>(
-        &self,
-        schema: &'a JSONSchema,
-        _: &'a Value,
-        instance_value: &'a Map<String, Value>,
-    ) -> ErrorIterator<'a> {
-        Box::new(
-            self.properties
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Object(item) = instance {
+            let errors: Vec<_> = self
+                .properties
                 .iter()
                 .flat_map(move |(name, validators)| {
-                    instance_value
-                        .get(name)
-                        .into_iter()
-                        .flat_map(move |sub_value| {
-                            validators
-                                .iter()
-                                .flat_map(move |validator| validator.validate(schema, sub_value))
-                        })
+                    let option = item.get(name);
+                    option.into_iter().flat_map(move |item| {
+                        validators
+                            .iter()
+                            .flat_map(move |validator| validator.validate(schema, item))
+                    })
                 })
-                .collect::<Vec<_>>()
-                .into_iter(),
-        )
-    }
-    #[inline]
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Object(instance_value) = instance {
-            self.validate_object(schema, instance, instance_value)
+                .collect();
+            Box::new(errors.into_iter())
         } else {
             no_error()
         }
     }
 }
+
 impl ToString for PropertiesValidator {
     fn to_string(&self) -> String {
         format!(

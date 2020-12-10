@@ -1,6 +1,6 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
-    error::{no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -20,70 +20,30 @@ pub(crate) struct MinimumF64Validator {
 macro_rules! validate {
     ($validator: ty) => {
         impl Validate for $validator {
-            #[inline]
-            fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
-                #[allow(trivial_numeric_casts)]
-                ValidationError::minimum(instance, self.limit as f64)
-            }
-
-            #[inline]
-            fn is_valid_number(&self, _: &JSONSchema, _: &Value, instance_value: f64) -> bool {
-                NumCmp::num_ge(instance_value, self.limit)
-            }
-            #[inline]
-            fn is_valid_signed_integer(
-                &self,
-                _: &JSONSchema,
-                _: &Value,
-                instance_value: i64,
-            ) -> bool {
-                NumCmp::num_ge(instance_value, self.limit)
-            }
-            #[inline]
-            fn is_valid_unsigned_integer(
-                &self,
-                _: &JSONSchema,
-                _: &Value,
-                instance_value: u64,
-            ) -> bool {
-                NumCmp::num_ge(instance_value, self.limit)
-            }
-            #[inline]
-            fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-                if let Some(instance_value) = instance.as_u64() {
-                    self.is_valid_unsigned_integer(schema, instance, instance_value)
-                } else if let Some(instance_value) = instance.as_i64() {
-                    self.is_valid_signed_integer(schema, instance, instance_value)
-                } else if let Some(instance_value) = instance.as_f64() {
-                    self.is_valid_number(schema, instance, instance_value)
-                } else {
-                    true
-                }
-            }
-
-            #[inline]
             fn validate<'a>(
                 &self,
                 schema: &'a JSONSchema,
                 instance: &'a Value,
             ) -> ErrorIterator<'a> {
-                if let Value::Number(instance_number) = instance {
-                    if let Some(instance_unsigned_integer) = instance_number.as_u64() {
-                        self.validate_unsigned_integer(schema, instance, instance_unsigned_integer)
-                    } else if let Some(instance_signed_integer) = instance_number.as_i64() {
-                        self.validate_signed_integer(schema, instance, instance_signed_integer)
-                    } else {
-                        self.validate_number(
-                            schema,
-                            instance,
-                            instance_number
-                                .as_f64()
-                                .expect("A JSON number will always be representable as f64"),
-                        )
-                    }
-                } else {
+                if self.is_valid(schema, instance) {
                     no_error()
+                } else {
+                    error(ValidationError::minimum(instance, self.limit as f64)) // do not cast
                 }
+            }
+
+            fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+                if let Value::Number(item) = instance {
+                    return if let Some(item) = item.as_u64() {
+                        !NumCmp::num_lt(item, self.limit)
+                    } else if let Some(item) = item.as_i64() {
+                        !NumCmp::num_lt(item, self.limit)
+                    } else {
+                        let item = item.as_f64().expect("Always valid");
+                        !NumCmp::num_lt(item, self.limit)
+                    };
+                }
+                true
             }
         }
         impl ToString for $validator {
@@ -96,7 +56,35 @@ macro_rules! validate {
 
 validate!(MinimumU64Validator);
 validate!(MinimumI64Validator);
-validate!(MinimumF64Validator);
+
+impl Validate for MinimumF64Validator {
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Number(item) = instance {
+            return if let Some(item) = item.as_u64() {
+                !NumCmp::num_lt(item, self.limit)
+            } else if let Some(item) = item.as_i64() {
+                !NumCmp::num_lt(item, self.limit)
+            } else {
+                let item = item.as_f64().expect("Always valid");
+                !NumCmp::num_lt(item, self.limit)
+            };
+        }
+        true
+    }
+
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
+            error(ValidationError::minimum(instance, self.limit))
+        }
+    }
+}
+impl ToString for MinimumF64Validator {
+    fn to_string(&self) -> String {
+        format!("minimum: {}", self.limit)
+    }
+}
 
 #[inline]
 pub(crate) fn compile(

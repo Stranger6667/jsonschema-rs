@@ -4,7 +4,7 @@ use crate::{
     keywords::CompilationResult,
     validator::Validate,
 };
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 pub(crate) struct TrueValidator {}
 impl TrueValidator {
@@ -14,16 +14,15 @@ impl TrueValidator {
     }
 }
 impl Validate for TrueValidator {
-    #[inline]
     fn is_valid(&self, _: &JSONSchema, _: &Value) -> bool {
         true
     }
 
-    #[inline]
     fn validate<'a>(&self, _: &'a JSONSchema, _: &'a Value) -> ErrorIterator<'a> {
         no_error()
     }
 }
+
 impl ToString for TrueValidator {
     fn to_string(&self) -> String {
         "true".to_string()
@@ -38,53 +37,15 @@ impl FalseValidator {
     }
 }
 impl Validate for FalseValidator {
-    #[inline]
-    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
-        ValidationError::false_schema(instance)
-    }
-
-    #[inline]
-    fn is_valid_array(&self, _: &JSONSchema, _: &Value, _: &[Value]) -> bool {
-        false
-    }
-    #[inline]
-    fn is_valid_boolean(&self, _: &JSONSchema, _: &Value, _: bool) -> bool {
-        false
-    }
-    #[inline]
-    fn is_valid_object(&self, _: &JSONSchema, _: &Value, _: &Map<String, Value>) -> bool {
-        false
-    }
-    #[inline]
-    fn is_valid_null(&self, _: &JSONSchema, _: &Value, _: ()) -> bool {
-        false
-    }
-    #[inline]
-    fn is_valid_number(&self, _: &JSONSchema, _: &Value, _: f64) -> bool {
-        false
-    }
-    #[inline]
-    fn is_valid_signed_integer(&self, _: &JSONSchema, _: &Value, _: i64) -> bool {
-        false
-    }
-    #[inline]
-    fn is_valid_string(&self, _: &JSONSchema, _: &Value, _: &str) -> bool {
-        false
-    }
-    #[inline]
-    fn is_valid_unsigned_integer(&self, _: &JSONSchema, _: &Value, _: u64) -> bool {
-        false
-    }
-    #[inline]
     fn is_valid(&self, _: &JSONSchema, _: &Value) -> bool {
         false
     }
 
-    #[inline]
     fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        error(self.build_validation_error(instance))
+        error(ValidationError::false_schema(instance))
     }
 }
+
 impl ToString for FalseValidator {
     fn to_string(&self) -> String {
         "false".to_string()

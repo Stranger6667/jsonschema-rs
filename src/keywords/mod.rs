@@ -11,6 +11,7 @@ pub(crate) mod enum_;
 pub(crate) mod exclusive_maximum;
 pub(crate) mod exclusive_minimum;
 pub(crate) mod format;
+pub(crate) mod helpers;
 pub(crate) mod if_;
 pub(crate) mod items;
 pub(crate) mod legacy;

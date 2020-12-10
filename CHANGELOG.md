@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Performance
+
+- Some performance related changes were rolled back, due to increased complexity.
+
 ## [0.4.1] - 2020-12-09
 
 ### Fixed

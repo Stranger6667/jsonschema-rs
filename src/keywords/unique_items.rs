@@ -1,6 +1,6 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
-    error::{no_error, ErrorIterator, ValidationError},
+    error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
@@ -69,33 +69,24 @@ impl UniqueItemsValidator {
 }
 
 impl Validate for UniqueItemsValidator {
-    #[inline]
-    fn build_validation_error<'a>(&self, instance: &'a Value) -> ValidationError<'a> {
-        ValidationError::unique_items(instance)
-    }
-
-    #[inline]
-    fn is_valid_array(&self, _: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
-        is_unique(instance_value)
-    }
-    #[inline]
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Array(instance_value) = instance {
-            self.is_valid_array(schema, instance, instance_value)
-        } else {
-            false
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(items) = instance {
+            if !is_unique(items) {
+                return false;
+            }
         }
+        true
     }
 
-    #[inline]
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Array(instance_value) = instance {
-            self.validate_array(schema, instance, instance_value)
-        } else {
+        if self.is_valid(schema, instance) {
             no_error()
+        } else {
+            error(ValidationError::unique_items(instance))
         }
     }
 }
+
 impl ToString for UniqueItemsValidator {
     fn to_string(&self) -> String {
         "uniqueItems: true".to_string()

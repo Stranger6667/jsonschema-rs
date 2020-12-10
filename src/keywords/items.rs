@@ -25,35 +25,24 @@ impl ItemsArrayValidator {
     }
 }
 impl Validate for ItemsArrayValidator {
-    #[inline]
-    fn is_valid_array(&self, schema: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
-        instance_value
-            .iter()
-            .zip(self.items.iter())
-            .all(move |(item, validators)| {
-                validators
-                    .iter()
-                    .all(move |validator| validator.is_valid(schema, item))
-            })
-    }
-    #[inline]
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Array(instance_value) = instance {
-            self.is_valid_array(schema, instance, instance_value)
+        if let Value::Array(items) = instance {
+            items
+                .iter()
+                .zip(self.items.iter())
+                .all(move |(item, validators)| {
+                    validators
+                        .iter()
+                        .all(move |validator| validator.is_valid(schema, item))
+                })
         } else {
             true
         }
     }
 
-    #[inline]
-    fn validate_array<'a>(
-        &self,
-        schema: &'a JSONSchema,
-        _: &'a Value,
-        instance_value: &'a [Value],
-    ) -> ErrorIterator<'a> {
-        Box::new(
-            instance_value
+    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        if let Value::Array(items) = instance {
+            let errors: Vec<_> = items
                 .iter()
                 .zip(self.items.iter())
                 .flat_map(move |(item, validators)| {
@@ -61,19 +50,14 @@ impl Validate for ItemsArrayValidator {
                         .iter()
                         .flat_map(move |validator| validator.validate(schema, item))
                 })
-                .collect::<Vec<_>>()
-                .into_iter(),
-        )
-    }
-    #[inline]
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Array(instance_value) = instance {
-            self.validate_array(schema, instance, instance_value)
+                .collect();
+            Box::new(errors.into_iter())
         } else {
             no_error()
         }
     }
 }
+
 impl ToString for ItemsArrayValidator {
     fn to_string(&self) -> String {
         format!("items: [{}]", format_vec_of_validators(&self.items))
@@ -91,69 +75,54 @@ impl ItemsObjectValidator {
     }
 }
 impl Validate for ItemsObjectValidator {
-    #[inline]
-    fn is_valid_array(&self, schema: &JSONSchema, _: &Value, instance_value: &[Value]) -> bool {
-        if instance_value.len() > 8 {
-            instance_value.par_iter().all(|item| {
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(items) = instance {
+            let validate = move |item| {
                 self.validators
                     .iter()
                     .all(|validator| validator.is_valid(schema, item))
-            })
-        } else {
-            self.validators.iter().all(|validator| {
-                instance_value
-                    .iter()
-                    .all(|item| validator.is_valid(schema, item))
-            })
-        }
-    }
-    #[inline]
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Array(instance_value) = instance {
-            self.is_valid_array(schema, instance, instance_value)
+            };
+            if items.len() > 8 {
+                items.par_iter().all(validate)
+            } else {
+                self.validators.iter().all(move |validator| {
+                    items
+                        .iter()
+                        .all(move |item| validator.is_valid(schema, item))
+                })
+            }
         } else {
             true
         }
     }
 
-    #[inline]
-    fn validate_array<'a>(
-        &self,
-        schema: &'a JSONSchema,
-        _: &'a Value,
-        instance_value: &'a [Value],
-    ) -> ErrorIterator<'a> {
-        let errors: Vec<_> = if instance_value.len() > 8 {
-            instance_value
-                .par_iter()
-                .flat_map(|item| {
-                    self.validators
-                        .iter()
-                        .flat_map(|validator| validator.validate(schema, item))
-                        .collect::<Vec<_>>()
-                })
-                .collect()
-        } else {
-            self.validators
-                .iter()
-                .flat_map(move |validator| {
-                    instance_value
-                        .iter()
-                        .flat_map(move |item| validator.validate(schema, item))
-                })
-                .collect()
-        };
-        Box::new(errors.into_iter())
-    }
-    #[inline]
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
-        if let Value::Array(instance_value) = instance {
-            self.validate_array(schema, instance, instance_value)
+        if let Value::Array(items) = instance {
+            let validate = move |item| {
+                self.validators
+                    .iter()
+                    .flat_map(|validator| validator.validate(schema, item))
+                    .collect::<Vec<_>>()
+            };
+            let errors: Vec<_> = if items.len() > 8 {
+                items.par_iter().flat_map(validate).collect()
+            } else {
+                self.validators
+                    .iter()
+                    .flat_map(move |validator| {
+                        items
+                            .iter()
+                            .flat_map(move |item| validator.validate(schema, item))
+                    })
+                    .collect()
+            };
+            Box::new(errors.into_iter())
         } else {
             no_error()
         }
     }
 }
+
 impl ToString for ItemsObjectValidator {
     fn to_string(&self) -> String {
         format!("items: {}", format_validators(&self.validators))
