@@ -13,6 +13,8 @@ use std::{net::IpAddr, str::FromStr};
 use url::Url;
 
 lazy_static::lazy_static! {
+    static ref DATE_RE: Regex =
+        Regex::new(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}\z").expect("Is a valid regex");
     static ref IRI_REFERENCE_RE: Regex =
         Regex::new(r"^(\w+:(/?/?))?[^#\\\s]*(#[^\\\s]*)?\z").expect("Is a valid regex");
     static ref JSON_POINTER_RE: Regex = Regex::new(r"^(/(([^/~])|(~[01]))*)*\z").expect("Is a valid regex");
@@ -65,7 +67,14 @@ impl Validate for DateValidator {
     validate!("date");
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            NaiveDate::parse_from_str(item, "%Y-%m-%d").is_ok()
+            if NaiveDate::parse_from_str(item, "%Y-%m-%d").is_ok() {
+                // Padding with zeroes is ignored by the underlying parser. The most efficient
+                // way to check it will be to use a custom parser that won't ignore zeroes,
+                // but this regex will do the trick and costs ~20% extra time in this validator.
+                DATE_RE.is_match(item.as_str())
+            } else {
+                false
+            }
         } else {
             true
         }

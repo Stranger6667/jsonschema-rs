@@ -5,6 +5,7 @@
 ### Fixed
 
 - Number comparison for `enum` and `const` keywords. [#149](https://github.com/Stranger6667/jsonschema-rs/issues/149)
+- Do not accept `date` strings with single-digit month and day values. [#151](https://github.com/Stranger6667/jsonschema-rs/issues/151)
 
 ## [0.4.1] - 2020-12-09
 
