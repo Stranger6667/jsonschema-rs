@@ -207,9 +207,9 @@ pub(crate) struct ConstStringValidator {
 
 impl ConstStringValidator {
     #[inline]
-    pub(crate) fn compile(value: &String) -> CompilationResult {
+    pub(crate) fn compile(value: &str) -> CompilationResult {
         Ok(Box::new(ConstStringValidator {
-            value: value.clone(),
+            value: value.to_string(),
         }))
     }
 }
