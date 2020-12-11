@@ -25,16 +25,17 @@ To validate documents against some schema and get validation errors (if any):
 use jsonschema::{JSONSchema, Draft, CompilationError};
 use serde_json::json;
 
-fn main() {
+fn main() -> Result<(), CompilationError> {
     let schema = json!({"maxLength": 5});
     let instance = json!("foo");
-    let compiled = JSONSchema::compile(&schema);
+    let compiled = JSONSchema::compile(&schema)?;
     let result = compiled.validate(&instance);
     if let Err(errors) = result {
         for error in errors {
             println!("Validation error: {}", error)
         }
     }
+    Ok(())
 }
 ```
 
@@ -57,12 +58,13 @@ Or use a compiled schema (preferred):
 use jsonschema::{JSONSchema, Draft, CompilationError};
 use serde_json::json;
 
-fn main() {
+fn main() -> Result<(), CompilationError> {
     let schema = json!({"maxLength": 5});
     let instance = json!("foo");
     // Draft is detected automatically with fallback to Draft7
-    let compiled = JSONSchema::compile(&schema);
+    let compiled = JSONSchema::compile(&schema)?;
     assert!(compiled.is_valid(&instance));
+    Ok(())
 }
 ```
 
