@@ -22,7 +22,7 @@ jsonschema = "0.4"
 To validate documents against some schema and get validation errors (if any):
 
 ```rust
-use jsonschema::{JSONSchema, Draft};
+use jsonschema::{JSONSchema, Draft, CompilationError};
 use serde_json::json;
 
 fn main() {
@@ -54,7 +54,7 @@ fn main() {
 Or use a compiled schema (preferred):
 
 ```rust
-use jsonschema::{JSONSchema, Draft};
+use jsonschema::{JSONSchema, Draft, CompilationError};
 use serde_json::json;
 
 fn main() {
