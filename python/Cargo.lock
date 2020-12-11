@@ -577,7 +577,7 @@ dependencies = [
 
 [[package]]
 name = "jsonschema"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "base64",
  "chrono",
@@ -585,7 +585,6 @@ dependencies = [
  "lazy_static",
  "num-cmp",
  "parking_lot",
- "paste",
  "percent-encoding",
  "rayon",
  "regex",

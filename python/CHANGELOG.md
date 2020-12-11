@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.2] - 2020-12-11
+
 ### Fixed
 
 - Number comparison for `enum` and `const` keywords. [#149](https://github.com/Stranger6667/jsonschema-rs/issues/149)
@@ -80,7 +82,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.4.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.4.2...HEAD
+[0.4.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.4.1...python-v0.4.2
 [0.4.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.4.0...python-v0.4.1
 [0.4.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.3.3...python-v0.4.0
 [0.3.3]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.3.2...python-v0.3.3
