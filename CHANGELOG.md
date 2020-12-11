@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.3] - 2020-12-11
+
 ### Documentation
 
 - Make examples in README.md runnable.
@@ -110,7 +112,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.4.2...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.4.3...HEAD
+[0.4.3]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.4.2...rust-v0.4.3
 [0.4.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.4.1...rust-v0.4.2
 [0.4.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.4.0...rust-v0.4.1
 [0.4.0]: https://github.com/Stranger6667/jsonschema-rs/compare/v0.3.1...rust-v0.4.0
