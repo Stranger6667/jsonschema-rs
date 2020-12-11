@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Documentation
+
+- Make examples in README.md runnable.
+
 ## [0.4.2] - 2020-12-11
 
 ### Changed
