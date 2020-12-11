@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Move `paste` to dev dependencies.
+
 ### Fixed
 
 - Number comparison for `enum` and `const` keywords. [#149](https://github.com/Stranger6667/jsonschema-rs/issues/149)

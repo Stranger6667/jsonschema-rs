@@ -30,7 +30,6 @@ rayon = "1"
 reqwest = { version = ">= 0.10", features = ["blocking", "json"], optional = true}
 parking_lot = ">= 0.1"
 num-cmp = ">= 0.1"
-paste = ">= 0.1"
 idna = ">= 0.2"
 structopt = { version = ">= 0.3", optional = true }
 
@@ -41,6 +40,7 @@ json_schema_test_suite = ">= 0.3"
 jsonschema-valid = ">= 0.1"
 valico = "3"
 test-case = "1"
+paste = ">= 0.1"
 reqwest = { version = ">= 0.10", features = ["blocking", "json"] }
 
 [[bench]]
