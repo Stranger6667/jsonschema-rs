@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Exclude `cli` dependency from the `jsonschema` crate & update dependencies in `Cargo.lock`.
+
 ## [0.4.2] - 2020-12-11
 
 ### Fixed
