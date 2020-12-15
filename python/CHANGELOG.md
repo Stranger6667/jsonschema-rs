@@ -2,9 +2,11 @@
 
 ## [Unreleased]
 
+## [0.4.3] - 2020-12-15
+
 ### Changed
 
-- Exclude `cli` dependency from the `jsonschema` crate & update dependencies in `Cargo.lock`.
+- Exclude the `cli` dependency from the `jsonschema` crate & update dependencies in `Cargo.lock`.
 
 ## [0.4.2] - 2020-12-11
 
@@ -86,7 +88,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.4.2...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.4.3...HEAD
+[0.4.3]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.4.2...python-v0.4.3
 [0.4.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.4.1...python-v0.4.2
 [0.4.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.4.0...python-v0.4.1
 [0.4.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.3.3...python-v0.4.0
