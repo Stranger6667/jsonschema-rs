@@ -45,3 +45,26 @@ pub(crate) fn equal_objects(left: &Map<String, Value>, right: &Map<String, Value
             .zip(right)
             .all(|((ka, va), (kb, vb))| ka == kb && equal(va, vb))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::equal;
+    use serde_json::{json, Value};
+    use test_case::test_case;
+
+    #[test_case(&json!(1), &json!(1.0))]
+    #[test_case(&json!([2]), &json!([2.0]))]
+    #[test_case(&json!([-3]), &json!([-3.0]))]
+    #[test_case(&json!({"a": 1}), &json!({"a": 1.0}))]
+    fn are_equal(left: &Value, right: &Value) {
+        assert!(equal(left, right))
+    }
+
+    #[test_case(&json!(1), &json!(2.0))]
+    #[test_case(&json!([]), &json!(["foo"]))]
+    #[test_case(&json!([-3]), &json!([-4.0]))]
+    #[test_case(&json!({"a": 1}), &json!({"a": 1.0, "b": 2}))]
+    fn are_not_equal(left: &Value, right: &Value) {
+        assert!(!equal(left, right))
+    }
+}
