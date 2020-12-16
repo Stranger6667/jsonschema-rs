@@ -2,6 +2,7 @@ use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::{helpers, CompilationResult},
+    primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
 };
 use serde_json::{Map, Value};
@@ -9,6 +10,8 @@ use serde_json::{Map, Value};
 #[derive(Debug)]
 pub(crate) struct EnumValidator {
     options: Value,
+    // Types that occur in items
+    types: PrimitiveTypesBitMap,
     items: Vec<Value>,
 }
 
@@ -16,9 +19,14 @@ impl EnumValidator {
     #[inline]
     pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Value::Array(items) = schema {
+            let mut types = PrimitiveTypesBitMap::new();
+            for item in items.iter() {
+                types |= PrimitiveType::from(item);
+            }
             Ok(Box::new(EnumValidator {
                 options: schema.clone(),
                 items: items.clone(),
+                types,
             }))
         } else {
             Err(CompilationError::SchemaError)
@@ -36,7 +44,14 @@ impl Validate for EnumValidator {
     }
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
-        self.items.iter().any(|item| helpers::equal(instance, item))
+        // If the input value type is not in the types present among the enum options, then there
+        // is no reason to compare it against all items - we know that
+        // there are no items with such type at all
+        if self.types.contains_type(PrimitiveType::from(instance)) {
+            self.items.iter().any(|item| helpers::equal(instance, item))
+        } else {
+            false
+        }
     }
 }
 

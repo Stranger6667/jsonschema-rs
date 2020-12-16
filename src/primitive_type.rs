@@ -1,3 +1,4 @@
+use serde_json::Value;
 use std::{convert::TryFrom, fmt, ops::BitOrAssign};
 
 /// For faster error handling in "type" keyword validator we have this enum, to match
@@ -45,6 +46,19 @@ impl TryFrom<&str> for PrimitiveType {
     }
 }
 
+impl From<&Value> for PrimitiveType {
+    fn from(instance: &Value) -> Self {
+        match instance {
+            Value::Null => PrimitiveType::Null,
+            Value::Bool(_) => PrimitiveType::Boolean,
+            Value::Number(_) => PrimitiveType::Number,
+            Value::String(_) => PrimitiveType::String,
+            Value::Array(_) => PrimitiveType::Array,
+            Value::Object(_) => PrimitiveType::Object,
+        }
+    }
+}
+
 #[inline(always)]
 fn primitive_type_to_bit_map_representation(primitive_type: PrimitiveType) -> u8 {
     match primitive_type {
@@ -68,7 +82,7 @@ fn bit_map_representation_primitive_type(bit_representation: u8) -> PrimitiveTyp
         16 => PrimitiveType::Number,
         32 => PrimitiveType::Object,
         64 => PrimitiveType::String,
-        _ => unreachable!("This shoud never be possible"),
+        _ => unreachable!("This should never be possible"),
     }
 }
 
