@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Performance
+
+- Enum validation for input values that have a type that is not present among the enum variants. [#80](https://github.com/Stranger6667/jsonschema-rs/issues/80)
+
 ## [0.4.3] - 2020-12-15
 
 ### Changed
