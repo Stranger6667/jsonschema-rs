@@ -68,6 +68,11 @@ fn main() -> Result<(), CompilationError> {
 }
 ```
 
+## Bindings
+
+- Python - See the `/python` directory
+- Ruby - a [crate](https://github.com/driv3r/rusty_json_schema) by @driv3r
+
 ## Performance
 
 There is a comparison with other JSON Schema validators written in Rust - `jsonschema_valid` and `valico`.
