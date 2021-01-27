@@ -22,6 +22,7 @@ pub struct CompilationOptions {
     content_media_type_checks: HashMap<&'static str, Option<ContentMediaTypeCheckType>>,
     content_encoding_checks_and_converters:
         HashMap<&'static str, Option<(ContentEncodingCheckType, ContentEncodingConverterType)>>,
+    store: HashMap<String, Value>,
 }
 
 impl CompilationOptions {
@@ -55,7 +56,7 @@ impl CompilationOptions {
             Some(url) => url::Url::parse(url)?,
             None => DEFAULT_SCOPE.clone(),
         };
-        let resolver = Resolver::new(draft, &scope, schema)?;
+        let resolver = Resolver::new(draft, &scope, schema, self.store.clone())?;
         let context = CompilationContext::new(scope, processed_config);
 
         let mut validators = compile_validators(schema, &context)?;
@@ -251,6 +252,13 @@ impl CompilationOptions {
             .insert(content_encoding, None);
         self
     }
+
+    /// Add a new document to the store. It works as a cache to avoid making additional network
+    /// calls to remote schemas via the `$ref` keyword.
+    pub fn with_document(mut self, id: String, document: Value) -> Self {
+        self.store.insert(id, document);
+        self
+    }
 }
 
 impl fmt::Debug for CompilationOptions {
@@ -270,6 +278,7 @@ impl fmt::Debug for CompilationOptions {
 mod tests {
     use super::CompilationOptions;
     use crate::schemas::Draft;
+    use crate::JSONSchema;
     use serde_json::{json, Value};
     use test_case::test_case;
 
@@ -286,5 +295,19 @@ mod tests {
         }
         let compiled = options.compile(schema).unwrap();
         compiled.context.config.draft()
+    }
+
+    #[test]
+    fn test_with_document() {
+        let schema = json!({"$ref": "http://example.json/schema.json#/rule"});
+        let compiled = JSONSchema::options()
+            .with_document(
+                "http://example.json/schema.json".to_string(),
+                json!({"rule": {"minLength": 5}}),
+            )
+            .compile(&schema)
+            .unwrap();
+        assert!(!compiled.is_valid(&json!("foo")));
+        assert!(compiled.is_valid(&json!("foobar")));
     }
 }

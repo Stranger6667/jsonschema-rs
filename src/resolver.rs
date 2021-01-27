@@ -5,6 +5,7 @@ use crate::{
     error::{CompilationError, ValidationError},
     schemas::{id_of, Draft},
 };
+use parking_lot::RwLock;
 use serde_json::Value;
 use std::{borrow::Cow, collections::HashMap};
 use url::Url;
@@ -15,6 +16,7 @@ pub(crate) struct Resolver<'a> {
     // canonical_id is composed with the root document id
     // (if not specified, then `DEFAULT_ROOT_URL` is used for this purpose)
     schemas: HashMap<String, &'a Value>,
+    store: RwLock<HashMap<String, Value>>,
 }
 
 impl<'a> Resolver<'a> {
@@ -22,6 +24,7 @@ impl<'a> Resolver<'a> {
         draft: Draft,
         scope: &Url,
         schema: &'a Value,
+        store: HashMap<String, Value>,
     ) -> Result<Resolver<'a>, CompilationError> {
         let mut schemas = HashMap::new();
         // traverse the schema and store all named ones under their canonical ids
@@ -29,7 +32,10 @@ impl<'a> Resolver<'a> {
             schemas.insert(id, schema);
             None
         })?;
-        Ok(Resolver { schemas })
+        Ok(Resolver {
+            schemas,
+            store: RwLock::new(store),
+        })
     }
 
     /// Load a document for the given `url`.
@@ -40,24 +46,33 @@ impl<'a> Resolver<'a> {
     fn resolve_url(&self, url: &Url, schema: &'a Value) -> Result<Cow<'a, Value>, ValidationError> {
         match url.as_str() {
             DEFAULT_ROOT_URL => Ok(Cow::Borrowed(schema)),
-            url_str => match self.schemas.get(url_str) {
-                Some(value) => Ok(Cow::Borrowed(value)),
-                None => match url.scheme() {
-                    "http" | "https" => {
-                        #[cfg(any(feature = "reqwest", test))]
-                        {
-                            let response = reqwest::blocking::get(url.as_str())?;
-                            let document: Value = response.json()?;
-                            Ok(Cow::Owned(document))
+            url_str => {
+                if let Some(cached) = self.store.read().get(url_str) {
+                    return Ok(Cow::Owned(cached.clone()));
+                }
+
+                match self.schemas.get(url_str) {
+                    Some(value) => Ok(Cow::Borrowed(value)),
+                    None => match url.scheme() {
+                        "http" | "https" => {
+                            #[cfg(any(feature = "reqwest", test))]
+                            {
+                                let response = reqwest::blocking::get(url.as_str())?;
+                                let document: Value = response.json()?;
+                                self.store
+                                    .write()
+                                    .insert(url_str.to_string(), document.clone());
+                                Ok(Cow::Owned(document))
+                            }
+                            #[cfg(not(any(feature = "reqwest", test)))]
+                            panic!("trying to resolve an http(s), but reqwest support has not been included");
                         }
-                        #[cfg(not(any(feature = "reqwest", test)))]
-                        panic!("trying to resolve an http(s), but reqwest support has not been included");
-                    }
-                    http_scheme => Err(ValidationError::unknown_reference_scheme(
-                        http_scheme.to_owned(),
-                    )),
-                },
-            },
+                        http_scheme => Err(ValidationError::unknown_reference_scheme(
+                            http_scheme.to_owned(),
+                        )),
+                    },
+                }
+            }
         }
     }
     pub(crate) fn resolve_fragment(
@@ -216,6 +231,7 @@ mod tests {
             Draft::Draft7,
             &Url::parse("json-schema:///").unwrap(),
             schema,
+            HashMap::new(),
         )
         .unwrap()
     }
