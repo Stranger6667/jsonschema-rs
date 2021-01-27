@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Cache for documents loaded via the `$ref` keyword. [#75](https://github.com/Stranger6667/jsonschema-rs/issues/75)
+
 ### Performance
 
 - Enum validation for input values that have a type that is not present among the enum variants. [#80](https://github.com/Stranger6667/jsonschema-rs/issues/80)
