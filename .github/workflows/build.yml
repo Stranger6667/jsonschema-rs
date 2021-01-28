@@ -65,9 +65,8 @@ jobs:
         with:
           toolchain: nightly
           override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clean
+      - run: cargo clean
+        working-directory: ./jsonschema
       - run: cargo test --no-fail-fast
         working-directory: ./jsonschema
         env:
