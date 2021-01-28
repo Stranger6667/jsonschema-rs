@@ -60,10 +60,6 @@ jobs:
         with:
           submodules: true
 
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 3.7
-
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
