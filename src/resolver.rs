@@ -50,7 +50,6 @@ impl<'a> Resolver<'a> {
                 if let Some(cached) = self.store.read().get(url_str) {
                     return Ok(Cow::Owned(cached.clone()));
                 }
-
                 match self.schemas.get(url_str) {
                     Some(value) => Ok(Cow::Borrowed(value)),
                     None => match url.scheme() {
@@ -140,7 +139,11 @@ where
     match schema {
         Value::Object(item) => {
             if let Some(url) = id_of(draft, schema) {
-                let new_url = base_url.join(url)?;
+                let mut new_url = base_url.join(url)?;
+                // Empty fragments are discouraged and are not distinguishable absent fragments
+                if let Some("") = new_url.fragment() {
+                    new_url.set_fragment(None);
+                }
                 if let Some(x) = callback(new_url.to_string(), schema) {
                     return Ok(Some(x));
                 }
@@ -222,6 +225,7 @@ fn parse_index(s: &str) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::JSONSchema;
     use serde_json::*;
     use std::borrow::Cow;
     use url::Url;
@@ -449,5 +453,28 @@ mod tests {
             assert_eq!(resource, Url::parse("json-schema:///").unwrap());
             assert_eq!(resolved, schema.pointer("/definitions/a").unwrap());
         }
+    }
+
+    #[test]
+    fn id_value_is_cleaned() {
+        let schema = json!({
+            "$id": "http://foo.com/schema.json#",
+            "properties": {
+                "foo": {
+                    "$ref": "#/definitions/Bar"
+                }
+            },
+            "definitions": {
+                "Bar": {
+                    "const": 42
+                }
+            }
+        });
+        let compiled = JSONSchema::compile(&schema).unwrap();
+        // `#` should be removed
+        assert!(compiled
+            .resolver
+            .schemas
+            .contains_key("http://foo.com/schema.json"));
     }
 }
