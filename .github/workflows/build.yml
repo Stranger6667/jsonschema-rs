@@ -150,34 +150,3 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-targets --all-features -- -D warnings
-
-  benchmark:
-    name: Benchmark
-    runs-on: ubuntu-latest
-    if: "contains(github.event.head_commit.message, '[bench]') || contains(github.event.head_commit.message, '[benchmark]')"
-    steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
-    - uses: actions-rs/cargo@v1
-      with:
-        command: bench
-        args: jsonschema-rs  # Run the benchmarks only for the `jsonschema` package
-
-  benchmark-all:
-    name: Benchmark All
-    runs-on: ubuntu-latest
-    if: "contains(github.event.head_commit.message, '[bench-all]') || contains(github.event.head_commit.message, '[benchmark-all]')"
-    steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
-    - uses: actions-rs/cargo@v1
-      with:
-        command: bench
