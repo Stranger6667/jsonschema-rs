@@ -13,7 +13,7 @@ crate-type = ["cdylib"]
 built = { version = "0.4", features = ["chrono"] }
 
 [dependencies.jsonschema]
-path = "../.."
+path = "../../jsonschema"
 version = "*"
 default-features = false
 features = ["reqwest"]

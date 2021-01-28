@@ -51,10 +51,8 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --no-fail-fast
+      - run: cargo test --no-fail-fast
+        working-directory: ./jsonschema
 
   coverage:
     name: Test + Coverage (nightly)
@@ -70,10 +68,8 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: clean
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --no-fail-fast
+      - run: cargo test --no-fail-fast
+        working-directory: ./jsonschema
         env:
           CARGO_INCREMENTAL: '0'
           RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
@@ -128,10 +124,8 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+      - run: cargo fmt --all -- --check
+        working-directory: ./jsonschema
 
   clippy:
     name: Clippy
@@ -146,7 +140,5 @@ jobs:
           toolchain: stable
           override: true
           components: clippy
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-targets --all-features -- -D warnings
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+        working-directory: ./jsonschema
