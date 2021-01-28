@@ -1,5 +1,8 @@
 # Rust
 /target
+/bindings/*/target
+.hypothesis
+.benchmarks
 /Cargo.lock
 
 # IDEs
