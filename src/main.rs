@@ -14,11 +14,6 @@ struct Cli {
     #[structopt(short = "i", long = "instance")]
     instances: Option<Vec<PathBuf>>,
 
-    /// The fully qualified object name of a validator to use, or, for validators that are registered
-    /// with jsonschema, simply the name of the class.
-    #[structopt(short = "V", long = "validator")]
-    validator: Option<String>,
-
     /// The JSON Schema to validate with (i.e. schema.json).
     #[structopt(parse(from_os_str), required_unless("version"))]
     schema: Option<PathBuf>,
