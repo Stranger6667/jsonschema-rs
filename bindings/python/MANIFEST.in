@@ -4,4 +4,7 @@ include pyproject.toml
 include rust-toolchain
 recursive-include src *
 recursive-include jsonschema-lib *
+recursive-exclude jsonschema-lib Cargo.lock
 recursive-exclude jsonschema-lib/target *
+recursive-exclude jsonschema-lib/benches *.json
+recursive-exclude jsonschema-lib/tests *
