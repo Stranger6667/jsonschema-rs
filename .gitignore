@@ -1,6 +1,9 @@
 # Rust
-/target
-/Cargo.lock
+/jsonschema/target
+/bindings/*/target
+.hypothesis
+.benchmarks
+/jsonschema/Cargo.lock
 
 # IDEs
 /.idea

@@ -31,7 +31,7 @@ jobs:
 
       - run: pip install pre-commit
       - run: pre-commit run --all-files
-        working-directory: ./python
+        working-directory: ./bindings/python
 
   test-stable:
     strategy:
@@ -51,41 +51,8 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --no-fail-fast
-
-  coverage:
-    name: Test + Coverage (nightly)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: true
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clean
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --no-fail-fast
-        env:
-          CARGO_INCREMENTAL: '0'
-          RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
-          RUSTDOCFLAGS: '-Cpanic=abort'
-      - id: coverage
-        uses: actions-rs/grcov@v0.1
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1.0.15
-        if: ${{ env.GITHUB_REPOSITORY }} == 'Stranger6667/jsonschema-rs'
-        with:
-          name: coverage
-          file: ${{ steps.coverage.outputs.report }}
+      - run: cargo test --no-fail-fast
+        working-directory: ./jsonschema
 
   test-python:
     strategy:
@@ -106,7 +73,7 @@ jobs:
           architecture: x64
 
       - run: python -m pip install tox
-        working-directory: ./python
+        working-directory: ./bindings/python
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -115,7 +82,35 @@ jobs:
 
       - name: Run ${{ matrix.python }} tox job
         run: tox -e py
-        working-directory: ./python
+        working-directory: ./bindings/python
+
+  test-python-sdist:
+    runs-on: ubuntu-latest
+    name: Testing Python source code distribution
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+          architecture: x64
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - run: python -m pip install tox
+        working-directory: ./bindings/python
+
+      - run: tox -e build-sdist
+        working-directory: ./bindings/python
+
+      - name: Installing sdist
+        run: pip install dist/*
+        working-directory: ./bindings/python
+
 
   fmt:
     name: Rustfmt
@@ -128,10 +123,8 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+      - run: cargo fmt --all -- --check
+        working-directory: ./jsonschema
 
   clippy:
     name: Clippy
@@ -146,7 +139,5 @@ jobs:
           toolchain: stable
           override: true
           components: clippy
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-targets --all-features -- -D warnings
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+        working-directory: ./jsonschema

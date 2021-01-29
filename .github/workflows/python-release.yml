@@ -34,12 +34,12 @@ jobs:
       - name: Install Tox
         run: pip install tox
       - name: Build wheel
-        working-directory: ./python
+        working-directory: ./bindings/python
         run: tox -e build-wheel
       - uses: actions/upload-artifact@v2
         with:
           name: Distribution Artifacts
-          path: python/dist/
+          path: bindings/python/dist/
 
   create_wheels_manylinux:
     name: Wheels for Python ${{ matrix.PYTHON_IMPLEMENTATION_ABI }} / Linux
@@ -78,7 +78,7 @@ jobs:
       - name: Install Tox
         run: ${{ env.PYTHON_SYS_EXECUTABLE }} -m pip install tox
       - name: Build wheel
-        working-directory: ./python
+        working-directory: ./bindings/python
         run: |
           ${{ env.PYTHON_SYS_EXECUTABLE }} -m tox -e build-wheel
           # Ensure that the wheel is tagged as manylinux2014 platform
@@ -92,7 +92,7 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: Distribution Artifacts
-          path: python/dist/
+          path: bindings/python/dist/
 
   create_source_dist:
     name: Create sdist package
@@ -110,12 +110,12 @@ jobs:
       - name: Install Tox
         run: pip install tox
       - name: Build sdist
-        working-directory: ./python
+        working-directory: ./bindings/python
         run: tox -e build-sdist
       - uses: actions/upload-artifact@v2
         with:
           name: Distribution Artifacts
-          path: python/dist/
+          path: bindings/python/dist/
 
   upload_to_pypi:
     needs:
@@ -128,7 +128,7 @@ jobs:
     - uses: actions/download-artifact@v2
       with:
         name: Distribution Artifacts
-        path: python/dist/
+        path: bindings/python/dist/
     - name: Publish distribution package to PyPI
       uses: pypa/gh-action-pypi-publish@v1.2.2
       with:
