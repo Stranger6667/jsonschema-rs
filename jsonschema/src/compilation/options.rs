@@ -12,6 +12,25 @@ use crate::{
 use serde_json::Value;
 use std::{borrow::Cow, collections::HashMap, fmt};
 
+lazy_static::lazy_static! {
+    static ref META_SCHEMAS: HashMap<String, Value> = {
+        let mut store = HashMap::with_capacity(3);
+        store.insert(
+            "http://json-schema.org/draft-04/schema".to_string(),
+            serde_json::from_str(include_str!("../../meta_schemas/draft4.json")).expect("Valid schema!")
+        );
+        store.insert(
+            "http://json-schema.org/draft-06/schema".to_string(),
+            serde_json::from_str(include_str!("../../meta_schemas/draft6.json")).expect("Valid schema!")
+        );
+        store.insert(
+            "http://json-schema.org/draft-07/schema".to_string(),
+            serde_json::from_str(include_str!("../../meta_schemas/draft7.json")).expect("Valid schema!")
+        );
+        store
+    };
+}
+
 /// Full configuration to guide the `JSONSchema` compilation.
 ///
 /// Using a `CompilationOptions` instance you can configure the supported draft,
@@ -253,8 +272,32 @@ impl CompilationOptions {
         self
     }
 
+    /// Add meta schemas for supported JSON Schema drafts.
+    /// It is helpful if your schema has references to JSON Schema meta-schemas:
+    ///
+    /// ```json
+    /// {
+    ///     "schema": {
+    ///         "multipleOf": {
+    ///             "$ref": "http://json-schema.org/draft-04/schema#/properties/multipleOf"
+    ///         },
+    ///         "maximum": {
+    ///             "$ref": "http://json-schema.org/draft-04/schema#/properties/maximum"
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// The example above is taken from the Swagger 2.0 JSON schema.
+    #[inline]
+    pub fn with_meta_schemas(mut self) -> Self {
+        self.store.extend(META_SCHEMAS.clone().into_iter());
+        self
+    }
+
     /// Add a new document to the store. It works as a cache to avoid making additional network
     /// calls to remote schemas via the `$ref` keyword.
+    #[inline]
     pub fn with_document(mut self, id: String, document: Value) -> Self {
         self.store.insert(id, document);
         self
