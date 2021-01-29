@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.5.1] - 2021-01-29
+
 ### Changed
 
 - Exclude unnecessary files from source code distribution.
@@ -110,8 +112,9 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.5.0...HEAD
-[0.4.3]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.4.3...python-v0.5.0
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.5.1...HEAD
+[0.5.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.5.0...python-v0.5.1
+[0.5.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.4.3...python-v0.5.0
 [0.4.3]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.4.2...python-v0.4.3
 [0.4.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.4.1...python-v0.4.2
 [0.4.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.4.0...python-v0.4.1
