@@ -54,34 +54,6 @@ jobs:
       - run: cargo test --no-fail-fast
         working-directory: ./jsonschema
 
-  coverage:
-    name: Test + Coverage (nightly)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: true
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          override: true
-      - run: cargo clean
-        working-directory: ./jsonschema
-      - run: cargo test --no-fail-fast
-        working-directory: ./jsonschema
-        env:
-          CARGO_INCREMENTAL: '0'
-          RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
-          RUSTDOCFLAGS: '-Cpanic=abort'
-      - id: coverage
-        uses: actions-rs/grcov@v0.1
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1.0.15
-        if: ${{ env.GITHUB_REPOSITORY }} == 'Stranger6667/jsonschema-rs'
-        with:
-          name: coverage
-          file: ${{ steps.coverage.outputs.report }}
-
   test-python:
     strategy:
       fail-fast: false
