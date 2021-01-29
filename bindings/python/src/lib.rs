@@ -95,11 +95,14 @@ struct JSONSchema {
 #[pymethods]
 impl JSONSchema {
     #[new]
-    fn new(schema: &PyAny, draft: Option<u8>) -> PyResult<Self> {
+    fn new(schema: &PyAny, draft: Option<u8>, with_meta_schemas: Option<bool>) -> PyResult<Self> {
         let raw_schema = ser::to_value(schema)?;
         let mut options = jsonschema::JSONSchema::options();
         if let Some(raw_draft_version) = draft {
             options.with_draft(get_draft(raw_draft_version)?);
+        }
+        if let Some(true) = with_meta_schemas {
+            options.with_meta_schemas();
         }
         // Currently, it is the simplest way to pass a reference to `JSONSchema`
         // It is cleaned up in the `Drop` implementation
