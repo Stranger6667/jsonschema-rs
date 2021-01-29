@@ -290,7 +290,7 @@ impl CompilationOptions {
     ///
     /// The example above is taken from the Swagger 2.0 JSON schema.
     #[inline]
-    pub fn with_meta_schemas(mut self) -> Self {
+    pub fn with_meta_schemas(&mut self) -> &mut Self {
         self.store.extend(META_SCHEMAS.clone().into_iter());
         self
     }
@@ -298,7 +298,7 @@ impl CompilationOptions {
     /// Add a new document to the store. It works as a cache to avoid making additional network
     /// calls to remote schemas via the `$ref` keyword.
     #[inline]
-    pub fn with_document(mut self, id: String, document: Value) -> Self {
+    pub fn with_document(&mut self, id: String, document: Value) -> &mut Self {
         self.store.insert(id, document);
         self
     }
