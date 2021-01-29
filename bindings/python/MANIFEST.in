@@ -3,3 +3,5 @@ include build.rs
 include pyproject.toml
 include rust-toolchain
 recursive-include src *
+recursive-include jsonschema-lib *
+recursive-exclude jsonschema-lib/target *
