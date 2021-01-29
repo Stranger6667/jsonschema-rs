@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Exclude unnecessary files from source code distribution.
+
 ## [0.5.0] - 2021-01-29
 
 ### Added
