@@ -55,35 +55,33 @@ According to our benchmarks, ``jsonschema-rs`` is usually faster than existing a
 
 However, for single-keyword or boolean schemas it might be slower than ``fastjsonschema``.
 
+Schemas:
+
+- ``kubernetes-openapi`` is an Open API schema for `Kubernetes <https://raw.githubusercontent.com/APIs-guru/openapi-directory/master/APIs/kubernetes.io/v1.10.0/swagger.yaml>`_ which is ~3.15 MB JSON file.
+- ``small`` is taken from ``fastjsonschema`` benchmarks.
+
 Compiled validators (when the input schema is compiled once and reused later)
 
-+----------------+------------------------+-----------------------+-------------------------+-------------------------+
-| library        | ``false``              |  ``{"minimum": 10}``  |  small                  | big                     |
-+================+========================+=======================+=========================+=========================+
-| jsonschema-rs  |              141.45 ns |             144.66 ns |               652.84 ns |                 4.89 ms |
-+----------------+------------------------+-----------------------+-------------------------+-------------------------+
-| fastjsonschema |   48.92 ns (**x0.34**) |  95.22 ns (**x0.65**) |        3.91 us (**x6**) | 554.74 ms (**x113.44**) |
-+----------------+------------------------+-----------------------+-------------------------+-------------------------+
-| jsonschema     |  204.94 ns (**x1.44**) |   1.52 us (**10.54**) |      57.44 us (**x88**) |    1.38 s (**x282.41**) |
-+----------------+------------------------+-----------------------+-------------------------+-------------------------+
-
-Validators are not compiled (``jsonschema``) or compiled on every validation:
-
-+----------------+------------------------+-------------------------+-------------------------+-------------------------+
-| library        | ``false``              | ``{"minimum": 10}``     |   small                 | big                     |
-+================+========================+=========================+=========================+=========================+
-| jsonschema-rs  |              328.86 ns |               448.03 ns |                 6.39 us |                 4.89 ms |
-+----------------+------------------------+-------------------------+-------------------------+-------------------------+
-| fastjsonschema | 55.29 us (**x168.07**) |  106.01 us (**x236.6**) |    1.3 ms (**x204.53**) | 557.35 ms (**x113.97**) |
-+----------------+------------------------+-------------------------+-------------------------+-------------------------+
-| jsonschema     | 45.95 us (**x139.69**) |  54.68 us (**x122.06**) |  758.8 us (**x118.74**) |    1.43 s (**x292.43**) |
-+----------------+------------------------+-------------------------+-------------------------+-------------------------+
++-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
+| library                 | ``false``              |  ``{"minimum": 10}``  |  small                     |   kubernetes-openapi      |
++=========================+========================+=======================+============================+===========================+
+| jsonschema-rs           |              192.53 ns |             268.73 ns |                  894.32 ns |                   27.2 ms |
++-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
+| fastjsonschema[CPython] |   56.75 ns (**x0.29**) |  108.13 ns (**x0.4**) |        4.24 us (**x4.74**) |                        \- |
++-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
+| fastjsonschema[PyPy]    |   12.65 ns (**x0.06**) |  29.93 ns (**x0.11**) |        1.24 us (**x1.38**) |                        \- |
++-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
+| jsonschema[CPython]     |  220.95 ns (**x1.14**) |   1.86 us (**x6.92**) |      58.83 us (**x65.78**) |      1.048 s (**x38.52**) |
++-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
+| jsonschema[PyPy]        |   41.73 ns (**x0.26**) |    293 ns (**x1.09**) |      25.71 us (**x28.74**) |    673.81 ms (**x24.77**) |
++-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
 
 The bigger the input is the bigger is performance win.
+Unfortunately, ``fastjsonschema`` did not complete benchmarks for ``kubernetes-openapi`` due to an out-of-memory error.
+However, on average the first run takes ~104ms on CPython and ~490ms on PyPy and later it increases exponentially.
 
-In the examples below, ``big`` and ``small`` schemas refer to more realistic schemas and input instances.
 You can take a look at benchmarks in ``benches/bench.py``. Ratios are given against ``jsonschema-rs``.
-Measured with stable Rust 1.44.1, Python 3.8.3 on i8700K (12 cores), 32GB RAM, Arch Linux.
+Measured with stable Rust 1.49, CPython 3.9.1 / PyPy3 7.3.3 on i8700K (12 cores), 32GB RAM, Arch Linux.
 
 Python support
 --------------

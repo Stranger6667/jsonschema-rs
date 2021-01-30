@@ -75,32 +75,25 @@ fn main() -> Result<(), CompilationError> {
 
 ## Performance
 
-There is a comparison with other JSON Schema validators written in Rust - `jsonschema_valid` and `valico`.
+There is a comparison with other JSON Schema validators written in Rust - `jsonschema_valid==0.4.0` and `valico==3.5.0`.
 
 Test machine i8700K (12 cores), 32GB RAM.
 
-Performance of `jsonschema::JSONSchema.is_valid`. Ratios are given against compiled jsonschema:
+Schemas & input values:
 
-- Big valid input (`canada_schema.json` and `canada.json`)
+- Big valid input. It is an Open API 2.0 schema for [Kubernetes](https://raw.githubusercontent.com/APIs-guru/openapi-directory/master/APIs/kubernetes.io/v1.10.0/swagger.yaml) which is ~3.15 MB (`kubernetes.json` and `swagger.json` files)
 - Small valid input (`small_schema.json` and `small_valid.json`)
 - Small invalid input (`small_schema.json` and `small_invalid.json`)
 
-| Case          | jsonschema_valid        | valico                  | jsonschema   |
-| ------------- | ----------------------- | ----------------------- | ------------ |
-| Big valid     | 66.153 ms (**x185.65**) | 136.63 ms (**x489.07**) | 311.56 us    |
-| Small valid   | 2.23 us   (**x17.15**)  | 3.87 us   (**x29.77**)  | 129.97 ns    |
-| Small invalid | 515.22 ns (**x96.3**)   | 4.08 us   (**x762.61**) | 5.35 ns      |
+Ratios are given against compiled `JSONSchema` using its `validate`. The `is_valid` method is faster, but gives only a boolean return value:
 
-All libraries were used in their "compiled" form, where a validator is prepared before usage. Here is comparison when
-a validator is compiled every time.
+| Case          | jsonschema_valid        | valico                  | jsonschema.validate   | jsonschema.is_valid   |
+| ------------- | ----------------------- | ----------------------- | --------------------- | --------------------- |
+| Big valid     | 2.5531 s (**x108.04**)  | 91.191 ms (**x3.85**)   | 23.631 ms             | 17.42 ms (**x0.73**)  |
+| Small valid   | 2.01 us    (**x4.38**)  | 3.50 us   (**x7.63**)   | 458.14 ns             | 125.02 ns (**x0.27**)  |
+| Small invalid | 400.99 ns  (**x0.69**)  | 3.53 us   (**x6.12**)   | 576.12 ns             | 5.21 ns  (**x0.009**)  |
 
-| Case          | jsonschema_valid        | valico                  | jsonschema  |
-| ------------- | ----------------------- | ----------------------- | ----------- |
-| Big valid     | 56.714 ms (**x183.72**) | 146.82 ms (**x475.62**) | 369.14 us   |
-| Small valid   | 3.02 us   (**x1.13**)   | 118.09 us (**x44.22**)  | 2.67 us     |
-| Small invalid | 1.17 us   (**x0.46**)   | 81.95 us  (**x32.26**)  | 2.54 us     |
-
-You can find benchmark code in `benches/jsonschema.rs`, Rust version is `1.44`
+You can find benchmark code in `benches/jsonschema.rs`, Rust version is `1.49`.
 
 **NOTE**. This library is in early development.
 

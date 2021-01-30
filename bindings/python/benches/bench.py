@@ -1,10 +1,15 @@
 import json
+import sys
+from functools import partial
 
 import fastjsonschema
 import jsonschema
 import pytest
 
-import jsonschema_rs
+if sys.implementation.name != "pypy":
+    import jsonschema_rs
+else:
+    jsonschema_rs = None
 
 
 def load_json(filename):
@@ -12,31 +17,37 @@ def load_json(filename):
         return json.load(fd)
 
 
-BIG_SCHEMA = load_json("../benches/canada_schema.json")
-BIG_INSTANCE = load_json("../benches/canada.json")
-SMALL_SCHEMA = load_json("../benches/small_schema.json")
+BIG_SCHEMA = load_json("../../jsonschema/benches/swagger.json")
+BIG_INSTANCE = load_json("../../jsonschema/benches/kubernetes.json")
+SMALL_SCHEMA = load_json("../../jsonschema/benches/small_schema.json")
 SMALL_INSTANCE_VALID = [9, "hello", [1, "a", True], {"a": "a", "b": "b", "d": "d"}, 42, 3]
 
 
-@pytest.fixture(params=[True, False])
+@pytest.fixture(params=[True, False], ids=("compiled", "raw"))
 def is_compiled(request):
     return request.param
 
 
-@pytest.fixture(params=["rust", "python", "python-fast"])
+if jsonschema_rs is not None:
+    variants = ["jsonschema-rs", "jsonschema", "fastjsonschema"]
+else:
+    variants = ["jsonschema", "fastjsonschema"]
+
+
+@pytest.fixture(params=variants)
 def args(request, is_compiled):
     schema, instance = request.node.get_closest_marker("data").args
-    if request.param == "rust":
+    if request.param == "jsonschema-rs":
         if is_compiled:
-            return jsonschema_rs.JSONSchema(schema).is_valid, instance
+            return jsonschema_rs.JSONSchema(schema, with_meta_schemas=True).is_valid, instance
         else:
-            return jsonschema_rs.is_valid, schema, instance
-    if request.param == "python":
+            return partial(jsonschema_rs.is_valid, with_meta_schemas=True), schema, instance
+    if request.param == "jsonschema":
         if is_compiled:
             return jsonschema.validators.validator_for(schema)(schema).is_valid, instance
         else:
             return jsonschema.validate, instance, schema
-    if request.param == "python-fast":
+    if request.param == "fastjsonschema":
         if is_compiled:
             return fastjsonschema.compile(schema), instance
         else:

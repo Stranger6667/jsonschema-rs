@@ -81,43 +81,88 @@ macro_rules! bench {
 
 #[allow(dead_code)]
 fn big_schema(c: &mut Criterion) {
-    let schema = black_box(read_json("benches/canada_schema.json"));
-    let instance = black_box(read_json("benches/canada.json"));
+    let schema = read_json("benches/swagger.json");
+    let instance = read_json("benches/kubernetes.json");
 
-    // jsonschema
-    let validator = JSONSchema::compile(&schema).unwrap();
-    c.bench_function("compare jsonschema-rs big schema compile", |b| {
-        b.iter(|| JSONSchema::compile(&schema).unwrap())
-    });
-    c.bench_function("compare jsonschema-rs big schema is_valid", |b| {
-        b.iter(|| validator.is_valid(&instance))
-    });
-    c.bench_function("compare jsonschema-rs big schema validate", |b| {
+    // Compiled schema performance
+    let validator = JSONSchema::options()
+        .with_meta_schemas()
+        .compile(&schema)
+        .unwrap();
+    let cfg = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap();
+    let mut scope = json_schema::Scope::new();
+    let valico_validator = scope.compile_and_return(schema.clone(), false).unwrap();
+    c.bench_function(
+        "compare compiled jsonschema-rs big schema specialized",
+        |b| b.iter(|| validator.is_valid(&instance)),
+    );
+    c.bench_function("compare compiled jsonschema-rs big schema common", |b| {
         b.iter(|| validator.validate(&instance).ok())
     });
+    c.bench_function("compare compiled jsonschema_valid big schema common", |b| {
+        // There is no specialized method for fast boolean return value
+        b.iter(|| jsonschema_valid::validate(&cfg, &instance).is_ok())
+    });
+    c.bench_function("compare compiled valico big schema common", |b| {
+        // There is no specialized method for fast boolean return value
+        b.iter(|| valico_validator.validate(&instance).is_valid())
+    });
 
-    // jsonschema_valid
-    let cfg = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap();
-    c.bench_function("compare jsonschema_valid big schema compile", |b| {
+    // Re-compile each run performance
+    c.bench_function(
+        "compare re-compiled jsonschema-rs big schema specialized",
+        |b| {
+            b.iter(|| {
+                let validator = JSONSchema::options()
+                    .with_meta_schemas()
+                    .compile(&schema)
+                    .unwrap();
+                validator.is_valid(&instance)
+            })
+        },
+    );
+    c.bench_function("compare re-compiled jsonschema-rs big schema common", |b| {
+        b.iter(|| {
+            let validator = JSONSchema::options()
+                .with_meta_schemas()
+                .compile(&schema)
+                .unwrap();
+            validator.validate(&instance).ok();
+        })
+    });
+    c.bench_function(
+        "compare re-compiled jsonschema_valid big schema common",
+        |b| {
+            b.iter(|| {
+                let cfg =
+                    jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7))
+                        .unwrap();
+                let _ = jsonschema_valid::validate(&cfg, &instance).is_ok();
+            })
+        },
+    );
+    c.bench_function("compare re-compiled valico big schema common", |b| {
+        b.iter(|| {
+            let mut scope = json_schema::Scope::new();
+            let validator = scope.compile_and_return(schema.clone(), false).unwrap();
+            validator.validate(&instance).is_valid()
+        })
+    });
+
+    // Schema compilation
+    c.bench_function("compare compile jsonschema-rs big schema", |b| {
+        b.iter(|| JSONSchema::compile(&schema).unwrap())
+    });
+    c.bench_function("compare compile jsonschema_valid big schema", |b| {
         b.iter(|| {
             jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap()
         })
     });
-    c.bench_function("compare jsonschema_valid big schema validate", |b| {
-        b.iter(|| jsonschema_valid::validate(&cfg, &instance))
-    });
-
-    // valico
-    let mut scope = json_schema::Scope::new();
-    let compiled = scope.compile_and_return(schema.clone(), false).unwrap();
-    c.bench_function("compare valico big schema compile", |b| {
+    c.bench_function("compare compile valico big schema", |b| {
         b.iter(|| {
             let mut scope = json_schema::Scope::new();
             scope.compile_and_return(schema.clone(), false).unwrap();
         })
-    });
-    c.bench_function("compare valico big schema validate", |b| {
-        b.iter(|| compiled.validate(&instance).is_valid())
     });
 }
 
