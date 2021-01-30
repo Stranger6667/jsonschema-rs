@@ -6,6 +6,10 @@
 
 - `with_meta_schemas` argument for `is_valid` and update docstrings.
 
+### Changed
+
+- Update `PyO3` to `0.13`.
+
 ## [0.5.1] - 2021-01-29
 
 ### Changed
