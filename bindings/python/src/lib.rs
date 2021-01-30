@@ -52,7 +52,7 @@ fn get_draft(draft: u8) -> PyResult<Draft> {
     }
 }
 
-/// is_valid(schema, instance, draft=None)
+/// is_valid(schema, instance, draft=None, with_meta_schemas=False)
 ///
 /// A shortcut for validating the input instance against the schema.
 ///
@@ -62,13 +62,21 @@ fn get_draft(draft: u8) -> PyResult<Draft> {
 /// If your workflow implies validating against the same schema, consider using `JSONSchema.is_valid`
 /// instead.
 #[pyfunction]
-#[text_signature = "(schema, instance, draft=None)"]
-fn is_valid(schema: &PyAny, instance: &PyAny, draft: Option<u8>) -> PyResult<bool> {
+#[text_signature = "(schema, instance, draft=None, with_meta_schemas=False)"]
+fn is_valid(
+    schema: &PyAny,
+    instance: &PyAny,
+    draft: Option<u8>,
+    with_meta_schemas: Option<bool>,
+) -> PyResult<bool> {
     let schema = ser::to_value(schema)?;
     let instance = ser::to_value(instance)?;
     let mut options = jsonschema::JSONSchema::options();
     if let Some(raw_draft_version) = draft {
         options.with_draft(get_draft(raw_draft_version)?);
+    }
+    if let Some(true) = with_meta_schemas {
+        options.with_meta_schemas();
     }
     let compiled = options
         .compile(&schema)
@@ -76,7 +84,7 @@ fn is_valid(schema: &PyAny, instance: &PyAny, draft: Option<u8>) -> PyResult<boo
     Ok(compiled.is_valid(&instance))
 }
 
-/// JSONSchema(schema, draft=None)
+/// JSONSchema(schema, draft=None, with_meta_schemas=False)
 ///
 /// JSON Schema compiled into a validation tree.
 ///
@@ -86,7 +94,7 @@ fn is_valid(schema: &PyAny, instance: &PyAny, draft: Option<u8>) -> PyResult<boo
 ///
 /// By default Draft 7 will be used for compilation.
 #[pyclass]
-#[text_signature = "(schema, draft=None)"]
+#[text_signature = "(schema, draft=None, with_meta_schemas=False)"]
 struct JSONSchema {
     schema: jsonschema::JSONSchema<'static>,
     raw_schema: &'static Value,

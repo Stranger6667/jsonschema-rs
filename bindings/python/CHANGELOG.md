@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- `with_meta_schemas` argument for `is_valid` and update docstrings.
+
 ## [0.5.1] - 2021-01-29
 
 ### Changed
