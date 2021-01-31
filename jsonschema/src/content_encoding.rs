@@ -1,5 +1,5 @@
 use crate::error::ValidationError;
-use std::collections::HashMap;
+use ahash::AHashMap;
 
 pub(crate) type ContentEncodingCheckType = fn(&str) -> bool;
 pub(crate) type ContentEncodingConverterType =
@@ -19,8 +19,8 @@ pub(crate) fn from_base64(
 }
 
 lazy_static::lazy_static! {
-    pub(crate) static ref DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS: HashMap<&'static str, (ContentEncodingCheckType, ContentEncodingConverterType)> = {
-        let mut map: HashMap<&'static str, (ContentEncodingCheckType, ContentEncodingConverterType)> = HashMap::with_capacity(1);
+    pub(crate) static ref DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS: AHashMap<&'static str, (ContentEncodingCheckType, ContentEncodingConverterType)> = {
+        let mut map: AHashMap<&'static str, (ContentEncodingCheckType, ContentEncodingConverterType)> = AHashMap::with_capacity(1);
         map.insert("base64", (is_base64, from_base64));
         map
     };

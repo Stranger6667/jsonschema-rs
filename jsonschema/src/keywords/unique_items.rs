@@ -4,11 +4,9 @@ use crate::{
     keywords::CompilationResult,
     validator::Validate,
 };
+use ahash::{AHashSet, AHasher};
 use serde_json::{Map, Value};
-use std::{
-    collections::{hash_map::DefaultHasher, HashSet},
-    hash::{Hash, Hasher},
-};
+use std::hash::{Hash, Hasher};
 
 // Based on implementation proposed by Sven Marnach:
 // https://stackoverflow.com/questions/60882381/what-is-the-fastest-correct-way-to-detect-that-there-are-no-duplicates-in-a-json
@@ -42,7 +40,7 @@ impl Hash for HashedValue<'_> {
                 for (key, value) in items {
                     // We have no way of building a new hasher of type `H`, so we
                     // hardcode using the default hasher of a hash map.
-                    let mut item_hasher = DefaultHasher::default();
+                    let mut item_hasher = AHasher::default();
                     key.hash(&mut item_hasher);
                     HashedValue(value).hash(&mut item_hasher);
                     hash ^= item_hasher.finish();
@@ -55,7 +53,7 @@ impl Hash for HashedValue<'_> {
 
 #[inline]
 pub(crate) fn is_unique(items: &[Value]) -> bool {
-    let mut seen = HashSet::with_capacity(items.len());
+    let mut seen = AHashSet::with_capacity(items.len());
     items.iter().map(HashedValue).all(move |x| seen.insert(x))
 }
 
