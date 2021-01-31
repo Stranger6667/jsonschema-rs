@@ -7,7 +7,6 @@ use crate::{
     },
     validator::Validate,
 };
-use rayon::prelude::*;
 use serde_json::{Map, Value};
 
 pub(crate) struct ItemsArrayValidator {
@@ -77,20 +76,11 @@ impl ItemsObjectValidator {
 impl Validate for ItemsObjectValidator {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
         if let Value::Array(items) = instance {
-            let validate = move |item| {
-                self.validators
+            self.validators.iter().all(move |validator| {
+                items
                     .iter()
-                    .all(|validator| validator.is_valid(schema, item))
-            };
-            if items.len() > 8 {
-                items.par_iter().all(validate)
-            } else {
-                self.validators.iter().all(move |validator| {
-                    items
-                        .iter()
-                        .all(move |item| validator.is_valid(schema, item))
-                })
-            }
+                    .all(move |item| validator.is_valid(schema, item))
+            })
         } else {
             true
         }
@@ -98,24 +88,15 @@ impl Validate for ItemsObjectValidator {
 
     fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
-            let validate = move |item| {
-                self.validators
-                    .iter()
-                    .flat_map(|validator| validator.validate(schema, item))
-                    .collect::<Vec<_>>()
-            };
-            let errors: Vec<_> = if items.len() > 8 {
-                items.par_iter().flat_map(validate).collect()
-            } else {
-                self.validators
-                    .iter()
-                    .flat_map(move |validator| {
-                        items
-                            .iter()
-                            .flat_map(move |item| validator.validate(schema, item))
-                    })
-                    .collect()
-            };
+            let errors: Vec<_> = self
+                .validators
+                .iter()
+                .flat_map(move |validator| {
+                    items
+                        .iter()
+                        .flat_map(move |item| validator.validate(schema, item))
+                })
+                .collect();
             Box::new(errors.into_iter())
         } else {
             no_error()

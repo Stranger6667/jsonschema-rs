@@ -26,7 +26,6 @@ percent-encoding = "2"
 regex = "1"
 base64 = ">= 0.2"
 chrono = ">= 0.2"
-rayon = "1"
 reqwest = { version = ">= 0.10", features = ["blocking", "json"], optional = true}
 parking_lot = ">= 0.1"
 num-cmp = ">= 0.1"
