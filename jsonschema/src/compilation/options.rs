@@ -9,12 +9,13 @@ use crate::{
     resolver::Resolver,
     schemas,
 };
+use ahash::AHashMap;
 use serde_json::Value;
-use std::{borrow::Cow, collections::HashMap, fmt};
+use std::{borrow::Cow, fmt};
 
 lazy_static::lazy_static! {
-    static ref META_SCHEMAS: HashMap<String, Value> = {
-        let mut store = HashMap::with_capacity(3);
+    static ref META_SCHEMAS: AHashMap<String, Value> = {
+        let mut store = AHashMap::with_capacity(3);
         store.insert(
             "http://json-schema.org/draft-04/schema".to_string(),
             serde_json::from_str(include_str!("../../meta_schemas/draft4.json")).expect("Valid schema!")
@@ -38,10 +39,10 @@ lazy_static::lazy_static! {
 #[derive(Clone, Default)]
 pub struct CompilationOptions {
     draft: Option<schemas::Draft>,
-    content_media_type_checks: HashMap<&'static str, Option<ContentMediaTypeCheckType>>,
+    content_media_type_checks: AHashMap<&'static str, Option<ContentMediaTypeCheckType>>,
     content_encoding_checks_and_converters:
-        HashMap<&'static str, Option<(ContentEncodingCheckType, ContentEncodingConverterType)>>,
-    store: HashMap<String, Value>,
+        AHashMap<&'static str, Option<(ContentEncodingCheckType, ContentEncodingConverterType)>>,
+    store: AHashMap<String, Value>,
 }
 
 impl CompilationOptions {

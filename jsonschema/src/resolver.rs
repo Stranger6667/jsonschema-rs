@@ -5,9 +5,10 @@ use crate::{
     error::{CompilationError, ValidationError},
     schemas::{id_of, Draft},
 };
+use ahash::AHashMap;
 use parking_lot::RwLock;
 use serde_json::Value;
-use std::{borrow::Cow, collections::HashMap};
+use std::borrow::Cow;
 use url::Url;
 
 #[derive(Debug)]
@@ -15,8 +16,8 @@ pub(crate) struct Resolver<'a> {
     // canonical_id: sub-schema mapping to resolve documents by their ID
     // canonical_id is composed with the root document id
     // (if not specified, then `DEFAULT_ROOT_URL` is used for this purpose)
-    schemas: HashMap<String, &'a Value>,
-    store: RwLock<HashMap<String, Value>>,
+    schemas: AHashMap<String, &'a Value>,
+    store: RwLock<AHashMap<String, Value>>,
 }
 
 impl<'a> Resolver<'a> {
@@ -24,9 +25,9 @@ impl<'a> Resolver<'a> {
         draft: Draft,
         scope: &Url,
         schema: &'a Value,
-        store: HashMap<String, Value>,
+        store: AHashMap<String, Value>,
     ) -> Result<Resolver<'a>, CompilationError> {
-        let mut schemas = HashMap::new();
+        let mut schemas = AHashMap::new();
         // traverse the schema and store all named ones under their canonical ids
         find_schemas(draft, schema, scope, &mut |id, schema| {
             schemas.insert(id, schema);
@@ -235,7 +236,7 @@ mod tests {
             Draft::Draft7,
             &Url::parse("json-schema:///").unwrap(),
             schema,
-            HashMap::new(),
+            AHashMap::new(),
         )
         .unwrap()
     }

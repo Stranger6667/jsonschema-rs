@@ -4,9 +4,9 @@ use crate::{
     keywords::{format_validators, CompilationResult, Validators},
     validator::Validate,
 };
+use ahash::AHashSet;
 use regex::Regex;
 use serde_json::{Map, Value};
-use std::collections::BTreeSet;
 
 pub(crate) struct AdditionalPropertiesValidator {
     validators: Validators,
@@ -88,7 +88,7 @@ impl ToString for AdditionalPropertiesFalseValidator {
 }
 
 pub(crate) struct AdditionalPropertiesNotEmptyFalseValidator {
-    properties: BTreeSet<String>,
+    properties: AHashSet<String>,
 }
 impl AdditionalPropertiesNotEmptyFalseValidator {
     #[inline]
@@ -136,7 +136,7 @@ impl ToString for AdditionalPropertiesNotEmptyFalseValidator {
 }
 pub(crate) struct AdditionalPropertiesNotEmptyValidator {
     validators: Validators,
-    properties: BTreeSet<String>,
+    properties: AHashSet<String>,
 }
 impl AdditionalPropertiesNotEmptyValidator {
     #[inline]
@@ -296,7 +296,7 @@ impl ToString for AdditionalPropertiesWithPatternsFalseValidator {
 
 pub(crate) struct AdditionalPropertiesWithPatternsNotEmptyValidator {
     validators: Validators,
-    properties: BTreeSet<String>,
+    properties: AHashSet<String>,
     pattern: Regex,
 }
 impl AdditionalPropertiesWithPatternsNotEmptyValidator {
@@ -365,7 +365,7 @@ impl ToString for AdditionalPropertiesWithPatternsNotEmptyValidator {
 }
 
 pub(crate) struct AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
-    properties: BTreeSet<String>,
+    properties: AHashSet<String>,
     pattern: Regex,
 }
 impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
