@@ -89,6 +89,8 @@ fn big_schema(c: &mut Criterion) {
         .with_meta_schemas()
         .compile(&schema)
         .unwrap();
+    assert!(validator.is_valid(&instance));
+    assert!(validator.validate(&instance).is_ok());
     let cfg = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap();
     let mut scope = json_schema::Scope::new();
     let valico_validator = scope.compile_and_return(schema.clone(), false).unwrap();
@@ -176,6 +178,8 @@ fn small_schema(c: &mut Criterion) {
 
     // jsonschema
     let validator = JSONSchema::compile(&schema).unwrap();
+    assert!(validator.is_valid(&valid));
+    assert!(!validator.is_valid(&invalid));
     c.bench_function("compare jsonschema-rs small schema compile", |b| {
         b.iter(|| JSONSchema::compile(&schema).unwrap())
     });
