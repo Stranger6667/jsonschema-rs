@@ -53,40 +53,50 @@ Performance
 
 According to our benchmarks, ``jsonschema-rs`` is usually faster than existing alternatives in real-life scenarios.
 
-However, for single-keyword or boolean schemas it might be slower than ``fastjsonschema``.
+However, for single-keyword or boolean schemas it might be slower than ``fastjsonschema`` or ``jsonschema`` on PyPy.
 
 Schemas:
 
 - ``kubernetes-openapi`` is an Open API schema for `Kubernetes <https://raw.githubusercontent.com/APIs-guru/openapi-directory/master/APIs/kubernetes.io/v1.10.0/swagger.yaml>`_ which is ~3.15 MB JSON file.
 - ``small`` is taken from ``fastjsonschema`` benchmarks.
 
-Compiled validators (when the input schema is compiled once and reused later)
+Compiled validators (when the input schema is compiled once and reused later). ``jsonschema-rs`` comes in two variants in the table below:
+
+- ``validate``. This method raises ``ValidationError`` on errors or returns ``None`` on their absence.
+- ```is_valid``. A faster method that returns a boolean result whether the instance is valid.
+
+Ratios are given against the ``validate`` variant.
 
 +-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
 | library                 | ``false``              |  ``{"minimum": 10}``  |  small                     |   kubernetes-openapi      |
 +=========================+========================+=======================+============================+===========================+
-| jsonschema-rs           |              192.53 ns |             268.73 ns |                  894.32 ns |                   27.2 ms |
+| jsonschema-rs[validate] |              309.02 ns |             306.82 ns |                    1.36 us |                  21.59 ms |
 +-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
-| fastjsonschema[CPython] |   56.75 ns (**x0.29**) |  108.13 ns (**x0.4**) |        4.24 us (**x4.74**) |                        \- |
+| jsonschema-rs[is_valid] |  180.98 ns (**x0.58**) | 190.82 ns (**x0.62**) |      947.06 ns (**x0.69**) |      18.26 ms (**x0.84**) |
 +-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
-| fastjsonschema[PyPy]    |   12.65 ns (**x0.06**) |  29.93 ns (**x0.11**) |        1.24 us (**x1.38**) |                        \- |
+| fastjsonschema[CPython] |   59.89 ns (**x0.19**) | 107.55 ns (**x0.35**) |        4.31 us (**x3.16**) |     102.81 ms (**x4.76**) |
 +-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
-| jsonschema[CPython]     |  220.95 ns (**x1.14**) |   1.86 us (**x6.92**) |      58.83 us (**x65.78**) |      1.048 s (**x38.52**) |
+| fastjsonschema[PyPy]    |   13.47 ns (**x0.04**) |  34.56 ns (**x0.11**) |        1.24 us (**x0.91**) |    417.24 ms (**x19.32**) |
 +-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
-| jsonschema[PyPy]        |   41.73 ns (**x0.26**) |    293 ns (**x1.09**) |      25.71 us (**x28.74**) |    673.81 ms (**x24.77**) |
+| jsonschema[CPython]     |  232.48 ns (**x0.75**) |   1.93 us (**x6.29**) |      59.16 us (**x43.50**) |       1.08 s (**x50.02**) |
++-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
+| jsonschema[PyPy]        |   42.44 ns (**x0.13**) | 257.79 ns (**x0.84**) |      26.51 us (**x19.49**) |    661.71 ms (**x30.64**) |
 +-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
 
-The bigger the input is the bigger is performance win.
-Unfortunately, ``fastjsonschema`` did not complete benchmarks for ``kubernetes-openapi`` due to an out-of-memory error.
-However, on average the first run takes ~104ms on CPython and ~490ms on PyPy and later it increases exponentially.
+The bigger the input is the bigger is performance win. You can take a look at benchmarks in ``benches/bench.py``.
 
-You can take a look at benchmarks in ``benches/bench.py``. Ratios are given against ``jsonschema-rs``.
+Package versions:
+
+- ``jsonschema-rs`` - latest version from the repository
+- ``jsonschema`` - ``3.2.0``
+- ``fastjsonschema`` - ``2.14.5``
+
 Measured with stable Rust 1.49, CPython 3.9.1 / PyPy3 7.3.3 on i8700K (12 cores), 32GB RAM, Arch Linux.
 
 Python support
 --------------
 
-``jsonschema-rs`` supports Python 3.6, 3.7, 3.8 and 3.9.
+``jsonschema-rs`` supports CPython 3.6, 3.7, 3.8 and 3.9.
 
 License
 -------
