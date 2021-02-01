@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Performance
+
+- Do not use `rayon` in `items` keyword as it gives significant overhead for a general case.
+
 ## [0.5.0] - 2021-01-29
 
 ### Added

@@ -10,6 +10,10 @@
 
 - Update `PyO3` to `0.13`.
 
+### Performance
+
+- General performance improvements.
+
 ## [0.5.1] - 2021-01-29
 
 ### Changed
