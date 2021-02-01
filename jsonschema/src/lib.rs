@@ -115,12 +115,39 @@ pub(crate) mod tests_util {
         let compiled = JSONSchema::compile(schema).unwrap();
         assert!(
             !compiled.is_valid(instance),
-            "{} should not be valid",
+            "{} should not be valid (via is_valid)",
             instance
         );
         assert!(
             compiled.validate(instance).is_err(),
-            "{} should not be valid",
+            "{} should not be valid (via validate)",
+            instance
+        );
+    }
+
+    pub(crate) fn expect_errors(schema: &Value, instance: &Value, errors: &[&str]) {
+        assert_eq!(
+            JSONSchema::compile(schema)
+                .expect("Should be a valid schema")
+                .validate(instance)
+                .expect_err(format!("{} should not be valid", instance).as_str())
+                .into_iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<String>>(),
+            errors
+        )
+    }
+
+    pub(crate) fn is_valid(schema: &Value, instance: &Value) {
+        let compiled = JSONSchema::compile(schema).unwrap();
+        assert!(
+            compiled.is_valid(instance),
+            "{} should be valid (via is_valid)",
+            instance
+        );
+        assert!(
+            compiled.validate(instance).is_ok(),
+            "{} should be valid (via validate)",
             instance
         );
     }
