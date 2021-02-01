@@ -87,11 +87,11 @@ Schemas & input values:
 
 Ratios are given against compiled `JSONSchema` using its `validate`. The `is_valid` method is faster, but gives only a boolean return value:
 
-| Case          | jsonschema_valid        | valico                  | jsonschema.validate   | jsonschema.is_valid   |
-| ------------- | ----------------------- | ----------------------- | --------------------- | --------------------- |
-| Big valid     | 2.5531 s (**x108.04**)  | 91.191 ms (**x3.85**)   | 23.631 ms             | 17.42 ms (**x0.73**)  |
-| Small valid   | 2.01 us    (**x4.38**)  | 3.50 us   (**x7.63**)   | 458.14 ns             | 125.02 ns (**x0.27**)  |
-| Small invalid | 400.99 ns  (**x0.69**)  | 3.53 us   (**x6.12**)   | 576.12 ns             | 5.21 ns  (**x0.009**)  |
+| Case          | jsonschema_valid        | valico                  | jsonschema.validate   | jsonschema.is_valid    |
+| ------------- | ----------------------- | ----------------------- | --------------------- | ---------------------- |
+| Big valid     | 2.5531 s (**x184.75**)  | 91.191 ms (**x6.59**)   | 13.819 ms             | 10.599 ms (**x0.76**)  |
+| Small valid   | 2.01 us    (**x4.24**)  | 3.50 us   (**x7.39**)   | 473.4 ns              | 136.22 ns (**x0.28**)  |
+| Small invalid | 400.99 ns  (**x0.68**)  | 3.53 us   (**x6.03**)   | 584.93 ns             | 6.55 ns  (**x0.011**)  |
 
 You can find benchmark code in `benches/jsonschema.rs`, Rust version is `1.49`.
 

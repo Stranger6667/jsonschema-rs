@@ -1,5 +1,6 @@
 import json
 import sys
+from copy import deepcopy
 from functools import partial
 
 import fastjsonschema
@@ -34,20 +35,28 @@ else:
     variants = ["jsonschema", "fastjsonschema"]
 
 
+DEFAULT_BENCHMARK_CONFIG = {"iterations": 10, "rounds": 10, "warmup_rounds": 10}
+
+
 @pytest.fixture(params=variants)
-def args(request, is_compiled):
+def variant(request):
+    return request.param
+
+
+@pytest.fixture
+def args(request, variant, is_compiled):
     schema, instance = request.node.get_closest_marker("data").args
-    if request.param == "jsonschema-rs":
+    if variant == "jsonschema-rs":
         if is_compiled:
-            return jsonschema_rs.JSONSchema(schema, with_meta_schemas=True).is_valid, instance
+            return jsonschema_rs.JSONSchema(schema, with_meta_schemas=True).validate, instance
         else:
             return partial(jsonschema_rs.is_valid, with_meta_schemas=True), schema, instance
-    if request.param == "jsonschema":
+    if variant == "jsonschema":
         if is_compiled:
             return jsonschema.validators.validator_for(schema)(schema).is_valid, instance
         else:
             return jsonschema.validate, instance, schema
-    if request.param == "fastjsonschema":
+    if variant == "fastjsonschema":
         if is_compiled:
             return fastjsonschema.compile(schema), instance
         else:
@@ -74,5 +83,23 @@ def test_small_schema(benchmark, args):
 
 @pytest.mark.data(BIG_SCHEMA, BIG_INSTANCE)
 @pytest.mark.benchmark(group="big")
-def test_big_schema(benchmark, args):
-    benchmark(*args)
+def test_big_schema(request, variant, is_compiled, benchmark, args):
+    if variant == "fastjsonschema":
+        # fastjsonschema modifies the instance with `default` values which leads to a memory leak on recursive schemas
+        # For this reason the instance is copied for each bench iteration. The running time is higher, but this is a
+        # very small portion of the overall process
+        schema, instance = request.node.get_closest_marker("data").args
+        if is_compiled:
+
+            def setup():
+                return (deepcopy(instance),), {}
+
+            benchmark.pedantic(fastjsonschema.compile(schema), setup=setup)
+        else:
+
+            def setup():
+                return (schema, deepcopy(instance)), {}
+
+            benchmark.pedantic(fastjsonschema.validate, setup=setup)
+    else:
+        benchmark(*args)
