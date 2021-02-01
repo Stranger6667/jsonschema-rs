@@ -58,9 +58,9 @@ def args(request, variant, is_compiled):
             return jsonschema.validate, instance, schema
     if variant == "fastjsonschema":
         if is_compiled:
-            return fastjsonschema.compile(schema), instance
+            return fastjsonschema.compile(schema, use_default=False), instance
         else:
-            return fastjsonschema.validate, schema, instance
+            return partial(fastjsonschema.validate, use_default=False), schema, instance
 
 
 @pytest.mark.data(True, True)
@@ -83,23 +83,5 @@ def test_small_schema(benchmark, args):
 
 @pytest.mark.data(BIG_SCHEMA, BIG_INSTANCE)
 @pytest.mark.benchmark(group="big")
-def test_big_schema(request, variant, is_compiled, benchmark, args):
-    if variant == "fastjsonschema":
-        # fastjsonschema modifies the instance with `default` values which leads to a memory leak on recursive schemas
-        # For this reason the instance is copied for each bench iteration. The running time is higher, but this is a
-        # very small portion of the overall process
-        schema, instance = request.node.get_closest_marker("data").args
-        if is_compiled:
-
-            def setup():
-                return (deepcopy(instance),), {}
-
-            benchmark.pedantic(fastjsonschema.compile(schema), setup=setup)
-        else:
-
-            def setup():
-                return (schema, deepcopy(instance)), {}
-
-            benchmark.pedantic(fastjsonschema.validate, setup=setup)
-    else:
-        benchmark(*args)
+def test_big_schema(benchmark, args):
+    benchmark(*args)
