@@ -26,7 +26,7 @@ pyo3-built = "0.4"
 
 [package.metadata.maturin]
 requires-python = ">=3.6"
-project-url = ["https://github.com/Stranger6667/jsonschema-rs"]
+project-url = { repository = "https://github.com/Stranger6667/jsonschema-rs" }
 maintainer = "Dmitry Dygalo"
 maintainer-email = "Dmitry Dygalo <dadygalo@gmail.com>"
 classifier = [
