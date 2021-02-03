@@ -52,6 +52,33 @@ fn get_draft(draft: u8) -> PyResult<Draft> {
     }
 }
 
+fn make_options(
+    draft: Option<u8>,
+    with_meta_schemas: Option<bool>,
+) -> PyResult<jsonschema::CompilationOptions> {
+    let mut options = jsonschema::JSONSchema::options();
+    if let Some(raw_draft_version) = draft {
+        options.with_draft(get_draft(raw_draft_version)?);
+    }
+    if let Some(true) = with_meta_schemas {
+        options.with_meta_schemas();
+    }
+    Ok(options)
+}
+
+fn raise_on_error(compiled: &jsonschema::JSONSchema, instance: &PyAny) -> PyResult<()> {
+    let instance = ser::to_value(instance)?;
+    let result = compiled.validate(&instance);
+    let error = if let Some(mut errors) = result.err() {
+        // If we have `Err` case, then the iterator is not empty
+        let error = errors.next().expect("Iterator should not be empty");
+        Some(error.to_string())
+    } else {
+        None
+    };
+    error.map_or_else(|| Ok(()), |message| Err(ValidationError::new_err(message)))
+}
+
 /// is_valid(schema, instance, draft=None, with_meta_schemas=False)
 ///
 /// A shortcut for validating the input instance against the schema.
@@ -69,19 +96,40 @@ fn is_valid(
     draft: Option<u8>,
     with_meta_schemas: Option<bool>,
 ) -> PyResult<bool> {
+    let options = make_options(draft, with_meta_schemas)?;
     let schema = ser::to_value(schema)?;
-    let instance = ser::to_value(instance)?;
-    let mut options = jsonschema::JSONSchema::options();
-    if let Some(raw_draft_version) = draft {
-        options.with_draft(get_draft(raw_draft_version)?);
-    }
-    if let Some(true) = with_meta_schemas {
-        options.with_meta_schemas();
-    }
     let compiled = options
         .compile(&schema)
         .map_err(JSONSchemaError::Compilation)?;
+    let instance = ser::to_value(instance)?;
     Ok(compiled.is_valid(&instance))
+}
+
+/// validate(schema, instance, draft=None, with_meta_schemas=False)
+///
+/// Validate the input instance and raise `ValidationError` in the error case
+///
+///     >>> validate({"minimum": 5}, 3)
+///     ...
+///     ValidationError: 3 is less than the minimum of 5
+///
+/// If the input instance is invalid, only the first occurred error is raised.
+/// If your workflow implies validating against the same schema, consider using `JSONSchema.validate`
+/// instead.
+#[pyfunction]
+#[text_signature = "(schema, instance, draft=None, with_meta_schemas=False)"]
+fn validate(
+    schema: &PyAny,
+    instance: &PyAny,
+    draft: Option<u8>,
+    with_meta_schemas: Option<bool>,
+) -> PyResult<()> {
+    let options = make_options(draft, with_meta_schemas)?;
+    let schema = ser::to_value(schema)?;
+    let compiled = options
+        .compile(&schema)
+        .map_err(JSONSchemaError::Compilation)?;
+    raise_on_error(&compiled, instance)
 }
 
 /// JSONSchema(schema, draft=None, with_meta_schemas=False)
@@ -104,16 +152,10 @@ struct JSONSchema {
 impl JSONSchema {
     #[new]
     fn new(schema: &PyAny, draft: Option<u8>, with_meta_schemas: Option<bool>) -> PyResult<Self> {
-        let raw_schema = ser::to_value(schema)?;
-        let mut options = jsonschema::JSONSchema::options();
-        if let Some(raw_draft_version) = draft {
-            options.with_draft(get_draft(raw_draft_version)?);
-        }
-        if let Some(true) = with_meta_schemas {
-            options.with_meta_schemas();
-        }
+        let options = make_options(draft, with_meta_schemas)?;
         // Currently, it is the simplest way to pass a reference to `JSONSchema`
         // It is cleaned up in the `Drop` implementation
+        let raw_schema = ser::to_value(schema)?;
         let schema: &'static Value = Box::leak(Box::new(raw_schema));
         Ok(JSONSchema {
             schema: options
@@ -150,16 +192,7 @@ impl JSONSchema {
     /// If the input instance is invalid, only the first occurred error is raised.
     #[text_signature = "(instance)"]
     fn validate(&self, instance: &PyAny) -> PyResult<()> {
-        let instance = ser::to_value(instance)?;
-        let result = self.schema.validate(&instance);
-        let error = if let Some(mut errors) = result.err() {
-            // If we have `Err` case, then the iterator is not empty
-            let error = errors.next().expect("Iterator should not be empty");
-            Some(error.to_string())
-        } else {
-            None
-        };
-        error.map_or_else(|| Ok(()), |message| Err(ValidationError::new_err(message)))
+        raise_on_error(&self.schema, instance)
     }
 }
 
@@ -196,6 +229,7 @@ fn jsonschema_rs(py: Python, module: &PyModule) -> PyResult<()> {
     // first line in docstrings. The idea is taken from NumPy.
     types::init();
     module.add_wrapped(wrap_pyfunction!(is_valid))?;
+    module.add_wrapped(wrap_pyfunction!(validate))?;
     module.add_class::<JSONSchema>()?;
     let validation_error = py.get_type::<ValidationError>();
     validation_error.setattr("__doc__", VALIDATION_ERROR_DOCSTRING)?;

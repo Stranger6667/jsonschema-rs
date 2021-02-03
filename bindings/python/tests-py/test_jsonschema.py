@@ -1,10 +1,11 @@
 from contextlib import suppress
+from functools import partial
 
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from jsonschema_rs import JSONSchema, ValidationError, is_valid
+from jsonschema_rs import JSONSchema, ValidationError, is_valid, validate
 
 json = st.recursive(
     st.none() | st.booleans() | st.floats() | st.integers() | st.text(),
@@ -12,36 +13,40 @@ json = st.recursive(
 )
 
 
+@pytest.mark.parametrize("func", (is_valid, validate))
 @given(instance=json)
-def test_instance_processing(instance):
+def test_instance_processing(func, instance):
     with suppress(Exception):
-        is_valid(True, instance)
+        func(True, instance)
 
 
+@pytest.mark.parametrize("func", (is_valid, validate))
 @given(instance=json)
-def test_schema_processing(instance):
+def test_schema_processing(func, instance):
     with suppress(Exception):
-        is_valid(instance, True)
+        func(instance, True)
 
 
-def test_invalid_schema():
+@pytest.mark.parametrize("func", (is_valid, validate))
+def test_invalid_schema(func):
     with pytest.raises(ValueError):
-        is_valid(2 ** 64, True)
+        func(2 ** 64, True)
 
 
-def test_invalid_type():
+@pytest.mark.parametrize("func", (is_valid, validate))
+def test_invalid_type(func):
     with pytest.raises(ValueError, match="Unsupported type: 'set'"):
-        is_valid(set(), True)
+        func(set(), True)
 
 
 def test_repr():
     assert repr(JSONSchema({"minimum": 5})) == '<JSONSchema: {"minimum":5}>'
 
 
-def test_validate():
-    schema = JSONSchema({"minimum": 5})
+@pytest.mark.parametrize("func", (JSONSchema({"minimum": 5}).validate, partial(validate, {"minimum": 5})))
+def test_validate(func):
     with pytest.raises(ValidationError, match="2 is less than the minimum of 5"):
-        schema.validate(2)
+        func(2)
 
 
 def test_recursive_dict():
