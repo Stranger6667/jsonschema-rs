@@ -143,7 +143,7 @@ impl JSONSchema {
     /// Validate the input instance and raise `ValidationError` in the error case
     ///
     ///     >>> compiled = JSONSchema({"minimum": 5})
-    ///     >>> compiled.is_valid(3)
+    ///     >>> compiled.validate(3)
     ///     ...
     ///     ValidationError: 3 is less than the minimum of 5
     ///
