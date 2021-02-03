@@ -12,7 +12,7 @@
 
 ### Performance
 
-- General performance improvements.
+- General performance improvements for subsets of `items` and `additionalProperties` validators.
 
 ## [0.5.1] - 2021-01-29
 

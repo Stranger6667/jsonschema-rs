@@ -2,9 +2,14 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Missing validation errors after the 1st one in `additionalProperties` validators.
+
 ### Performance
 
 - Do not use `rayon` in `items` keyword as it gives significant overhead for a general case.
+- Avoid partially overlapping work in `additionalProperties` / `properties` / `patternProperties` validators. [#173](https://github.com/Stranger6667/jsonschema-rs/issues/173)
 
 ## [0.5.0] - 2021-01-29
 
