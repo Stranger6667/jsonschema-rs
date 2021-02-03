@@ -5,6 +5,7 @@
 ### Added
 
 - `with_meta_schemas` argument for `is_valid` and update docstrings.
+- `validate` function.
 
 ### Changed
 
@@ -13,6 +14,7 @@
 ### Performance
 
 - General performance improvements for subsets of `items` and `additionalProperties` validators.
+- Defer schema & instance loading until they are used. It improves performance for cases when the user passes an nvalid draft version.
 
 ## [0.5.1] - 2021-01-29
 
