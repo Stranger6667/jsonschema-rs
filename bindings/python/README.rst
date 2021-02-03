@@ -89,7 +89,7 @@ Package versions:
 
 - ``jsonschema-rs`` - latest version from the repository
 - ``jsonschema`` - ``3.2.0``
-- ``fastjsonschema`` - ``2.14.5``
+- ``fastjsonschema`` - ``2.15.0``
 
 Measured with stable Rust 1.49, CPython 3.9.1 / PyPy3 7.3.3 on i8700K (12 cores), 32GB RAM, Arch Linux.
 
