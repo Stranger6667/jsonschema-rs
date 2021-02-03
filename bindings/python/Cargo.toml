@@ -1,6 +1,6 @@
 [package]
 name = "jsonschema-python"
-version = "0.5.1"
+version = "0.6.0"
 authors = ["Dmitry Dygalo <dadygalo@gmail.com>"]
 edition = "2018"
 
