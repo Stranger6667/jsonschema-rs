@@ -89,9 +89,11 @@ Ratios are given against compiled `JSONSchema` using its `validate`. The `is_val
 
 | Case          | jsonschema_valid        | valico                  | jsonschema.validate   | jsonschema.is_valid    |
 | ------------- | ----------------------- | ----------------------- | --------------------- | ---------------------- |
-| Big valid     | 2.5531 s (**x184.75**)  | 91.191 ms (**x6.59**)   | 13.819 ms             | 10.599 ms (**x0.76**)  |
-| Small valid   | 2.01 us    (**x4.24**)  | 3.50 us   (**x7.39**)   | 473.4 ns              | 136.22 ns (**x0.28**)  |
-| Small invalid | 400.99 ns  (**x0.68**)  | 3.53 us   (**x6.03**)   | 584.93 ns             | 6.55 ns  (**x0.011**)  |
+| Big valid     | -                       | 95.008 ms (**x13.07**)  | 7.264 ms              | 5.974 ms (**x0.82**)   |
+| Small valid   | 2.04 us    (**x5.45**)  | 3.67 us   (**x9.81**)   | 373.91 ns             | 119.02 ns (**x0.31**)  |
+| Small invalid | 397.52 ns  (**x0.82**)  | 3.73 us   (**x7.74**)   | 481.33 ns             | 5.26 ns  (**x0.01**)   |
+
+Unfortunately, `jsonschema_valid` mistakenly considers the Kubernetes Open API schema as invalid and therefore can't be compared with other libraries in this case.
 
 You can find benchmark code in `benches/jsonschema.rs`, Rust version is `1.49`.
 

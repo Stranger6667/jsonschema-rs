@@ -1,6 +1,5 @@
 import json
 import sys
-from copy import deepcopy
 from functools import partial
 
 import fastjsonschema
@@ -30,7 +29,7 @@ def is_compiled(request):
 
 
 if jsonschema_rs is not None:
-    variants = ["jsonschema-rs", "jsonschema", "fastjsonschema"]
+    variants = ["jsonschema-rs-is-valid", "jsonschema-rs-validate", "jsonschema", "fastjsonschema"]
 else:
     variants = ["jsonschema", "fastjsonschema"]
 
@@ -46,11 +45,16 @@ def variant(request):
 @pytest.fixture
 def args(request, variant, is_compiled):
     schema, instance = request.node.get_closest_marker("data").args
-    if variant == "jsonschema-rs":
+    if variant == "jsonschema-rs-is-valid":
+        if is_compiled:
+            return jsonschema_rs.JSONSchema(schema, with_meta_schemas=True).is_valid, instance
+        else:
+            return partial(jsonschema_rs.is_valid, with_meta_schemas=True), schema, instance
+    if variant == "jsonschema-rs-validate":
         if is_compiled:
             return jsonschema_rs.JSONSchema(schema, with_meta_schemas=True).validate, instance
         else:
-            return partial(jsonschema_rs.is_valid, with_meta_schemas=True), schema, instance
+            pytest.skip("`validate` function is not yet implemented")
     if variant == "jsonschema":
         if is_compiled:
             return jsonschema.validators.validator_for(schema)(schema).is_valid, instance
