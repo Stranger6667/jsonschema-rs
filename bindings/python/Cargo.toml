@@ -21,7 +21,7 @@ features = ["reqwest"]
 [dependencies]
 serde_json = "1"
 serde = "1"
-pyo3 = { version = "^0.13", features = ["extension-module"] }
+pyo3 = { version = "^0.12", features = ["extension-module"] }
 pyo3-built = "0.4"
 
 [package.metadata.maturin]

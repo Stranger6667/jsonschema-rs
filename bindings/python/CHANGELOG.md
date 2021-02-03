@@ -7,10 +7,6 @@
 - `with_meta_schemas` argument for `is_valid` and update docstrings.
 - `validate` function.
 
-### Changed
-
-- Update `PyO3` to `0.13`.
-
 ### Performance
 
 - General performance improvements for subsets of `items` and `additionalProperties` validators.
