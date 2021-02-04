@@ -61,7 +61,8 @@ use serde_json::json;
 fn main() -> Result<(), CompilationError> {
     let schema = json!({"maxLength": 5});
     let instance = json!("foo");
-    // Draft is detected automatically with fallback to Draft7
+    // Draft is detected automatically
+    // with fallback to Draft7
     let compiled = JSONSchema::compile(&schema)?;
     assert!(compiled.is_valid(&instance));
     Ok(())
@@ -70,7 +71,7 @@ fn main() -> Result<(), CompilationError> {
 
 ## Bindings
 
-- Python - See the `/python` directory
+- Python - See the `./bindings/python` directory
 - Ruby - a [crate](https://github.com/driv3r/rusty_json_schema) by @driv3r
 
 ## Performance
