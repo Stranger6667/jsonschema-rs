@@ -68,8 +68,8 @@ fn convert_regex(pattern: &str) -> Result<Regex, regex::Error> {
         &new_pattern
             .replace(r"\d", "[0-9]")
             .replace(r"\D", "[^0-9]")
-            .replace(r"\w", "[A-Za-z]")
-            .replace(r"\W", "[^A-Za-z]")
+            .replace(r"\w", "[A-Za-z0-9_]")
+            .replace(r"\W", "[^A-Za-z0-9_]")
             .replace(
                 r"\s",
                 "[ \t\n\r\u{000b}\u{000c}\u{2003}\u{feff}\u{2029}\u{00a0}]",
@@ -102,4 +102,18 @@ pub(crate) fn compile(
     _: &CompilationContext,
 ) -> Option<CompilationResult> {
     Some(PatternValidator::compile(schema))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test_case::test_case;
+
+    #[test_case(r"^[\w\-\.\+]+$", "CC-BY-4.0", true)]
+    #[test_case(r"^[\w\-\.\+]+$", "CC-BY-!", false)]
+    #[test_case(r"^\W+$", "1_0", false)]
+    fn regex_matches(pattern: &str, text: &str, is_matching: bool) {
+        let compiled = convert_regex(pattern).expect("A valid regex");
+        assert_eq!(compiled.is_match(text), is_matching);
+    }
 }
