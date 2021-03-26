@@ -155,10 +155,7 @@ impl Validate for IpV4Validator {
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             match IpAddr::from_str(item.as_str()) {
-                Ok(i) => match i {
-                    IpAddr::V4(_) => true,
-                    IpAddr::V6(_) => false,
-                },
+                Ok(i) => i.is_ipv4(),
                 Err(_) => false,
             }
         } else {
@@ -173,10 +170,7 @@ impl Validate for IpV6Validator {
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             match IpAddr::from_str(item.as_str()) {
-                Ok(i) => match i {
-                    IpAddr::V4(_) => false,
-                    IpAddr::V6(_) => true,
-                },
+                Ok(i) => i.is_ipv6(),
                 Err(_) => false,
             }
         } else {
