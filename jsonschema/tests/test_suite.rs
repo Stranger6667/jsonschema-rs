@@ -28,19 +28,18 @@ fn test_draft(_server_address: &str, test_case: TestCase) {
             let first_error = errors_iterator.next();
             assert!(
                 first_error.is_none(),
-                format!(
-                    "Schema: {}\nInstance: {}\nError: {:?}",
-                    test_case.schema, test_case.instance, first_error,
-                )
+                "Schema: {}\nInstance: {}\nError: {:?}",
+                test_case.schema,
+                test_case.instance,
+                first_error,
             );
         }
     } else {
         assert!(
             result.is_err(),
-            format!(
-                "Schema: {}\nInstance: {}\nError: It is supposed to be INVALID!",
-                test_case.schema, test_case.instance,
-            )
+            "Schema: {}\nInstance: {}\nError: It is supposed to be INVALID!",
+            test_case.schema,
+            test_case.instance,
         );
     }
 
