@@ -63,7 +63,7 @@ Schemas:
 Compiled validators (when the input schema is compiled once and reused later). ``jsonschema-rs`` comes in two variants in the table below:
 
 - ``validate``. This method raises ``ValidationError`` on errors or returns ``None`` on their absence.
-- ```is_valid``. A faster method that returns a boolean result whether the instance is valid.
+- ``is_valid``. A faster method that returns a boolean result whether the instance is valid.
 
 Ratios are given against the ``validate`` variant.
 
