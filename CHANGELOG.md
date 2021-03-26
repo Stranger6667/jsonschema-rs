@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.6.1] - 2021-03-26
+
 ### Fixed
 
 - Incorrect handling of `\w` and `\W` character groups in `pattern` keywords. [#180](https://github.com/Stranger6667/jsonschema-rs/issues/180)
@@ -147,7 +149,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.6.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.6.1...HEAD
+[0.6.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.6.0...rust-v0.6.1
 [0.6.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.5.0...rust-v0.6.0
 [0.5.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.4.3...rust-v0.5.0
 [0.4.3]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.4.2...rust-v0.4.3
