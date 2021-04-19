@@ -1,3 +1,4 @@
+use crate::keywords::InstancePath;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
@@ -40,15 +41,21 @@ impl Validate for AdditionalItemsObjectValidator {
         }
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = items
                 .iter()
                 .skip(self.items_count)
                 .flat_map(|item| {
-                    self.validators
-                        .iter()
-                        .flat_map(move |validator| validator.validate(schema, item))
+                    let curr_instance_path = curr_instance_path.clone();
+                    self.validators.iter().flat_map(move |validator| {
+                        validator.validate(schema, item, curr_instance_path.clone())
+                    })
                 })
                 .collect();
             Box::new(errors.into_iter())
@@ -82,10 +89,16 @@ impl Validate for AdditionalItemsBooleanValidator {
         true
     }
 
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        _: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
             if items.len() > self.items_count {
                 return error(ValidationError::additional_items(
+                    curr_instance_path.into(),
                     instance,
                     self.items_count,
                 ));

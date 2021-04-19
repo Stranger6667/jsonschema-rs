@@ -1,3 +1,4 @@
+use crate::keywords::InstancePath;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator},
@@ -40,7 +41,12 @@ impl Validate for IfThenValidator {
         }
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self
             .schema
             .iter()
@@ -49,7 +55,9 @@ impl Validate for IfThenValidator {
             let errors: Vec<_> = self
                 .then_schema
                 .iter()
-                .flat_map(move |validator| validator.validate(schema, instance))
+                .flat_map(move |validator| {
+                    validator.validate(schema, instance, curr_instance_path.clone())
+                })
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -102,7 +110,12 @@ impl Validate for IfElseValidator {
         }
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self
             .schema
             .iter()
@@ -111,7 +124,9 @@ impl Validate for IfElseValidator {
             let errors: Vec<_> = self
                 .else_schema
                 .iter()
-                .flat_map(move |validator| validator.validate(schema, instance))
+                .flat_map(move |validator| {
+                    validator.validate(schema, instance, curr_instance_path.clone())
+                })
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -169,7 +184,12 @@ impl Validate for IfThenElseValidator {
         }
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self
             .schema
             .iter()
@@ -178,14 +198,18 @@ impl Validate for IfThenElseValidator {
             let errors: Vec<_> = self
                 .then_schema
                 .iter()
-                .flat_map(move |validator| validator.validate(schema, instance))
+                .flat_map(move |validator| {
+                    validator.validate(schema, instance, curr_instance_path.clone())
+                })
                 .collect();
             Box::new(errors.into_iter())
         } else {
             let errors: Vec<_> = self
                 .else_schema
                 .iter()
-                .flat_map(move |validator| validator.validate(schema, instance))
+                .flat_map(move |validator| {
+                    validator.validate(schema, instance, curr_instance_path.clone())
+                })
                 .collect();
             Box::new(errors.into_iter())
         }

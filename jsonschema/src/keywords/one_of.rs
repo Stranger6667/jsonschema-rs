@@ -1,3 +1,4 @@
+use crate::keywords::InstancePath;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
@@ -64,15 +65,26 @@ impl Validate for OneOfValidator {
             false
         }
     }
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         let first_valid_idx = self.get_first_valid(schema, instance);
         if let Some(idx) = first_valid_idx {
             if self.are_others_valid(schema, instance, idx) {
-                return error(ValidationError::one_of_multiple_valid(instance));
+                return error(ValidationError::one_of_multiple_valid(
+                    curr_instance_path.into(),
+                    instance,
+                ));
             }
             no_error()
         } else {
-            error(ValidationError::one_of_not_valid(instance))
+            error(ValidationError::one_of_not_valid(
+                curr_instance_path.into(),
+                instance,
+            ))
         }
     }
 }

@@ -1,3 +1,4 @@
+use crate::keywords::InstancePath;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{CompilationError, ErrorIterator},
@@ -35,14 +36,20 @@ impl Validate for AllOfValidator {
         })
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         let errors: Vec<_> = self
             .schemas
             .iter()
             .flat_map(move |validators| {
-                validators
-                    .iter()
-                    .flat_map(move |validator| validator.validate(schema, instance))
+                let curr_instance_path = curr_instance_path.clone();
+                validators.iter().flat_map(move |validator| {
+                    validator.validate(schema, instance, curr_instance_path.clone())
+                })
             })
             .collect();
         Box::new(errors.into_iter())

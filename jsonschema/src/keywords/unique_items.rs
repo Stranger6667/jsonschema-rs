@@ -1,3 +1,4 @@
+use crate::keywords::InstancePath;
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
@@ -6,6 +7,7 @@ use crate::{
 };
 use ahash::{AHashSet, AHasher};
 use serde_json::{Map, Value};
+
 use std::hash::{Hash, Hasher};
 
 // Based on implementation proposed by Sven Marnach:
@@ -76,11 +78,19 @@ impl Validate for UniqueItemsValidator {
         true
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::unique_items(instance))
+            error(ValidationError::unique_items(
+                curr_instance_path.into(),
+                instance,
+            ))
         }
     }
 }

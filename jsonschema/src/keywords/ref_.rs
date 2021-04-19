@@ -6,8 +6,10 @@ use crate::{
 };
 use parking_lot::RwLock;
 use serde_json::Value;
-use std::borrow::Cow;
+use std::{borrow::Cow, cell::RefCell, rc::Rc};
 use url::Url;
+
+use super::InstancePath;
 
 pub(crate) struct RefValidator {
     reference: Url,
@@ -62,17 +64,27 @@ impl Validate for RefValidator {
         }
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a>(
+        &self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'_>,
+    ) -> ErrorIterator<'a> {
         if let Err(err) = self.ensure_validators(schema) {
             error(err)
         } else {
+            let curr_instance_path: InstancePath =
+                Rc::new(RefCell::new(curr_instance_path.borrow().clone())).into();
             Box::new(
                 self.validators
                     .read()
                     .as_ref()
                     .expect("ensure_validators guarantees the presence of the validators")
                     .iter()
-                    .flat_map(move |validator| validator.validate(schema, instance))
+                    .flat_map(move |validator| {
+                        let curr_instance_path = curr_instance_path.clone();
+                        validator.validate(schema, instance, curr_instance_path)
+                    })
                     .collect::<Vec<_>>()
                     .into_iter(),
             )

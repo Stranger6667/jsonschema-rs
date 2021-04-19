@@ -1,3 +1,6 @@
+use std::borrow::Cow;
+
+use crate::keywords::InstancePath;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, CompilationError, ErrorIterator},
@@ -42,17 +45,27 @@ impl Validate for PropertiesValidator {
         }
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
                 .properties
                 .iter()
                 .flat_map(move |(name, validators)| {
+                    let curr_instance_path = curr_instance_path.clone();
                     let option = item.get(name);
                     option.into_iter().flat_map(move |item| {
-                        validators
-                            .iter()
-                            .flat_map(move |validator| validator.validate(schema, item))
+                        let curr_instance_path = curr_instance_path.clone();
+                        validators.iter().flat_map(move |validator| {
+                            curr_instance_path.borrow_mut().push(Cow::Borrowed(name));
+                            let res = validator.validate(schema, item, curr_instance_path.clone());
+                            curr_instance_path.borrow_mut().pop();
+                            res
+                        })
                     })
                 })
                 .collect();

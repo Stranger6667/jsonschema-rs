@@ -1,3 +1,4 @@
+use crate::keywords::InstancePath;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
@@ -34,16 +35,22 @@ impl Validate for PropertyNamesObjectValidator {
         }
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::Object(item) = &instance.borrow() {
             let errors: Vec<_> = self
                 .validators
                 .iter()
                 .flat_map(move |validator| {
+                    let curr_instance_path = curr_instance_path.clone();
                     item.keys().flat_map(move |key| {
                         let wrapper = Value::String(key.to_string());
                         let errors: Vec<_> = validator
-                            .validate(schema, &wrapper)
+                            .validate(schema, &wrapper, curr_instance_path.clone())
                             .map(ValidationError::into_owned)
                             .collect();
                         errors.into_iter()
@@ -81,7 +88,12 @@ impl Validate for PropertyNamesBooleanValidator {
         true
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        _: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {

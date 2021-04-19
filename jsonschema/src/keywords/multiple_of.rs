@@ -1,3 +1,4 @@
+use crate::keywords::InstancePath;
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
@@ -5,6 +6,7 @@ use crate::{
     validator::Validate,
 };
 use serde_json::{Map, Value};
+
 use std::f64::EPSILON;
 
 pub(crate) struct MultipleOfFloatValidator {
@@ -30,12 +32,21 @@ impl Validate for MultipleOfFloatValidator {
         true
     }
 
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        _: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::Number(item) = instance {
             let item = item.as_f64().expect("Always valid");
             let remainder = (item / self.multiple_of) % 1.;
             if !(remainder < EPSILON && remainder < (1. - EPSILON)) {
-                return error(ValidationError::multiple_of(instance, self.multiple_of));
+                return error(ValidationError::multiple_of(
+                    curr_instance_path.into(),
+                    instance,
+                    self.multiple_of,
+                ));
             }
         }
         no_error()
@@ -76,7 +87,12 @@ impl Validate for MultipleOfIntegerValidator {
         true
     }
 
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        _: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::Number(item) = instance {
             let item = item.as_f64().expect("Always valid");
             let is_multiple = if item.fract() == 0. {
@@ -86,7 +102,11 @@ impl Validate for MultipleOfIntegerValidator {
                 remainder < EPSILON && remainder < (1. - EPSILON)
             };
             if !is_multiple {
-                return error(ValidationError::multiple_of(instance, self.multiple_of));
+                return error(ValidationError::multiple_of(
+                    curr_instance_path.into(),
+                    instance,
+                    self.multiple_of,
+                ));
             }
         }
         no_error()
