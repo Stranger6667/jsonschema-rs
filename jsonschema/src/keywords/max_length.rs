@@ -1,3 +1,4 @@
+use crate::keywords::InstancePath;
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
@@ -31,10 +32,19 @@ impl Validate for MaxLengthValidator {
         true
     }
 
-    fn validate<'a>(&self, _schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        _schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if (item.chars().count() as u64) > self.limit {
-                return error(ValidationError::max_length(instance, self.limit));
+                return error(ValidationError::max_length(
+                    curr_instance_path.into(),
+                    instance,
+                    self.limit,
+                ));
             }
         }
         no_error()

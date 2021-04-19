@@ -1,7 +1,7 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
-    keywords::{type_, CompilationResult},
+    keywords::{type_, CompilationResult, InstancePath},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
 };
@@ -46,11 +46,20 @@ impl Validate for MultipleTypesValidator {
             Value::String(_) => self.types.contains_type(PrimitiveType::String),
         }
     }
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::multiple_type_error(instance, self.types))
+            error(ValidationError::multiple_type_error(
+                curr_instance_path.into(),
+                instance,
+                self.types,
+            ))
         }
     }
 }
@@ -86,11 +95,17 @@ impl Validate for IntegerTypeValidator {
         }
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
+                curr_instance_path.into(),
                 instance,
                 PrimitiveType::Integer,
             ))

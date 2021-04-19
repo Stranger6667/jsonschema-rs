@@ -8,6 +8,8 @@ use crate::{
 use serde_json::{Map, Number, Value};
 use std::f64::EPSILON;
 
+use super::InstancePath;
+
 struct ConstArrayValidator {
     value: Vec<Value>,
 }
@@ -21,11 +23,20 @@ impl ConstArrayValidator {
 }
 impl Validate for ConstArrayValidator {
     #[inline]
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::constant_array(instance, &self.value))
+            error(ValidationError::constant_array(
+                curr_instance_path.into(),
+                instance,
+                &self.value,
+            ))
         }
     }
 
@@ -62,11 +73,20 @@ impl ConstBooleanValidator {
 }
 impl Validate for ConstBooleanValidator {
     #[inline]
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::constant_boolean(instance, self.value))
+            error(ValidationError::constant_boolean(
+                curr_instance_path.into(),
+                instance,
+                self.value,
+            ))
         }
     }
 
@@ -94,11 +114,19 @@ impl ConstNullValidator {
 }
 impl Validate for ConstNullValidator {
     #[inline]
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::constant_null(instance))
+            error(ValidationError::constant_null(
+                curr_instance_path.into(),
+                instance,
+            ))
         }
     }
 
@@ -132,11 +160,17 @@ impl ConstNumberValidator {
 }
 
 impl Validate for ConstNumberValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::constant_number(
+                curr_instance_path.into(),
                 instance,
                 &self.original_value,
             ))
@@ -172,11 +206,20 @@ impl ConstObjectValidator {
 }
 
 impl Validate for ConstObjectValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::constant_object(instance, &self.value))
+            error(ValidationError::constant_object(
+                curr_instance_path.into(),
+                instance,
+                &self.value,
+            ))
         }
     }
 
@@ -216,11 +259,20 @@ impl ConstStringValidator {
 }
 
 impl Validate for ConstStringValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::constant_string(instance, &self.value))
+            error(ValidationError::constant_string(
+                curr_instance_path.into(),
+                instance,
+                &self.value,
+            ))
         }
     }
 

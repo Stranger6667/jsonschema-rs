@@ -1,3 +1,5 @@
+use crate::keywords::InstancePath;
+
 use crate::{
     compilation::JSONSchema,
     error::{error, no_error, ErrorIterator, ValidationError},
@@ -18,7 +20,12 @@ impl Validate for TrueValidator {
         true
     }
 
-    fn validate<'a>(&self, _: &'a JSONSchema, _: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        _: &'a JSONSchema,
+        _: &'a Value,
+        _: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         no_error()
     }
 }
@@ -41,7 +48,12 @@ impl Validate for FalseValidator {
         false
     }
 
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        _: &'a JSONSchema,
+        instance: &'a Value,
+        _: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         error(ValidationError::false_schema(instance))
     }
 }

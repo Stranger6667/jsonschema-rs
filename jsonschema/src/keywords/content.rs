@@ -1,4 +1,5 @@
 //! Validators for `contentMediaType` and `contentEncoding` keywords.
+use crate::keywords::InstancePath;
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     content_encoding::{ContentEncodingCheckType, ContentEncodingConverterType},
@@ -35,12 +36,18 @@ impl Validate for ContentMediaTypeValidator {
         }
     }
 
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        _: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if (self.func)(item) {
                 no_error()
             } else {
                 error(ValidationError::content_media_type(
+                    curr_instance_path.into(),
                     instance,
                     &self.media_type,
                 ))
@@ -82,12 +89,21 @@ impl Validate for ContentEncodingValidator {
         }
     }
 
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        _: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if (self.func)(item) {
                 no_error()
             } else {
-                error(ValidationError::content_encoding(instance, &self.encoding))
+                error(ValidationError::content_encoding(
+                    curr_instance_path.into(),
+                    instance,
+                    &self.encoding,
+                ))
             }
         } else {
             no_error()
@@ -139,15 +155,25 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
         }
     }
 
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        _: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             match (self.converter)(item) {
-                Ok(None) => error(ValidationError::content_encoding(instance, &self.encoding)),
+                Ok(None) => error(ValidationError::content_encoding(
+                    curr_instance_path.into(),
+                    instance,
+                    &self.encoding,
+                )),
                 Ok(Some(converted)) => {
                     if (self.func)(&converted) {
                         no_error()
                     } else {
                         error(ValidationError::content_media_type(
+                            curr_instance_path.into(),
                             instance,
                             &self.media_type,
                         ))

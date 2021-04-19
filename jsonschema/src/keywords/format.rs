@@ -1,4 +1,5 @@
 //! Validator for `format` keyword.
+use crate::keywords::InstancePath;
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
@@ -9,6 +10,7 @@ use crate::{
 use chrono::{DateTime, NaiveDate};
 use regex::Regex;
 use serde_json::{Map, Value};
+
 use std::{net::IpAddr, str::FromStr};
 use url::Url;
 
@@ -51,10 +53,19 @@ macro_rules! format_validator {
 
 macro_rules! validate {
     ($format:expr) => {
-        fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+        fn validate<'a, 'b>(
+            &'b self,
+            schema: &'a JSONSchema,
+            instance: &'a Value,
+            curr_instance_path: InstancePath<'b>,
+        ) -> ErrorIterator<'a> {
             if let Value::String(_item) = instance {
                 if !self.is_valid(schema, instance) {
-                    return error(ValidationError::format(instance, $format));
+                    return error(ValidationError::format(
+                        curr_instance_path.into(),
+                        instance,
+                        $format,
+                    ));
                 }
             }
             no_error()

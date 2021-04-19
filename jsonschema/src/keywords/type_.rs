@@ -8,6 +8,8 @@ use crate::{
 use serde_json::{Map, Number, Value};
 use std::convert::TryFrom;
 
+use super::InstancePath;
+
 pub(crate) struct MultipleTypesValidator {
     types: PrimitiveTypesBitMap,
 }
@@ -46,11 +48,20 @@ impl Validate for MultipleTypesValidator {
             Value::String(_) => self.types.contains_type(PrimitiveType::String),
         }
     }
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::multiple_type_error(instance, self.types))
+            error(ValidationError::multiple_type_error(
+                curr_instance_path.into(),
+                instance,
+                self.types,
+            ))
         }
     }
 }
@@ -81,11 +92,17 @@ impl Validate for NullTypeValidator {
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         instance.is_null()
     }
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
+                curr_instance_path.into(),
                 instance,
                 PrimitiveType::Null,
             ))
@@ -112,11 +129,17 @@ impl Validate for BooleanTypeValidator {
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         instance.is_boolean()
     }
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
+                curr_instance_path.into(),
                 instance,
                 PrimitiveType::Boolean,
             ))
@@ -144,11 +167,17 @@ impl Validate for StringTypeValidator {
         instance.is_string()
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
+                curr_instance_path.into(),
                 instance,
                 PrimitiveType::String,
             ))
@@ -175,11 +204,17 @@ impl Validate for ArrayTypeValidator {
         instance.is_array()
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
+                curr_instance_path.into(),
                 instance,
                 PrimitiveType::Array,
             ))
@@ -206,11 +241,17 @@ impl Validate for ObjectTypeValidator {
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         instance.is_object()
     }
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
+                curr_instance_path.into(),
                 instance,
                 PrimitiveType::Object,
             ))
@@ -237,11 +278,17 @@ impl Validate for NumberTypeValidator {
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         instance.is_number()
     }
-    fn validate<'a>(&self, config: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        config: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(config, instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
+                curr_instance_path.into(),
                 instance,
                 PrimitiveType::Number,
             ))
@@ -270,11 +317,17 @@ impl Validate for IntegerTypeValidator {
             false
         }
     }
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
+                curr_instance_path.into(),
                 instance,
                 PrimitiveType::Integer,
             ))

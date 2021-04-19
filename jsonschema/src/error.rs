@@ -51,6 +51,8 @@ pub struct ValidationError<'a> {
     pub instance: Cow<'a, Value>,
     /// Type of validation error
     pub kind: ValidationErrorKind,
+    /// Path of the property that failed validation
+    pub instance_path: Option<Vec<String>>,
 }
 
 /// An iterator over instances of `ValidationError` that represent validation error for the
@@ -177,28 +179,37 @@ pub enum TypeKind {
 impl<'a> ValidationError<'a> {
     pub(crate) fn into_owned(self) -> ValidationError<'static> {
         ValidationError {
+            instance_path: self.instance_path.clone(),
             instance: Cow::Owned(self.instance.into_owned()),
             kind: self.kind,
         }
     }
 
-    pub(crate) fn additional_items(instance: &'a Value, limit: usize) -> ValidationError<'a> {
+    pub(crate) fn additional_items(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        limit: usize,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::AdditionalItems { limit },
         }
     }
-    pub(crate) fn any_of(instance: &'a Value) -> ValidationError<'a> {
+    pub(crate) fn any_of(instance_path: Vec<String>, instance: &'a Value) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::AnyOf,
         }
     }
     pub(crate) fn constant_array(
+        instance_path: Vec<String>,
         instance: &'a Value,
         expected_value: &[Value],
     ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Constant {
                 expected_value: Value::Array(expected_value.to_vec()),
@@ -206,18 +217,24 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) fn constant_boolean(
+        instance_path: Vec<String>,
         instance: &'a Value,
         expected_value: bool,
     ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Constant {
                 expected_value: Value::Bool(expected_value),
             },
         }
     }
-    pub(crate) fn constant_null(instance: &'a Value) -> ValidationError<'a> {
+    pub(crate) fn constant_null(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Constant {
                 expected_value: Value::Null,
@@ -225,10 +242,12 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) fn constant_number(
+        instance_path: Vec<String>,
         instance: &'a Value,
         expected_value: &Number,
     ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Constant {
                 expected_value: Value::Number(expected_value.clone()),
@@ -236,10 +255,12 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) fn constant_object(
+        instance_path: Vec<String>,
         instance: &'a Value,
         expected_value: &Map<String, Value>,
     ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Constant {
                 expected_value: Value::Object(expected_value.clone()),
@@ -247,180 +268,287 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) fn constant_string(
+        instance_path: Vec<String>,
         instance: &'a Value,
         expected_value: &str,
     ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Constant {
                 expected_value: Value::String(expected_value.to_string()),
             },
         }
     }
-    pub(crate) fn contains(instance: &'a Value) -> ValidationError<'a> {
+    pub(crate) fn contains(instance_path: Vec<String>, instance: &'a Value) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Contains,
         }
     }
-    pub(crate) fn content_encoding(instance: &'a Value, encoding: &str) -> ValidationError<'a> {
+    pub(crate) fn content_encoding(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        encoding: &str,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::ContentEncoding {
                 content_encoding: encoding.to_string(),
             },
         }
     }
-    pub(crate) fn content_media_type(instance: &'a Value, media_type: &str) -> ValidationError<'a> {
+    pub(crate) fn content_media_type(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        media_type: &str,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::ContentMediaType {
                 content_media_type: media_type.to_string(),
             },
         }
     }
-    pub(crate) fn enumeration(instance: &'a Value, options: &Value) -> ValidationError<'a> {
+    pub(crate) fn enumeration(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        options: &Value,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Enum {
                 options: options.clone(),
             },
         }
     }
-    pub(crate) fn exclusive_maximum(instance: &'a Value, limit: f64) -> ValidationError<'a> {
+    pub(crate) fn exclusive_maximum(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        limit: f64,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::ExclusiveMaximum { limit },
         }
     }
-    pub(crate) fn exclusive_minimum(instance: &'a Value, limit: f64) -> ValidationError<'a> {
+    pub(crate) fn exclusive_minimum(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        limit: f64,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::ExclusiveMinimum { limit },
         }
     }
     pub(crate) fn false_schema(instance: &'a Value) -> ValidationError<'a> {
         ValidationError {
+            instance_path: None,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::FalseSchema,
         }
     }
     pub(crate) fn file_not_found(error: io::Error) -> ValidationError<'a> {
         ValidationError {
+            instance_path: None,
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::FileNotFound { error },
         }
     }
-    pub(crate) fn format(instance: &'a Value, format: &'static str) -> ValidationError<'a> {
+    pub(crate) fn format(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        format: &'static str,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Format { format },
         }
     }
     pub(crate) fn from_utf8(error: FromUtf8Error) -> ValidationError<'a> {
         ValidationError {
+            instance_path: None,
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::FromUtf8 { error },
         }
     }
     pub(crate) fn json_parse(error: serde_json::Error) -> ValidationError<'a> {
         ValidationError {
+            instance_path: None,
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::JSONParse { error },
         }
     }
     pub(crate) fn invalid_reference(reference: String) -> ValidationError<'a> {
         ValidationError {
+            instance_path: None,
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::InvalidReference { reference },
         }
     }
     pub(crate) fn invalid_url(error: url::ParseError) -> ValidationError<'a> {
         ValidationError {
+            instance_path: None,
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::InvalidURL { error },
         }
     }
-    pub(crate) fn max_items(instance: &'a Value, limit: u64) -> ValidationError<'a> {
+    pub(crate) fn max_items(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        limit: u64,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MaxItems { limit },
         }
     }
-    pub(crate) fn maximum(instance: &'a Value, limit: f64) -> ValidationError<'a> {
+    pub(crate) fn maximum(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        limit: f64,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Maximum { limit },
         }
     }
-    pub(crate) fn max_length(instance: &'a Value, limit: u64) -> ValidationError<'a> {
+    pub(crate) fn max_length(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        limit: u64,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MaxLength { limit },
         }
     }
-    pub(crate) fn max_properties(instance: &'a Value, limit: u64) -> ValidationError<'a> {
+    pub(crate) fn max_properties(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        limit: u64,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MaxProperties { limit },
         }
     }
-    pub(crate) fn min_items(instance: &'a Value, limit: u64) -> ValidationError<'a> {
+    pub(crate) fn min_items(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        limit: u64,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MinItems { limit },
         }
     }
-    pub(crate) fn minimum(instance: &'a Value, limit: f64) -> ValidationError<'a> {
+    pub(crate) fn minimum(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        limit: f64,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Minimum { limit },
         }
     }
-    pub(crate) fn min_length(instance: &'a Value, limit: u64) -> ValidationError<'a> {
+    pub(crate) fn min_length(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        limit: u64,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MinLength { limit },
         }
     }
-    pub(crate) fn min_properties(instance: &'a Value, limit: u64) -> ValidationError<'a> {
+    pub(crate) fn min_properties(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        limit: u64,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MinProperties { limit },
         }
     }
-    pub(crate) fn multiple_of(instance: &'a Value, multiple_of: f64) -> ValidationError<'a> {
+    pub(crate) fn multiple_of(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        multiple_of: f64,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MultipleOf { multiple_of },
         }
     }
-    pub(crate) fn not(instance: &'a Value, schema: Value) -> ValidationError<'a> {
+    pub(crate) fn not(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        schema: Value,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Not { schema },
         }
     }
-    pub(crate) fn one_of_multiple_valid(instance: &'a Value) -> ValidationError<'a> {
+    pub(crate) fn one_of_multiple_valid(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::OneOfMultipleValid,
         }
     }
-    pub(crate) fn one_of_not_valid(instance: &'a Value) -> ValidationError<'a> {
+    pub(crate) fn one_of_not_valid(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::OneOfNotValid,
         }
     }
-    pub(crate) fn pattern(instance: &'a Value, pattern: String) -> ValidationError<'a> {
+    pub(crate) fn pattern(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        pattern: String,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Pattern { pattern },
         }
     }
-    pub(crate) fn required(instance: &'a Value, property: String) -> ValidationError<'a> {
+    pub(crate) fn required(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        property: String,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Required { property },
         }
@@ -428,21 +556,25 @@ impl<'a> ValidationError<'a> {
     #[cfg(any(feature = "reqwest", test))]
     pub(crate) fn reqwest(error: reqwest::Error) -> ValidationError<'a> {
         ValidationError {
+            instance_path: None,
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::Reqwest { error },
         }
     }
     pub(crate) fn schema() -> ValidationError<'a> {
         ValidationError {
+            instance_path: None,
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::Schema,
         }
     }
     pub(crate) fn single_type_error(
+        instance_path: Vec<String>,
         instance: &'a Value,
         type_name: PrimitiveType,
     ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Type {
                 kind: TypeKind::Single(type_name),
@@ -450,24 +582,31 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) fn multiple_type_error(
+        instance_path: Vec<String>,
         instance: &'a Value,
         types: PrimitiveTypesBitMap,
     ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Type {
                 kind: TypeKind::Multiple(types),
             },
         }
     }
-    pub(crate) fn unique_items(instance: &'a Value) -> ValidationError<'a> {
+    pub(crate) fn unique_items(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::UniqueItems,
         }
     }
     pub(crate) fn unknown_reference_scheme(scheme: String) -> ValidationError<'a> {
         ValidationError {
+            instance_path: None,
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::UnknownReferenceScheme { scheme },
         }
@@ -475,8 +614,13 @@ impl<'a> ValidationError<'a> {
     /// Unexpected `ValidationError`
     ///
     /// This validation error is the only `ValidationError` that can be created by external crates.
-    pub fn unexpected(instance: &'a Value, validator_representation: &str) -> ValidationError<'a> {
+    pub fn unexpected(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        validator_representation: &str,
+    ) -> ValidationError<'a> {
         ValidationError {
+            instance_path: Some(instance_path),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Unexpected {
                 validator_representation: validator_representation.to_string(),
@@ -485,6 +629,7 @@ impl<'a> ValidationError<'a> {
     }
     pub(crate) fn utf8(error: Utf8Error) -> ValidationError<'a> {
         ValidationError {
+            instance_path: None,
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::Utf8 { error },
         }
@@ -721,12 +866,14 @@ impl fmt::Display for ValidationError<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::JSONSchema;
     use serde_json::json;
+    use test_case::test_case;
 
     #[test]
     fn single_type_error() {
         let instance = json!(42);
-        let err = ValidationError::single_type_error(&instance, PrimitiveType::String);
+        let err = ValidationError::single_type_error(vec![], &instance, PrimitiveType::String);
         assert_eq!(err.to_string(), "'42' is not of type 'string'")
     }
 
@@ -734,9 +881,127 @@ mod tests {
     fn multiple_types_error() {
         let instance = json!(42);
         let err = ValidationError::multiple_type_error(
+            vec![],
             &instance,
             vec![PrimitiveType::String, PrimitiveType::Number].into(),
         );
         assert_eq!(err.to_string(), "'42' is not of types 'number', 'string'")
+    }
+
+    #[test_case(true, &json!({"foo": {"bar": 42}}), &["foo", "bar"])]
+    #[test_case(true, &json!({"foo": "a"}), &["foo"])]
+    #[test_case(false, &json!({"foo": {"bar": 42}}), &["foo", "bar"])]
+    #[test_case(false, &json!({"foo": "a"}), &["foo"])]
+    fn instance_path_properties(additional_properties: bool, instance: &Value, expected: &[&str]) {
+        let schema = json!(
+            {
+                "additionalProperties": additional_properties,
+                "type":"object",
+                "properties":{
+                   "foo":{
+                      "type":"object",
+                      "properties":{
+                         "bar":{
+                            "type":"string"
+                         }
+                      }
+                   }
+                }
+            }
+        );
+        let compiled = JSONSchema::compile(&schema).unwrap();
+        let mut result = compiled.validate(instance).expect_err("error iterator");
+        let error = result.next().expect("validation error");
+
+        assert!(result.next().is_none());
+        assert_eq!(error.instance_path.expect("instance path"), expected);
+    }
+
+    #[test_case(true, &json!([1, {"foo": ["42"]}]), &["0"])]
+    #[test_case(true, &json!(["a", {"foo": [42]}]), &["1", "foo", "0"])]
+    #[test_case(false, &json!([1, {"foo": ["42"]}]), &["0"])]
+    #[test_case(false, &json!(["a", {"foo": [42]}]), &["1", "foo", "0"])]
+    fn instance_path_properties_and_arrays(
+        additional_items: bool,
+        instance: &Value,
+        expected: &[&str],
+    ) {
+        let schema = json!(
+            {
+                "additionalItems": additional_items,
+                "type": "array",
+                "items": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "foo": {
+                                "type": "array",
+                                "items": [
+                                    {
+                                        "type": "string"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            }
+        );
+        let compiled = JSONSchema::compile(&schema).unwrap();
+        let mut result = compiled.validate(instance).expect_err("error iterator");
+        let error = result.next().expect("validation error");
+
+        assert!(result.next().is_none());
+        assert_eq!(error.instance_path.expect("instance path"), expected);
+    }
+
+    #[test_case(true, &json!([[1, 2, 3], [4, "5", 6], [7, 8, 9]]), &["1", "1"])]
+    #[test_case(false, &json!([[1, 2, 3], [4, "5", 6], [7, 8, 9]]), &["1", "1"])]
+    #[test_case(true, &json!([[1, 2, 3], [4, 5, 6], 42]), &["2"])]
+    #[test_case(false, &json!([[1, 2, 3], [4, 5, 6], 42]), &["2"])]
+    fn instance_path_nested_arrays(additional_items: bool, instance: &Value, expected: &[&str]) {
+        let schema = json!(
+            {
+                "additionalItems": additional_items,
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        );
+        let compiled = JSONSchema::compile(&schema).unwrap();
+        let mut result = compiled.validate(instance).expect_err("error iterator");
+        let error = result.next().expect("validation error");
+
+        assert!(result.next().is_none());
+        assert_eq!(error.instance_path.expect("instance path"), expected);
+    }
+
+    #[test_case(true, &json!([1, "a"]), &["1"])]
+    #[test_case(false, &json!([1, "a"]), &["1"])]
+    #[test_case(true, &json!(123), &[])]
+    #[test_case(false, &json!(123), &[])]
+    fn instance_path_arrays(additional_items: bool, instance: &Value, expected: &[&str]) {
+        let schema = json!(
+            {
+                "additionalItems": additional_items,
+                "type": "array",
+                "items": {
+                    "type": "integer"
+                }
+            }
+        );
+        let compiled = JSONSchema::compile(&schema).unwrap();
+        let mut result = compiled.validate(instance).expect_err("error iterator");
+        let error = result.next().expect("validation error");
+
+        assert!(result.next().is_none());
+        assert_eq!(error.instance_path.expect("instance path"), expected);
     }
 }

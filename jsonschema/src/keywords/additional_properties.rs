@@ -9,12 +9,13 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
-    keywords::{format_validators, CompilationResult, Validators},
+    keywords::{format_validators, CompilationResult, InstancePath, Validators},
     validator::Validate,
 };
 use ahash::AHashMap;
 use regex::Regex;
 use serde_json::{Map, Value};
+use std::borrow::Cow;
 
 pub(crate) type PatternedValidators = Vec<(Regex, Validators)>;
 
@@ -57,10 +58,14 @@ macro_rules! is_valid_patterns {
 }
 
 macro_rules! validate {
-    ($validators:expr, $schema:ident, $value:ident) => {{
-        $validators
-            .iter()
-            .flat_map(move |validator| validator.validate($schema, $value))
+    ($validators:expr, $schema:ident, $value:ident, $curr_instance_path:expr, $property_name:expr) => {{
+        $validators.iter().flat_map(move |validator| {
+            let name = Cow::clone(&$property_name);
+            $curr_instance_path.borrow_mut().push(name);
+            let res = validator.validate($schema, $value, $curr_instance_path.clone());
+            $curr_instance_path.borrow_mut().pop();
+            res
+        })
     }};
 }
 
@@ -120,11 +125,25 @@ impl Validate for AdditionalPropertiesValidator {
         true
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = item
-                .values()
-                .flat_map(|value| validate!(&self.validators, schema, value))
+                .iter()
+                .flat_map(|(name, value)| {
+                    let curr_instance_path = curr_instance_path.clone();
+                    validate!(
+                        self.validators,
+                        schema,
+                        value,
+                        curr_instance_path,
+                        Cow::Owned(name.to_string())
+                    )
+                })
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -171,7 +190,12 @@ impl Validate for AdditionalPropertiesFalseValidator {
         }
     }
 
-    fn validate<'a>(&self, _: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        _: &'a JSONSchema,
+        instance: &'a Value,
+        _: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             if let Some((_, value)) = item.iter().next() {
                 return error(ValidationError::false_schema(value));
@@ -233,13 +257,25 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
         true
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for (property, value) in item {
-                if let Some(validators) = self.properties.get(property) {
+                if let Some((name, validators)) = self.properties.get_key_value(property) {
+                    let curr_instance_path = curr_instance_path.clone();
                     // When a property is in `properties`, then it should be VALID
-                    errors.extend(validate!(validators, schema, value));
+                    errors.extend(validate!(
+                        validators,
+                        schema,
+                        value,
+                        curr_instance_path,
+                        Cow::Borrowed(&name[..])
+                    ));
                 } else {
                     // No extra properties are allowed
                     disallow_property!(errors, property)
@@ -316,14 +352,32 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
         true
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::Object(map) = instance {
             let mut errors = vec![];
             for (property, value) in map {
-                if let Some(property_validators) = self.properties.get(property) {
-                    errors.extend(validate!(property_validators, schema, value))
+                let curr_instance_path = curr_instance_path.clone();
+                if let Some((name, property_validators)) = self.properties.get_key_value(property) {
+                    errors.extend(validate!(
+                        property_validators,
+                        schema,
+                        value,
+                        curr_instance_path,
+                        Cow::Borrowed(&name[..])
+                    ))
                 } else {
-                    errors.extend(validate!(self.validators, schema, value))
+                    errors.extend(validate!(
+                        self.validators,
+                        schema,
+                        value,
+                        curr_instance_path,
+                        Cow::Owned(property.to_string())
+                    ))
                 }
             }
             Box::new(errors.into_iter())
@@ -399,22 +453,41 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
         true
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for (property, value) in item.iter() {
+                let curr_instance_path = curr_instance_path.clone();
                 let mut has_match = false;
                 errors.extend(
                     self.patterns
                         .iter()
                         .filter(|(re, _)| re.is_match(property))
                         .flat_map(|(_, validators)| {
+                            let curr_instance_path = curr_instance_path.clone();
                             has_match = true;
-                            validate!(validators, schema, value)
+                            validate!(
+                                validators,
+                                schema,
+                                value,
+                                curr_instance_path,
+                                Cow::Owned(property.to_string())
+                            )
                         }),
                 );
                 if !has_match {
-                    errors.extend(validate!(self.validators, schema, value))
+                    errors.extend(validate!(
+                        self.validators,
+                        schema,
+                        value,
+                        curr_instance_path,
+                        Cow::Owned(property.to_string())
+                    ))
                 }
             }
             Box::new(errors.into_iter())
@@ -476,18 +549,31 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
         true
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for (property, value) in item {
+                let curr_instance_path = curr_instance_path.clone();
                 let mut has_match = false;
                 errors.extend(
                     self.patterns
                         .iter()
                         .filter(|(re, _)| re.is_match(property))
                         .flat_map(|(_, validators)| {
+                            let curr_instance_path = curr_instance_path.clone();
                             has_match = true;
-                            validate!(validators, schema, value)
+                            validate!(
+                                validators,
+                                schema,
+                                value,
+                                curr_instance_path,
+                                Cow::Owned(property.to_string())
+                            )
                         }),
                 );
                 if !has_match {
@@ -596,17 +682,39 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
         }
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for (property, value) in item.iter() {
-                if let Some(validators) = self.properties.get(property) {
-                    errors.extend(validate!(validators, schema, value));
+                let curr_instance_path = curr_instance_path.clone();
+                if let Some((name, validators)) = self.properties.get_key_value(property) {
+                    let path = curr_instance_path.clone();
+                    errors.extend(validate!(
+                        validators,
+                        schema,
+                        value,
+                        path,
+                        Cow::Borrowed(&name[..])
+                    ));
                     errors.extend(
                         self.patterns
                             .iter()
                             .filter(|(re, _)| re.is_match(property))
-                            .flat_map(|(_, validators)| validate!(validators, schema, value)),
+                            .flat_map(|(_, validators)| {
+                                let curr_instance_path = curr_instance_path.clone();
+                                validate!(
+                                    validators,
+                                    schema,
+                                    value,
+                                    curr_instance_path,
+                                    Cow::Borrowed(&name[..])
+                                )
+                            }),
                     );
                 } else {
                     let mut has_match = false;
@@ -615,12 +723,25 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
                             .iter()
                             .filter(|(re, _)| re.is_match(property))
                             .flat_map(|(_, validators)| {
+                                let curr_instance_path = curr_instance_path.clone();
                                 has_match = true;
-                                validate!(validators, schema, value)
+                                validate!(
+                                    validators,
+                                    schema,
+                                    value,
+                                    curr_instance_path,
+                                    Cow::Owned(property.to_string())
+                                )
                             }),
                     );
                     if !has_match {
-                        errors.extend(validate!(self.validators, schema, value))
+                        errors.extend(validate!(
+                            self.validators,
+                            schema,
+                            value,
+                            curr_instance_path,
+                            Cow::Owned(property.to_string())
+                        ))
                     }
                 }
             }
@@ -713,18 +834,40 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
         true
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             // No properties are allowed, except ones defined in `properties` or `patternProperties`
             for (property, value) in item.iter() {
-                if let Some(validators) = self.properties.get(property) {
-                    errors.extend(validate!(validators, schema, value));
+                let curr_instance_path = curr_instance_path.clone();
+                if let Some((name, validators)) = self.properties.get_key_value(property) {
+                    let path = curr_instance_path.clone();
+                    errors.extend(validate!(
+                        validators,
+                        schema,
+                        value,
+                        path,
+                        Cow::Borrowed(&name[..])
+                    ));
                     errors.extend(
                         self.patterns
                             .iter()
                             .filter(|(re, _)| re.is_match(property))
-                            .flat_map(|(_, validators)| validate!(validators, schema, value)),
+                            .flat_map(|(_, validators)| {
+                                let curr_instance_path = curr_instance_path.clone();
+                                validate!(
+                                    validators,
+                                    schema,
+                                    value,
+                                    curr_instance_path,
+                                    Cow::Borrowed(&name[..])
+                                )
+                            }),
                     );
                 } else {
                     let mut has_match = false;
@@ -733,8 +876,15 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
                             .iter()
                             .filter(|(re, _)| re.is_match(property))
                             .flat_map(|(_, validators)| {
+                                let curr_instance_path = curr_instance_path.clone();
                                 has_match = true;
-                                validate!(validators, schema, value)
+                                validate!(
+                                    validators,
+                                    schema,
+                                    value,
+                                    curr_instance_path,
+                                    Cow::Owned(property.to_string())
+                                )
                             }),
                     );
                     if !has_match {

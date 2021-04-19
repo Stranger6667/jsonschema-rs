@@ -4,6 +4,8 @@
 pub(crate) mod context;
 pub(crate) mod options;
 
+use std::{cell::RefCell, rc::Rc};
+
 use crate::{
     error::{CompilationError, ErrorIterator},
     keywords,
@@ -63,7 +65,14 @@ impl<'a> JSONSchema<'a> {
         let mut errors = self
             .validators
             .iter()
-            .flat_map(move |validator| validator.validate(self, instance))
+            .flat_map(move |validator| {
+                // The path capacity should be the average depth so we avoid extra allocations
+                validator.validate(
+                    self,
+                    instance,
+                    Rc::new(RefCell::new(Vec::with_capacity(6))).into(),
+                )
+            })
             .peekable();
         if errors.peek().is_none() {
             Ok(())

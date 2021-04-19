@@ -1,3 +1,4 @@
+use crate::keywords::InstancePath;
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
@@ -20,15 +21,17 @@ pub(crate) struct ExclusiveMaximumF64Validator {
 macro_rules! validate {
     ($validator: ty) => {
         impl Validate for $validator {
-            fn validate<'a>(
-                &self,
+            fn validate<'a, 'b>(
+                &'b self,
                 schema: &'a JSONSchema,
                 instance: &'a Value,
+                curr_instance_path: InstancePath<'b>,
             ) -> ErrorIterator<'a> {
                 if self.is_valid(schema, instance) {
                     no_error()
                 } else {
                     error(ValidationError::exclusive_maximum(
+                        curr_instance_path.into(),
                         instance,
                         self.limit as f64,
                     ))
@@ -77,11 +80,20 @@ impl Validate for ExclusiveMaximumF64Validator {
         }
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::exclusive_maximum(instance, self.limit))
+            error(ValidationError::exclusive_maximum(
+                curr_instance_path.into(),
+                instance,
+                self.limit,
+            ))
         }
     }
 }

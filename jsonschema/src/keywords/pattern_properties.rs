@@ -1,3 +1,4 @@
+use crate::keywords::InstancePath;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, CompilationError, ErrorIterator},
@@ -46,18 +47,25 @@ impl Validate for PatternPropertiesValidator {
         }
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
                 .patterns
                 .iter()
                 .flat_map(move |(re, validators)| {
+                    let curr_instance_path = curr_instance_path.clone();
                     item.iter()
                         .filter(move |(key, _)| re.is_match(key))
                         .flat_map(move |(_key, value)| {
-                            validators
-                                .iter()
-                                .flat_map(move |validator| validator.validate(schema, value))
+                            let curr_instance_path = curr_instance_path.clone();
+                            validators.iter().flat_map(move |validator| {
+                                validator.validate(schema, value, curr_instance_path.clone())
+                            })
                         })
                 })
                 .collect();

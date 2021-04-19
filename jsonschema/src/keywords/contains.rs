@@ -1,3 +1,4 @@
+use crate::keywords::InstancePath;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
@@ -37,7 +38,12 @@ impl Validate for ContainsValidator {
         }
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
             for item in items {
                 if self
@@ -48,7 +54,10 @@ impl Validate for ContainsValidator {
                     return no_error();
                 }
             }
-            error(ValidationError::contains(instance))
+            error(ValidationError::contains(
+                curr_instance_path.into(),
+                instance,
+            ))
         } else {
             no_error()
         }

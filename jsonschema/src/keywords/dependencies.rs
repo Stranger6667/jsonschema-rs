@@ -1,3 +1,4 @@
+use crate::keywords::InstancePath;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, CompilationError, ErrorIterator},
@@ -47,16 +48,22 @@ impl Validate for DependenciesValidator {
         }
     }
 
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
                 .dependencies
                 .iter()
                 .filter(|(property, _)| item.contains_key(property))
                 .flat_map(move |(_, validators)| {
-                    validators
-                        .iter()
-                        .flat_map(move |validator| validator.validate(schema, instance))
+                    let curr_instance_path = curr_instance_path.clone();
+                    validators.iter().flat_map(move |validator| {
+                        validator.validate(schema, instance, curr_instance_path.clone())
+                    })
                 })
                 .collect();
             // TODO. custom error message for "required" case

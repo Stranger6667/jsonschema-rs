@@ -1,3 +1,4 @@
+use crate::keywords::InstancePath;
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
@@ -35,9 +36,18 @@ impl EnumValidator {
 }
 
 impl Validate for EnumValidator {
-    fn validate<'a>(&self, schema: &'a JSONSchema, instance: &'a Value) -> ErrorIterator<'a> {
+    fn validate<'a, 'b>(
+        &'b self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        curr_instance_path: InstancePath<'b>,
+    ) -> ErrorIterator<'a> {
         if !self.is_valid(schema, instance) {
-            error(ValidationError::enumeration(instance, &self.options))
+            error(ValidationError::enumeration(
+                curr_instance_path.into(),
+                instance,
+                &self.options,
+            ))
         } else {
             no_error()
         }

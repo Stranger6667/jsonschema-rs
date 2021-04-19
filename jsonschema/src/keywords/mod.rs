@@ -35,10 +35,40 @@ pub(crate) mod required;
 pub(crate) mod type_;
 pub(crate) mod unique_items;
 use crate::{error, validator::Validate};
+use std::{borrow::Cow, cell::RefCell, ops::Deref, rc::Rc};
 
 pub(crate) type CompilationResult = Result<BoxedValidator, error::CompilationError>;
 pub(crate) type BoxedValidator = Box<dyn Validate + Send + Sync>;
 pub(crate) type Validators = Vec<BoxedValidator>;
+// pub(crate) type InstancePath<'a> = Rc<RefCell<Vec<Cow<'a, str>>>>;
+
+#[derive(Clone, Debug)]
+pub(crate) struct InstancePath<'a>(Rc<RefCell<Vec<Cow<'a, str>>>>);
+
+impl<'a> Deref for InstancePath<'a> {
+    type Target = Rc<RefCell<Vec<Cow<'a, str>>>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a> From<Rc<RefCell<Vec<Cow<'a, str>>>>> for InstancePath<'a> {
+    fn from(inner: Rc<RefCell<Vec<Cow<'a, str>>>>) -> Self {
+        Self(inner)
+    }
+}
+
+impl From<InstancePath<'_>> for Vec<String> {
+    fn from(path: InstancePath<'_>) -> Self {
+        path.0
+            .borrow()
+            .clone()
+            .into_iter()
+            .map(Cow::into_owned)
+            .collect()
+    }
+}
 
 fn format_validators(validators: &[BoxedValidator]) -> String {
     match validators.len() {
