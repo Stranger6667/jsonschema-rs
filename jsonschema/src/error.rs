@@ -1,3 +1,5 @@
+//! Error types
+
 use crate::primitive_type::{PrimitiveType, PrimitiveTypesBitMap};
 use serde_json::{Map, Number, Value};
 use std::{
@@ -45,8 +47,10 @@ impl From<url::ParseError> for CompilationError {
 /// An error that can occur during validation.
 #[derive(Debug)]
 pub struct ValidationError<'a> {
-    instance: Cow<'a, Value>,
-    kind: ValidationErrorKind,
+    /// Value of the property that failed validation
+    pub instance: Cow<'a, Value>,
+    /// Type of validation error
+    pub kind: ValidationErrorKind,
 }
 
 /// An iterator over instances of `ValidationError` that represent validation error for the
@@ -82,7 +86,8 @@ pub(crate) fn error(instance: ValidationError) -> ErrorIterator {
 
 /// Kinds of errors that may happen during validation
 #[derive(Debug)]
-pub(crate) enum ValidationErrorKind {
+#[allow(missing_docs)]
+pub enum ValidationErrorKind {
     /// The input array contain more items than expected.
     AdditionalItems { limit: usize },
     /// The input value is not valid under any of the given schemas.
@@ -162,7 +167,8 @@ pub(crate) enum ValidationErrorKind {
 }
 
 #[derive(Debug)]
-pub(crate) enum TypeKind {
+#[allow(missing_docs)]
+pub enum TypeKind {
     Single(PrimitiveType),
     Multiple(PrimitiveTypesBitMap),
 }
