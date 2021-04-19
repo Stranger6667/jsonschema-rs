@@ -78,9 +78,9 @@
 mod compilation;
 mod content_encoding;
 mod content_media_type;
-mod error;
+pub mod error;
 mod keywords;
-mod primitive_type;
+pub mod primitive_type;
 mod resolver;
 mod schemas;
 mod validator;
