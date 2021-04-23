@@ -41,7 +41,7 @@ impl Validate for ContainsValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
             for item in items {
@@ -53,10 +53,7 @@ impl Validate for ContainsValidator {
                     return no_error();
                 }
             }
-            error(ValidationError::contains(
-                curr_instance_path.into(),
-                instance,
-            ))
+            error(ValidationError::contains(instance_path.into(), instance))
         } else {
             no_error()
         }

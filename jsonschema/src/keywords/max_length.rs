@@ -35,12 +35,12 @@ impl Validate for MaxLengthValidator {
         &'b self,
         _schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if (item.chars().count() as u64) > self.limit {
                 return error(ValidationError::max_length(
-                    curr_instance_path.into(),
+                    instance_path.into(),
                     instance,
                     self.limit,
                 ));

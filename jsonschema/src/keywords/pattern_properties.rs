@@ -50,20 +50,20 @@ impl Validate for PatternPropertiesValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
                 .patterns
                 .iter()
                 .flat_map(move |(re, validators)| {
-                    let curr_instance_path = curr_instance_path.clone();
+                    let instance_path = instance_path.clone();
                     item.iter()
                         .filter(move |(key, _)| re.is_match(key))
                         .flat_map(move |(_key, value)| {
-                            let curr_instance_path = curr_instance_path.clone();
+                            let instance_path = instance_path.clone();
                             validators.iter().flat_map(move |validator| {
-                                validator.validate(schema, value, curr_instance_path.clone())
+                                validator.validate(schema, value, instance_path.clone())
                             })
                         })
                 })

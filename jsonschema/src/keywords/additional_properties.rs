@@ -58,12 +58,12 @@ macro_rules! is_valid_patterns {
 }
 
 macro_rules! validate {
-    ($validators:expr, $schema:ident, $value:ident, $curr_instance_path:expr, $property_name:expr) => {{
+    ($validators:expr, $schema:ident, $value:ident, $instance_path:expr, $property_name:expr) => {{
         $validators.iter().flat_map(move |validator| {
             let name = Cow::clone(&$property_name);
-            $curr_instance_path.borrow_mut().push(name);
-            let res = validator.validate($schema, $value, $curr_instance_path.clone());
-            $curr_instance_path.borrow_mut().pop();
+            $instance_path.borrow_mut().push(name);
+            let res = validator.validate($schema, $value, $instance_path.clone());
+            $instance_path.borrow_mut().pop();
             res
         })
     }};
@@ -129,18 +129,18 @@ impl Validate for AdditionalPropertiesValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = item
                 .iter()
                 .flat_map(|(name, value)| {
-                    let curr_instance_path = curr_instance_path.clone();
+                    let instance_path = instance_path.clone();
                     validate!(
                         self.validators,
                         schema,
                         value,
-                        curr_instance_path,
+                        instance_path,
                         Cow::Owned(name.to_string())
                     )
                 })
@@ -261,19 +261,19 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for (property, value) in item {
                 if let Some((name, validators)) = self.properties.get_key_value(property) {
-                    let curr_instance_path = curr_instance_path.clone();
+                    let instance_path = instance_path.clone();
                     // When a property is in `properties`, then it should be VALID
                     errors.extend(validate!(
                         validators,
                         schema,
                         value,
-                        curr_instance_path,
+                        instance_path,
                         Cow::Borrowed(&name[..])
                     ));
                 } else {
@@ -356,18 +356,18 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Object(map) = instance {
             let mut errors = vec![];
             for (property, value) in map {
-                let curr_instance_path = curr_instance_path.clone();
+                let instance_path = instance_path.clone();
                 if let Some((name, property_validators)) = self.properties.get_key_value(property) {
                     errors.extend(validate!(
                         property_validators,
                         schema,
                         value,
-                        curr_instance_path,
+                        instance_path,
                         Cow::Borrowed(&name[..])
                     ))
                 } else {
@@ -375,7 +375,7 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
                         self.validators,
                         schema,
                         value,
-                        curr_instance_path,
+                        instance_path,
                         Cow::Owned(property.to_string())
                     ))
                 }
@@ -457,25 +457,25 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for (property, value) in item.iter() {
-                let curr_instance_path = curr_instance_path.clone();
+                let instance_path = instance_path.clone();
                 let mut has_match = false;
                 errors.extend(
                     self.patterns
                         .iter()
                         .filter(|(re, _)| re.is_match(property))
                         .flat_map(|(_, validators)| {
-                            let curr_instance_path = curr_instance_path.clone();
+                            let instance_path = instance_path.clone();
                             has_match = true;
                             validate!(
                                 validators,
                                 schema,
                                 value,
-                                curr_instance_path,
+                                instance_path,
                                 Cow::Owned(property.to_string())
                             )
                         }),
@@ -485,7 +485,7 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
                         self.validators,
                         schema,
                         value,
-                        curr_instance_path,
+                        instance_path,
                         Cow::Owned(property.to_string())
                     ))
                 }
@@ -553,25 +553,25 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for (property, value) in item {
-                let curr_instance_path = curr_instance_path.clone();
+                let instance_path = instance_path.clone();
                 let mut has_match = false;
                 errors.extend(
                     self.patterns
                         .iter()
                         .filter(|(re, _)| re.is_match(property))
                         .flat_map(|(_, validators)| {
-                            let curr_instance_path = curr_instance_path.clone();
+                            let instance_path = instance_path.clone();
                             has_match = true;
                             validate!(
                                 validators,
                                 schema,
                                 value,
-                                curr_instance_path,
+                                instance_path,
                                 Cow::Owned(property.to_string())
                             )
                         }),
@@ -686,14 +686,14 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for (property, value) in item.iter() {
-                let curr_instance_path = curr_instance_path.clone();
+                let instance_path = instance_path.clone();
                 if let Some((name, validators)) = self.properties.get_key_value(property) {
-                    let path = curr_instance_path.clone();
+                    let path = instance_path.clone();
                     errors.extend(validate!(
                         validators,
                         schema,
@@ -706,12 +706,12 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
                             .iter()
                             .filter(|(re, _)| re.is_match(property))
                             .flat_map(|(_, validators)| {
-                                let curr_instance_path = curr_instance_path.clone();
+                                let instance_path = instance_path.clone();
                                 validate!(
                                     validators,
                                     schema,
                                     value,
-                                    curr_instance_path,
+                                    instance_path,
                                     Cow::Borrowed(&name[..])
                                 )
                             }),
@@ -723,13 +723,13 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
                             .iter()
                             .filter(|(re, _)| re.is_match(property))
                             .flat_map(|(_, validators)| {
-                                let curr_instance_path = curr_instance_path.clone();
+                                let instance_path = instance_path.clone();
                                 has_match = true;
                                 validate!(
                                     validators,
                                     schema,
                                     value,
-                                    curr_instance_path,
+                                    instance_path,
                                     Cow::Owned(property.to_string())
                                 )
                             }),
@@ -739,7 +739,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
                             self.validators,
                             schema,
                             value,
-                            curr_instance_path,
+                            instance_path,
                             Cow::Owned(property.to_string())
                         ))
                     }
@@ -838,15 +838,15 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             // No properties are allowed, except ones defined in `properties` or `patternProperties`
             for (property, value) in item.iter() {
-                let curr_instance_path = curr_instance_path.clone();
+                let instance_path = instance_path.clone();
                 if let Some((name, validators)) = self.properties.get_key_value(property) {
-                    let path = curr_instance_path.clone();
+                    let path = instance_path.clone();
                     errors.extend(validate!(
                         validators,
                         schema,
@@ -859,12 +859,12 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
                             .iter()
                             .filter(|(re, _)| re.is_match(property))
                             .flat_map(|(_, validators)| {
-                                let curr_instance_path = curr_instance_path.clone();
+                                let instance_path = instance_path.clone();
                                 validate!(
                                     validators,
                                     schema,
                                     value,
-                                    curr_instance_path,
+                                    instance_path,
                                     Cow::Borrowed(&name[..])
                                 )
                             }),
@@ -876,13 +876,13 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
                             .iter()
                             .filter(|(re, _)| re.is_match(property))
                             .flat_map(|(_, validators)| {
-                                let curr_instance_path = curr_instance_path.clone();
+                                let instance_path = instance_path.clone();
                                 has_match = true;
                                 validate!(
                                     validators,
                                     schema,
                                     value,
-                                    curr_instance_path,
+                                    instance_path,
                                     Cow::Owned(property.to_string())
                                 )
                             }),

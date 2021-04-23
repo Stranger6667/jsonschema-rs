@@ -26,13 +26,13 @@ impl Validate for ConstArrayValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::constant_array(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
                 &self.value,
             ))
@@ -76,13 +76,13 @@ impl Validate for ConstBooleanValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::constant_boolean(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
                 self.value,
             ))
@@ -117,13 +117,13 @@ impl Validate for ConstNullValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::constant_null(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
             ))
         }
@@ -163,13 +163,13 @@ impl Validate for ConstNumberValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::constant_number(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
                 &self.original_value,
             ))
@@ -209,13 +209,13 @@ impl Validate for ConstObjectValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::constant_object(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
                 &self.value,
             ))
@@ -262,13 +262,13 @@ impl Validate for ConstStringValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::constant_string(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
                 &self.value,
             ))

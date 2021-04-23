@@ -35,12 +35,12 @@ impl Validate for MaxPropertiesValidator {
         &'b self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             if (item.len() as u64) > self.limit {
                 return error(ValidationError::max_properties(
-                    curr_instance_path.into(),
+                    instance_path.into(),
                     instance,
                     self.limit,
                 ));

@@ -56,12 +56,12 @@ macro_rules! validate {
             &'b self,
             schema: &'a JSONSchema,
             instance: &'a Value,
-            curr_instance_path: InstancePath<'b>,
+            instance_path: InstancePath<'b>,
         ) -> ErrorIterator<'a> {
             if let Value::String(_item) = instance {
                 if !self.is_valid(schema, instance) {
                     return error(ValidationError::format(
-                        curr_instance_path.into(),
+                        instance_path.into(),
                         instance,
                         $format,
                     ));

@@ -39,12 +39,12 @@ impl Validate for PatternValidator {
         &'b self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if !self.pattern.is_match(item) {
                 return error(ValidationError::pattern(
-                    curr_instance_path.into(),
+                    instance_path.into(),
                     instance,
                     self.original.clone(),
                 ));

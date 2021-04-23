@@ -81,13 +81,13 @@ impl Validate for UniqueItemsValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::unique_items(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
             ))
         }

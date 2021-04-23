@@ -48,21 +48,21 @@ impl Validate for PropertiesValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
                 .properties
                 .iter()
                 .flat_map(move |(name, validators)| {
-                    let curr_instance_path = curr_instance_path.clone();
+                    let instance_path = instance_path.clone();
                     let option = item.get(name);
                     option.into_iter().flat_map(move |item| {
-                        let curr_instance_path = curr_instance_path.clone();
+                        let instance_path = instance_path.clone();
                         validators.iter().flat_map(move |validator| {
-                            curr_instance_path.borrow_mut().push(Cow::Borrowed(name));
-                            let res = validator.validate(schema, item, curr_instance_path.clone());
-                            curr_instance_path.borrow_mut().pop();
+                            instance_path.borrow_mut().push(Cow::Borrowed(name));
+                            let res = validator.validate(schema, item, instance_path.clone());
+                            instance_path.borrow_mut().pop();
                             res
                         })
                     })

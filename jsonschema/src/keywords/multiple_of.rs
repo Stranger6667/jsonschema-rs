@@ -35,14 +35,14 @@ impl Validate for MultipleOfFloatValidator {
         &'b self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Number(item) = instance {
             let item = item.as_f64().expect("Always valid");
             let remainder = (item / self.multiple_of) % 1.;
             if !(remainder < EPSILON && remainder < (1. - EPSILON)) {
                 return error(ValidationError::multiple_of(
-                    curr_instance_path.into(),
+                    instance_path.into(),
                     instance,
                     self.multiple_of,
                 ));
@@ -90,7 +90,7 @@ impl Validate for MultipleOfIntegerValidator {
         &'b self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Number(item) = instance {
             let item = item.as_f64().expect("Always valid");
@@ -102,7 +102,7 @@ impl Validate for MultipleOfIntegerValidator {
             };
             if !is_multiple {
                 return error(ValidationError::multiple_of(
-                    curr_instance_path.into(),
+                    instance_path.into(),
                     instance,
                     self.multiple_of,
                 ));

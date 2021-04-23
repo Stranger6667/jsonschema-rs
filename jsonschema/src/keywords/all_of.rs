@@ -39,15 +39,15 @@ impl Validate for AllOfValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         let errors: Vec<_> = self
             .schemas
             .iter()
             .flat_map(move |validators| {
-                let curr_instance_path = curr_instance_path.clone();
+                let instance_path = instance_path.clone();
                 validators.iter().flat_map(move |validator| {
-                    validator.validate(schema, instance, curr_instance_path.clone())
+                    validator.validate(schema, instance, instance_path.clone())
                 })
             })
             .collect();

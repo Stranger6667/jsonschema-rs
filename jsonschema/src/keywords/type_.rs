@@ -52,13 +52,13 @@ impl Validate for MultipleTypesValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::multiple_type_error(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
                 self.types,
             ))
@@ -96,13 +96,13 @@ impl Validate for NullTypeValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
                 PrimitiveType::Null,
             ))
@@ -133,13 +133,13 @@ impl Validate for BooleanTypeValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
                 PrimitiveType::Boolean,
             ))
@@ -171,13 +171,13 @@ impl Validate for StringTypeValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
                 PrimitiveType::String,
             ))
@@ -208,13 +208,13 @@ impl Validate for ArrayTypeValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
                 PrimitiveType::Array,
             ))
@@ -245,13 +245,13 @@ impl Validate for ObjectTypeValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
                 PrimitiveType::Object,
             ))
@@ -282,13 +282,13 @@ impl Validate for NumberTypeValidator {
         &'b self,
         config: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(config, instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
                 PrimitiveType::Number,
             ))
@@ -321,13 +321,13 @@ impl Validate for IntegerTypeValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
                 PrimitiveType::Integer,
             ))

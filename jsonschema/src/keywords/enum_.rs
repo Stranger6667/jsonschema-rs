@@ -39,11 +39,11 @@ impl Validate for EnumValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if !self.is_valid(schema, instance) {
             error(ValidationError::enumeration(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
                 &self.options,
             ))
