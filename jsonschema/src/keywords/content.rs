@@ -39,7 +39,7 @@ impl Validate for ContentMediaTypeValidator {
         &'b self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if (self.func)(item) {
@@ -92,7 +92,7 @@ impl Validate for ContentEncodingValidator {
         &'b self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if (self.func)(item) {
@@ -158,7 +158,7 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
         &'b self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             match (self.converter)(item) {

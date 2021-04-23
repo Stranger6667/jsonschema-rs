@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator},
@@ -45,20 +43,19 @@ impl Validate for ItemsArrayValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = items
                 .iter()
                 .zip(self.items.iter())
                 .enumerate()
-                .flat_map(move |(i, (item, validators))| {
-                    let instance_path = instance_path.clone();
+                .flat_map(move |(idx, (item, validators))| {
                     validators.iter().flat_map(move |validator| {
-                        instance_path.borrow_mut().push(Cow::Owned(i.to_string()));
-                        let res = validator.validate(schema, item, instance_path.clone());
-                        instance_path.borrow_mut().pop();
-                        res
+                        instance_path.push(idx.to_string());
+                        let errors = validator.validate(schema, item, instance_path);
+                        instance_path.pop();
+                        errors
                     })
                 })
                 .collect();
@@ -102,19 +99,18 @@ impl Validate for ItemsObjectValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = self
                 .validators
                 .iter()
                 .flat_map(move |validator| {
-                    let instance_path = instance_path.clone();
-                    items.iter().enumerate().flat_map(move |(i, item)| {
-                        instance_path.borrow_mut().push(Cow::Owned(i.to_string()));
-                        let res = validator.validate(schema, item, instance_path.clone());
-                        instance_path.borrow_mut().pop();
-                        res
+                    items.iter().enumerate().flat_map(move |(idx, item)| {
+                        instance_path.push(idx.to_string());
+                        let errors = validator.validate(schema, item, instance_path);
+                        instance_path.pop();
+                        errors
                     })
                 })
                 .collect();

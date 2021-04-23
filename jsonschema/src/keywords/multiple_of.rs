@@ -35,7 +35,7 @@ impl Validate for MultipleOfFloatValidator {
         &'b self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Number(item) = instance {
             let item = item.as_f64().expect("Always valid");
@@ -90,7 +90,7 @@ impl Validate for MultipleOfIntegerValidator {
         &'b self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Number(item) = instance {
             let item = item.as_f64().expect("Always valid");

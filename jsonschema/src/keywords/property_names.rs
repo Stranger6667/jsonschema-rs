@@ -38,18 +38,17 @@ impl Validate for PropertyNamesObjectValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = &instance.borrow() {
             let errors: Vec<_> = self
                 .validators
                 .iter()
                 .flat_map(move |validator| {
-                    let instance_path = instance_path.clone();
                     item.keys().flat_map(move |key| {
                         let wrapper = Value::String(key.to_string());
                         let errors: Vec<_> = validator
-                            .validate(schema, &wrapper, instance_path.clone())
+                            .validate(schema, &wrapper, instance_path)
                             .map(ValidationError::into_owned)
                             .collect();
                         errors.into_iter()
@@ -91,12 +90,15 @@ impl Validate for PropertyNamesBooleanValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        _: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::false_schema(instance))
+            error(ValidationError::false_schema(
+                instance_path.into(),
+                instance,
+            ))
         }
     }
 }

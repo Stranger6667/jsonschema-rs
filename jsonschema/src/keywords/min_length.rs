@@ -35,7 +35,7 @@ impl Validate for MinLengthValidator {
         &'b self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if (item.chars().count() as u64) < self.limit {

@@ -24,7 +24,7 @@ impl Validate for TrueValidator {
         &'b self,
         _: &'a JSONSchema,
         _: &'a Value,
-        _: InstancePath<'b>,
+        _: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         no_error()
     }
@@ -52,9 +52,12 @@ impl Validate for FalseValidator {
         &'b self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        _: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
-        error(ValidationError::false_schema(instance))
+        error(ValidationError::false_schema(
+            instance_path.into(),
+            instance,
+        ))
     }
 }
 

@@ -68,7 +68,7 @@ impl Validate for OneOfValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         let first_valid_idx = self.get_first_valid(schema, instance);
         if let Some(idx) = first_valid_idx {

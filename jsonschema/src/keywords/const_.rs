@@ -26,7 +26,7 @@ impl Validate for ConstArrayValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
@@ -76,7 +76,7 @@ impl Validate for ConstBooleanValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
@@ -117,7 +117,7 @@ impl Validate for ConstNullValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
@@ -163,7 +163,7 @@ impl Validate for ConstNumberValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
@@ -209,7 +209,7 @@ impl Validate for ConstObjectValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
@@ -262,7 +262,7 @@ impl Validate for ConstStringValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
