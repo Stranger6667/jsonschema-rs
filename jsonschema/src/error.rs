@@ -163,9 +163,6 @@ pub enum ValidationErrorKind {
     UniqueItems,
     /// Reference contains unknown scheme.
     UnknownReferenceScheme { scheme: String },
-
-    /// Unexpected error. This usually represent a bug into the validation
-    Unexpected { validator_representation: String },
 }
 
 #[derive(Debug)]
@@ -611,22 +608,6 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::UnknownReferenceScheme { scheme },
         }
     }
-    /// Unexpected `ValidationError`
-    ///
-    /// This validation error is the only `ValidationError` that can be created by external crates.
-    pub fn unexpected(
-        instance_path: Vec<String>,
-        instance: &'a Value,
-        validator_representation: &str,
-    ) -> ValidationError<'a> {
-        ValidationError {
-            instance_path: Some(instance_path),
-            instance: Cow::Borrowed(instance),
-            kind: ValidationErrorKind::Unexpected {
-                validator_representation: validator_representation.to_string(),
-            },
-        }
-    }
     pub(crate) fn utf8(error: Utf8Error) -> ValidationError<'a> {
         ValidationError {
             instance_path: None,
@@ -741,10 +722,18 @@ impl fmt::Display for ValidationError<'_> {
                 write!(f, "'{}' was expected", expected_value)
             }
             ValidationErrorKind::ContentEncoding { content_encoding } => {
-                write!(f, "'{}' is not compliant with encoding={}", self.instance, content_encoding)
+                write!(
+                    f,
+                    "'{}' is not compliant with encoding={}",
+                    self.instance, content_encoding
+                )
             }
             ValidationErrorKind::ContentMediaType { content_media_type } => {
-                write!(f, "'{}' is not compliant with media_type={}", self.instance, content_media_type)
+                write!(
+                    f,
+                    "'{}' is not compliant with media_type={}",
+                    self.instance, content_media_type
+                )
             }
             ValidationErrorKind::FromUtf8 { error } => write!(f, "{}", error),
             ValidationErrorKind::Utf8 { error } => write!(f, "{}", error),
@@ -852,13 +841,6 @@ impl fmt::Display for ValidationError<'_> {
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
-            ValidationErrorKind::Unexpected { validator_representation } => write!(
-                f,
-                "Unexpected validation error. Usually this reflect a bug in the keywords implementation. Please make sure to report the problem to {}. Instance: {}, Validator: {}",
-                env!("CARGO_PKG_REPOSITORY"),
-                self.instance,
-                validator_representation,
-            )
         }
     }
 }
