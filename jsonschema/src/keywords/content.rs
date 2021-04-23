@@ -1,11 +1,10 @@
 //! Validators for `contentMediaType` and `contentEncoding` keywords.
-use crate::keywords::InstancePath;
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     content_encoding::{ContentEncodingCheckType, ContentEncodingConverterType},
     content_media_type::ContentMediaTypeCheckType,
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
-    keywords::CompilationResult,
+    keywords::{CompilationResult, InstancePath},
     validator::Validate,
 };
 use serde_json::{Map, Value};

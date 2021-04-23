@@ -1,10 +1,9 @@
 use std::borrow::Cow;
 
-use crate::keywords::InstancePath;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, CompilationError, ErrorIterator},
-    keywords::{format_key_value_validators, CompilationResult, Validators},
+    keywords::{format_key_value_validators, CompilationResult, InstancePath, Validators},
     validator::Validate,
 };
 use serde_json::{Map, Value};

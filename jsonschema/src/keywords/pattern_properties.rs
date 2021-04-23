@@ -1,8 +1,7 @@
-use crate::keywords::InstancePath;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, CompilationError, ErrorIterator},
-    keywords::{format_validators, CompilationResult, Validators},
+    keywords::{format_validators, CompilationResult, InstancePath, Validators},
     validator::Validate,
 };
 use regex::Regex;

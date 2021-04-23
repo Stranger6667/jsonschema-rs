@@ -1,8 +1,7 @@
-use crate::keywords::helpers;
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::CompilationResult,
+    keywords::{helpers, CompilationResult},
     validator::Validate,
 };
 use serde_json::{Map, Number, Value};
