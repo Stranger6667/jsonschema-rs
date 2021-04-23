@@ -1,6 +1,4 @@
-use std::error::Error;
-use std::path::PathBuf;
-use std::{fs, process};
+use std::{error::Error, fs, path::PathBuf, process};
 
 use jsonschema::JSONSchema;
 use structopt::StructOpt;

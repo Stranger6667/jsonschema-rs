@@ -1,8 +1,7 @@
-use crate::keywords::InstancePath;
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
-    keywords::{helpers, CompilationResult},
+    keywords::{helpers, CompilationResult, InstancePath},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
 };

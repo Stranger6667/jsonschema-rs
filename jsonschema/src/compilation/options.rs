@@ -321,8 +321,7 @@ impl fmt::Debug for CompilationOptions {
 #[cfg(test)]
 mod tests {
     use super::CompilationOptions;
-    use crate::schemas::Draft;
-    use crate::JSONSchema;
+    use crate::{schemas::Draft, JSONSchema};
     use serde_json::{json, Value};
     use test_case::test_case;
 

@@ -1,8 +1,7 @@
-use crate::keywords::InstancePath;
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
-    keywords::CompilationResult,
+    keywords::{CompilationResult, InstancePath},
     validator::Validate,
 };
 use num_cmp::NumCmp;

@@ -1,10 +1,9 @@
-use crate::keywords::InstancePath;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::{
         boolean::{FalseValidator, TrueValidator},
-        format_validators, CompilationResult, Validators,
+        format_validators, CompilationResult, InstancePath, Validators,
     },
     validator::Validate,
 };

@@ -1,12 +1,11 @@
 use std::borrow::Cow;
 
-use crate::keywords::InstancePath;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator},
     keywords::{
         boolean::TrueValidator, format_validators, format_vec_of_validators, CompilationResult,
-        Validators,
+        InstancePath, Validators,
     },
     validator::Validate,
 };

@@ -1,8 +1,7 @@
-use crate::keywords::InstancePath;
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::CompilationResult,
+    keywords::{CompilationResult, InstancePath},
     validator::Validate,
 };
 use ahash::{AHashSet, AHasher};
