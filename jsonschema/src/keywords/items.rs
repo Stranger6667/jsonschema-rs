@@ -45,7 +45,7 @@ impl Validate for ItemsArrayValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = items
@@ -53,13 +53,11 @@ impl Validate for ItemsArrayValidator {
                 .zip(self.items.iter())
                 .enumerate()
                 .flat_map(move |(i, (item, validators))| {
-                    let curr_instance_path = curr_instance_path.clone();
+                    let instance_path = instance_path.clone();
                     validators.iter().flat_map(move |validator| {
-                        curr_instance_path
-                            .borrow_mut()
-                            .push(Cow::Owned(i.to_string()));
-                        let res = validator.validate(schema, item, curr_instance_path.clone());
-                        curr_instance_path.borrow_mut().pop();
+                        instance_path.borrow_mut().push(Cow::Owned(i.to_string()));
+                        let res = validator.validate(schema, item, instance_path.clone());
+                        instance_path.borrow_mut().pop();
                         res
                     })
                 })
@@ -104,20 +102,18 @@ impl Validate for ItemsObjectValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = self
                 .validators
                 .iter()
                 .flat_map(move |validator| {
-                    let curr_instance_path = curr_instance_path.clone();
+                    let instance_path = instance_path.clone();
                     items.iter().enumerate().flat_map(move |(i, item)| {
-                        curr_instance_path
-                            .borrow_mut()
-                            .push(Cow::Owned(i.to_string()));
-                        let res = validator.validate(schema, item, curr_instance_path.clone());
-                        curr_instance_path.borrow_mut().pop();
+                        instance_path.borrow_mut().push(Cow::Owned(i.to_string()));
+                        let res = validator.validate(schema, item, instance_path.clone());
+                        instance_path.borrow_mut().pop();
                         res
                     })
                 })

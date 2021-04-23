@@ -39,14 +39,14 @@ impl Validate for ContentMediaTypeValidator {
         &'b self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if (self.func)(item) {
                 no_error()
             } else {
                 error(ValidationError::content_media_type(
-                    curr_instance_path.into(),
+                    instance_path.into(),
                     instance,
                     &self.media_type,
                 ))
@@ -92,14 +92,14 @@ impl Validate for ContentEncodingValidator {
         &'b self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if (self.func)(item) {
                 no_error()
             } else {
                 error(ValidationError::content_encoding(
-                    curr_instance_path.into(),
+                    instance_path.into(),
                     instance,
                     &self.encoding,
                 ))
@@ -158,12 +158,12 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
         &'b self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             match (self.converter)(item) {
                 Ok(None) => error(ValidationError::content_encoding(
-                    curr_instance_path.into(),
+                    instance_path.into(),
                     instance,
                     &self.encoding,
                 )),
@@ -172,7 +172,7 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
                         no_error()
                     } else {
                         error(ValidationError::content_media_type(
-                            curr_instance_path.into(),
+                            instance_path.into(),
                             instance,
                             &self.media_type,
                         ))

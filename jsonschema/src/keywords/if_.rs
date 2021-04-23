@@ -44,7 +44,7 @@ impl Validate for IfThenValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self
             .schema
@@ -55,7 +55,7 @@ impl Validate for IfThenValidator {
                 .then_schema
                 .iter()
                 .flat_map(move |validator| {
-                    validator.validate(schema, instance, curr_instance_path.clone())
+                    validator.validate(schema, instance, instance_path.clone())
                 })
                 .collect();
             Box::new(errors.into_iter())
@@ -113,7 +113,7 @@ impl Validate for IfElseValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self
             .schema
@@ -124,7 +124,7 @@ impl Validate for IfElseValidator {
                 .else_schema
                 .iter()
                 .flat_map(move |validator| {
-                    validator.validate(schema, instance, curr_instance_path.clone())
+                    validator.validate(schema, instance, instance_path.clone())
                 })
                 .collect();
             Box::new(errors.into_iter())
@@ -187,7 +187,7 @@ impl Validate for IfThenElseValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self
             .schema
@@ -198,7 +198,7 @@ impl Validate for IfThenElseValidator {
                 .then_schema
                 .iter()
                 .flat_map(move |validator| {
-                    validator.validate(schema, instance, curr_instance_path.clone())
+                    validator.validate(schema, instance, instance_path.clone())
                 })
                 .collect();
             Box::new(errors.into_iter())
@@ -207,7 +207,7 @@ impl Validate for IfThenElseValidator {
                 .else_schema
                 .iter()
                 .flat_map(move |validator| {
-                    validator.validate(schema, instance, curr_instance_path.clone())
+                    validator.validate(schema, instance, instance_path.clone())
                 })
                 .collect();
             Box::new(errors.into_iter())

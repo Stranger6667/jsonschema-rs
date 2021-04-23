@@ -68,13 +68,13 @@ impl Validate for RefValidator {
         &self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'_>,
+        instance_path: InstancePath<'_>,
     ) -> ErrorIterator<'a> {
         if let Err(err) = self.ensure_validators(schema) {
             error(err)
         } else {
-            let curr_instance_path: InstancePath =
-                Rc::new(RefCell::new(curr_instance_path.borrow().clone())).into();
+            let instance_path: InstancePath =
+                Rc::new(RefCell::new(instance_path.borrow().clone())).into();
             Box::new(
                 self.validators
                     .read()
@@ -82,8 +82,8 @@ impl Validate for RefValidator {
                     .expect("ensure_validators guarantees the presence of the validators")
                     .iter()
                     .flat_map(move |validator| {
-                        let curr_instance_path = curr_instance_path.clone();
-                        validator.validate(schema, instance, curr_instance_path)
+                        let instance_path = instance_path.clone();
+                        validator.validate(schema, instance, instance_path)
                     })
                     .collect::<Vec<_>>()
                     .into_iter(),

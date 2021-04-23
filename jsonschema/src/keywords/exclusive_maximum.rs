@@ -24,13 +24,13 @@ macro_rules! validate {
                 &'b self,
                 schema: &'a JSONSchema,
                 instance: &'a Value,
-                curr_instance_path: InstancePath<'b>,
+                instance_path: InstancePath<'b>,
             ) -> ErrorIterator<'a> {
                 if self.is_valid(schema, instance) {
                     no_error()
                 } else {
                     error(ValidationError::exclusive_maximum(
-                        curr_instance_path.into(),
+                        instance_path.into(),
                         instance,
                         self.limit as f64,
                     ))
@@ -83,13 +83,13 @@ impl Validate for ExclusiveMaximumF64Validator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::exclusive_maximum(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
                 self.limit,
             ))

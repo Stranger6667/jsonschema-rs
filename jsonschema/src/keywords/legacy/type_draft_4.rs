@@ -50,13 +50,13 @@ impl Validate for MultipleTypesValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::multiple_type_error(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
                 self.types,
             ))
@@ -99,13 +99,13 @@ impl Validate for IntegerTypeValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
                 PrimitiveType::Integer,
             ))

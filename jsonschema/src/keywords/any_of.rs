@@ -43,12 +43,12 @@ impl Validate for AnyOfValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
-            error(ValidationError::any_of(curr_instance_path.into(), instance))
+            error(ValidationError::any_of(instance_path.into(), instance))
         }
     }
 }

@@ -44,13 +44,13 @@ impl Validate for RequiredValidator {
         &'b self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             for property_name in &self.required {
                 if !item.contains_key(property_name) {
                     return error(ValidationError::required(
-                        curr_instance_path.into(),
+                        instance_path.into(),
                         instance,
                         property_name.clone(),
                     ));

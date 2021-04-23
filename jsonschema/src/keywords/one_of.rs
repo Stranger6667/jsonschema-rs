@@ -68,20 +68,20 @@ impl Validate for OneOfValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        curr_instance_path: InstancePath<'b>,
+        instance_path: InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         let first_valid_idx = self.get_first_valid(schema, instance);
         if let Some(idx) = first_valid_idx {
             if self.are_others_valid(schema, instance, idx) {
                 return error(ValidationError::one_of_multiple_valid(
-                    curr_instance_path.into(),
+                    instance_path.into(),
                     instance,
                 ));
             }
             no_error()
         } else {
             error(ValidationError::one_of_not_valid(
-                curr_instance_path.into(),
+                instance_path.into(),
                 instance,
             ))
         }
