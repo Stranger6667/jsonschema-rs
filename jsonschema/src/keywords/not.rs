@@ -34,7 +34,7 @@ impl Validate for NotValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()

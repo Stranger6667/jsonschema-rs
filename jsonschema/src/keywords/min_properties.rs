@@ -35,7 +35,7 @@ impl Validate for MinPropertiesValidator {
         &'b self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             if (item.len() as u64) < self.limit {

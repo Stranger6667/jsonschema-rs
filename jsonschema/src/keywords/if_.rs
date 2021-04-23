@@ -44,7 +44,7 @@ impl Validate for IfThenValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self
             .schema
@@ -54,9 +54,7 @@ impl Validate for IfThenValidator {
             let errors: Vec<_> = self
                 .then_schema
                 .iter()
-                .flat_map(move |validator| {
-                    validator.validate(schema, instance, instance_path.clone())
-                })
+                .flat_map(move |validator| validator.validate(schema, instance, instance_path))
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -113,7 +111,7 @@ impl Validate for IfElseValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self
             .schema
@@ -123,9 +121,7 @@ impl Validate for IfElseValidator {
             let errors: Vec<_> = self
                 .else_schema
                 .iter()
-                .flat_map(move |validator| {
-                    validator.validate(schema, instance, instance_path.clone())
-                })
+                .flat_map(move |validator| validator.validate(schema, instance, instance_path))
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -187,7 +183,7 @@ impl Validate for IfThenElseValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self
             .schema
@@ -197,18 +193,14 @@ impl Validate for IfThenElseValidator {
             let errors: Vec<_> = self
                 .then_schema
                 .iter()
-                .flat_map(move |validator| {
-                    validator.validate(schema, instance, instance_path.clone())
-                })
+                .flat_map(move |validator| validator.validate(schema, instance, instance_path))
                 .collect();
             Box::new(errors.into_iter())
         } else {
             let errors: Vec<_> = self
                 .else_schema
                 .iter()
-                .flat_map(move |validator| {
-                    validator.validate(schema, instance, instance_path.clone())
-                })
+                .flat_map(move |validator| validator.validate(schema, instance, instance_path))
                 .collect();
             Box::new(errors.into_iter())
         }

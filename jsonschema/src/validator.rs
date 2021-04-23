@@ -7,7 +7,7 @@ pub(crate) trait Validate: Send + Sync + ToString {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a>;
     // The same as above, but does not construct ErrorIterator.
     // It is faster for cases when the result is not needed (like anyOf), since errors are

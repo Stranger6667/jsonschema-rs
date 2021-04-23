@@ -24,7 +24,7 @@ macro_rules! validate {
                 &'b self,
                 schema: &'a JSONSchema,
                 instance: &'a Value,
-                instance_path: InstancePath<'b>,
+                instance_path: &InstancePath<'b>,
             ) -> ErrorIterator<'a> {
                 if self.is_valid(schema, instance) {
                     no_error()
@@ -81,7 +81,7 @@ impl Validate for MaximumF64Validator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()

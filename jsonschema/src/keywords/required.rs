@@ -44,7 +44,7 @@ impl Validate for RequiredValidator {
         &'b self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             for property_name in &self.required {

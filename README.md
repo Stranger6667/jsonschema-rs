@@ -90,9 +90,9 @@ Ratios are given against compiled `JSONSchema` using its `validate`. The `is_val
 
 | Case          | jsonschema_valid        | valico                  | jsonschema.validate   | jsonschema.is_valid    |
 | ------------- | ----------------------- | ----------------------- | --------------------- | ---------------------- |
-| Big valid     | -                       | 95.008 ms (**x13.07**)  | 7.264 ms              | 5.974 ms (**x0.82**)   |
-| Small valid   | 2.04 us    (**x5.45**)  | 3.67 us   (**x9.81**)   | 373.91 ns             | 119.02 ns (**x0.31**)  |
-| Small invalid | 397.52 ns  (**x0.82**)  | 3.73 us   (**x7.74**)   | 481.33 ns             | 5.26 ns  (**x0.01**)   |
+| Big valid     | -                       | 95.008 ms (**x8.98**)   | 9.88 ms               | 5.974 ms (**x0.82**)   |
+| Small valid   | 2.04 us    (**x1.8**)   | 3.67 us   (**x3.24**)   | 1.13 us               | 119.02 ns (**x0.1**)   |
+| Small invalid | 397.52 ns  (**x0.31**)  | 3.73 us   (**x2.96**)   | 1.25 us               | 5.26 ns  (**x0.004**)   |
 
 Unfortunately, `jsonschema_valid` mistakenly considers the Kubernetes Open API schema as invalid and therefore can't be compared with other libraries in this case.
 

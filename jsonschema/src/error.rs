@@ -1,5 +1,4 @@
 //! Error types
-
 use crate::primitive_type::{PrimitiveType, PrimitiveTypesBitMap};
 use serde_json::{Map, Number, Value};
 use std::{
@@ -345,9 +344,12 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::ExclusiveMinimum { limit },
         }
     }
-    pub(crate) fn false_schema(instance: &'a Value) -> ValidationError<'a> {
+    pub(crate) fn false_schema(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+    ) -> ValidationError<'a> {
         ValidationError {
-            instance_path: Vec::new(),
+            instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::FalseSchema,
         }

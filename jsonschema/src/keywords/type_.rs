@@ -52,7 +52,7 @@ impl Validate for MultipleTypesValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
@@ -96,7 +96,7 @@ impl Validate for NullTypeValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
@@ -133,7 +133,7 @@ impl Validate for BooleanTypeValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
@@ -171,7 +171,7 @@ impl Validate for StringTypeValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
@@ -208,7 +208,7 @@ impl Validate for ArrayTypeValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
@@ -245,7 +245,7 @@ impl Validate for ObjectTypeValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()
@@ -282,7 +282,7 @@ impl Validate for NumberTypeValidator {
         &'b self,
         config: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(config, instance) {
             no_error()
@@ -321,7 +321,7 @@ impl Validate for IntegerTypeValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()

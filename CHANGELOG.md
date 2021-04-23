@@ -2,9 +2,22 @@
 
 ## [Unreleased]
 
+### Added
+
+- `ValidationError.instance_path` that shows the path to the erroneous part of the input instance.
+  It has the `Vec<String>` type and contains components of the relevant JSON pointer.
+
+### Changed
+
+- Make fields of `ValidationError` public. It allows the end-user to customize errors formatting.
+
 ### Fixed
 
 - Reject IPv4 addresses with leading zeroes. As per new test case in JSONSchema test suite. [More info](https://sick.codes/universal-netmask-npm-package-used-by-270000-projects-vulnerable-to-octal-input-data-server-side-request-forgery-remote-file-inclusion-local-file-inclusion-and-more-cve-2021-28918/)
+
+### Removed
+
+- Not used `ValidationErrorKind::Unexpected`.
 
 ## [0.6.1] - 2021-03-26
 

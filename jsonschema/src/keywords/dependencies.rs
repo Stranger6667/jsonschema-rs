@@ -52,7 +52,7 @@ impl Validate for DependenciesValidator {
         &'b self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: InstancePath<'b>,
+        instance_path: &InstancePath<'b>,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
@@ -60,9 +60,8 @@ impl Validate for DependenciesValidator {
                 .iter()
                 .filter(|(property, _)| item.contains_key(property))
                 .flat_map(move |(_, validators)| {
-                    let instance_path = instance_path.clone();
                     validators.iter().flat_map(move |validator| {
-                        validator.validate(schema, instance, instance_path.clone())
+                        validator.validate(schema, instance, instance_path)
                     })
                 })
                 .collect();
