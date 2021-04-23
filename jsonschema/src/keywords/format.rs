@@ -164,6 +164,9 @@ impl Validate for IpV4Validator {
     validate!("ipv4");
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
+            if item.starts_with('0') {
+                return false;
+            }
             match IpAddr::from_str(item.as_str()) {
                 Ok(i) => i.is_ipv4(),
                 Err(_) => false,
