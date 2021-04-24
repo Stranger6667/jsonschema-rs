@@ -32,12 +32,15 @@ fn main() -> Result<(), CompilationError> {
     let result = compiled.validate(&instance);
     if let Err(errors) = result {
         for error in errors {
-            println!("Validation error: {}", error)
+            println!("Validation error: {}", error);
+            println!("Instance path: {:?}", error.instance_path);
         }
     }
     Ok(())
 }
 ```
+
+Each error has an `instance_path` attribute that indicates the path to the erroneous part within the validated instance.
 
 If you only need to know whether document is valid or not (which is faster):
 

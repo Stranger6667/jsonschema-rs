@@ -46,7 +46,8 @@
 //!     let result = compiled.validate(&instance);
 //!     if let Err(errors) = result {
 //!         for error in errors {
-//!             println!("Validation error: {}", error)
+//!             println!("Validation error: {}", error);
+//!             println!("Instance path: {:?}", error.instance_path);
 //!         }
 //!     }
 //!     Ok(())
