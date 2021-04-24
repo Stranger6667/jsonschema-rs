@@ -148,14 +148,20 @@ where
                 if let Some(x) = callback(new_url.to_string(), schema) {
                     return Ok(Some(x));
                 }
-                for (_, subschema) in item {
+                for (key, subschema) in item {
+                    if key == "enum" || key == "const" {
+                        continue;
+                    }
                     let result = find_schemas(draft, subschema, &new_url, callback)?;
                     if result.is_some() {
                         return Ok(result);
                     }
                 }
             } else {
-                for (_, subschema) in item {
+                for (key, subschema) in item {
+                    if key == "enum" || key == "const" {
+                        continue;
+                    }
                     let result = find_schemas(draft, subschema, base_url, callback)?;
                     if result.is_some() {
                         return Ok(result);
