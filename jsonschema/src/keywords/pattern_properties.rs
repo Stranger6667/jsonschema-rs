@@ -46,11 +46,11 @@ impl Validate for PatternPropertiesValidator {
         }
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self

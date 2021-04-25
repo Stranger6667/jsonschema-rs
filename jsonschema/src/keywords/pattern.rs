@@ -35,11 +35,11 @@ impl PatternValidator {
 }
 
 impl Validate for PatternValidator {
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if !self.pattern.is_match(item) {

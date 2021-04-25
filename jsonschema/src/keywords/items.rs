@@ -39,11 +39,11 @@ impl Validate for ItemsArrayValidator {
         }
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = items
@@ -52,7 +52,7 @@ impl Validate for ItemsArrayValidator {
                 .enumerate()
                 .flat_map(move |(idx, (item, validators))| {
                     validators.iter().flat_map(move |validator| {
-                        instance_path.push(idx.to_string());
+                        instance_path.push(idx);
                         let errors = validator.validate(schema, item, instance_path);
                         instance_path.pop();
                         errors
@@ -95,11 +95,11 @@ impl Validate for ItemsObjectValidator {
         }
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = self
@@ -107,7 +107,7 @@ impl Validate for ItemsObjectValidator {
                 .iter()
                 .flat_map(move |validator| {
                     items.iter().enumerate().flat_map(move |(idx, item)| {
-                        instance_path.push(idx.to_string());
+                        instance_path.push(idx);
                         let errors = validator.validate(schema, item, instance_path);
                         instance_path.pop();
                         errors

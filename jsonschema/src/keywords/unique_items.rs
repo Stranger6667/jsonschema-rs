@@ -77,11 +77,11 @@ impl Validate for UniqueItemsValidator {
         true
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()

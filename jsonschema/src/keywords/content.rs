@@ -35,11 +35,11 @@ impl Validate for ContentMediaTypeValidator {
         }
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if (self.func)(item) {
@@ -88,11 +88,11 @@ impl Validate for ContentEncodingValidator {
         }
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if (self.func)(item) {
@@ -154,11 +154,11 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
         }
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             match (self.converter)(item) {

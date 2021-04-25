@@ -52,11 +52,11 @@ macro_rules! format_validator {
 
 macro_rules! validate {
     ($format:expr) => {
-        fn validate<'a, 'b>(
-            &'b self,
+        fn validate<'a>(
+            &self,
             schema: &'a JSONSchema,
             instance: &'a Value,
-            instance_path: &InstancePath<'b>,
+            instance_path: &InstancePath,
         ) -> ErrorIterator<'a> {
             if let Value::String(_item) = instance {
                 if !self.is_valid(schema, instance) {

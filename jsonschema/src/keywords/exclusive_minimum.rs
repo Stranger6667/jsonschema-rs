@@ -20,11 +20,11 @@ pub(crate) struct ExclusiveMinimumF64Validator {
 macro_rules! validate {
     ($validator: ty) => {
         impl Validate for $validator {
-            fn validate<'a, 'b>(
-                &'b self,
+            fn validate<'a>(
+                &self,
                 schema: &'a JSONSchema,
                 instance: &'a Value,
-                instance_path: &InstancePath<'b>,
+                instance_path: &InstancePath,
             ) -> ErrorIterator<'a> {
                 if self.is_valid(schema, instance) {
                     no_error()
@@ -77,11 +77,11 @@ impl Validate for ExclusiveMinimumF64Validator {
         true
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if self.is_valid(schema, instance) {
             no_error()

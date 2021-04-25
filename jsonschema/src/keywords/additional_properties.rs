@@ -15,7 +15,6 @@ use crate::{
 use ahash::AHashMap;
 use regex::Regex;
 use serde_json::{Map, Value};
-use std::borrow::Cow;
 
 pub(crate) type PatternedValidators = Vec<(Regex, Validators)>;
 
@@ -60,8 +59,7 @@ macro_rules! is_valid_patterns {
 macro_rules! validate {
     ($validators:expr, $schema:ident, $value:ident, $instance_path:expr, $property_name:expr) => {{
         $validators.iter().flat_map(move |validator| {
-            let name = Cow::clone(&$property_name);
-            $instance_path.push(name);
+            $instance_path.push($property_name);
             let errors = validator.validate($schema, $value, $instance_path);
             $instance_path.pop();
             errors
@@ -127,11 +125,11 @@ impl Validate for AdditionalPropertiesValidator {
         true
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = item
@@ -142,7 +140,7 @@ impl Validate for AdditionalPropertiesValidator {
                         schema,
                         value,
                         instance_path,
-                        Cow::Owned(name.to_string())
+                        name.to_string()
                     )
                 })
                 .collect();
@@ -191,11 +189,11 @@ impl Validate for AdditionalPropertiesFalseValidator {
         }
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             if let Some((_, value)) = item.iter().next() {
@@ -258,11 +256,11 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
         true
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
@@ -274,7 +272,7 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
                         schema,
                         value,
                         instance_path,
-                        Cow::Borrowed(&name[..])
+                        name.to_string()
                     ));
                 } else {
                     // No extra properties are allowed
@@ -352,11 +350,11 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
         true
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::Object(map) = instance {
             let mut errors = vec![];
@@ -367,7 +365,7 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
                         schema,
                         value,
                         instance_path,
-                        Cow::Borrowed(&name[..])
+                        name.to_string()
                     ))
                 } else {
                     errors.extend(validate!(
@@ -375,7 +373,7 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
                         schema,
                         value,
                         instance_path,
-                        Cow::Owned(property.to_string())
+                        property.to_string()
                     ))
                 }
             }
@@ -452,11 +450,11 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
         true
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
@@ -473,7 +471,7 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
                                 schema,
                                 value,
                                 instance_path,
-                                Cow::Owned(property.to_string())
+                                property.to_string()
                             )
                         }),
                 );
@@ -483,7 +481,7 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
                         schema,
                         value,
                         instance_path,
-                        Cow::Owned(property.to_string())
+                        property.to_string()
                     ))
                 }
             }
@@ -546,11 +544,11 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
         true
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
@@ -567,7 +565,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
                                 schema,
                                 value,
                                 instance_path,
-                                Cow::Owned(property.to_string())
+                                property.to_string()
                             )
                         }),
                 );
@@ -677,11 +675,11 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
         }
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
@@ -692,7 +690,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
                         schema,
                         value,
                         instance_path,
-                        Cow::Borrowed(&name[..])
+                        name.to_string()
                     ));
                     errors.extend(
                         self.patterns
@@ -704,7 +702,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
                                     schema,
                                     value,
                                     instance_path,
-                                    Cow::Borrowed(&name[..])
+                                    name.to_string()
                                 )
                             }),
                     );
@@ -721,7 +719,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
                                     schema,
                                     value,
                                     instance_path,
-                                    Cow::Owned(property.to_string())
+                                    property.to_string()
                                 )
                             }),
                     );
@@ -731,7 +729,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
                             schema,
                             value,
                             instance_path,
-                            Cow::Owned(property.to_string())
+                            property.to_string()
                         ))
                     }
                 }
@@ -825,11 +823,11 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
         true
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
@@ -841,7 +839,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
                         schema,
                         value,
                         instance_path,
-                        Cow::Borrowed(&name[..])
+                        name.to_string()
                     ));
                     errors.extend(
                         self.patterns
@@ -853,7 +851,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
                                     schema,
                                     value,
                                     instance_path,
-                                    Cow::Borrowed(&name[..])
+                                    name.to_string()
                                 )
                             }),
                     );
@@ -870,7 +868,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
                                     schema,
                                     value,
                                     instance_path,
-                                    Cow::Owned(property.to_string())
+                                    property.to_string()
                                 )
                             }),
                     );

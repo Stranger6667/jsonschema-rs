@@ -42,11 +42,11 @@ impl Validate for PropertiesValidator {
         }
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
@@ -56,7 +56,7 @@ impl Validate for PropertiesValidator {
                     let option = item.get(name);
                     option.into_iter().flat_map(move |item| {
                         validators.iter().flat_map(move |validator| {
-                            instance_path.push(name);
+                            instance_path.push(name.to_string());
                             let errors = validator.validate(schema, item, instance_path);
                             instance_path.pop();
                             errors
