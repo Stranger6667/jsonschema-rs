@@ -35,23 +35,29 @@ pub(crate) mod required;
 pub(crate) mod type_;
 pub(crate) mod unique_items;
 use crate::{error, validator::Validate};
-use std::{borrow::Cow, cell::RefCell, ops::Deref};
+use std::{cell::RefCell, ops::Deref};
 
 pub(crate) type CompilationResult = Result<BoxedValidator, error::CompilationError>;
 pub(crate) type BoxedValidator = Box<dyn Validate + Send + Sync>;
 pub(crate) type Validators = Vec<BoxedValidator>;
-pub(crate) type InstancePathInner<'a> = RefCell<Vec<Cow<'a, str>>>;
+pub(crate) type InstancePathInner = RefCell<Vec<PathChunk>>;
 
 #[derive(Clone, Debug)]
-pub(crate) struct InstancePath<'a>(InstancePathInner<'a>);
+pub(crate) enum PathChunk {
+    Name(String),
+    Index(usize),
+}
 
-impl<'a> InstancePath<'a> {
-    pub(crate) fn new(inner: InstancePathInner<'a>) -> Self {
+#[derive(Clone, Debug)]
+pub(crate) struct InstancePath(InstancePathInner);
+
+impl InstancePath {
+    pub(crate) fn new(inner: InstancePathInner) -> Self {
         Self(inner)
     }
 
     #[inline]
-    pub(crate) fn push(&self, value: impl Into<Cow<'a, str>>) {
+    pub(crate) fn push(&self, value: impl Into<PathChunk>) {
         self.borrow_mut().push(value.into())
     }
     #[inline]
@@ -60,21 +66,37 @@ impl<'a> InstancePath<'a> {
     }
 }
 
-impl<'a> Deref for InstancePath<'a> {
-    type Target = InstancePathInner<'a>;
+impl From<String> for PathChunk {
+    #[inline]
+    fn from(value: String) -> Self {
+        PathChunk::Name(value)
+    }
+}
+impl From<usize> for PathChunk {
+    #[inline]
+    fn from(value: usize) -> Self {
+        PathChunk::Index(value)
+    }
+}
+
+impl Deref for InstancePath {
+    type Target = InstancePathInner;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl From<&InstancePath<'_>> for Vec<String> {
-    fn from(path: &InstancePath<'_>) -> Self {
+impl From<&InstancePath> for Vec<String> {
+    #[inline]
+    fn from(path: &InstancePath) -> Self {
         path.0
             .borrow()
-            .clone()
-            .into_iter()
-            .map(Cow::into_owned)
+            .iter()
+            .map(|item| match item {
+                PathChunk::Name(value) => value.to_string(),
+                PathChunk::Index(idx) => idx.to_string(),
+            })
             .collect()
     }
 }

@@ -31,11 +31,11 @@ impl Validate for MaxLengthValidator {
         true
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         _schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
             if (item.chars().count() as u64) > self.limit {

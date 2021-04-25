@@ -40,11 +40,11 @@ impl Validate for AdditionalItemsObjectValidator {
         }
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         schema: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = items
@@ -53,7 +53,7 @@ impl Validate for AdditionalItemsObjectValidator {
                 .skip(self.items_count)
                 .flat_map(|(idx, item)| {
                     self.validators.iter().flat_map(move |validator| {
-                        instance_path.push(idx.to_string());
+                        instance_path.push(idx);
                         let errors = validator.validate(schema, item, instance_path);
                         instance_path.pop();
                         errors
@@ -91,11 +91,11 @@ impl Validate for AdditionalItemsBooleanValidator {
         true
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::Array(items) = instance {
             if items.len() > self.items_count {

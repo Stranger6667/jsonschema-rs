@@ -31,11 +31,11 @@ impl Validate for MultipleOfFloatValidator {
         true
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::Number(item) = instance {
             let item = item.as_f64().expect("Always valid");
@@ -86,11 +86,11 @@ impl Validate for MultipleOfIntegerValidator {
         true
     }
 
-    fn validate<'a, 'b>(
-        &'b self,
+    fn validate<'a>(
+        &self,
         _: &'a JSONSchema,
         instance: &'a Value,
-        instance_path: &InstancePath<'b>,
+        instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::Number(item) = instance {
             let item = item.as_f64().expect("Always valid");
