@@ -47,14 +47,18 @@ impl Validate for RequiredValidator {
         instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
+            let mut errors = vec![];
             for property_name in &self.required {
                 if !item.contains_key(property_name) {
-                    return error(ValidationError::required(
+                    errors.push(ValidationError::required(
                         instance_path.into(),
                         instance,
                         property_name.clone(),
                     ));
                 }
+            }
+            if !errors.is_empty() {
+                return Box::new(errors.into_iter());
             }
         }
         no_error()
