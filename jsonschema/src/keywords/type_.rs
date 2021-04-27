@@ -8,7 +8,7 @@ use crate::{
 use serde_json::{Map, Number, Value};
 use std::convert::TryFrom;
 
-use super::InstancePath;
+use crate::paths::InstancePath;
 
 pub(crate) struct MultipleTypesValidator {
     types: PrimitiveTypesBitMap,

@@ -7,6 +7,7 @@
 - The `propertyNames` validator now contains the parent object in its `instance` attribute instead of individual properties as strings.
 - Improved error message for the `additionalProperties` validator. After - `Additional properties are not allowed ('faz' was unexpected)`, before - `False schema does not allow '"faz"'`.
 - The `additionalProperties` validator emits a single error for all unexpected properties instead of separate errors for each unexpected property.
+- `ValidationError.instance_path` is now a separate struct, that can be transformed to `Vec<String>` or JSON Pointer of type `String`.
 
 ### Fixed
 

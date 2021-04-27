@@ -33,7 +33,7 @@ fn main() -> Result<(), CompilationError> {
     if let Err(errors) = result {
         for error in errors {
             println!("Validation error: {}", error);
-            println!("Instance path: {:?}", error.instance_path);
+            println!("Instance path: {}", error.instance_path);
         }
     }
     Ok(())
@@ -41,6 +41,7 @@ fn main() -> Result<(), CompilationError> {
 ```
 
 Each error has an `instance_path` attribute that indicates the path to the erroneous part within the validated instance.
+It could be transformed to JSON Pointer via `.to_string()` or to `Vec<String>` via `.into_vec()`.
 
 If you only need to know whether document is valid or not (which is faster):
 
@@ -95,7 +96,7 @@ Ratios are given against compiled `JSONSchema` using its `validate`. The `is_val
 | ------------- | ----------------------- | ----------------------- | --------------------- | ---------------------- |
 | Big valid     | -                       | 95.008 ms (**x12.27**)  | 7.74 ms               | 5.785 ms (**x0.74**)   |
 | Small valid   | 2.04 us    (**x4.18**)  | 3.67 us   (**x7.53**)   | 487.38 ns             | 113.3 ns (**x0.23**)   |
-| Small invalid | 397.52 ns  (**x0.60**)  | 3.73 us   (**x5.67**)   | 657.49 ns             | 5.53 ns  (**x0.008**)  |
+| Small invalid | 397.52 ns  (**x0.64**)  | 3.73 us   (**x6.02**)   | 619.32 ns             | 5.53 ns  (**x0.008**)  |
 
 Unfortunately, `jsonschema_valid` mistakenly considers the Kubernetes Open API schema as invalid and therefore can't be compared with other libraries in this case.
 

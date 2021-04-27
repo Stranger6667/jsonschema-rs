@@ -7,7 +7,7 @@ use crate::{
 use serde_json::{Map, Number, Value};
 use std::f64::EPSILON;
 
-use super::InstancePath;
+use crate::paths::InstancePath;
 
 struct ConstArrayValidator {
     value: Vec<Value>,

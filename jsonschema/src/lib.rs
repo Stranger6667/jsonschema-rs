@@ -47,12 +47,14 @@
 //!     if let Err(errors) = result {
 //!         for error in errors {
 //!             println!("Validation error: {}", error);
-//!             println!("Instance path: {:?}", error.instance_path);
+//!             println!("Instance path: {}", error.instance_path);
 //!         }
 //!     }
 //!     Ok(())
 //! }
 //! ```
+//! Each error has an `instance_path` attribute that indicates the path to the erroneous part within the validated instance.
+//! It could be transformed to JSON Pointer via `.to_string()` or to `Vec<String>` via `.into_vec()`.
 #![warn(
     clippy::cast_possible_truncation,
     clippy::doc_markdown,
@@ -81,10 +83,12 @@ mod content_encoding;
 mod content_media_type;
 pub mod error;
 mod keywords;
+pub mod paths;
 pub mod primitive_type;
 mod resolver;
 mod schemas;
 mod validator;
+
 pub use compilation::{options::CompilationOptions, JSONSchema};
 pub use error::{CompilationError, ErrorIterator, ValidationError};
 pub use schemas::Draft;

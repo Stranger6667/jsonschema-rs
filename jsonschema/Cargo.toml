@@ -32,6 +32,7 @@ num-cmp = ">= 0.1"
 idna = ">= 0.2"
 ahash = "0.7"
 structopt = { version = ">= 0.3", optional = true }
+itoa = "0.4"
 
 [dev-dependencies]
 criterion = ">= 0.1"

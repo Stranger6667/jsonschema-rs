@@ -44,11 +44,7 @@ fn test_draft(_server_address: &str, test_case: TestCase) {
         );
         let errors: Vec<_> = result.expect_err("Errors").collect();
         for error in errors {
-            let pointer = if error.instance_path.is_empty() {
-                "".to_string()
-            } else {
-                format!("/{}", error.instance_path.join("/"))
-            };
+            let pointer = error.instance_path.to_string();
             assert_eq!(test_case.instance.pointer(&pointer), Some(&*error.instance))
         }
     }
@@ -92,9 +88,12 @@ fn test_instance_path() {
                     .next()
                     .expect("Validation error");
                 assert_eq!(
-                    error.instance_path, instance_path,
+                    error.instance_path.into_vec(),
+                    instance_path,
                     "File: {}; Suite ID: {}; Test ID: {}",
-                    filename, suite_id, test_id
+                    filename,
+                    suite_id,
+                    test_id
                 )
             }
         }

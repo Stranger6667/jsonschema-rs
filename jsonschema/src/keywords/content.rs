@@ -4,7 +4,8 @@ use crate::{
     content_encoding::{ContentEncodingCheckType, ContentEncodingConverterType},
     content_media_type::ContentMediaTypeCheckType,
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
-    keywords::{CompilationResult, InstancePath},
+    keywords::CompilationResult,
+    paths::InstancePath,
     validator::Validate,
 };
 use serde_json::{Map, Value};

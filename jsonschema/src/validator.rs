@@ -1,4 +1,4 @@
-use crate::{compilation::JSONSchema, error::ErrorIterator, keywords::InstancePath};
+use crate::{compilation::JSONSchema, error::ErrorIterator, paths::InstancePath};
 use serde_json::Value;
 use std::fmt;
 
