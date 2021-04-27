@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.7.0] - 2021-04-27
+
 ### Added
 
 - `ValidationError.instance_path` that shows the path to the erroneous part of the input instance.
@@ -13,7 +15,7 @@
 
 ### Fixed
 
-- Reject IPv4 addresses with leading zeroes. As per new test case in JSONSchema test suite. [More info](https://sick.codes/universal-netmask-npm-package-used-by-270000-projects-vulnerable-to-octal-input-data-server-side-request-forgery-remote-file-inclusion-local-file-inclusion-and-more-cve-2021-28918/)
+- Reject IPv4 addresses with leading zeroes. As per the new test case in the JSONSchema test suite. [More info](https://sick.codes/universal-netmask-npm-package-used-by-270000-projects-vulnerable-to-octal-input-data-server-side-request-forgery-remote-file-inclusion-local-file-inclusion-and-more-cve-2021-28918/)
 - Do not look for sub-schemas inside `const` and `enum` keywords. Fixes an issue checked by [these tests](https://github.com/json-schema-org/JSON-Schema-Test-Suite/pull/471) 
 - Check all properties in the `required` keyword implementation. [#190](https://github.com/Stranger6667/jsonschema-rs/issues/190)
 
@@ -168,7 +170,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.6.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.7.0...HEAD
+[0.7.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.6.1...rust-v0.7.0
 [0.6.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.6.0...rust-v0.6.1
 [0.6.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.5.0...rust-v0.6.0
 [0.5.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.4.3...rust-v0.5.0
