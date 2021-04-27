@@ -311,7 +311,7 @@ mod tests {
     #[test_case(&json!({"type": "number"}), &json!(42))]
     #[test_case(&json!({"type": ["number", "null"]}), &json!(42))]
     fn integer_is_valid_number_multi_type(schema: &Value, instance: &Value) {
-        // Regression: https://github.com/Stranger6667/jsonschema-rs/issues/147
+        // See: GH-147
         let compiled = JSONSchema::compile(schema).unwrap();
         assert!(compiled.is_valid(instance))
     }
@@ -336,8 +336,23 @@ mod tests {
     // const:: Array in Object
     #[test_case(&json!({"const": {"c": [1.0]}}), &json!({"c": [1]}))]
     fn numeric_equivalence(schema: &Value, instance: &Value) {
-        // Regression: https://github.com/Stranger6667/jsonschema-rs/issues/149
+        // See: GH-149
         let compiled = JSONSchema::compile(schema).unwrap();
         assert!(compiled.is_valid(instance))
+    }
+
+    #[test]
+    fn required_all_properties() {
+        // See: GH-190
+        let schema = json!({"required": ["foo", "bar"]});
+        let instance = json!({});
+        let compiled = JSONSchema::compile(&schema).unwrap();
+        let errors: Vec<_> = compiled
+            .validate(&instance)
+            .expect_err("Validation errors")
+            .collect();
+        assert_eq!(errors.len(), 2);
+        assert_eq!(errors[0].to_string(), "\'foo\' is a required property");
+        assert_eq!(errors[1].to_string(), "\'bar\' is a required property");
     }
 }

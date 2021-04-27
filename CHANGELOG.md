@@ -15,6 +15,7 @@
 
 - Reject IPv4 addresses with leading zeroes. As per new test case in JSONSchema test suite. [More info](https://sick.codes/universal-netmask-npm-package-used-by-270000-projects-vulnerable-to-octal-input-data-server-side-request-forgery-remote-file-inclusion-local-file-inclusion-and-more-cve-2021-28918/)
 - Do not look for sub-schemas inside `const` and `enum` keywords. Fixes an issue checked by [these tests](https://github.com/json-schema-org/JSON-Schema-Test-Suite/pull/471) 
+- Check all properties in the `required` keyword implementation. [#190](https://github.com/Stranger6667/jsonschema-rs/issues/190)
 
 ### Removed
 
