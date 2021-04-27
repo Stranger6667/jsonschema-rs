@@ -67,15 +67,6 @@ macro_rules! validate {
     }};
 }
 
-macro_rules! disallow_property {
-    ($errors:ident, $instance_path:ident, $property:ident) => {{
-        let property_value = Value::String($property.to_string());
-        $errors.push(
-            ValidationError::false_schema($instance_path.into(), &property_value).into_owned(),
-        );
-    }};
-}
-
 fn compile_properties(
     map: &Map<String, Value>,
     context: &CompilationContext,
@@ -264,6 +255,7 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
+            let mut unexpected = vec![];
             for (property, value) in item {
                 if let Some((name, validators)) = self.properties.get_key_value(property) {
                     // When a property is in `properties`, then it should be VALID
@@ -276,8 +268,15 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
                     ));
                 } else {
                     // No extra properties are allowed
-                    disallow_property!(errors, instance_path, property)
+                    unexpected.push(property.to_owned());
                 }
+            }
+            if !unexpected.is_empty() {
+                errors.push(ValidationError::additional_properties(
+                    instance_path.into(),
+                    instance,
+                    unexpected,
+                ))
             }
             Box::new(errors.into_iter())
         } else {
@@ -552,6 +551,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
+            let mut unexpected = vec![];
             for (property, value) in item {
                 let mut has_match = false;
                 errors.extend(
@@ -570,8 +570,15 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
                         }),
                 );
                 if !has_match {
-                    disallow_property!(errors, instance_path, property)
+                    unexpected.push(property.to_owned());
                 }
+            }
+            if !unexpected.is_empty() {
+                errors.push(ValidationError::additional_properties(
+                    instance_path.into(),
+                    instance,
+                    unexpected,
+                ))
             }
             Box::new(errors.into_iter())
         } else {
@@ -831,6 +838,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
+            let mut unexpected = vec![];
             // No properties are allowed, except ones defined in `properties` or `patternProperties`
             for (property, value) in item.iter() {
                 if let Some((name, validators)) = self.properties.get_key_value(property) {
@@ -873,9 +881,16 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
                             }),
                     );
                     if !has_match {
-                        disallow_property!(errors, instance_path, property)
+                        unexpected.push(property.to_owned());
                     }
                 }
+            }
+            if !unexpected.is_empty() {
+                errors.push(ValidationError::additional_properties(
+                    instance_path.into(),
+                    instance,
+                    unexpected,
+                ))
             }
             Box::new(errors.into_iter())
         } else {
@@ -1030,8 +1045,8 @@ mod tests {
     // `properties.bar` - should be a string
     #[test_case(&json!({"foo": 3}), &["\'3\' is not of type \'string\'"])]
     // `additionalProperties` - extra keyword & not in `properties` / `patternProperties`
-    #[test_case(&json!({"faz": 1}), &["False schema does not allow \'\"faz\"\'"])]
-    #[test_case(&json!({"faz": 1, "haz": 1}), &["False schema does not allow \'\"faz\"\'", "False schema does not allow \'\"haz\"\'"])]
+    #[test_case(&json!({"faz": 1}), &["Additional properties are not allowed (\'faz\' was unexpected)"])]
+    #[test_case(&json!({"faz": 1, "haz": 1}), &["Additional properties are not allowed (\'faz\', \'haz\' were unexpected)"])]
     // `properties.foo` - should be a string & `patternProperties.^bar` - invalid
     #[test_case(&json!({"foo": 3, "bar": 4}), &["4 is less than the minimum of 5", "\'3\' is not of type \'string\'"])]
     // `properties.barbaz` - valid; `patternProperties.^bar` - invalid
@@ -1055,9 +1070,9 @@ mod tests {
       &json!({"bar": 4, "spam": 11, "foo": 3, "faz": 1}),
       &[
          "4 is less than the minimum of 5",
-         "False schema does not allow \'\"faz\"\'",
          "\'3\' is not of type \'string\'",
-         "11 is greater than the maximum of 10"
+         "11 is greater than the maximum of 10",
+         "Additional properties are not allowed (\'faz\' was unexpected)"
       ]
     )]
     fn schema_1_invalid(instance: &Value, expected: &[&str]) {
@@ -1097,7 +1112,7 @@ mod tests {
     }
 
     // `additionalProperties` - extra keyword & not in `patternProperties`
-    #[test_case(&json!({"faz": "a"}), &["False schema does not allow \'\"faz\"\'"])]
+    #[test_case(&json!({"faz": "a"}), &["Additional properties are not allowed (\'faz\' was unexpected)"])]
     // `patternProperties.^bar` (should be >=5)
     #[test_case(&json!({"bar": 4}), &["4 is less than the minimum of 5"])]
     // `patternProperties.spam$` (should be <=10)
@@ -1117,8 +1132,8 @@ mod tests {
       &json!({"bar": 4, "spam": 11, "faz": 1}),
       &[
          "4 is less than the minimum of 5",
-         "False schema does not allow \'\"faz\"\'",
-         "11 is greater than the maximum of 10"
+         "11 is greater than the maximum of 10",
+         "Additional properties are not allowed (\'faz\' was unexpected)"
       ]
     )]
     fn schema_2_invalid(instance: &Value, expected: &[&str]) {
@@ -1151,14 +1166,14 @@ mod tests {
     // `properties` - should be a string
     #[test_case(&json!({"foo": 3}), &["\'3\' is not of type \'string\'"])]
     // `additionalProperties` - extra keyword & not in `properties`
-    #[test_case(&json!({"faz": "a"}), &["False schema does not allow \'\"faz\"\'"])]
+    #[test_case(&json!({"faz": "a"}), &["Additional properties are not allowed (\'faz\' was unexpected)"])]
     // All combined
     #[test_case(
       &json!(
         {"foo": 3, "faz": "a"}),
         &[
-          "False schema does not allow \'\"faz\"\'",
-          "\'3\' is not of type \'string\'"
+          "\'3\' is not of type \'string\'",
+          "Additional properties are not allowed (\'faz\' was unexpected)",
         ]
     )]
     fn schema_3_invalid(instance: &Value, expected: &[&str]) {
