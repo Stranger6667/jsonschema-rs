@@ -42,6 +42,15 @@ fn test_draft(_server_address: &str, test_case: TestCase) {
             test_case.schema,
             test_case.instance,
         );
+        let errors: Vec<_> = result.expect_err("Errors").collect();
+        for error in errors {
+            let pointer = if error.instance_path.is_empty() {
+                "".to_string()
+            } else {
+                format!("/{}", error.instance_path.join("/"))
+            };
+            assert_eq!(test_case.instance.pointer(&pointer), Some(&*error.instance))
+        }
     }
 
     // Ensure that `JSONSchema::is_valid` is in sync with the validity expectation

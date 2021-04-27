@@ -91,6 +91,8 @@ pub(crate) fn error(instance: ValidationError) -> ErrorIterator {
 pub enum ValidationErrorKind {
     /// The input array contain more items than expected.
     AdditionalItems { limit: usize },
+    /// Unexpected properties.
+    AdditionalProperties { unexpected: Vec<String> },
     /// The input value is not valid under any of the given schemas.
     AnyOf,
     /// The input value doesn't match expected constant.
@@ -149,6 +151,10 @@ pub enum ValidationErrorKind {
     OneOfNotValid,
     /// When the input doesn't match to a pattern.
     Pattern { pattern: String },
+    /// Object property names are invalid.
+    PropertyNames {
+        error: Box<ValidationError<'static>>,
+    },
     /// When a required property is missing.
     Required { property: String },
     /// Any error that happens during network request via `reqwest` crate
@@ -190,6 +196,17 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::AdditionalItems { limit },
+        }
+    }
+    pub(crate) fn additional_properties(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        unexpected: Vec<String>,
+    ) -> ValidationError<'a> {
+        ValidationError {
+            instance_path,
+            instance: Cow::Borrowed(instance),
+            kind: ValidationErrorKind::AdditionalProperties { unexpected },
         }
     }
     pub(crate) fn any_of(instance_path: Vec<String>, instance: &'a Value) -> ValidationError<'a> {
@@ -541,6 +558,19 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Pattern { pattern },
         }
     }
+    pub(crate) fn property_names(
+        instance_path: Vec<String>,
+        instance: &'a Value,
+        error: ValidationError<'a>,
+    ) -> ValidationError<'a> {
+        ValidationError {
+            instance_path,
+            instance: Cow::Borrowed(instance),
+            kind: ValidationErrorKind::PropertyNames {
+                error: Box::new(error.into_owned()),
+            },
+        }
+    }
     pub(crate) fn required(
         instance_path: Vec<String>,
         instance: &'a Value,
@@ -710,6 +740,25 @@ impl fmt::Display for ValidationError<'_> {
                     verb
                 )
             }
+            ValidationErrorKind::AdditionalProperties { unexpected } => {
+                let verb = {
+                    if unexpected.len() == 1 {
+                        "was"
+                    } else {
+                        "were"
+                    }
+                };
+                write!(
+                    f,
+                    "Additional properties are not allowed ({} {} unexpected)",
+                    unexpected
+                        .iter()
+                        .map(|x| format!("'{}'", x))
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                    verb
+                )
+            }
             ValidationErrorKind::AnyOf | ValidationErrorKind::OneOfNotValid => write!(
                 f,
                 "'{}' is not valid under any of the given schemas",
@@ -818,6 +867,9 @@ impl fmt::Display for ValidationError<'_> {
             ),
             ValidationErrorKind::Pattern { pattern } => {
                 write!(f, "'{}' does not match '{}'", self.instance, pattern)
+            }
+            ValidationErrorKind::PropertyNames { error } => {
+                write!(f, "{}", error.to_string())
             }
             ValidationErrorKind::Required { property } => {
                 write!(f, "'{}' is a required property", property)

@@ -230,7 +230,7 @@ mod tests {
     #[test_case(&json!({"items": [{}], "additionalItems": {"type": "integer"}}), &json!([ null, 2, 3, "foo" ]), r#"'"foo"' is not of type 'integer'"#)]
     #[test_case(&json!({"items": [{}, {}, {}], "additionalItems": false}), &json!([ 1, 2, 3, 4 ]), r#"Additional items are not allowed (4 was unexpected)"#)]
     #[test_case(&json!({"items": [{}, {}, {}], "additionalItems": false}), &json!([ 1, 2, 3, 4, 5 ]), r#"Additional items are not allowed (4, 5 were unexpected)"#)]
-    #[test_case(&json!({"properties": {"foo": {}, "bar": {}}, "patternProperties": { "^v": {} }, "additionalProperties": false}), &json!({"foo" : 1, "bar" : 2, "quux" : "boom"}), r#"False schema does not allow '"quux"'"#)]
+    #[test_case(&json!({"properties": {"foo": {}, "bar": {}}, "patternProperties": { "^v": {} }, "additionalProperties": false}), &json!({"foo" : 1, "bar" : 2, "quux" : "boom"}), r#"Additional properties are not allowed ('quux' was unexpected)"#)]
     #[test_case(&json!({"anyOf": [{"type": "integer"}, {"minimum": 2}]}), &json!(1.5), r#"'1.5' is not valid under any of the given schemas"#)]
     #[test_case(&json!({"const": 2}), &json!(5), r#"'2' was expected"#)]
     #[test_case(&json!({"contains": {"minimum": 5}}), &json!([2, 3, 4]), r#"None of '[2,3,4]' are valid under the given schema"#)]
