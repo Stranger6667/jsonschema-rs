@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Performance
+
+- Avoid `String` allocation in `JSONPointer.into_vec`
+
 ## [0.8.0] - 2021-04-27
 
 ### Changed

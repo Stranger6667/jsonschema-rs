@@ -7,12 +7,12 @@ use std::{cell::RefCell, fmt, ops::Deref};
 pub struct JSONPointer(Vec<PathChunk>);
 
 impl JSONPointer {
-    /// JSON pointer as a vector of strings. Each component is casted to `String`.
+    /// JSON pointer as a vector of strings. Each component is casted to `String`. Consumes `JSONPointer`.
     pub fn into_vec(self) -> Vec<String> {
         self.0
-            .iter()
+            .into_iter()
             .map(|item| match item {
-                PathChunk::Name(value) => value.to_string(),
+                PathChunk::Name(value) => value,
                 PathChunk::Index(idx) => idx.to_string(),
             })
             .collect()
