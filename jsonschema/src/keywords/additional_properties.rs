@@ -9,7 +9,8 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
-    keywords::{format_validators, CompilationResult, InstancePath, Validators},
+    keywords::{format_validators, CompilationResult, Validators},
+    paths::InstancePath,
     validator::Validate,
 };
 use ahash::AHashMap;

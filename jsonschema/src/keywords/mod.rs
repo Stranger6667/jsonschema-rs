@@ -35,71 +35,10 @@ pub(crate) mod required;
 pub(crate) mod type_;
 pub(crate) mod unique_items;
 use crate::{error, validator::Validate};
-use std::{cell::RefCell, ops::Deref};
 
 pub(crate) type CompilationResult = Result<BoxedValidator, error::CompilationError>;
 pub(crate) type BoxedValidator = Box<dyn Validate + Send + Sync>;
 pub(crate) type Validators = Vec<BoxedValidator>;
-pub(crate) type InstancePathInner = RefCell<Vec<PathChunk>>;
-
-#[derive(Clone, Debug)]
-pub(crate) enum PathChunk {
-    Name(String),
-    Index(usize),
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct InstancePath(InstancePathInner);
-
-impl InstancePath {
-    pub(crate) fn new(inner: InstancePathInner) -> Self {
-        Self(inner)
-    }
-
-    #[inline]
-    pub(crate) fn push(&self, value: impl Into<PathChunk>) {
-        self.borrow_mut().push(value.into())
-    }
-    #[inline]
-    pub(crate) fn pop(&self) {
-        self.borrow_mut().pop();
-    }
-}
-
-impl From<String> for PathChunk {
-    #[inline]
-    fn from(value: String) -> Self {
-        PathChunk::Name(value)
-    }
-}
-impl From<usize> for PathChunk {
-    #[inline]
-    fn from(value: usize) -> Self {
-        PathChunk::Index(value)
-    }
-}
-
-impl Deref for InstancePath {
-    type Target = InstancePathInner;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl From<&InstancePath> for Vec<String> {
-    #[inline]
-    fn from(path: &InstancePath) -> Self {
-        path.0
-            .borrow()
-            .iter()
-            .map(|item| match item {
-                PathChunk::Name(value) => value.to_string(),
-                PathChunk::Index(idx) => idx.to_string(),
-            })
-            .collect()
-    }
-}
 
 fn format_validators(validators: &[BoxedValidator]) -> String {
     match validators.len() {

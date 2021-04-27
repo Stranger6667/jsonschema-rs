@@ -7,7 +7,8 @@ pub(crate) mod options;
 use crate::{
     error::{CompilationError, ErrorIterator},
     keywords,
-    keywords::{InstancePath, Validators},
+    keywords::Validators,
+    paths::InstancePath,
     resolver::Resolver,
 };
 use context::CompilationContext;

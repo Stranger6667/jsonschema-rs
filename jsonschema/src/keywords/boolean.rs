@@ -1,4 +1,4 @@
-use crate::keywords::InstancePath;
+use crate::paths::InstancePath;
 
 use crate::{
     compilation::JSONSchema,

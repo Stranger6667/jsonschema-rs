@@ -9,7 +9,7 @@ use serde_json::Value;
 use std::borrow::Cow;
 use url::Url;
 
-use super::InstancePath;
+use crate::paths::InstancePath;
 
 pub(crate) struct RefValidator {
     reference: Url,

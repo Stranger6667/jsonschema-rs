@@ -1,12 +1,13 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{CompilationResult, InstancePath},
+    keywords::CompilationResult,
     validator::Validate,
 };
 use ahash::{AHashSet, AHasher};
 use serde_json::{Map, Value};
 
+use crate::paths::InstancePath;
 use std::hash::{Hash, Hasher};
 
 // Based on implementation proposed by Sven Marnach:

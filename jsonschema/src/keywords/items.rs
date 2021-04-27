@@ -3,8 +3,9 @@ use crate::{
     error::{no_error, ErrorIterator},
     keywords::{
         boolean::TrueValidator, format_validators, format_vec_of_validators, CompilationResult,
-        InstancePath, Validators,
+        Validators,
     },
+    paths::InstancePath,
     validator::Validate,
 };
 use serde_json::{Map, Value};
