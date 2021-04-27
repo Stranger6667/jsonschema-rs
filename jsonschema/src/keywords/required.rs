@@ -1,6 +1,6 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{no_error, CompilationError, ErrorIterator, ValidationError},
     keywords::{CompilationResult, InstancePath},
     validator::Validate,
 };
