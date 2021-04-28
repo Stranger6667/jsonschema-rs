@@ -54,7 +54,7 @@ def args(request, variant, is_compiled):
         if is_compiled:
             return jsonschema_rs.JSONSchema(schema, with_meta_schemas=True).validate, instance
         else:
-            pytest.skip("`validate` function is not yet implemented")
+            return partial(jsonschema_rs.validate, with_meta_schemas=True), schema, instance
     if variant == "jsonschema":
         if is_compiled:
             return jsonschema.validators.validator_for(schema)(schema).is_valid, instance
