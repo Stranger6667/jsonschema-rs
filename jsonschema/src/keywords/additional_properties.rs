@@ -59,9 +59,10 @@ macro_rules! is_valid_patterns {
 
 macro_rules! validate {
     ($validators:expr, $schema:ident, $value:ident, $instance_path:expr, $property_name:expr) => {{
-        $validators.iter().flat_map(move |validator| {
-            validator.validate($schema, $value, &$instance_path.push($property_name))
-        })
+        let instance_path = $instance_path.push($property_name.to_owned());
+        $validators
+            .iter()
+            .flat_map(move |validator| validator.validate($schema, $value, &instance_path))
     }};
 }
 
@@ -124,13 +125,7 @@ impl Validate for AdditionalPropertiesValidator {
             let errors: Vec<_> = item
                 .iter()
                 .flat_map(|(name, value)| {
-                    validate!(
-                        self.validators,
-                        schema,
-                        value,
-                        instance_path,
-                        name.to_string()
-                    )
+                    validate!(self.validators, schema, value, instance_path, name)
                 })
                 .collect();
             Box::new(errors.into_iter())
@@ -257,13 +252,7 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
             for (property, value) in item {
                 if let Some((name, validators)) = self.properties.get_key_value(property) {
                     // When a property is in `properties`, then it should be VALID
-                    errors.extend(validate!(
-                        validators,
-                        schema,
-                        value,
-                        instance_path,
-                        name.to_string()
-                    ));
+                    errors.extend(validate!(validators, schema, value, instance_path, name));
                 } else {
                     // No extra properties are allowed
                     unexpected.push(property.to_owned());
@@ -362,7 +351,7 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
                         schema,
                         value,
                         instance_path,
-                        name.to_string()
+                        name
                     ))
                 } else {
                     errors.extend(validate!(
@@ -370,7 +359,7 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
                         schema,
                         value,
                         instance_path,
-                        property.to_string()
+                        property
                     ))
                 }
             }
@@ -463,13 +452,7 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
                         .filter(|(re, _)| re.is_match(property))
                         .flat_map(|(_, validators)| {
                             has_match = true;
-                            validate!(
-                                validators,
-                                schema,
-                                value,
-                                instance_path,
-                                property.to_string()
-                            )
+                            validate!(validators, schema, value, instance_path, property)
                         }),
                 );
                 if !has_match {
@@ -478,7 +461,7 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
                         schema,
                         value,
                         instance_path,
-                        property.to_string()
+                        property
                     ))
                 }
             }
@@ -558,13 +541,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
                         .filter(|(re, _)| re.is_match(property))
                         .flat_map(|(_, validators)| {
                             has_match = true;
-                            validate!(
-                                validators,
-                                schema,
-                                value,
-                                instance_path,
-                                property.to_string()
-                            )
+                            validate!(validators, schema, value, instance_path, property)
                         }),
                 );
                 if !has_match {
@@ -690,25 +667,13 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
             let mut errors = vec![];
             for (property, value) in item.iter() {
                 if let Some((name, validators)) = self.properties.get_key_value(property) {
-                    errors.extend(validate!(
-                        validators,
-                        schema,
-                        value,
-                        instance_path,
-                        name.to_string()
-                    ));
+                    errors.extend(validate!(validators, schema, value, instance_path, name));
                     errors.extend(
                         self.patterns
                             .iter()
                             .filter(|(re, _)| re.is_match(property))
                             .flat_map(|(_, validators)| {
-                                validate!(
-                                    validators,
-                                    schema,
-                                    value,
-                                    instance_path,
-                                    name.to_string()
-                                )
+                                validate!(validators, schema, value, instance_path, name)
                             }),
                     );
                 } else {
@@ -719,13 +684,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
                             .filter(|(re, _)| re.is_match(property))
                             .flat_map(|(_, validators)| {
                                 has_match = true;
-                                validate!(
-                                    validators,
-                                    schema,
-                                    value,
-                                    instance_path,
-                                    property.to_string()
-                                )
+                                validate!(validators, schema, value, instance_path, property)
                             }),
                     );
                     if !has_match {
@@ -734,7 +693,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
                             schema,
                             value,
                             instance_path,
-                            property.to_string()
+                            property
                         ))
                     }
                 }
@@ -840,25 +799,13 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
             // No properties are allowed, except ones defined in `properties` or `patternProperties`
             for (property, value) in item.iter() {
                 if let Some((name, validators)) = self.properties.get_key_value(property) {
-                    errors.extend(validate!(
-                        validators,
-                        schema,
-                        value,
-                        instance_path,
-                        name.to_string()
-                    ));
+                    errors.extend(validate!(validators, schema, value, instance_path, name));
                     errors.extend(
                         self.patterns
                             .iter()
                             .filter(|(re, _)| re.is_match(property))
                             .flat_map(|(_, validators)| {
-                                validate!(
-                                    validators,
-                                    schema,
-                                    value,
-                                    instance_path,
-                                    name.to_string()
-                                )
+                                validate!(validators, schema, value, instance_path, name)
                             }),
                     );
                 } else {
@@ -869,13 +816,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
                             .filter(|(re, _)| re.is_match(property))
                             .flat_map(|(_, validators)| {
                                 has_match = true;
-                                validate!(
-                                    validators,
-                                    schema,
-                                    value,
-                                    instance_path,
-                                    property.to_string()
-                                )
+                                validate!(validators, schema, value, instance_path, property)
                             }),
                     );
                     if !has_match {
