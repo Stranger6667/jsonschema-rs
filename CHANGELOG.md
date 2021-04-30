@@ -2,9 +2,13 @@
 
 ## [Unreleased]
 
+### Performance
+
+- Avoid some repetitive `String` allocations during validation.
+
 ### Fixed
 
-- Floating point overflow in the `multipleOf` validator. Relevant test case from the JSONSchema test suite - `float_overflow.json`
+- Floating point overflow in the `multipleOf` validator. Relevant test case from the JSONSchema test suite - `float_overflow.json`.
 
 ## [0.8.1] - 2021-04-30
 
