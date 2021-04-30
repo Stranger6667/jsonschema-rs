@@ -21,9 +21,9 @@ def mock_server():
 
 SUPPORTED_DRAFTS = (4, 6, 7)
 NOT_SUPPORTED_CASES = {
-    4: ("bignum.json", "float-overflow.json", "email.json"),
-    6: ("bignum.json", "float-overflow.json", "email.json"),
-    7: ("bignum.json", "float-overflow.json", "email.json", "idn-hostname.json"),
+    4: ("bignum.json", "email.json"),
+    6: ("bignum.json", "email.json"),
+    7: ("bignum.json", "email.json", "idn-hostname.json"),
 }
 
 

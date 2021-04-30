@@ -5,8 +5,8 @@ use crate::{
     paths::InstancePath,
     validator::Validate,
 };
+use fraction::{BigFraction, BigUint};
 use serde_json::{Map, Value};
-
 use std::f64::EPSILON;
 
 pub(crate) struct MultipleOfFloatValidator {
@@ -25,7 +25,13 @@ impl Validate for MultipleOfFloatValidator {
         if let Value::Number(item) = instance {
             let item = item.as_f64().expect("Always valid");
             let remainder = (item / self.multiple_of) % 1.;
-            if !(remainder < EPSILON && remainder < (1. - EPSILON)) {
+            if remainder.is_nan() {
+                // Involves heap allocations via the underlying `BigUint` type
+                let fraction = BigFraction::from(item) / BigFraction::from(self.multiple_of);
+                if let Some(denom) = fraction.denom() {
+                    return denom == &BigUint::from(1u8);
+                }
+            } else if !(remainder < EPSILON && remainder < (1. - EPSILON)) {
                 return false;
             }
         }
@@ -34,20 +40,16 @@ impl Validate for MultipleOfFloatValidator {
 
     fn validate<'a>(
         &self,
-        _: &'a JSONSchema,
+        schema: &'a JSONSchema,
         instance: &'a Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
-        if let Value::Number(item) = instance {
-            let item = item.as_f64().expect("Always valid");
-            let remainder = (item / self.multiple_of) % 1.;
-            if !(remainder < EPSILON && remainder < (1. - EPSILON)) {
-                return error(ValidationError::multiple_of(
-                    instance_path.into(),
-                    instance,
-                    self.multiple_of,
-                ));
-            }
+        if !self.is_valid(schema, instance) {
+            return error(ValidationError::multiple_of(
+                instance_path.into(),
+                instance,
+                self.multiple_of,
+            ));
         }
         no_error()
     }
@@ -89,25 +91,16 @@ impl Validate for MultipleOfIntegerValidator {
 
     fn validate<'a>(
         &self,
-        _: &'a JSONSchema,
+        schema: &'a JSONSchema,
         instance: &'a Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
-        if let Value::Number(item) = instance {
-            let item = item.as_f64().expect("Always valid");
-            let is_multiple = if item.fract() == 0. {
-                (item % self.multiple_of) == 0.
-            } else {
-                let remainder = (item / self.multiple_of) % 1.;
-                remainder < EPSILON && remainder < (1. - EPSILON)
-            };
-            if !is_multiple {
-                return error(ValidationError::multiple_of(
-                    instance_path.into(),
-                    instance,
-                    self.multiple_of,
-                ));
-            }
+        if !self.is_valid(schema, instance) {
+            return error(ValidationError::multiple_of(
+                instance_path.into(),
+                instance,
+                self.multiple_of,
+            ));
         }
         no_error()
     }
