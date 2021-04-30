@@ -2,9 +2,13 @@
 
 ## [Unreleased]
 
-### Performance
+### Fixed
+
+- Floating point overflow in the `multipleOf` validator. Relevant test case from the JSONSchema test suite - `float_overflow.json`
 
 ## [0.8.1] - 2021-04-30
+
+### Performance
 
 - Avoid `String` allocation in `JSONPointer.into_vec`.
 - Replace heap-allocated `InstancePath` with stack-only linked list.

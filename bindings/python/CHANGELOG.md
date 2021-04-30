@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Floating point overflow in the `multipleOf` validator. Relevant test case from the JSONSchema test suite - `float_overflow.json`
+
 ## [0.6.1] - 2021-03-26
 
 ### Fixed
