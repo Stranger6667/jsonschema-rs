@@ -54,10 +54,7 @@ impl Validate for AdditionalItemsObjectValidator {
                 .skip(self.items_count)
                 .flat_map(|(idx, item)| {
                     self.validators.iter().flat_map(move |validator| {
-                        instance_path.push(idx);
-                        let errors = validator.validate(schema, item, instance_path);
-                        instance_path.pop();
-                        errors
+                        validator.validate(schema, item, &instance_path.push(idx))
                     })
                 })
                 .collect();

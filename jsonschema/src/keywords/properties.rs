@@ -57,10 +57,7 @@ impl Validate for PropertiesValidator {
                     let option = item.get(name);
                     option.into_iter().flat_map(move |item| {
                         validators.iter().flat_map(move |validator| {
-                            instance_path.push(name.to_string());
-                            let errors = validator.validate(schema, item, instance_path);
-                            instance_path.pop();
-                            errors
+                            validator.validate(schema, item, &instance_path.push(name.to_string()))
                         })
                     })
                 })

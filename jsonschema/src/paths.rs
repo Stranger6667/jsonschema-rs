@@ -1,6 +1,6 @@
 //! Facilities for working with paths within schemas or validated instances.
+use std::fmt;
 use std::fmt::Write;
-use std::{cell::RefCell, fmt, ops::Deref};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// JSON Pointer as a wrapper around individual path components
@@ -46,22 +46,42 @@ pub(crate) enum PathChunk {
     Index(usize),
 }
 
-pub(crate) type InstancePathInner = RefCell<Vec<PathChunk>>;
+#[derive(Debug)]
+pub(crate) struct InstancePath<'a> {
+    pub(crate) chunk: Option<PathChunk>,
+    pub(crate) parent: Option<&'a InstancePath<'a>>,
+}
 
-#[derive(Clone, Debug)]
-pub(crate) struct InstancePath(InstancePathInner);
+impl<'a> InstancePath<'a> {
+    pub(crate) fn new() -> Self {
+        InstancePath {
+            chunk: None,
+            parent: None,
+        }
+    }
 
-impl InstancePath {
-    pub(crate) fn new(inner: InstancePathInner) -> Self {
-        Self(inner)
+    pub(crate) fn push(&'a self, chunk: impl Into<PathChunk>) -> Self {
+        InstancePath {
+            chunk: Some(chunk.into()),
+            parent: Some(self),
+        }
     }
-    #[inline]
-    pub(crate) fn push(&self, value: impl Into<PathChunk>) {
-        self.borrow_mut().push(value.into())
-    }
-    #[inline]
-    pub(crate) fn pop(&self) {
-        self.borrow_mut().pop();
+
+    pub(crate) fn to_vec(&'a self) -> Vec<PathChunk> {
+        // The path capacity should be the average depth so we avoid extra allocations
+        let mut result = Vec::with_capacity(6);
+        let mut current = self;
+        if let Some(chunk) = &current.chunk {
+            result.push(chunk.clone())
+        }
+        while let Some(next) = current.parent {
+            current = next;
+            if let Some(chunk) = &current.chunk {
+                result.push(chunk.clone())
+            }
+        }
+        result.reverse();
+        result
     }
 }
 
@@ -78,18 +98,10 @@ impl From<usize> for PathChunk {
     }
 }
 
-impl Deref for InstancePath {
-    type Target = InstancePathInner;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl From<&InstancePath> for JSONPointer {
+impl<'a> From<&'a InstancePath<'a>> for JSONPointer {
     #[inline]
-    fn from(path: &InstancePath) -> Self {
-        JSONPointer(path.0.borrow().iter().map(|item| item.to_owned()).collect())
+    fn from(path: &'a InstancePath<'a>) -> Self {
+        JSONPointer(path.to_vec())
     }
 }
 

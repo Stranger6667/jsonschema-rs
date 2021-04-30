@@ -4,7 +4,8 @@
 
 ### Performance
 
-- Avoid `String` allocation in `JSONPointer.into_vec`
+- Avoid `String` allocation in `JSONPointer.into_vec`.
+- Replace heap-allocated `InstancePath` with stack-only linked list.
 
 ## [0.8.0] - 2021-04-27
 

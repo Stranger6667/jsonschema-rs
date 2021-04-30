@@ -60,10 +60,7 @@ macro_rules! is_valid_patterns {
 macro_rules! validate {
     ($validators:expr, $schema:ident, $value:ident, $instance_path:expr, $property_name:expr) => {{
         $validators.iter().flat_map(move |validator| {
-            $instance_path.push($property_name);
-            let errors = validator.validate($schema, $value, $instance_path);
-            $instance_path.pop();
-            errors
+            validator.validate($schema, $value, &$instance_path.push($property_name))
         })
     }};
 }
