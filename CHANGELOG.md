@@ -4,6 +4,8 @@
 
 ### Performance
 
+## [0.8.1] - 2021-04-30
+
 - Avoid `String` allocation in `JSONPointer.into_vec`.
 - Replace heap-allocated `InstancePath` with stack-only linked list.
 
@@ -188,7 +190,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.8.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.8.1...HEAD
+[0.8.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.8.0...rust-v0.8.1
 [0.8.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.7.0...rust-v0.8.0
 [0.7.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.6.1...rust-v0.7.0
 [0.6.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.6.0...rust-v0.6.1
