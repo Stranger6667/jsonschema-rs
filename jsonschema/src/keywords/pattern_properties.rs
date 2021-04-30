@@ -62,10 +62,11 @@ impl Validate for PatternPropertiesValidator {
                         .filter(move |(key, _)| re.is_match(key))
                         .flat_map(move |(key, value)| {
                             validators.iter().flat_map(move |validator| {
-                                instance_path.push(key.to_owned());
-                                let errors = validator.validate(schema, value, instance_path);
-                                instance_path.pop();
-                                errors
+                                validator.validate(
+                                    schema,
+                                    value,
+                                    &instance_path.push(key.to_owned()),
+                                )
                             })
                         })
                 })

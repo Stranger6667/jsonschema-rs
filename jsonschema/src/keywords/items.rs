@@ -53,10 +53,7 @@ impl Validate for ItemsArrayValidator {
                 .enumerate()
                 .flat_map(move |(idx, (item, validators))| {
                     validators.iter().flat_map(move |validator| {
-                        instance_path.push(idx);
-                        let errors = validator.validate(schema, item, instance_path);
-                        instance_path.pop();
-                        errors
+                        validator.validate(schema, item, &instance_path.push(idx))
                     })
                 })
                 .collect();
@@ -108,10 +105,7 @@ impl Validate for ItemsObjectValidator {
                 .iter()
                 .flat_map(move |validator| {
                     items.iter().enumerate().flat_map(move |(idx, item)| {
-                        instance_path.push(idx);
-                        let errors = validator.validate(schema, item, instance_path);
-                        instance_path.pop();
-                        errors
+                        validator.validate(schema, item, &instance_path.push(idx))
                     })
                 })
                 .collect();

@@ -14,7 +14,6 @@ use crate::{
 use context::CompilationContext;
 use options::CompilationOptions;
 use serde_json::Value;
-use std::cell::RefCell;
 use url::Url;
 
 pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
@@ -64,14 +63,7 @@ impl<'a> JSONSchema<'a> {
         let mut errors = self
             .validators
             .iter()
-            .flat_map(move |validator| {
-                validator.validate(
-                    self,
-                    instance,
-                    // The path capacity should be the average depth so we avoid extra allocations
-                    &InstancePath::new(RefCell::new(Vec::with_capacity(6))),
-                )
-            })
+            .flat_map(move |validator| validator.validate(self, instance, &InstancePath::new()))
             .peekable();
         if errors.peek().is_none() {
             Ok(())
