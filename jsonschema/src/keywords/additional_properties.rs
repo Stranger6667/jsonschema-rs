@@ -19,6 +19,67 @@ use serde_json::{Map, Value};
 
 pub(crate) type PatternedValidators = Vec<(Regex, Validators)>;
 
+/// Provide mapping API to get validators associated with a property from the underlying storage.
+pub(crate) trait PropertiesValidatorsMap: Send + Sync {
+    fn get_validator(&self, property: &str) -> Option<&Validators>;
+    fn get_key_validator(&self, property: &str) -> Option<(&String, &Validators)>;
+}
+
+// Iterating over a small vector and comparing strings is faster than a map lookup
+const MAP_SIZE_THRESHOLD: usize = 40;
+pub(crate) type SmallValidatorsMap = Vec<(String, Validators)>;
+pub(crate) type BigValidatorsMap = AHashMap<String, Validators>;
+
+impl PropertiesValidatorsMap for SmallValidatorsMap {
+    #[inline]
+    fn get_validator(&self, property: &str) -> Option<&Validators> {
+        for (prop, validators) in self {
+            if prop == property {
+                return Some(validators);
+            }
+        }
+        None
+    }
+    #[inline]
+    fn get_key_validator(&self, property: &str) -> Option<(&String, &Validators)> {
+        for (prop, validators) in self {
+            if prop == property {
+                return Some((prop, validators));
+            }
+        }
+        None
+    }
+}
+
+impl PropertiesValidatorsMap for BigValidatorsMap {
+    #[inline]
+    fn get_validator(&self, property: &str) -> Option<&Validators> {
+        self.get(property)
+    }
+
+    #[inline]
+    fn get_key_validator(&self, property: &str) -> Option<(&String, &Validators)> {
+        self.get_key_value(property)
+    }
+}
+
+macro_rules! dynamic_map {
+    ($validator:tt, $properties:ident, $( $arg:tt ),* $(,)*) => {{
+        if let Value::Object(map) = $properties {
+            if map.len() < MAP_SIZE_THRESHOLD {
+                Some($validator::<SmallValidatorsMap>::compile(
+                    map, $($arg, )*
+                ))
+            } else {
+                Some($validator::<BigValidatorsMap>::compile(
+                    map, $($arg, )*
+                ))
+            }
+        } else {
+            Some(Err(CompilationError::SchemaError))
+        }
+    }};
+}
 macro_rules! is_valid {
     ($validators:expr, $schema:ident, $value:ident) => {{
         $validators
@@ -66,10 +127,20 @@ macro_rules! validate {
     }};
 }
 
-fn compile_properties(
+fn compile_small_map(
     map: &Map<String, Value>,
     context: &CompilationContext,
-) -> Result<AHashMap<String, Validators>, CompilationError> {
+) -> Result<SmallValidatorsMap, CompilationError> {
+    let mut properties = Vec::with_capacity(map.len());
+    for (key, subschema) in map {
+        properties.push((key.clone(), compile_validators(subschema, context)?));
+    }
+    Ok(properties)
+}
+fn compile_big_map(
+    map: &Map<String, Value>,
+    context: &CompilationContext,
+) -> Result<BigValidatorsMap, CompilationError> {
     let mut properties = AHashMap::with_capacity(map.len());
     for (key, subschema) in map {
         properties.insert(key.clone(), compile_validators(subschema, context)?);
@@ -211,25 +282,36 @@ impl ToString for AdditionalPropertiesFalseValidator {
 ///     "foo": "bar",
 /// }
 /// ```
-pub(crate) struct AdditionalPropertiesNotEmptyFalseValidator {
-    properties: AHashMap<String, Validators>,
+pub(crate) struct AdditionalPropertiesNotEmptyFalseValidator<M: PropertiesValidatorsMap> {
+    properties: M,
 }
-impl AdditionalPropertiesNotEmptyFalseValidator {
+impl AdditionalPropertiesNotEmptyFalseValidator<SmallValidatorsMap> {
     #[inline]
-    pub(crate) fn compile(properties: &Value, context: &CompilationContext) -> CompilationResult {
-        match properties {
-            Value::Object(map) => Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
-                properties: compile_properties(map, context)?,
-            })),
-            _ => Err(CompilationError::SchemaError),
-        }
+    pub(crate) fn compile(
+        map: &Map<String, Value>,
+        context: &CompilationContext,
+    ) -> CompilationResult {
+        Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
+            properties: compile_small_map(map, context)?,
+        }))
     }
 }
-impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
+impl AdditionalPropertiesNotEmptyFalseValidator<BigValidatorsMap> {
+    #[inline]
+    pub(crate) fn compile(
+        map: &Map<String, Value>,
+        context: &CompilationContext,
+    ) -> CompilationResult {
+        Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
+            properties: compile_big_map(map, context)?,
+        }))
+    }
+}
+impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseValidator<M> {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             for (property, value) in item {
-                if let Some(validators) = self.properties.get(property) {
+                if let Some(validators) = self.properties.get_validator(property) {
                     is_valid_pattern_schema!(validators, schema, value)
                 } else {
                     // No extra properties are allowed
@@ -250,7 +332,7 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
             let mut errors = vec![];
             let mut unexpected = vec![];
             for (property, value) in item {
-                if let Some((name, validators)) = self.properties.get_key_value(property) {
+                if let Some((name, validators)) = self.properties.get_key_validator(property) {
                     // When a property is in `properties`, then it should be VALID
                     errors.extend(validate!(validators, schema, value, instance_path, name));
                 } else {
@@ -272,7 +354,7 @@ impl Validate for AdditionalPropertiesNotEmptyFalseValidator {
     }
 }
 
-impl ToString for AdditionalPropertiesNotEmptyFalseValidator {
+impl<M: PropertiesValidatorsMap> ToString for AdditionalPropertiesNotEmptyFalseValidator<M> {
     fn to_string(&self) -> String {
         "additionalProperties: false".to_string()
     }
@@ -297,32 +379,41 @@ impl ToString for AdditionalPropertiesNotEmptyFalseValidator {
 ///     "bar": 6
 /// }
 /// ```
-pub(crate) struct AdditionalPropertiesNotEmptyValidator {
+pub(crate) struct AdditionalPropertiesNotEmptyValidator<M: PropertiesValidatorsMap> {
     validators: Validators,
-    properties: AHashMap<String, Validators>,
+    properties: M,
 }
-impl AdditionalPropertiesNotEmptyValidator {
+impl AdditionalPropertiesNotEmptyValidator<SmallValidatorsMap> {
     #[inline]
     pub(crate) fn compile(
+        map: &Map<String, Value>,
         schema: &Value,
-        properties: &Value,
         context: &CompilationContext,
     ) -> CompilationResult {
-        if let Value::Object(map) = properties {
-            Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
-                properties: compile_properties(map, context)?,
-                validators: compile_validators(schema, context)?,
-            }))
-        } else {
-            Err(CompilationError::SchemaError)
-        }
+        Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
+            properties: compile_small_map(map, context)?,
+            validators: compile_validators(schema, context)?,
+        }))
     }
 }
-impl Validate for AdditionalPropertiesNotEmptyValidator {
+impl AdditionalPropertiesNotEmptyValidator<BigValidatorsMap> {
+    #[inline]
+    pub(crate) fn compile(
+        map: &Map<String, Value>,
+        schema: &Value,
+        context: &CompilationContext,
+    ) -> CompilationResult {
+        Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
+            properties: compile_big_map(map, context)?,
+            validators: compile_validators(schema, context)?,
+        }))
+    }
+}
+impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValidator<M> {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
         if let Value::Object(map) = instance {
             for (property, value) in map {
-                if let Some(property_validators) = self.properties.get(property) {
+                if let Some(property_validators) = self.properties.get_validator(property) {
                     is_valid_pattern_schema!(property_validators, schema, value)
                 } else {
                     for validator in &self.validators {
@@ -345,7 +436,9 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
         if let Value::Object(map) = instance {
             let mut errors = vec![];
             for (property, value) in map {
-                if let Some((name, property_validators)) = self.properties.get_key_value(property) {
+                if let Some((name, property_validators)) =
+                    self.properties.get_key_validator(property)
+                {
                     errors.extend(validate!(
                         property_validators,
                         schema,
@@ -370,7 +463,7 @@ impl Validate for AdditionalPropertiesNotEmptyValidator {
     }
 }
 
-impl ToString for AdditionalPropertiesNotEmptyValidator {
+impl<M: PropertiesValidatorsMap> ToString for AdditionalPropertiesNotEmptyValidator<M> {
     fn to_string(&self) -> String {
         format!(
             "additionalProperties: {}",
@@ -594,37 +687,50 @@ impl ToString for AdditionalPropertiesWithPatternsFalseValidator {
 ///     "bar": 42
 /// }
 /// ```
-pub(crate) struct AdditionalPropertiesWithPatternsNotEmptyValidator {
+pub(crate) struct AdditionalPropertiesWithPatternsNotEmptyValidator<M: PropertiesValidatorsMap> {
     validators: Validators,
-    properties: AHashMap<String, Validators>,
+    properties: M,
     patterns: PatternedValidators,
 }
-impl AdditionalPropertiesWithPatternsNotEmptyValidator {
+impl AdditionalPropertiesWithPatternsNotEmptyValidator<SmallValidatorsMap> {
     #[inline]
     pub(crate) fn compile(
+        map: &Map<String, Value>,
         schema: &Value,
-        properties: &Value,
         patterns: PatternedValidators,
         context: &CompilationContext,
     ) -> CompilationResult {
-        if let Value::Object(map) = properties {
-            Ok(Box::new(
-                AdditionalPropertiesWithPatternsNotEmptyValidator {
-                    validators: compile_validators(schema, context)?,
-                    properties: compile_properties(map, context)?,
-                    patterns,
-                },
-            ))
-        } else {
-            Err(CompilationError::SchemaError)
-        }
+        Ok(Box::new(
+            AdditionalPropertiesWithPatternsNotEmptyValidator {
+                validators: compile_validators(schema, context)?,
+                properties: compile_small_map(map, context)?,
+                patterns,
+            },
+        ))
     }
 }
-impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
+impl AdditionalPropertiesWithPatternsNotEmptyValidator<BigValidatorsMap> {
+    #[inline]
+    pub(crate) fn compile(
+        map: &Map<String, Value>,
+        schema: &Value,
+        patterns: PatternedValidators,
+        context: &CompilationContext,
+    ) -> CompilationResult {
+        Ok(Box::new(
+            AdditionalPropertiesWithPatternsNotEmptyValidator {
+                validators: compile_validators(schema, context)?,
+                properties: compile_big_map(map, context)?,
+                patterns,
+            },
+        ))
+    }
+}
+impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNotEmptyValidator<M> {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             for (property, value) in item.iter() {
-                if let Some(validators) = self.properties.get(property) {
+                if let Some(validators) = self.properties.get_validator(property) {
                     if is_valid!(validators, schema, value) {
                         // Valid for `properties`, check `patternProperties`
                         for (re, validators) in &self.patterns {
@@ -666,7 +772,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for (property, value) in item.iter() {
-                if let Some((name, validators)) = self.properties.get_key_value(property) {
+                if let Some((name, validators)) = self.properties.get_key_validator(property) {
                     errors.extend(validate!(validators, schema, value, instance_path, name));
                     errors.extend(
                         self.patterns
@@ -704,7 +810,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyValidator {
         }
     }
 }
-impl ToString for AdditionalPropertiesWithPatternsNotEmptyValidator {
+impl<M: PropertiesValidatorsMap> ToString for AdditionalPropertiesWithPatternsNotEmptyValidator<M> {
     fn to_string(&self) -> String {
         format!(
             "additionalProperties: {}",
@@ -738,35 +844,50 @@ impl ToString for AdditionalPropertiesWithPatternsNotEmptyValidator {
 ///     "x-baz-x": 8,
 /// }
 /// ```
-pub(crate) struct AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
-    properties: AHashMap<String, Validators>,
+pub(crate) struct AdditionalPropertiesWithPatternsNotEmptyFalseValidator<M: PropertiesValidatorsMap>
+{
+    properties: M,
     patterns: PatternedValidators,
 }
-impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
+impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator<SmallValidatorsMap> {
     #[inline]
     pub(crate) fn compile(
-        properties: &Value,
+        map: &Map<String, Value>,
         patterns: PatternedValidators,
         context: &CompilationContext,
     ) -> CompilationResult {
-        if let Value::Object(map) = properties {
-            Ok(Box::new(
-                AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
-                    properties: compile_properties(map, context)?,
-                    patterns,
-                },
-            ))
-        } else {
-            Err(CompilationError::SchemaError)
-        }
+        Ok(Box::new(
+            AdditionalPropertiesWithPatternsNotEmptyFalseValidator::<SmallValidatorsMap> {
+                properties: compile_small_map(map, context)?,
+                patterns,
+            },
+        ))
     }
 }
-impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
+impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator<BigValidatorsMap> {
+    #[inline]
+    pub(crate) fn compile(
+        map: &Map<String, Value>,
+        patterns: PatternedValidators,
+        context: &CompilationContext,
+    ) -> CompilationResult {
+        Ok(Box::new(
+            AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
+                properties: compile_big_map(map, context)?,
+                patterns,
+            },
+        ))
+    }
+}
+
+impl<M: PropertiesValidatorsMap> Validate
+    for AdditionalPropertiesWithPatternsNotEmptyFalseValidator<M>
+{
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             // No properties are allowed, except ones defined in `properties` or `patternProperties`
             for (property, value) in item.iter() {
-                if let Some(validators) = self.properties.get(property) {
+                if let Some(validators) = self.properties.get_validator(property) {
                     if is_valid!(validators, schema, value) {
                         // Valid for `properties`, check `patternProperties`
                         for (re, validators) in &self.patterns {
@@ -798,7 +919,7 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
             let mut unexpected = vec![];
             // No properties are allowed, except ones defined in `properties` or `patternProperties`
             for (property, value) in item.iter() {
-                if let Some((name, validators)) = self.properties.get_key_value(property) {
+                if let Some((name, validators)) = self.properties.get_key_validator(property) {
                     errors.extend(validate!(validators, schema, value, instance_path, name));
                     errors.extend(
                         self.patterns
@@ -838,7 +959,9 @@ impl Validate for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
     }
 }
 
-impl ToString for AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
+impl<M: PropertiesValidatorsMap> ToString
+    for AdditionalPropertiesWithPatternsNotEmptyFalseValidator<M>
+{
     fn to_string(&self) -> String {
         "additionalProperties: false".to_string()
     }
@@ -858,12 +981,11 @@ pub(crate) fn compile(
                 Value::Bool(true) => None, // "additionalProperties" are "true" by default
                 Value::Bool(false) => {
                     if let Some(properties) = properties {
-                        Some(
-                            AdditionalPropertiesWithPatternsNotEmptyFalseValidator::compile(
-                                properties,
-                                compiled_patterns,
-                                context,
-                            ),
+                        dynamic_map!(
+                            AdditionalPropertiesWithPatternsNotEmptyFalseValidator,
+                            properties,
+                            compiled_patterns,
+                            context
                         )
                     } else {
                         Some(AdditionalPropertiesWithPatternsFalseValidator::compile(
@@ -873,12 +995,13 @@ pub(crate) fn compile(
                 }
                 _ => {
                     if let Some(properties) = properties {
-                        Some(AdditionalPropertiesWithPatternsNotEmptyValidator::compile(
-                            schema,
+                        dynamic_map!(
+                            AdditionalPropertiesWithPatternsNotEmptyValidator,
                             properties,
+                            schema,
                             compiled_patterns,
-                            context,
-                        ))
+                            context
+                        )
                     } else {
                         Some(AdditionalPropertiesWithPatternsValidator::compile(
                             schema,
@@ -896,18 +1019,23 @@ pub(crate) fn compile(
             Value::Bool(true) => None, // "additionalProperties" are "true" by default
             Value::Bool(false) => {
                 if let Some(properties) = properties {
-                    Some(AdditionalPropertiesNotEmptyFalseValidator::compile(
-                        properties, context,
-                    ))
+                    dynamic_map!(
+                        AdditionalPropertiesNotEmptyFalseValidator,
+                        properties,
+                        context
+                    )
                 } else {
                     Some(AdditionalPropertiesFalseValidator::compile())
                 }
             }
             _ => {
                 if let Some(properties) = properties {
-                    Some(AdditionalPropertiesNotEmptyValidator::compile(
-                        schema, properties, context,
-                    ))
+                    dynamic_map!(
+                        AdditionalPropertiesNotEmptyValidator,
+                        properties,
+                        schema,
+                        context
+                    )
                 } else {
                     Some(AdditionalPropertiesValidator::compile(schema, context))
                 }
