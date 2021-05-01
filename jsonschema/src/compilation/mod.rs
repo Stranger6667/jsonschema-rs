@@ -92,9 +92,12 @@ pub(crate) fn compile_validators(
 ) -> Result<Validators, CompilationError> {
     let context = context.push(schema)?;
     match schema {
-        Value::Bool(value) => Ok(vec![
-            keywords::boolean::compile(*value).expect("Should always compile")?
-        ]),
+        Value::Bool(value) => match value {
+            true => Ok(vec![]),
+            false => Ok(vec![
+                keywords::boolean::FalseValidator::compile().expect("Should always compile")
+            ]),
+        },
         Value::Object(object) => {
             if let Some(reference) = object.get("$ref") {
                 if let Value::String(reference) = reference {
