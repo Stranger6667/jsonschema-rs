@@ -1,10 +1,7 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator},
-    keywords::{
-        boolean::TrueValidator, format_validators, format_vec_of_validators, CompilationResult,
-        Validators,
-    },
+    keywords::{format_validators, format_vec_of_validators, CompilationResult, Validators},
     paths::InstancePath,
     validator::Validate,
 };
@@ -133,7 +130,7 @@ pub(crate) fn compile(
         Value::Object(_) => Some(ItemsObjectValidator::compile(schema, context)),
         Value::Bool(value) => {
             if *value {
-                Some(TrueValidator::compile())
+                None
             } else {
                 Some(ItemsObjectValidator::compile(schema, context))
             }

@@ -1,10 +1,7 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
-    keywords::{
-        boolean::{FalseValidator, TrueValidator},
-        format_validators, CompilationResult, Validators,
-    },
+    keywords::{boolean::FalseValidator, format_validators, CompilationResult, Validators},
     paths::InstancePath,
     validator::Validate,
 };
@@ -121,7 +118,7 @@ pub(crate) fn compile(
 ) -> Option<CompilationResult> {
     if let Some(items) = parent.get("items") {
         match items {
-            Value::Object(_) => Some(TrueValidator::compile()),
+            Value::Object(_) => None,
             Value::Array(items) => {
                 let items_count = items.len();
                 match schema {
@@ -130,7 +127,6 @@ pub(crate) fn compile(
                         items_count,
                         context,
                     )),
-                    Value::Bool(true) => Some(TrueValidator::compile()),
                     Value::Bool(false) => {
                         Some(AdditionalItemsBooleanValidator::compile(items_count))
                     }
@@ -139,7 +135,7 @@ pub(crate) fn compile(
             }
             Value::Bool(value) => {
                 if *value {
-                    Some(TrueValidator::compile())
+                    None
                 } else {
                     Some(FalseValidator::compile())
                 }
@@ -147,6 +143,6 @@ pub(crate) fn compile(
             _ => Some(Err(CompilationError::SchemaError)),
         }
     } else {
-        Some(TrueValidator::compile())
+        None
     }
 }
