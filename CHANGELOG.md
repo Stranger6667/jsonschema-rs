@@ -7,6 +7,7 @@
 - Avoid some repetitive `String` allocations during validation.
 - Reduce the number of `RwLock.read()` calls in `$ref` validators.
 - Shortcut in the `uniqueItems` validator for short arrays.
+- `additionalProperties`. Use vectors instead of `AHashMap` if the number of properties is small.
 
 ### Fixed
 
