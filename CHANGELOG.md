@@ -5,6 +5,7 @@
 ### Performance
 
 - Avoid some repetitive `String` allocations during validation.
+- Reduce the number of `RwLock.read()` calls in `$ref` validators.
 
 ### Fixed
 

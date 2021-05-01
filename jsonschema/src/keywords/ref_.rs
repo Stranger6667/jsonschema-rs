@@ -1,6 +1,6 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
-    error::{error, ErrorIterator, ValidationError},
+    error::{error, ErrorIterator},
     keywords::{CompilationResult, Validators},
     validator::Validate,
 };
@@ -30,38 +30,30 @@ impl RefValidator {
             validators: RwLock::new(None),
         }))
     }
-
-    /// Ensure that validators are built and built once.
-    #[inline]
-    fn ensure_validators<'a>(&self, schema: &'a JSONSchema) -> Result<(), ValidationError<'a>> {
-        if self.validators.read().is_none() {
-            let (scope, resolved) = schema.resolver.resolve_fragment(
-                schema.context.config.draft(),
-                &self.reference,
-                schema.schema,
-            )?;
-            let context = CompilationContext::new(scope, Cow::Borrowed(&schema.context.config));
-            let validators = compile_validators(&resolved, &context)?;
-
-            // Inject the validators into self.validators
-            *self.validators.write() = Some(validators);
-        }
-        Ok(())
-    }
 }
 
 impl Validate for RefValidator {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if self.ensure_validators(schema).is_err() {
-            false
-        } else {
-            self.validators
-                .read()
-                .as_ref()
-                .expect("ensure_validators guarantees the presence of the validators")
+        if let Some(validators) = self.validators.read().as_ref() {
+            return validators
                 .iter()
-                .all(move |validator| validator.is_valid(schema, instance))
+                .all(move |validator| validator.is_valid(schema, instance));
         }
+        if let Ok((scope, resolved)) = schema.resolver.resolve_fragment(
+            schema.context.config.draft(),
+            &self.reference,
+            schema.schema,
+        ) {
+            let context = CompilationContext::new(scope, Cow::Borrowed(&schema.context.config));
+            if let Ok(validators) = compile_validators(&resolved, &context) {
+                let result = validators
+                    .iter()
+                    .all(move |validator| validator.is_valid(schema, instance));
+                *self.validators.write() = Some(validators);
+                return result;
+            }
+        };
+        false
     }
 
     fn validate<'a>(
@@ -70,19 +62,40 @@ impl Validate for RefValidator {
         instance: &'a Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
-        if let Err(err) = self.ensure_validators(schema) {
-            error(err)
-        } else {
-            Box::new(
-                self.validators
-                    .read()
-                    .as_ref()
-                    .expect("ensure_validators guarantees the presence of the validators")
+        if let Some(validators) = self.validators.read().as_ref() {
+            return Box::new(
+                validators
                     .iter()
                     .flat_map(move |validator| validator.validate(schema, instance, instance_path))
                     .collect::<Vec<_>>()
                     .into_iter(),
-            )
+            );
+        }
+        match schema.resolver.resolve_fragment(
+            schema.context.config.draft(),
+            &self.reference,
+            schema.schema,
+        ) {
+            Ok((scope, resolved)) => {
+                let context = CompilationContext::new(scope, Cow::Borrowed(&schema.context.config));
+                match compile_validators(&resolved, &context) {
+                    Ok(validators) => {
+                        let result = Box::new(
+                            validators
+                                .iter()
+                                .flat_map(move |validator| {
+                                    validator.validate(schema, instance, instance_path)
+                                })
+                                .collect::<Vec<_>>()
+                                .into_iter(),
+                        );
+                        *self.validators.write() = Some(validators);
+                        result
+                    }
+                    Err(err) => error(err.into()),
+                }
+            }
+            Err(err) => error(err),
         }
     }
 }
