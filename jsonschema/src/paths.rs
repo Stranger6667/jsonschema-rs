@@ -1,6 +1,5 @@
 //! Facilities for working with paths within schemas or validated instances.
-use std::fmt;
-use std::fmt::Write;
+use std::{fmt, fmt::Write};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// JSON Pointer as a wrapper around individual path components

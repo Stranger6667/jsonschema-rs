@@ -80,7 +80,7 @@ fn main() -> Result<(), CompilationError> {
 
 ## Performance
 
-There is a comparison with other JSON Schema validators written in Rust - `jsonschema_valid==0.4.0` and `valico==3.5.0`.
+There is a comparison with other JSON Schema validators written in Rust - `jsonschema_valid==0.4.0` and `valico==3.6.0`.
 
 Test machine i8700K (12 cores), 32GB RAM.
 
@@ -94,9 +94,9 @@ Ratios are given against compiled `JSONSchema` using its `validate`. The `is_val
 
 | Case          | jsonschema_valid        | valico                  | jsonschema.validate   | jsonschema.is_valid    |
 | ------------- | ----------------------- | ----------------------- | --------------------- | ---------------------- |
-| Big valid     | -                       | 95.008 ms (**x17.35**)  | 5.473 ms              | 3.778 ms (**x0.69**)   |
-| Small valid   | 2.04 us    (**x5.62**)  | 3.67 us   (**x10.11**)  | 362.87 ns             | 100.52 ns (**x0.27**)  |
-| Small invalid | 397.52 ns  (**x0.80**)  | 3.73 us   (**x7.55**)   | 493.85 ns             | 5.80 ns  (**x0.01**)   |
+| Big valid     | -                       | 90.654 ms (**x16.57**)  | 5.468 ms              | 3.688 ms (**x0.67**)   |
+| Small valid   | 2.04 us    (**x5.67**)  | 3.70 us   (**x10.28**)  | 359.59 ns             | 93.40 ns (**x0.25**)   |
+| Small invalid | 397.52 ns  (**x0.81**)  | 3.78 us   (**x7.75**)   | 487.25 ns             | 5.15 ns  (**x0.01**)   |
 
 Unfortunately, `jsonschema_valid` mistakenly considers the Kubernetes Open API schema as invalid and therefore can't be compared with other libraries in this case.
 
