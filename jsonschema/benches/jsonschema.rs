@@ -563,7 +563,7 @@ bench!(
 bench!(
   name = "unique_items";
   schema = {"uniqueItems": true};
-  valid = [1, 2, 3, 4, 5];
+  valid = [1, "2", [3], {"4": 4}, 5, "6", [7], {"8": 8}, 9, "10", [11], {"12": 12}];
   invalid = [1, 2, 3, 4, 5, 1];
 );
 

@@ -6,6 +6,7 @@
 
 - Avoid some repetitive `String` allocations during validation.
 - Reduce the number of `RwLock.read()` calls in `$ref` validators.
+- Shortcut in the `uniqueItems` validator for short arrays.
 
 ### Fixed
 

@@ -94,7 +94,7 @@ Ratios are given against compiled `JSONSchema` using its `validate`. The `is_val
 
 | Case          | jsonschema_valid        | valico                  | jsonschema.validate   | jsonschema.is_valid    |
 | ------------- | ----------------------- | ----------------------- | --------------------- | ---------------------- |
-| Big valid     | -                       | 95.008 ms (**x13.73**)  | 6.916 ms              | 5.245 ms (**x0.75**)   |
+| Big valid     | -                       | 95.008 ms (**x15.06**)  | 6.307 ms              | 4.625 ms (**x0.73**)   |
 | Small valid   | 2.04 us    (**x5.39**)  | 3.67 us   (**x9.70**)   | 378.21 ns             | 113.3 ns (**x0.29**)   |
 | Small invalid | 397.52 ns  (**x0.76**)  | 3.73 us   (**x7.19**)   | 518.70 ns             | 5.53 ns  (**x0.01**)   |
 

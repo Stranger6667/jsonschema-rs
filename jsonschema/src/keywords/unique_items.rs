@@ -1,7 +1,7 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::CompilationResult,
+    keywords::{helpers::equal, CompilationResult},
     validator::Validate,
 };
 use ahash::{AHashSet, AHasher};
@@ -53,10 +53,33 @@ impl Hash for HashedValue<'_> {
     }
 }
 
+// Empirically calculated threshold after which the validator resorts to hashing.
+// Calculated for an array of mixed types, large homogenous arrays of primitive values might be
+// processed faster with different thresholds, but this one gives a good baseline for the common
+// case.
+const ITEMS_SIZE_THRESHOLD: usize = 11;
+
 #[inline]
 pub(crate) fn is_unique(items: &[Value]) -> bool {
-    let mut seen = AHashSet::with_capacity(items.len());
-    items.iter().map(HashedValue).all(move |x| seen.insert(x))
+    let size = items.len();
+    if size <= 1 {
+        // Empty arrays and one-element arrays always contain unique elements
+        true
+    } else if size <= ITEMS_SIZE_THRESHOLD {
+        // If the array size is small enough we can compare all elements pairwise, which will
+        // be faster than calculating hashes for each element, even if the algorithm is O(N^2)
+        for (idx, item) in items.iter().enumerate() {
+            for other_item in items.iter().skip(idx + 1) {
+                if equal(item, other_item) {
+                    return false;
+                }
+            }
+        }
+        true
+    } else {
+        let mut seen = AHashSet::with_capacity(size);
+        items.iter().map(HashedValue).all(move |x| seen.insert(x))
+    }
 }
 
 pub(crate) struct UniqueItemsValidator {}
