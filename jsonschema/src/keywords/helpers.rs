@@ -16,6 +16,9 @@ macro_rules! num_cmp {
 #[inline]
 pub(crate) fn equal(left: &Value, right: &Value) -> bool {
     match (left, right) {
+        (Value::String(left), Value::String(right)) => left == right,
+        (Value::Bool(left), Value::Bool(right)) => left == right,
+        (Value::Null, Value::Null) => true,
         (Value::Number(left), Value::Number(right)) => {
             if let Some(a) = left.as_u64() {
                 num_cmp!(a, right)
@@ -28,7 +31,7 @@ pub(crate) fn equal(left: &Value, right: &Value) -> bool {
         }
         (Value::Array(left), Value::Array(right)) => equal_arrays(left, right),
         (Value::Object(left), Value::Object(right)) => equal_objects(left, right),
-        (_, _) => left == right,
+        (_, _) => false,
     }
 }
 
