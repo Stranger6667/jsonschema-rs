@@ -53,12 +53,32 @@ Performance
 
 According to our benchmarks, ``jsonschema-rs`` is usually faster than existing alternatives in real-life scenarios.
 
-However, for single-keyword or boolean schemas it might be slower than ``fastjsonschema`` or ``jsonschema`` on PyPy.
+However, for small schemas & inputs it might be slower than ``fastjsonschema`` or ``jsonschema`` on PyPy.
 
-Schemas:
+Input values and schemas
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-- ``kubernetes-openapi`` is an Open API schema for `Kubernetes <https://raw.githubusercontent.com/APIs-guru/openapi-directory/master/APIs/kubernetes.io/v1.10.0/swagger.yaml>`_ which is ~3.15 MB JSON file.
-- ``small`` is taken from ``fastjsonschema`` benchmarks.
+- `Zuora <https://github.com/APIs-guru/openapi-directory/blob/master/APIs/zuora.com/2021-04-23/openapi.yaml>`_ OpenAPI schema (``zuora.json``). Validated against `OpenAPI 3.0 JSON Schema <https://github.com/OAI/OpenAPI-Specification/blob/main/schemas/v3.0/schema.json>`_ (``openapi.json``).
+- `Kubernetes <https://raw.githubusercontent.com/APIs-guru/openapi-directory/master/APIs/kubernetes.io/v1.10.0/swagger.yaml>`_ Swagger schema (``kubernetes.json``). Validated against `Swagger JSON Schema <https://github.com/OAI/OpenAPI-Specification/blob/main/schemas/v2.0/schema.json>`_ (``swagger.json``).
+- Canadian border in GeoJSON format (``canada.json``). Schema is taken from the `GeoJSON website <https://geojson.org/schema/FeatureCollection.json>`_ (``geojson.json``).
+- Concert data catalog (``citm_catalog.json``). Schema is inferred via `infers-jsonschema <https://github.com/Stranger6667/infers-jsonschema>`_ & manually adjusted (``citm_catalog_schema.json``).
+- ``Fast`` is taken from `fastjsonschema benchmarks <https://github.com/horejsek/python-fastjsonschema/blob/master/performance.py#L15>`_ (``fast_schema.json``, `f`ast_valid.json`` and ``fast_invalid.json``).
+
++----------------+-------------+---------------+
+| Case           | Schema size | Instance size |
++================+=============+===============+
+| OpenAPI        | 18 KB       | 4.5 MB        |
++----------------+-------------+---------------+
+| Swagger        | 25 KB       | 3.0 MB        |
++----------------+-------------+---------------+
+| Canada         | 4.8 KB      | 2.1 MB        |
++----------------+-------------+---------------+
+| CITM catalog   | 2.3 KB      | 501 KB        |
++----------------+-------------+---------------+
+| Fast (valid)   | 595 B       | 55 B          |
++----------------+-------------+---------------+
+| Fast (invalid) | 595 B       | 60 B          |
++----------------+-------------+---------------+
 
 Compiled validators (when the input schema is compiled once and reused later). ``jsonschema-rs`` comes in two variants in the table below:
 
@@ -67,21 +87,45 @@ Compiled validators (when the input schema is compiled once and reused later). `
 
 Ratios are given against the ``validate`` variant.
 
-+-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
-| library                 | ``false``              |  ``{"minimum": 10}``  |  small                     |   kubernetes-openapi      |
-+=========================+========================+=======================+============================+===========================+
-| jsonschema-rs[validate] |              200.82 ns |             203.10 ns |                    1.17 us |                  13.24 ms |
-+-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
-| jsonschema-rs[is_valid] |  187.60 ns (**x0.93**) | 185.24 ns (**x0.91**) |      861.25 ns (**x0.73**) |      11.57 ms (**x0.87**) |
-+-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
-| fastjsonschema[CPython] |   58.57 ns (**x0.29**) | 109.10 ns (**x0.53**) |        4.21 us (**x3.59**) |      91.79 ms (**x6.93**) |
-+-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
-| fastjsonschema[PyPy]    |   1.32 ns (**x0.006**) |  33.39 ns (**x0.16**) |        1.17 us (**x1.00**) |      44.27 ms (**x3.34**) |
-+-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
-| jsonschema[CPython]     |  226.48 ns (**x1.12**) |   1.88 us (**x9.25**) |      58.14 us (**x49.69**) |       1.07 s (**x80.81**) |
-+-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
-| jsonschema[PyPy]        |   41.18 ns (**x0.20**) | 224.94 ns (**x1.10**) |      25.97 us (**x22.19**) |    663.30 ms (**x50.09**) |
-+-------------------------+------------------------+-----------------------+----------------------------+---------------------------+
+Small schemas:
+
++-------------------------+------------------------+-----------------------+----------------------------+----------------------------+
+| library                 | ``true``               | ``{"minimum": 10}``   | ``Fast (valid)``           | ``Fast (invalid)``         |
++=========================+========================+=======================+============================+============================+
+| jsonschema-rs[validate] |              200.82 ns |             203.10 ns |                    1.22 us |                    1.51 us |
++-------------------------+------------------------+-----------------------+----------------------------+----------------------------+
+| jsonschema-rs[is_valid] |  187.60 ns (**x0.93**) | 185.24 ns (**x0.91**) |      850.25 ns (**x0.69**) |        1.18 us (**x0.78**) |
++-------------------------+------------------------+-----------------------+----------------------------+----------------------------+
+| fastjsonschema[CPython] |   58.57 ns (**x0.29**) | 109.10 ns (**x0.53**) |        4.16 us (**x3.40**) |        4.75 us (**x3.14**) |
++-------------------------+------------------------+-----------------------+----------------------------+----------------------------+
+| fastjsonschema[PyPy]    |   1.32 ns (**x0.006**) |  33.39 ns (**x0.16**) |        890 ns  (**x0.72**) |         875 ns (**x0.58**) |
++-------------------------+------------------------+-----------------------+----------------------------+----------------------------+
+| jsonschema[CPython]     |  226.48 ns (**x1.12**) |   1.88 us (**x9.25**) |      56.58 us (**x46.37**) |      57.31 us (**x37.95**) |
++-------------------------+------------------------+-----------------------+----------------------------+----------------------------+
+| jsonschema[PyPy]        |   41.18 ns (**x0.20**) | 224.94 ns (**x1.10**) |      23.40 us (**x19.18**) |      22.78 us (**x15.08**) |
++-------------------------+------------------------+-----------------------+----------------------------+----------------------------+
+
+Large schemas:
+
++-------------------------+-------------------------+--------------------------+----------------------------+---------------------------+
+| library                 | ``Zuora (OpenAPI)``     | ``Kubernetes (Swagger)`` | ``Canada (GeoJSON)``       | ``CITM catalog``          |
++=========================+=========================+==========================+============================+===========================+
+| jsonschema-rs[validate] |               14.166 ms |                13.289 ms |                   4.428 ms |                  4.715 ms |
++-------------------------+-------------------------+--------------------------+----------------------------+---------------------------+
+| jsonschema-rs[is_valid] |   13.963 ms (**x0.98**) |    11.659 ms (**x0.87**) |       4.422 ms (**x0.99**) |      3.134 ms (**x0.66**) |
++-------------------------+-------------------------+--------------------------+----------------------------+---------------------------+
+| fastjsonschema[CPython] |                  -- (1) |    87.020 ms (**x6.54**) |      31.705 ms (**x7.16**) |     11.715 ms (**x2.48**) |
++-------------------------+-------------------------+--------------------------+----------------------------+---------------------------+
+| fastjsonschema[PyPy]    |                  -- (1) |    38.586 ms (**x2.90**) |       8.417 ms (**x1.90**) |      4.789 ms (**x1.01**) |
++-------------------------+-------------------------+--------------------------+----------------------------+---------------------------+
+| jsonschema[CPython]     | 749.615 ms (**x52.91**) |     1.032 s (**x77.65**) |      1.286 s (**x290.42**) |   112.510 ms (**x23.86**) |
++-------------------------+-------------------------+--------------------------+----------------------------+---------------------------+
+| jsonschema[PyPy]        | 611.056 ms (**x43.13**) |  592.584 ms (**x44.59**) |   530.567 ms (**x119.82**) |     28.619 ms (**x6.06**) |
++-------------------------+-------------------------+--------------------------+----------------------------+---------------------------+
+
+Notes:
+
+1. ``fastjsonschema`` fails to compile the Open API spec due to the presence of the ``uri-reference`` format (that is not defined in Draft 4). However, unknown formats are `explicitly supported <https://tools.ietf.org/html/draft-fge-json-schema-validation-00#section-7.1>`_ by the spec.
 
 The bigger the input is the bigger is performance win. You can take a look at benchmarks in ``benches/bench.py``.
 
@@ -91,7 +135,7 @@ Package versions:
 - ``jsonschema`` - ``3.2.0``
 - ``fastjsonschema`` - ``2.15.0``
 
-Measured with stable Rust 1.49, CPython 3.9.1 / PyPy3 7.3.3 on i8700K (12 cores), 32GB RAM, Arch Linux.
+Measured with stable Rust 1.51, CPython 3.9.4 / PyPy3 7.3.4 on i8700K (12 cores), 32GB RAM, Arch Linux.
 
 Python support
 --------------

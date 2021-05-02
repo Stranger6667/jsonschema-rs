@@ -84,23 +84,41 @@ There is a comparison with other JSON Schema validators written in Rust - `jsons
 
 Test machine i8700K (12 cores), 32GB RAM.
 
-Schemas & input values:
+Input values and schemas:
 
-- Big valid input. It is an Open API 2.0 schema for [Kubernetes](https://raw.githubusercontent.com/APIs-guru/openapi-directory/master/APIs/kubernetes.io/v1.10.0/swagger.yaml) which is ~3.15 MB (`kubernetes.json` and `swagger.json` files)
-- Small valid input (`small_schema.json` and `small_valid.json`)
-- Small invalid input (`small_schema.json` and `small_invalid.json`)
+- [Zuora](https://github.com/APIs-guru/openapi-directory/blob/master/APIs/zuora.com/2021-04-23/openapi.yaml) OpenAPI schema (`zuora.json`). Validated against [OpenAPI 3.0 JSON Schema](https://github.com/OAI/OpenAPI-Specification/blob/main/schemas/v3.0/schema.json) (`openapi.json`).
+- [Kubernetes](https://raw.githubusercontent.com/APIs-guru/openapi-directory/master/APIs/kubernetes.io/v1.10.0/swagger.yaml) Swagger schema (`kubernetes.json`). Validated against [Swagger JSON Schema](https://github.com/OAI/OpenAPI-Specification/blob/main/schemas/v2.0/schema.json) (`swagger.json`).
+- Canadian border in GeoJSON format (`canada.json`). Schema is taken from the [GeoJSON website](https://geojson.org/schema/FeatureCollection.json) (`geojson.json`).
+- Concert data catalog (`citm_catalog.json`). Schema is inferred via [infers-jsonschema](https://github.com/Stranger6667/infers-jsonschema) & manually adjusted (`citm_catalog_schema.json`).
+- `Fast` is taken from [fastjsonschema benchmarks](https://github.com/horejsek/python-fastjsonschema/blob/master/performance.py#L15) (`fast_schema.json`, `fast_valid.json` and `fast_invalid.json`).
 
-Ratios are given against compiled `JSONSchema` using its `validate`. The `is_valid` method is faster, but gives only a boolean return value:
+| Case           | Schema size | Instance size |
+| -------------- | ----------- | ------------- |
+| OpenAPI        | 18 KB       | 4.5 MB        |
+| Swagger        | 25 KB       | 3.0 MB        |
+| Canada         | 4.8 KB      | 2.1 MB        |
+| CITM catalog   | 2.3 KB      | 501 KB        |
+| Fast (valid)   | 595 B       | 55 B          |
+| Fast (invalid) | 595 B       | 60 B          |
 
-| Case          | jsonschema_valid        | valico                  | jsonschema.validate   | jsonschema.is_valid    |
-| ------------- | ----------------------- | ----------------------- | --------------------- | ---------------------- |
-| Big valid     | -                       | 90.654 ms (**x16.57**)  | 5.468 ms              | 3.688 ms (**x0.67**)   |
-| Small valid   | 2.04 us    (**x5.67**)  | 3.70 us   (**x10.28**)  | 359.59 ns             | 93.40 ns (**x0.25**)   |
-| Small invalid | 397.52 ns  (**x0.81**)  | 3.78 us   (**x7.75**)   | 487.25 ns             | 5.15 ns  (**x0.01**)   |
+Here is the average time for each contender to validate Ratios are given against compiled `JSONSchema` using its `validate` method. The `is_valid` method is faster, but gives only a boolean return value:
 
-Unfortunately, `jsonschema_valid` mistakenly considers the Kubernetes Open API schema as invalid and therefore can't be compared with other libraries in this case.
+| Case           | jsonschema_valid        | valico                  | jsonschema (validate) | jsonschema (is_valid)  |
+| -------------- | ----------------------- | ----------------------- | --------------------- | ---------------------- |
+| OpenAPI        |                   - (1) |                   - (2) |              1.804 ms |   1.747 ms (**x0.96**) |
+| Swagger        |                   - (3) |  97.401 ms (**x17.78**) |              5.476 ms |   3.738 ms (**x0.68**) |
+| Canada         |  45.555 ms (**x39.20**) | 164.12 ms (**x141.23**) |              1.162 ms |   1.165 ms (**x1.00**) |
+| CITM catalog   |    6.107 ms (**x2.28**) |   15.233 ms (**x5.69**) |              2.677 ms |  755.58 us (**x0.28**) |
+| Fast (valid)   |     2.04 us (**x5.67**) |    3.70 us (**x10.28**) |             359.59 ns |   93.40 ns (**x0.25**) |
+| Fast (invalid) |   397.52 ns (**x0.81**) |     3.78 us (**x7.75**) |             487.25 ns |    5.15 ns (**x0.01**) |
 
-You can find benchmark code in `benches/jsonschema.rs`, Rust version is `1.49`.
+Notes:
+
+1, 2. `jsonschema_valid` and `valico` do not handle valid path instances matching the `^\\/` regex.
+
+3. `jsonschema_valid` fails to resolve local references (e.g. `#/definitions/definitions`).
+
+You can find benchmark code in `benches/jsonschema.rs`, Rust version is `1.51`.
 
 **NOTE**. This library is in early development.
 

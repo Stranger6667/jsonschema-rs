@@ -1,5 +1,6 @@
 import json
 import sys
+from contextlib import suppress
 from functools import partial
 
 import fastjsonschema
@@ -17,10 +18,21 @@ def load_json(filename):
         return json.load(fd)
 
 
-BIG_SCHEMA = load_json("../../jsonschema/benches/swagger.json")
-BIG_INSTANCE = load_json("../../jsonschema/benches/kubernetes.json")
-SMALL_SCHEMA = load_json("../../jsonschema/benches/small_schema.json")
-SMALL_INSTANCE_VALID = [9, "hello", [1, "a", True], {"a": "a", "b": "b", "d": "d"}, 42, 3]
+def load_from_benches(filename):
+    return load_json(f"../../jsonschema/benches/{filename}")
+
+
+OPENAPI = load_from_benches("openapi.json")
+ZUORA = load_from_benches("zuora.json")
+SWAGGER = load_from_benches("swagger.json")
+KUBERNETES = load_from_benches("kubernetes.json")
+GEOJSON = load_from_benches("geojson.json")
+CANADA = load_from_benches("canada.json")
+CITM_CATALOG_SCHEMA = load_from_benches("citm_catalog_schema.json")
+CITM_CATALOG = load_from_benches("citm_catalog.json")
+FAST_SCHEMA = load_from_benches("fast_schema.json")
+FAST_INSTANCE_VALID = [9, "hello", [1, "a", True], {"a": "a", "b": "b", "d": "d"}, 42, 3]
+FAST_INSTANCE_INVALID = [10, "world", [1, "a", True], {"a": "a", "b": "b", "c": "xy"}, "str", 5]
 
 
 @pytest.fixture(params=[True, False], ids=("compiled", "raw"))
@@ -67,6 +79,9 @@ def args(request, variant, is_compiled):
             return partial(fastjsonschema.validate, use_default=False), schema, instance
 
 
+# Small schemas
+
+
 @pytest.mark.data(True, True)
 @pytest.mark.benchmark(group="boolean")
 def test_boolean(benchmark, args):
@@ -79,13 +94,44 @@ def test_minimum(benchmark, args):
     benchmark(*args)
 
 
-@pytest.mark.data(SMALL_SCHEMA, SMALL_INSTANCE_VALID)
-@pytest.mark.benchmark(group="small")
-def test_small_schema(benchmark, args):
+@pytest.mark.data(FAST_SCHEMA, FAST_INSTANCE_VALID)
+@pytest.mark.benchmark(group="fast-valid")
+def test_fast_valid(benchmark, args):
     benchmark(*args)
 
 
-@pytest.mark.data(BIG_SCHEMA, BIG_INSTANCE)
-@pytest.mark.benchmark(group="big")
-def test_big_schema(benchmark, args):
+@pytest.mark.data(FAST_SCHEMA, FAST_INSTANCE_VALID)
+@pytest.mark.benchmark(group="fast-invalid")
+def test_fast_invalid(benchmark, args):
+    def func():
+        with suppress(Exception):
+            args[0](*args[1:])
+
+    benchmark(func)
+
+
+# Large schemas
+
+
+@pytest.mark.data(OPENAPI, ZUORA)
+@pytest.mark.benchmark(group="openapi")
+def test_openapi(benchmark, args):
+    benchmark(*args)
+
+
+@pytest.mark.data(SWAGGER, KUBERNETES)
+@pytest.mark.benchmark(group="swagger")
+def test_swagger(benchmark, args):
+    benchmark(*args)
+
+
+@pytest.mark.data(GEOJSON, CANADA)
+@pytest.mark.benchmark(group="canada")
+def test_canada(benchmark, args):
+    benchmark(*args)
+
+
+@pytest.mark.data(CITM_CATALOG_SCHEMA, CITM_CATALOG)
+@pytest.mark.benchmark(group="citm_catalog")
+def test_citm_catalog(benchmark, args):
     benchmark(*args)

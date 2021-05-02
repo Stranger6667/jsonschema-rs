@@ -79,98 +79,89 @@ macro_rules! bench {
     };
 }
 
-#[allow(dead_code)]
-fn big_schema(c: &mut Criterion) {
-    let schema = read_json("benches/swagger.json");
-    let instance = read_json("benches/kubernetes.json");
-
-    // Compiled schema performance
-    let validator = JSONSchema::options()
-        .with_meta_schemas()
-        .compile(&schema)
-        .unwrap();
-    assert!(validator.is_valid(&instance));
-    assert!(validator.validate(&instance).is_ok());
-    let cfg = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap();
-    let mut scope = json_schema::Scope::new();
-    let valico_validator = scope.compile_and_return(schema.clone(), false).unwrap();
-    c.bench_function(
-        "compare compiled jsonschema-rs big schema specialized",
-        |b| b.iter(|| validator.is_valid(&instance)),
-    );
-    c.bench_function("compare compiled jsonschema-rs big schema common", |b| {
-        b.iter(|| validator.validate(&instance).ok())
-    });
-    c.bench_function("compare compiled jsonschema_valid big schema common", |b| {
-        // There is no specialized method for fast boolean return value
-        b.iter(|| jsonschema_valid::validate(&cfg, &instance).is_ok())
-    });
-    c.bench_function("compare compiled valico big schema common", |b| {
-        // There is no specialized method for fast boolean return value
-        b.iter(|| valico_validator.validate(&instance).is_valid())
-    });
-
-    // Re-compile each run performance
-    c.bench_function(
-        "compare re-compiled jsonschema-rs big schema specialized",
-        |b| {
-            b.iter(|| {
-                let validator = JSONSchema::options()
-                    .with_meta_schemas()
-                    .compile(&schema)
-                    .unwrap();
-                validator.is_valid(&instance)
-            })
-        },
-    );
-    c.bench_function("compare re-compiled jsonschema-rs big schema common", |b| {
-        b.iter(|| {
-            let validator = JSONSchema::options()
-                .with_meta_schemas()
-                .compile(&schema)
-                .unwrap();
-            validator.validate(&instance).ok();
-        })
-    });
-    c.bench_function(
-        "compare re-compiled jsonschema_valid big schema common",
-        |b| {
-            b.iter(|| {
-                let cfg =
-                    jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7))
-                        .unwrap();
-                let _ = jsonschema_valid::validate(&cfg, &instance).is_ok();
-            })
-        },
-    );
-    c.bench_function("compare re-compiled valico big schema common", |b| {
-        b.iter(|| {
-            let mut scope = json_schema::Scope::new();
-            let validator = scope.compile_and_return(schema.clone(), false).unwrap();
-            validator.validate(&instance).is_valid()
-        })
-    });
-
-    // Schema compilation
-    c.bench_function("compare compile jsonschema-rs big schema", |b| {
-        b.iter(|| JSONSchema::compile(&schema).unwrap())
-    });
-    c.bench_function("compare compile jsonschema_valid big schema", |b| {
-        b.iter(|| {
-            jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7)).unwrap()
-        })
-    });
-    c.bench_function("compare compile valico big schema", |b| {
-        b.iter(|| {
-            let mut scope = json_schema::Scope::new();
-            scope.compile_and_return(schema.clone(), false).unwrap();
-        })
-    });
+macro_rules! jsonschema_rs_bench {
+    ($c:tt, $name:expr, $schema:ident, $instance:ident) => {{
+        let validator = JSONSchema::options()
+            .with_meta_schemas()
+            .compile(&$schema)
+            .expect("Invalid schema");
+        assert!(validator.is_valid(&$instance), "Invalid instance");
+        assert!(validator.validate(&$instance).is_ok(), "Invalid instance");
+        $c.bench_function(&format!("jsonschema-rs {} is_valid", $name), |b| {
+            b.iter(|| validator.is_valid(&$instance))
+        });
+        $c.bench_function(&format!("jsonschema-rs {} validate", $name), |b| {
+            b.iter(|| validator.validate(&$instance).ok())
+        });
+    }};
+}
+macro_rules! jsonschema_valid_bench {
+    ($c:tt, $name:expr, $schema:ident, $instance:ident, $draft:expr) => {{
+        let cfg =
+            jsonschema_valid::Config::from_schema(&$schema, Some($draft)).expect("Invalid schema");
+        assert!(
+            jsonschema_valid::validate(&cfg, &$instance).is_ok(),
+            "Invalid instance"
+        );
+        $c.bench_function(&format!("jsonschema-valid {}", $name), |b| {
+            // There is no specialized method for fast boolean return value
+            b.iter(|| jsonschema_valid::validate(&cfg, &$instance).is_ok())
+        });
+    }};
+}
+macro_rules! valico_bench {
+    ($c:tt, $name:expr, $schema:ident, $instance:ident) => {{
+        let mut scope = json_schema::Scope::new();
+        let valico_validator = scope.compile_and_return($schema.clone(), false).unwrap();
+        assert!(
+            valico_validator.validate(&$instance).is_valid(),
+            "Invalid instance"
+        );
+        $c.bench_function(&format!("valico {}", $name), |b| {
+            // There is no specialized method for fast boolean return value
+            b.iter(|| valico_validator.validate(&$instance).is_valid())
+        });
+    }};
 }
 
 #[allow(dead_code)]
-fn small_schema(c: &mut Criterion) {
-    let schema = read_json("benches/small_schema.json");
+fn large_schemas(c: &mut Criterion) {
+    // Open API JSON Schema
+    // Only `jsonschema` works correctly - other libraries do not recognize `zuora` as valid
+    let openapi = read_json("benches/openapi.json");
+    let zuora = read_json("benches/zuora.json");
+    jsonschema_rs_bench!(c, "openapi", openapi, zuora);
+
+    // Swagger JSON Schema
+    let swagger = read_json("benches/swagger.json");
+    let kubernetes = read_json("benches/kubernetes.json");
+    jsonschema_rs_bench!(c, "swagger", swagger, kubernetes);
+    valico_bench!(c, "swagger", swagger, kubernetes);
+
+    // Canada borders in GeoJSON
+    let geojson = read_json("benches/geojson.json");
+    let canada = read_json("benches/canada.json");
+    jsonschema_rs_bench!(c, "canada", geojson, canada);
+    jsonschema_valid_bench!(c, "canada", geojson, canada, schemas::Draft::Draft7);
+    valico_bench!(c, "canada", geojson, canada);
+
+    // CITM catalog
+    let citm_catalog_schema = read_json("benches/citm_catalog_schema.json");
+    let citm_catalog = read_json("benches/citm_catalog.json");
+    jsonschema_rs_bench!(c, "citm_catalog", citm_catalog_schema, citm_catalog);
+    jsonschema_valid_bench!(
+        c,
+        "citm_catalog",
+        citm_catalog_schema,
+        citm_catalog,
+        schemas::Draft::Draft7
+    );
+    valico_bench!(c, "citm_catalog", citm_catalog_schema, citm_catalog);
+}
+
+#[allow(dead_code)]
+fn fast_schema(c: &mut Criterion) {
+    let schema = read_json("benches/fast_schema.json");
     let valid =
         black_box(json!([9, "hello", [1, "a", true], {"a": "a", "b": "b", "d": "d"}, 42, 3]));
     let invalid =
@@ -626,5 +617,5 @@ criterion_group!(
     bench_type_multiple,
     bench_unique_items,
 );
-criterion_group!(arbitrary, big_schema, small_schema);
+criterion_group!(arbitrary, large_schemas, fast_schema);
 criterion_main!(arbitrary, keywords);
