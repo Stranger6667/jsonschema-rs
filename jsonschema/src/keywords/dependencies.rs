@@ -1,9 +1,7 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, CompilationError, ErrorIterator},
-    keywords::{
-        format_key_value_validators, required::RequiredValidator, CompilationResult, Validators,
-    },
+    keywords::{format_key_value_validators, required, CompilationResult, Validators},
     paths::InstancePath,
     validator::Validate,
 };
@@ -20,7 +18,10 @@ impl DependenciesValidator {
             let mut dependencies = Vec::with_capacity(map.len());
             for (key, subschema) in map {
                 let s = match subschema {
-                    Value::Array(_) => vec![RequiredValidator::compile(subschema)?],
+                    Value::Array(_) => {
+                        vec![required::compile(map, subschema, context)
+                            .expect("The required validator compilation does not return None")?]
+                    }
                     _ => compile_validators(subschema, context)?,
                 };
                 dependencies.push((key.clone(), s))
