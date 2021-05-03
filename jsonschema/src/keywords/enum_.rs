@@ -18,20 +18,16 @@ pub(crate) struct EnumValidator {
 
 impl EnumValidator {
     #[inline]
-    pub(crate) fn compile(schema: &Value) -> CompilationResult {
-        if let Value::Array(items) = schema {
-            let mut types = PrimitiveTypesBitMap::new();
-            for item in items.iter() {
-                types |= PrimitiveType::from(item);
-            }
-            Ok(Box::new(EnumValidator {
-                options: schema.clone(),
-                items: items.clone(),
-                types,
-            }))
-        } else {
-            Err(CompilationError::SchemaError)
+    pub(crate) fn compile(schema: &Value, items: &[Value]) -> CompilationResult {
+        let mut types = PrimitiveTypesBitMap::new();
+        for item in items.iter() {
+            types |= PrimitiveType::from(item);
         }
+        Ok(Box::new(EnumValidator {
+            options: schema.clone(),
+            items: items.to_vec(),
+            types,
+        }))
     }
 }
 
@@ -78,11 +74,65 @@ impl ToString for EnumValidator {
     }
 }
 
+#[derive(Debug)]
+pub(crate) struct SingleValueEnumValidator {
+    value: Value,
+    options: Value,
+}
+
+impl SingleValueEnumValidator {
+    #[inline]
+    pub(crate) fn compile(schema: &Value, value: &Value) -> CompilationResult {
+        Ok(Box::new(SingleValueEnumValidator {
+            options: schema.clone(),
+            value: value.clone(),
+        }))
+    }
+}
+
+impl Validate for SingleValueEnumValidator {
+    fn validate<'a>(
+        &self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        instance_path: &InstancePath,
+    ) -> ErrorIterator<'a> {
+        if !self.is_valid(schema, instance) {
+            error(ValidationError::enumeration(
+                instance_path.into(),
+                instance,
+                &self.options,
+            ))
+        } else {
+            no_error()
+        }
+    }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        helpers::equal(&self.value, instance)
+    }
+}
+
+impl ToString for SingleValueEnumValidator {
+    fn to_string(&self) -> String {
+        format!("enum: [{}]", self.value)
+    }
+}
+
 #[inline]
 pub(crate) fn compile(
     _: &Map<String, Value>,
     schema: &Value,
     _: &CompilationContext,
 ) -> Option<CompilationResult> {
-    Some(EnumValidator::compile(schema))
+    if let Value::Array(items) = schema {
+        if items.len() == 1 {
+            let value = items.iter().next().expect("Vec is not empty");
+            Some(SingleValueEnumValidator::compile(schema, value))
+        } else {
+            Some(EnumValidator::compile(schema, items))
+        }
+    } else {
+        Some(Err(CompilationError::SchemaError))
+    }
 }
