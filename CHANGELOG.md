@@ -11,6 +11,7 @@
 - Special handling for single-item `required` validators.
 - Special handling for single-item `enum` validators.
 - Special handling for single-item `allOf` validators.
+- Special handling for single-item `patternProperties` validators without defined `additionalProperties`.
 
 ### Fixed
 
