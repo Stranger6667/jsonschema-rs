@@ -10,6 +10,7 @@
 - `additionalProperties`. Use vectors instead of `AHashMap` if the number of properties is small.
 - Special handling for single-item `required` validators.
 - Special handling for single-item `enum` validators.
+- Special handling for single-item `allOf` validators.
 
 ### Fixed
 
