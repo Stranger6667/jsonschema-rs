@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## Changed
+
+- Update `PyO3` to `0.13.x`.
+
 ### Fixed
 
 - Floating point overflow in the `multipleOf` validator. Relevant test case from the JSONSchema test suite - `float_overflow.json`
