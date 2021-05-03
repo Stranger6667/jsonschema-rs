@@ -10,6 +10,7 @@
     clippy::map_unwrap_or,
     clippy::unwrap_used
 )]
+#![allow(clippy::upper_case_acronyms)]
 use jsonschema::Draft;
 use pyo3::{
     create_exception, exceptions, prelude::*, types::PyAny, wrap_pyfunction, PyObjectProtocol,

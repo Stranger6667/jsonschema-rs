@@ -2,7 +2,7 @@ use pyo3::ffi::{PyTypeObject, PyUnicode_AsUTF8AndSize, Py_UNICODE, Py_hash_t, Py
 use std::os::raw::c_char;
 
 #[repr(C)]
-struct PyASCIIObject {
+struct PyAsciiObject {
     pub ob_refcnt: Py_ssize_t,
     pub ob_type: *mut PyTypeObject,
     pub length: Py_ssize_t,
@@ -32,10 +32,10 @@ pub unsafe fn read_utf8_from_str(
     object_pointer: *mut pyo3::ffi::PyObject,
     size: &mut Py_ssize_t,
 ) -> *const u8 {
-    if (*object_pointer.cast::<PyASCIIObject>()).state & STATE_ASCII == STATE_ASCII {
-        *size = (*object_pointer.cast::<PyASCIIObject>()).length;
-        object_pointer.cast::<PyASCIIObject>().offset(1) as *const u8
-    } else if (*object_pointer.cast::<PyASCIIObject>()).state & STATE_COMPACT == STATE_COMPACT
+    if (*object_pointer.cast::<PyAsciiObject>()).state & STATE_ASCII == STATE_ASCII {
+        *size = (*object_pointer.cast::<PyAsciiObject>()).length;
+        object_pointer.cast::<PyAsciiObject>().offset(1) as *const u8
+    } else if (*object_pointer.cast::<PyAsciiObject>()).state & STATE_COMPACT == STATE_COMPACT
         && !(*object_pointer.cast::<PyCompactUnicodeObject>())
             .utf8
             .is_null()

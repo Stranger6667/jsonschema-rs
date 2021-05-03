@@ -21,7 +21,7 @@ pub fn init() {
         TRUE = Py_True();
         STR_TYPE = Py_TYPE(PyUnicode_New(0, 255));
         DICT_TYPE = Py_TYPE(PyDict_New());
-        LIST_TYPE = Py_TYPE(PyList_New(0 as Py_ssize_t));
+        LIST_TYPE = Py_TYPE(PyList_New(0_isize));
         NONE_TYPE = Py_TYPE(Py_None());
         BOOL_TYPE = Py_TYPE(TRUE);
         INT_TYPE = Py_TYPE(PyLong_FromLongLong(0));
