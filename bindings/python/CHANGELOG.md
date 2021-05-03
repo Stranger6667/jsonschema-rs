@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.6.2] - 2021-05-03
+
 ## Changed
 
 - Update `PyO3` to `0.13.x`.
@@ -9,6 +11,10 @@
 ### Fixed
 
 - Floating point overflow in the `multipleOf` validator. Relevant test case from the JSONSchema test suite - `float_overflow.json`
+
+### Performance
+
+- Various performance improvements from the underlying Rust crate.
 
 ## [0.6.1] - 2021-03-26
 
@@ -139,7 +145,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.6.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.6.2...HEAD
+[0.6.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.6.1...python-v0.6.2
 [0.6.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.6.0...python-v0.6.1
 [0.6.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.5.1...python-v0.6.0
 [0.5.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.5.0...python-v0.5.1
