@@ -976,40 +976,43 @@ pub(crate) fn compile(
     if let Some(patterns) = parent.get("patternProperties") {
         if let Value::Object(obj) = patterns {
             // Compile all patterns & their validators to avoid doing work in the `patternProperties` validator
-            let compiled_patterns = compile_patterns(obj, context).ok()?;
-            match schema {
-                Value::Bool(true) => None, // "additionalProperties" are "true" by default
-                Value::Bool(false) => {
-                    if let Some(properties) = properties {
-                        dynamic_map!(
-                            AdditionalPropertiesWithPatternsNotEmptyFalseValidator,
-                            properties,
-                            compiled_patterns,
-                            context
-                        )
-                    } else {
-                        Some(AdditionalPropertiesWithPatternsFalseValidator::compile(
-                            compiled_patterns,
-                        ))
+            if let Ok(compiled_patterns) = compile_patterns(obj, context) {
+                match schema {
+                    Value::Bool(true) => None, // "additionalProperties" are "true" by default
+                    Value::Bool(false) => {
+                        if let Some(properties) = properties {
+                            dynamic_map!(
+                                AdditionalPropertiesWithPatternsNotEmptyFalseValidator,
+                                properties,
+                                compiled_patterns,
+                                context
+                            )
+                        } else {
+                            Some(AdditionalPropertiesWithPatternsFalseValidator::compile(
+                                compiled_patterns,
+                            ))
+                        }
+                    }
+                    _ => {
+                        if let Some(properties) = properties {
+                            dynamic_map!(
+                                AdditionalPropertiesWithPatternsNotEmptyValidator,
+                                properties,
+                                schema,
+                                compiled_patterns,
+                                context
+                            )
+                        } else {
+                            Some(AdditionalPropertiesWithPatternsValidator::compile(
+                                schema,
+                                compiled_patterns,
+                                context,
+                            ))
+                        }
                     }
                 }
-                _ => {
-                    if let Some(properties) = properties {
-                        dynamic_map!(
-                            AdditionalPropertiesWithPatternsNotEmptyValidator,
-                            properties,
-                            schema,
-                            compiled_patterns,
-                            context
-                        )
-                    } else {
-                        Some(AdditionalPropertiesWithPatternsValidator::compile(
-                            schema,
-                            compiled_patterns,
-                            context,
-                        ))
-                    }
-                }
+            } else {
+                Some(Err(CompilationError::SchemaError))
             }
         } else {
             Some(Err(CompilationError::SchemaError))
@@ -1067,7 +1070,7 @@ fn compile_patterns(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests_util;
+    use crate::{tests_util, JSONSchema};
     use serde_json::{json, Value};
     use test_case::test_case;
 
@@ -1436,5 +1439,23 @@ mod tests {
         let schema = schema_6();
         tests_util::is_not_valid(&schema, instance);
         tests_util::expect_errors(&schema, instance, expected)
+    }
+
+    #[test]
+    fn unsupported_regex_does_not_compile() {
+        // See GH-213
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "eo:cloud_cover": {
+                    "type": "number",
+                },
+            },
+            "patternProperties": {
+                "^(?!eo:)": {}
+            },
+            "additionalProperties": false
+        });
+        assert!(JSONSchema::compile(&schema).is_err())
     }
 }
