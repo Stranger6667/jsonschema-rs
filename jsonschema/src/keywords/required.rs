@@ -50,7 +50,8 @@ impl Validate for RequiredValidator {
                     errors.push(ValidationError::required(
                         instance_path.into(),
                         instance,
-                        property_name.clone(),
+                        // Value enum is needed for proper string escaping
+                        Value::String(property_name.clone()),
                     ));
                 }
             }
@@ -92,7 +93,8 @@ impl Validate for SingleItemRequiredValidator {
             return error(ValidationError::required(
                 instance_path.into(),
                 instance,
-                self.value.clone(),
+                // Value enum is needed for proper string escaping
+                Value::String(self.value.clone()),
             ));
         }
         no_error()

@@ -197,9 +197,6 @@ mod tests {
             errors[0].to_string(),
             r#"{"a":3} has less than 2 properties"#
         );
-        assert_eq!(
-            errors[1].to_string(),
-            r#"'"a"' is shorter than 3 characters"#
-        );
+        assert_eq!(errors[1].to_string(), r#""a" is shorter than 3 characters"#);
     }
 }

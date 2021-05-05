@@ -1113,12 +1113,12 @@ mod tests {
     }
 
     // `properties.bar` - should be a string
-    #[test_case(&json!({"foo": 3}), &["\'3\' is not of type \'string\'"])]
+    #[test_case(&json!({"foo": 3}), &["3 is not of type \"string\""])]
     // `additionalProperties` - extra keyword & not in `properties` / `patternProperties`
     #[test_case(&json!({"faz": 1}), &["Additional properties are not allowed (\'faz\' was unexpected)"])]
     #[test_case(&json!({"faz": 1, "haz": 1}), &["Additional properties are not allowed (\'faz\', \'haz\' were unexpected)"])]
     // `properties.foo` - should be a string & `patternProperties.^bar` - invalid
-    #[test_case(&json!({"foo": 3, "bar": 4}), &["4 is less than the minimum of 5", "\'3\' is not of type \'string\'"])]
+    #[test_case(&json!({"foo": 3, "bar": 4}), &["4 is less than the minimum of 5", "3 is not of type \"string\""])]
     // `properties.barbaz` - valid; `patternProperties.^bar` - invalid
     #[test_case(&json!({"barbaz": 3}), &["3 is less than the minimum of 5"])]
     // `patternProperties.^bar` (should be >=5)
@@ -1140,7 +1140,7 @@ mod tests {
       &json!({"bar": 4, "spam": 11, "foo": 3, "faz": 1}),
       &[
          "4 is less than the minimum of 5",
-         "\'3\' is not of type \'string\'",
+         "3 is not of type \"string\"",
          "11 is greater than the maximum of 10",
          "Additional properties are not allowed (\'faz\' was unexpected)"
       ]
@@ -1234,7 +1234,7 @@ mod tests {
     }
 
     // `properties` - should be a string
-    #[test_case(&json!({"foo": 3}), &["\'3\' is not of type \'string\'"])]
+    #[test_case(&json!({"foo": 3}), &["3 is not of type \"string\""])]
     // `additionalProperties` - extra keyword & not in `properties`
     #[test_case(&json!({"faz": "a"}), &["Additional properties are not allowed (\'faz\' was unexpected)"])]
     // All combined
@@ -1242,7 +1242,7 @@ mod tests {
       &json!(
         {"foo": 3, "faz": "a"}),
         &[
-          "\'3\' is not of type \'string\'",
+          "3 is not of type \"string\"",
           "Additional properties are not allowed (\'faz\' was unexpected)",
         ]
     )]
@@ -1278,16 +1278,16 @@ mod tests {
     }
 
     // `properties` - should be a string
-    #[test_case(&json!({"foo": 3}), &["\'3\' is not of type \'string\'"])]
+    #[test_case(&json!({"foo": 3}), &["3 is not of type \"string\""])]
     // `additionalProperties` - should be an integer
-    #[test_case(&json!({"bar": "a"}), &["\'\"a\"\' is not of type \'integer\'"])]
+    #[test_case(&json!({"bar": "a"}), &["\"a\" is not of type \"integer\""])]
     // All combined
     #[test_case(
       &json!(
         {"foo": 3, "bar": "a"}),
         &[
-          "\'\"a\"\' is not of type \'integer\'",
-          "\'3\' is not of type \'string\'"
+          "\"a\" is not of type \"integer\"",
+          "3 is not of type \"string\""
         ]
     )]
     fn schema_4_invalid(instance: &Value, expected: &[&str]) {
@@ -1337,12 +1337,12 @@ mod tests {
     }
 
     // `properties.bar` - should be a string
-    #[test_case(&json!({"foo": 3}), &["\'3\' is not of type \'string\'"])]
+    #[test_case(&json!({"foo": 3}), &["3 is not of type \"string\""])]
     // `additionalProperties` - extra keyword that doesn't match `additionalProperties`
-    #[test_case(&json!({"faz": "a"}), &["\'\"a\"\' is not of type \'integer\'"])]
-    #[test_case(&json!({"faz": "a", "haz": "a"}), &["\'\"a\"\' is not of type \'integer\'", "\'\"a\"\' is not of type \'integer\'"])]
+    #[test_case(&json!({"faz": "a"}), &["\"a\" is not of type \"integer\""])]
+    #[test_case(&json!({"faz": "a", "haz": "a"}), &["\"a\" is not of type \"integer\"", "\"a\" is not of type \"integer\""])]
     // `properties.foo` - should be a string & `patternProperties.^bar` - invalid
-    #[test_case(&json!({"foo": 3, "bar": 4}), &["4 is less than the minimum of 5", "\'3\' is not of type \'string\'"])]
+    #[test_case(&json!({"foo": 3, "bar": 4}), &["4 is less than the minimum of 5", "3 is not of type \"string\""])]
     // `properties.barbaz` - valid; `patternProperties.^bar` - invalid
     #[test_case(&json!({"barbaz": 3}), &["3 is less than the minimum of 5"])]
     // `patternProperties.^bar` (should be >=5)
@@ -1364,8 +1364,8 @@ mod tests {
       &json!({"bar": 4, "spam": 11, "foo": 3, "faz": "a", "fam": 42}),
       &[
          "4 is less than the minimum of 5",
-         "\'\"a\"\' is not of type \'integer\'",
-         "\'3\' is not of type \'string\'",
+         "\"a\" is not of type \"integer\"",
+         "3 is not of type \"string\"",
          "11 is greater than the maximum of 10",
       ]
     )]
@@ -1408,10 +1408,10 @@ mod tests {
     }
 
     // `additionalProperties` - extra keyword that doesn't match `additionalProperties`
-    #[test_case(&json!({"faz": "a"}), &["\'\"a\"\' is not of type \'integer\'"])]
-    #[test_case(&json!({"faz": "a", "haz": "a"}), &["\'\"a\"\' is not of type \'integer\'", "\'\"a\"\' is not of type \'integer\'"])]
+    #[test_case(&json!({"faz": "a"}), &["\"a\" is not of type \"integer\""])]
+    #[test_case(&json!({"faz": "a", "haz": "a"}), &["\"a\" is not of type \"integer\"", "\"a\" is not of type \"integer\""])]
     // `additionalProperties` - should be an integer & `patternProperties.^bar` - invalid
-    #[test_case(&json!({"foo": "a", "bar": 4}), &["4 is less than the minimum of 5", "\'\"a\"\' is not of type \'integer\'"])]
+    #[test_case(&json!({"foo": "a", "bar": 4}), &["4 is less than the minimum of 5", "\"a\" is not of type \"integer\""])]
     // `patternProperties.^bar` (should be >=5)
     #[test_case(&json!({"bar": 4}), &["4 is less than the minimum of 5"])]
     // `patternProperties.spam$` (should be <=10)
@@ -1431,7 +1431,7 @@ mod tests {
       &json!({"bar": 4, "spam": 11, "faz": "a", "fam": 42}),
       &[
          "4 is less than the minimum of 5",
-         "\'\"a\"\' is not of type \'integer\'",
+         "\"a\" is not of type \"integer\"",
          "11 is greater than the maximum of 10",
       ]
     )]
