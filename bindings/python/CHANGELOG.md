@@ -12,6 +12,8 @@
 ## Changed
 
 - Update `PyO3` to `0.13.x`.
+- Improved error message for the `additionalProperties` validator. After - `Additional properties are not allowed ('faz' was unexpected)`, before - `False schema does not allow '"faz"'`.
+- The `additionalProperties` validator emits a single error for all unexpected properties instead of separate errors for each unexpected property.
 
 ### Fixed
 
