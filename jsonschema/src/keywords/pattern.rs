@@ -5,18 +5,16 @@ use crate::{
     paths::InstancePath,
     validator::Validate,
 };
-use regex::{Captures, Regex};
 use serde_json::{Map, Value};
 
-use std::ops::Index;
-
 lazy_static::lazy_static! {
-    static ref CONTROL_GROUPS_RE: Regex = Regex::new(r"\\c[A-Za-z]").expect("Is a valid regex");
+    // Use regex::Regex here to take advantage of replace_all method not available in fancy_regex::Regex
+    static ref CONTROL_GROUPS_RE: regex::Regex = regex::Regex::new(r"\\c[A-Za-z]").expect("Is a valid regex");
 }
 
 pub(crate) struct PatternValidator {
     original: String,
-    pattern: Regex,
+    pattern: fancy_regex::Regex,
 }
 
 impl PatternValidator {
@@ -43,12 +41,14 @@ impl Validate for PatternValidator {
         instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
-            if !self.pattern.is_match(item) {
-                return error(ValidationError::pattern(
-                    instance_path.into(),
-                    instance,
-                    self.original.clone(),
-                ));
+            if let Ok(is_match) = self.pattern.is_match(item) {
+                if !is_match {
+                    return error(ValidationError::pattern(
+                        instance_path.into(),
+                        instance,
+                        self.original.clone(),
+                    ));
+                }
             }
         }
         no_error()
@@ -56,8 +56,10 @@ impl Validate for PatternValidator {
 
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            if !self.pattern.is_match(item) {
-                return false;
+            if let Ok(is_match) = self.pattern.is_match(item) {
+                if !is_match {
+                    return false;
+                }
             }
         }
         true
@@ -66,12 +68,12 @@ impl Validate for PatternValidator {
 
 impl ToString for PatternValidator {
     fn to_string(&self) -> String {
-        format!("pattern: {}", self.pattern)
+        format!("pattern: {:?}", self.pattern)
     }
 }
 
 // ECMA 262 has differences
-fn convert_regex(pattern: &str) -> Result<Regex, regex::Error> {
+fn convert_regex(pattern: &str) -> Result<fancy_regex::Regex, fancy_regex::Error> {
     // replace control chars
     let new_pattern = CONTROL_GROUPS_RE.replace_all(pattern, replace_control_group);
     let mut out = String::with_capacity(new_pattern.len());
@@ -110,14 +112,16 @@ fn convert_regex(pattern: &str) -> Result<Regex, regex::Error> {
             out.push(current);
         }
     }
-    Regex::new(&out)
+    fancy_regex::Regex::new(&out)
 }
 
 #[allow(clippy::integer_arithmetic)]
-fn replace_control_group(captures: &Captures) -> String {
+fn replace_control_group(captures: &regex::Captures) -> String {
     // There will be no overflow, because the minimum value is 65 (char 'A')
     ((captures
-        .index(0)
+        .get(0)
+        .map(|m| m.as_str())
+        .expect("index 0 to return the whole match")
         .trim_start_matches(r"\c")
         .chars()
         .next()
@@ -147,7 +151,10 @@ mod tests {
     #[test_case(r"\\w", r"\w", true)]
     fn regex_matches(pattern: &str, text: &str, is_matching: bool) {
         let compiled = convert_regex(pattern).expect("A valid regex");
-        assert_eq!(compiled.is_match(text), is_matching);
+        assert_eq!(
+            compiled.is_match(text).expect("A valid pattern"),
+            is_matching
+        );
     }
 
     #[test_case(r"\")]

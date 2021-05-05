@@ -33,9 +33,9 @@ impl fmt::Display for CompilationError {
     }
 }
 
-impl From<regex::Error> for CompilationError {
+impl From<fancy_regex::Error> for CompilationError {
     #[inline]
-    fn from(_: regex::Error) -> Self {
+    fn from(_: fancy_regex::Error) -> Self {
         CompilationError::SchemaError
     }
 }
