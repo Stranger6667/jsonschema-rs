@@ -159,7 +159,7 @@ pub enum ValidationErrorKind {
         error: Box<ValidationError<'static>>,
     },
     /// When a required property is missing.
-    Required { property: String },
+    Required { property: Value },
     /// Any error that happens during network request via `reqwest` crate
     #[cfg(any(feature = "reqwest", test))]
     Reqwest { error: reqwest::Error },
@@ -577,7 +577,7 @@ impl<'a> ValidationError<'a> {
     pub(crate) fn required(
         instance_path: JSONPointer,
         instance: &'a Value,
-        property: String,
+        property: Value,
     ) -> ValidationError<'a> {
         ValidationError {
             instance_path,
@@ -713,7 +713,7 @@ impl fmt::Display for ValidationError<'_> {
                 write!(f, "Unknown scheme: {}", scheme)
             }
             ValidationErrorKind::Format { format } => {
-                write!(f, "'{}' is not a '{}'", self.instance, format)
+                write!(f, r#"{} is not a "{}""#, self.instance, format)
             }
             ValidationErrorKind::AdditionalItems { limit } => {
                 // It's safe to unwrap here as ValidationErrorKind::AdditionalItems is reported only in
@@ -764,35 +764,35 @@ impl fmt::Display for ValidationError<'_> {
             }
             ValidationErrorKind::AnyOf | ValidationErrorKind::OneOfNotValid => write!(
                 f,
-                "'{}' is not valid under any of the given schemas",
+                "{} is not valid under any of the given schemas",
                 self.instance
             ),
             ValidationErrorKind::Contains => write!(
                 f,
-                "None of '{}' are valid under the given schema",
+                "None of {} are valid under the given schema",
                 self.instance
             ),
             ValidationErrorKind::Constant { expected_value } => {
-                write!(f, "'{}' was expected", expected_value)
+                write!(f, "{} was expected", expected_value)
             }
             ValidationErrorKind::ContentEncoding { content_encoding } => {
                 write!(
                     f,
-                    "'{}' is not compliant with encoding={}",
+                    r#"{} is not compliant with "{}" content encoding"#,
                     self.instance, content_encoding
                 )
             }
             ValidationErrorKind::ContentMediaType { content_media_type } => {
                 write!(
                     f,
-                    "'{}' is not compliant with media_type={}",
+                    r#"{} is not compliant with "{}" media type"#,
                     self.instance, content_media_type
                 )
             }
             ValidationErrorKind::FromUtf8 { error } => write!(f, "{}", error),
             ValidationErrorKind::Utf8 { error } => write!(f, "{}", error),
             ValidationErrorKind::Enum { options } => {
-                write!(f, "'{}' is not one of '{}'", self.instance, options)
+                write!(f, "{} is not one of {}", self.instance, options)
             }
             ValidationErrorKind::ExclusiveMaximum { limit } => write!(
                 f,
@@ -805,7 +805,7 @@ impl fmt::Display for ValidationError<'_> {
                 self.instance, limit
             ),
             ValidationErrorKind::FalseSchema => {
-                write!(f, "False schema does not allow '{}'", self.instance)
+                write!(f, "False schema does not allow {}", self.instance)
             }
             ValidationErrorKind::InvalidReference { reference } => {
                 write!(f, "Invalid reference: {}", reference)
@@ -820,14 +820,14 @@ impl fmt::Display for ValidationError<'_> {
             }
             ValidationErrorKind::MaxLength { limit } => write!(
                 f,
-                "'{}' is longer than {} character{}",
+                "{} is longer than {} character{}",
                 self.instance,
                 limit,
                 if *limit == 1 { "" } else { "s" }
             ),
             ValidationErrorKind::MinLength { limit } => write!(
                 f,
-                "'{}' is shorter than {} character{}",
+                "{} is shorter than {} character{}",
                 self.instance,
                 limit,
                 if *limit == 1 { "" } else { "s" }
@@ -865,36 +865,36 @@ impl fmt::Display for ValidationError<'_> {
             }
             ValidationErrorKind::OneOfMultipleValid => write!(
                 f,
-                "'{}' is valid under more than one of the given schemas",
+                "{} is valid under more than one of the given schemas",
                 self.instance
             ),
             ValidationErrorKind::Pattern { pattern } => {
-                write!(f, "'{}' does not match '{}'", self.instance, pattern)
+                write!(f, r#"{} does not match "{}""#, self.instance, pattern)
             }
             ValidationErrorKind::PropertyNames { error } => {
                 write!(f, "{}", error.to_string())
             }
             ValidationErrorKind::Required { property } => {
-                write!(f, "'{}' is a required property", property)
+                write!(f, "{} is a required property", property)
             }
             ValidationErrorKind::MultipleOf { multiple_of } => {
                 write!(f, "{} is not a multiple of {}", self.instance, multiple_of)
             }
             ValidationErrorKind::UniqueItems => {
-                write!(f, "'{}' has non-unique elements", self.instance)
+                write!(f, "{} has non-unique elements", self.instance)
             }
             ValidationErrorKind::Type {
                 kind: TypeKind::Single(type_),
-            } => write!(f, "'{}' is not of type '{}'", self.instance, type_),
+            } => write!(f, r#"{} is not of type "{}""#, self.instance, type_),
             ValidationErrorKind::Type {
                 kind: TypeKind::Multiple(types),
             } => write!(
                 f,
-                "'{}' is not of types {}",
+                "{} is not of types {}",
                 self.instance,
                 types
                     .into_iter()
-                    .map(|t| format!("'{}'", t))
+                    .map(|t| format!(r#""{}""#, t))
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
@@ -917,7 +917,7 @@ mod tests {
             &instance,
             PrimitiveType::String,
         );
-        assert_eq!(err.to_string(), "'42' is not of type 'string'")
+        assert_eq!(err.to_string(), r#"42 is not of type "string""#)
     }
 
     #[test]
@@ -928,7 +928,7 @@ mod tests {
             &instance,
             vec![PrimitiveType::String, PrimitiveType::Number].into(),
         );
-        assert_eq!(err.to_string(), "'42' is not of types 'number', 'string'")
+        assert_eq!(err.to_string(), r#"42 is not of types "number", "string""#)
     }
 
     #[test_case(true, &json!({"foo": {"bar": 42}}), &["foo", "bar"])]
