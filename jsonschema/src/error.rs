@@ -961,9 +961,9 @@ mod tests {
     }
 
     #[test_case(true, &json!([1, {"foo": ["42"]}]), &[PathChunk::Index(0)])]
-    #[test_case(true, &json!(["a", {"foo": [42]}]), &[PathChunk::Index(1), PathChunk::Name("foo".to_string()), PathChunk::Index(0)])]
+    #[test_case(true, &json!(["a", {"foo": [42]}]), &[PathChunk::Index(1), PathChunk::Property("foo".to_string()), PathChunk::Index(0)])]
     #[test_case(false, &json!([1, {"foo": ["42"]}]), &[PathChunk::Index(0)])]
-    #[test_case(false, &json!(["a", {"foo": [42]}]), &[PathChunk::Index(1), PathChunk::Name("foo".to_string()), PathChunk::Index(0)])]
+    #[test_case(false, &json!(["a", {"foo": [42]}]), &[PathChunk::Index(1), PathChunk::Property("foo".to_string()), PathChunk::Index(0)])]
     fn instance_path_properties_and_arrays(
         additional_items: bool,
         instance: &Value,

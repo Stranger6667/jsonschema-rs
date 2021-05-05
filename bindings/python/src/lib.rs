@@ -72,12 +72,40 @@ fn raise_on_error(compiled: &jsonschema::JSONSchema, instance: &PyAny) -> PyResu
     let result = compiled.validate(&instance);
     let error = if let Some(mut errors) = result.err() {
         // If we have `Err` case, then the iterator is not empty
-        let error = errors.next().expect("Iterator should not be empty");
-        Some(error.to_string())
+        Some(errors.next().expect("Iterator should not be empty"))
     } else {
         None
     };
-    error.map_or_else(|| Ok(()), |message| Err(ValidationError::new_err(message)))
+    error.map_or_else(
+        || Ok(()),
+        |err| {
+            let message = to_error_message(&err);
+            Err(ValidationError::new_err(message))
+        },
+    )
+}
+
+fn to_error_message(error: &jsonschema::ValidationError) -> String {
+    let mut message = error.to_string();
+    message.push('\n');
+    message.push('\n');
+    message.push_str("On instance");
+    for chunk in &error.instance_path {
+        message.push('[');
+        match chunk {
+            jsonschema::paths::PathChunk::Property(property) => {
+                message.push('"');
+                message.push_str(property);
+                message.push('"');
+            }
+            jsonschema::paths::PathChunk::Index(index) => message.push_str(&index.to_string()),
+        };
+        message.push(']');
+    }
+    message.push(':');
+    message.push_str("\n    ");
+    message.push_str(&error.instance.to_string());
+    message
 }
 
 /// is_valid(schema, instance, draft=None, with_meta_schemas=False)

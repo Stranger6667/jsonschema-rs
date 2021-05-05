@@ -1,8 +1,9 @@
 //! Facilities for working with paths within schemas or validated instances.
+use std::slice::Iter;
 use std::{fmt, fmt::Write};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-/// JSON Pointer as a wrapper around individual path components
+/// JSON Pointer as a wrapper around individual path components.
 pub struct JSONPointer(Vec<PathChunk>);
 
 impl JSONPointer {
@@ -11,10 +12,15 @@ impl JSONPointer {
         self.0
             .into_iter()
             .map(|item| match item {
-                PathChunk::Name(value) => value,
+                PathChunk::Property(value) => value,
                 PathChunk::Index(idx) => idx.to_string(),
             })
             .collect()
+    }
+
+    /// Return an iterator over the underlying vector of path components.
+    pub fn iter(&self) -> Iter<'_, PathChunk> {
+        self.0.iter()
     }
 }
 
@@ -30,7 +36,7 @@ impl fmt::Display for JSONPointer {
             for chunk in &self.0 {
                 f.write_char('/')?;
                 match chunk {
-                    PathChunk::Name(value) => f.write_str(value)?,
+                    PathChunk::Property(value) => f.write_str(value)?,
                     PathChunk::Index(idx) => itoa::fmt(&mut f, *idx)?,
                 }
             }
@@ -40,8 +46,25 @@ impl fmt::Display for JSONPointer {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum PathChunk {
-    Name(String),
+/// A key within a JSON object or an index within a JSON array.
+/// A sequence of chunks represents a valid path within a JSON value.
+///
+/// Example:
+/// ```json
+/// {
+///    "cmd": ["ls", "-lh", "/home"]
+/// }
+/// ```
+///
+/// To extract "/home" from the JSON object above, we need to take two steps:
+/// 1. Go into property "cmd". It corresponds to `PathChunk::Property("cmd".to_string())`.
+/// 2. Take the 2nd value from the array - `PathChunk::Index(2)`
+///
+/// The primary purpose of this enum is to avoid converting indexes to strings during validation.
+pub enum PathChunk {
+    /// Property name within a JSON object.
+    Property(String),
+    /// Index within a JSON array.
     Index(usize),
 }
 
@@ -84,10 +107,28 @@ impl<'a> InstancePath<'a> {
     }
 }
 
+impl IntoIterator for JSONPointer {
+    type Item = PathChunk;
+    type IntoIter = <Vec<PathChunk> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a JSONPointer {
+    type Item = &'a PathChunk;
+    type IntoIter = Iter<'a, PathChunk>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
 impl From<String> for PathChunk {
     #[inline]
     fn from(value: String) -> Self {
-        PathChunk::Name(value)
+        PathChunk::Property(value)
     }
 }
 impl From<usize> for PathChunk {
@@ -109,7 +150,7 @@ impl From<&[&str]> for JSONPointer {
     fn from(path: &[&str]) -> Self {
         JSONPointer(
             path.iter()
-                .map(|item| PathChunk::Name(item.to_string()))
+                .map(|item| PathChunk::Property(item.to_string()))
                 .collect(),
         )
     }
