@@ -80,10 +80,11 @@ Input values and schemas
 | Fast (invalid) | 595 B       | 60 B          |
 +----------------+-------------+---------------+
 
-Compiled validators (when the input schema is compiled once and reused later). ``jsonschema-rs`` comes in two variants in the table below:
+Compiled validators (when the input schema is compiled once and reused later). ``jsonschema-rs`` comes in three variants in the tables below:
 
 - ``validate``. This method raises ``ValidationError`` on errors or returns ``None`` on their absence.
 - ``is_valid``. A faster method that returns a boolean result whether the instance is valid.
+- ``overhead``. Only transforms data to underlying Rust types and do not perform any validation. Shows the Python -> Rust data conversion cost.
 
 Ratios are given against the ``validate`` variant.
 
@@ -95,6 +96,8 @@ Small schemas:
 | jsonschema-rs[validate] |              200.82 ns |             203.10 ns |                    1.22 us |                    1.51 us |
 +-------------------------+------------------------+-----------------------+----------------------------+----------------------------+
 | jsonschema-rs[is_valid] |  187.60 ns (**x0.93**) | 185.24 ns (**x0.91**) |      850.25 ns (**x0.69**) |        1.18 us (**x0.78**) |
++-------------------------+------------------------+-----------------------+----------------------------+----------------------------+
+| jsonschema-rs[overhead] |  180.83 ns (**x0.90**) | 181.68 ns (**x0.89**) |      638.40 ns (**x0.52**) |        1.06 us (**x0.70**) |
 +-------------------------+------------------------+-----------------------+----------------------------+----------------------------+
 | fastjsonschema[CPython] |   58.57 ns (**x0.29**) | 109.10 ns (**x0.53**) |        4.16 us (**x3.40**) |        4.75 us (**x3.14**) |
 +-------------------------+------------------------+-----------------------+----------------------------+----------------------------+
@@ -113,6 +116,8 @@ Large schemas:
 | jsonschema-rs[validate] |               13.970 ms |                13.076 ms |                   4.428 ms |                  4.715 ms |
 +-------------------------+-------------------------+--------------------------+----------------------------+---------------------------+
 | jsonschema-rs[is_valid] |   13.664 ms (**x0.97**) |    11.506 ms (**x0.87**) |       4.422 ms (**x0.99**) |      3.134 ms (**x0.66**) |
++-------------------------+-------------------------+--------------------------+----------------------------+---------------------------+
+| jsonschema-rs[overhead] |   12.206 ms (**x0.87**) |     8.116 ms (**x0.62**) |       3.666 ms (**x0.82**) |      2.648 ms (**x0.56**) |
 +-------------------------+-------------------------+--------------------------+----------------------------+---------------------------+
 | fastjsonschema[CPython] |                  -- (1) |    87.020 ms (**x6.65**) |      31.705 ms (**x7.16**) |     11.715 ms (**x2.48**) |
 +-------------------------+-------------------------+--------------------------+----------------------------+---------------------------+
