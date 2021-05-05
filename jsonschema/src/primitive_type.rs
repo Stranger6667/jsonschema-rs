@@ -5,7 +5,7 @@ use std::{convert::TryFrom, fmt, ops::BitOrAssign};
 
 /// For faster error handling in "type" keyword validator we have this enum, to match
 /// with it instead of a string.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 #[allow(missing_docs)]
 pub enum PrimitiveType {
     Array,
@@ -121,7 +121,7 @@ impl IntoIterator for PrimitiveTypesBitMap {
     type IntoIter = PrimitiveTypesBitMapIterator;
     fn into_iter(self) -> Self::IntoIter {
         PrimitiveTypesBitMapIterator {
-            range: 1..7,
+            range: 0..7,
             bit_map: self,
         }
     }
@@ -157,5 +157,29 @@ impl Iterator for PrimitiveTypesBitMapIterator {
                 return None;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_multiple_types() {
+        let mut types = PrimitiveTypesBitMap::new();
+        types |= PrimitiveType::Null;
+        types |= PrimitiveType::String;
+        types |= PrimitiveType::Array;
+        assert!(types.contains_type(PrimitiveType::Null));
+        assert!(types.contains_type(PrimitiveType::String));
+        assert!(types.contains_type(PrimitiveType::Array));
+        assert_eq!(
+            types.into_iter().collect::<Vec<PrimitiveType>>(),
+            vec![
+                PrimitiveType::Array,
+                PrimitiveType::Null,
+                PrimitiveType::String
+            ]
+        )
     }
 }
