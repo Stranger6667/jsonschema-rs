@@ -101,3 +101,19 @@ def test_invalid_value(method):
     schema = JSONSchema({"minimum": 42})
     with pytest.raises(ValueError, match="Unsupported type: 'object'"):
         getattr(schema, method)(object())
+
+
+def test_error_message():
+    schema = {"properties": {"foo": {"type": "integer"}}}
+    instance = {"foo": None}
+    try:
+        validate(schema, instance)
+        pytest.fail("Validation error should happen")
+    except ValidationError as exc:
+        assert (
+            str(exc)
+            == """null is not of type "integer"
+
+On instance["foo"]:
+    null"""
+        )

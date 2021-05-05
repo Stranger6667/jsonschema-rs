@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Error messages show paths to the erroneous part of the input instance. [#144](https://github.com/Stranger6667/jsonschema-rs/issues/144)
+
 ### Fixed
 
 - Skipped validation on an unsupported regular expression in `patternProperties`. [#213](https://github.com/Stranger6667/jsonschema-rs/issues/213)
