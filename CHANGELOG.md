@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.8.3] - 2021-05-05
+
 ### Added
 
 - `paths::JSONPointer` implements `IntoIterator` over `paths::PathChunk`.
@@ -216,7 +218,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.8.2...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.8.3...HEAD
+[0.8.3]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.8.2...rust-v0.8.3
 [0.8.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.8.1...rust-v0.8.2
 [0.8.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.7.0...rust-v0.8.0
 [0.7.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.6.1...rust-v0.7.0
