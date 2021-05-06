@@ -98,6 +98,8 @@ pub enum ValidationErrorKind {
     AdditionalProperties { unexpected: Vec<String> },
     /// The input value is not valid under any of the given schemas.
     AnyOf,
+    /// Results from a [`fancy_regex::Error::BacktrackLimitExceeded`] variant when matching
+    BacktrackLimitExceeded { error: fancy_regex::Error },
     /// The input value doesn't match expected constant.
     Constant { expected_value: Value },
     /// The input array doesn't contain items conforming to the specified schema.
@@ -217,6 +219,17 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::AnyOf,
+        }
+    }
+    pub(crate) fn backtrack_limit(
+        instance_path: JSONPointer,
+        instance: &'a Value,
+        error: fancy_regex::Error,
+    ) -> ValidationError<'a> {
+        ValidationError {
+            instance_path,
+            instance: Cow::Borrowed(instance),
+            kind: ValidationErrorKind::BacktrackLimitExceeded { error },
         }
     }
     pub(crate) fn constant_array(
@@ -709,6 +722,7 @@ impl fmt::Display for ValidationError<'_> {
             ValidationErrorKind::Reqwest { error } => write!(f, "{}", error),
             ValidationErrorKind::FileNotFound { error } => write!(f, "{}", error),
             ValidationErrorKind::InvalidURL { error } => write!(f, "{}", error),
+            ValidationErrorKind::BacktrackLimitExceeded { error } => write!(f, "{}", error),
             ValidationErrorKind::UnknownReferenceScheme { scheme } => {
                 write!(f, "Unknown scheme: {}", scheme)
             }

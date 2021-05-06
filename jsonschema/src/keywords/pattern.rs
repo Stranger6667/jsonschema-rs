@@ -41,12 +41,21 @@ impl Validate for PatternValidator {
         instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
         if let Value::String(item) = instance {
-            if let Ok(is_match) = self.pattern.is_match(item) {
-                if !is_match {
-                    return error(ValidationError::pattern(
+            match self.pattern.is_match(item) {
+                Ok(is_match) => {
+                    if !is_match {
+                        return error(ValidationError::pattern(
+                            instance_path.into(),
+                            instance,
+                            self.original.clone(),
+                        ));
+                    }
+                }
+                Err(e) => {
+                    return error(ValidationError::backtrack_limit(
                         instance_path.into(),
                         instance,
-                        self.original.clone(),
+                        e,
                     ));
                 }
             }
