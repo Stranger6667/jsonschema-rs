@@ -102,12 +102,32 @@ impl Validate for DateTimeValidator {
         }
     }
 }
+fn is_valid_email(email: &str) -> bool {
+    if let Some('.') = email.chars().next() {
+        // dot before local part is not valid
+        return false;
+    }
+    // This loop exits early if it finds `@`.
+    // Therefore, match arms examine only the local part
+    for (a, b) in email.chars().zip(email.chars().skip(1)) {
+        match (a, b) {
+            // two subsequent dots inside local part are not valid
+            // dot after local part is not valid
+            ('.', '.') | ('.', '@') => return false,
+            // The domain part is not validated for simplicity
+            (_, '@') => return true,
+            (_, _) => continue,
+        }
+    }
+    false
+}
+
 format_validator!(EmailValidator, "email");
 impl Validate for EmailValidator {
     validate!("email");
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            item.contains('@')
+            is_valid_email(item)
         } else {
             true
         }
@@ -118,7 +138,7 @@ impl Validate for IDNEmailValidator {
     validate!("idn-email");
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            item.contains('@')
+            is_valid_email(item)
         } else {
             true
         }

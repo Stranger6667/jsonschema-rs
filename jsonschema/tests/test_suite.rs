@@ -2,11 +2,10 @@ use json_schema_test_suite::{json_schema_test_suite, TestCase};
 use jsonschema::{Draft, JSONSchema};
 use std::fs;
 
-#[json_schema_test_suite("tests/suite", "draft4", {"optional_bignum_0_0", "optional_bignum_2_0", r"optional_format_email_0_\d+"})]
-#[json_schema_test_suite("tests/suite", "draft6", {r"optional_format_email_0_\d+"})]
+#[json_schema_test_suite("tests/suite", "draft4", {"optional_bignum_0_0", "optional_bignum_2_0"})]
+#[json_schema_test_suite("tests/suite", "draft6")]
 #[json_schema_test_suite("tests/suite", "draft7", {
     r"optional_format_idn_hostname_0_\d+",  // https://github.com/Stranger6667/jsonschema-rs/issues/101
-    r"optional_format_email_0_\d+"
 })]
 fn test_draft(_server_address: &str, test_case: TestCase) {
     let draft_version = match test_case.draft_version.as_ref() {

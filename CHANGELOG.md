@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Extend the `email` format validation. Relevant test case from the JSONSchema test suite - `email.json`.
+
 ## [0.8.3] - 2021-05-05
 
 ### Added
