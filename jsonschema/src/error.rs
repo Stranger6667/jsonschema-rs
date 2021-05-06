@@ -104,9 +104,9 @@ pub enum ValidationErrorKind {
     Constant { expected_value: Value },
     /// The input array doesn't contain items conforming to the specified schema.
     Contains,
-    /// Ths input value does not respect the defined contentEncoding
+    /// The input value does not respect the defined contentEncoding
     ContentEncoding { content_encoding: String },
-    /// Ths input value does not respect the defined contentMediaType
+    /// The input value does not respect the defined contentMediaType
     ContentMediaType { content_media_type: String },
     /// The input value doesn't match any of specified options.
     Enum { options: Value },
