@@ -7,6 +7,8 @@ use crate::{
 };
 use serde_json::{Map, Value};
 
+use std::ops::Index;
+
 lazy_static::lazy_static! {
     // Use regex::Regex here to take advantage of replace_all method not available in fancy_regex::Regex
     static ref CONTROL_GROUPS_RE: regex::Regex = regex::Regex::new(r"\\c[A-Za-z]").expect("Is a valid regex");
@@ -124,9 +126,7 @@ fn convert_regex(pattern: &str) -> Result<fancy_regex::Regex, fancy_regex::Error
 fn replace_control_group(captures: &regex::Captures) -> String {
     // There will be no overflow, because the minimum value is 65 (char 'A')
     ((captures
-        .get(0)
-        .map(|m| m.as_str())
-        .expect("index 0 to return the whole match")
+        .index(0)
         .trim_start_matches(r"\c")
         .chars()
         .next()
