@@ -84,8 +84,8 @@ impl CompilationOptions {
 
         Ok(JSONSchema {
             schema,
-            resolver,
             validators,
+            resolver,
             context,
         })
     }
@@ -109,10 +109,8 @@ impl CompilationOptions {
     ) -> Option<ContentMediaTypeCheckType> {
         if let Some(value) = self.content_media_type_checks.get(media_type) {
             *value
-        } else if let Some(value) = DEFAULT_CONTENT_MEDIA_TYPE_CHECKS.get(media_type) {
-            Some(*value)
         } else {
-            None
+            DEFAULT_CONTENT_MEDIA_TYPE_CHECKS.get(media_type).copied()
         }
     }
 
@@ -168,12 +166,10 @@ impl CompilationOptions {
             .get(content_encoding)
         {
             *value
-        } else if let Some(value) =
-            DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS.get(content_encoding)
-        {
-            Some(*value)
         } else {
-            None
+            DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS
+                .get(content_encoding)
+                .copied()
         }
     }
 
