@@ -10,9 +10,9 @@ A JSON Schema validator implementation. It compiles schema into a validation tre
 
 Supported drafts:
 
-- Draft 7 (except optional `idn-hostname.json` and `format_email.json` test cases)
-- Draft 6 (except optional `format_email.json` test case)
-- Draft 4 (except optional `bignum.json` and `format_email.json` test cases)
+- Draft 7 (except optional `idn-hostname.json` test case)
+- Draft 6
+- Draft 4 (except optional `bignum.json` test case)
 
 ```toml
 # Cargo.toml
