@@ -62,8 +62,7 @@ impl From<&Value> for PrimitiveType {
     }
 }
 
-#[inline(always)]
-fn primitive_type_to_bit_map_representation(primitive_type: PrimitiveType) -> u8 {
+const fn primitive_type_to_bit_map_representation(primitive_type: PrimitiveType) -> u8 {
     match primitive_type {
         PrimitiveType::Array => 1,
         PrimitiveType::Boolean => 2,
@@ -75,7 +74,6 @@ fn primitive_type_to_bit_map_representation(primitive_type: PrimitiveType) -> u8
     }
 }
 
-#[inline(always)]
 fn bit_map_representation_primitive_type(bit_representation: u8) -> PrimitiveType {
     match bit_representation {
         1 => PrimitiveType::Array,
@@ -100,13 +98,12 @@ impl PrimitiveTypesBitMap {
     }
 
     #[inline]
-    pub(crate) fn add_type(mut self, primitive_type: PrimitiveType) -> Self {
+    pub(crate) const fn add_type(mut self, primitive_type: PrimitiveType) -> Self {
         self.inner |= primitive_type_to_bit_map_representation(primitive_type);
         self
     }
 
-    #[inline(always)]
-    pub(crate) fn contains_type(self, primitive_type: PrimitiveType) -> bool {
+    pub(crate) const fn contains_type(self, primitive_type: PrimitiveType) -> bool {
         primitive_type_to_bit_map_representation(primitive_type) & self.inner != 0
     }
 }

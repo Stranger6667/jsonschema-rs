@@ -190,7 +190,7 @@ impl<'a> ValidationError<'a> {
         }
     }
 
-    pub(crate) fn additional_items(
+    pub(crate) const fn additional_items(
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: usize,
@@ -212,7 +212,10 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::AdditionalProperties { unexpected },
         }
     }
-    pub(crate) fn any_of(instance_path: JSONPointer, instance: &'a Value) -> ValidationError<'a> {
+    pub(crate) const fn any_of(
+        instance_path: JSONPointer,
+        instance: &'a Value,
+    ) -> ValidationError<'a> {
         ValidationError {
             instance_path,
             instance: Cow::Borrowed(instance),
@@ -232,7 +235,7 @@ impl<'a> ValidationError<'a> {
             },
         }
     }
-    pub(crate) fn constant_boolean(
+    pub(crate) const fn constant_boolean(
         instance_path: JSONPointer,
         instance: &'a Value,
         expected_value: bool,
@@ -245,7 +248,7 @@ impl<'a> ValidationError<'a> {
             },
         }
     }
-    pub(crate) fn constant_null(
+    pub(crate) const fn constant_null(
         instance_path: JSONPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
@@ -296,7 +299,10 @@ impl<'a> ValidationError<'a> {
             },
         }
     }
-    pub(crate) fn contains(instance_path: JSONPointer, instance: &'a Value) -> ValidationError<'a> {
+    pub(crate) const fn contains(
+        instance_path: JSONPointer,
+        instance: &'a Value,
+    ) -> ValidationError<'a> {
         ValidationError {
             instance_path,
             instance: Cow::Borrowed(instance),
@@ -342,7 +348,7 @@ impl<'a> ValidationError<'a> {
             },
         }
     }
-    pub(crate) fn exclusive_maximum(
+    pub(crate) const fn exclusive_maximum(
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: f64,
@@ -353,7 +359,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::ExclusiveMaximum { limit },
         }
     }
-    pub(crate) fn exclusive_minimum(
+    pub(crate) const fn exclusive_minimum(
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: f64,
@@ -364,7 +370,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::ExclusiveMinimum { limit },
         }
     }
-    pub(crate) fn false_schema(
+    pub(crate) const fn false_schema(
         instance_path: JSONPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
@@ -381,7 +387,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::FileNotFound { error },
         }
     }
-    pub(crate) fn format(
+    pub(crate) const fn format(
         instance_path: JSONPointer,
         instance: &'a Value,
         format: &'static str,
@@ -420,7 +426,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::InvalidURL { error },
         }
     }
-    pub(crate) fn max_items(
+    pub(crate) const fn max_items(
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: u64,
@@ -431,7 +437,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::MaxItems { limit },
         }
     }
-    pub(crate) fn maximum(
+    pub(crate) const fn maximum(
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: f64,
@@ -442,7 +448,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Maximum { limit },
         }
     }
-    pub(crate) fn max_length(
+    pub(crate) const fn max_length(
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: u64,
@@ -453,7 +459,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::MaxLength { limit },
         }
     }
-    pub(crate) fn max_properties(
+    pub(crate) const fn max_properties(
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: u64,
@@ -464,7 +470,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::MaxProperties { limit },
         }
     }
-    pub(crate) fn min_items(
+    pub(crate) const fn min_items(
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: u64,
@@ -475,7 +481,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::MinItems { limit },
         }
     }
-    pub(crate) fn minimum(
+    pub(crate) const fn minimum(
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: f64,
@@ -486,7 +492,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Minimum { limit },
         }
     }
-    pub(crate) fn min_length(
+    pub(crate) const fn min_length(
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: u64,
@@ -497,7 +503,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::MinLength { limit },
         }
     }
-    pub(crate) fn min_properties(
+    pub(crate) const fn min_properties(
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: u64,
@@ -508,7 +514,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::MinProperties { limit },
         }
     }
-    pub(crate) fn multiple_of(
+    pub(crate) const fn multiple_of(
         instance_path: JSONPointer,
         instance: &'a Value,
         multiple_of: f64,
@@ -519,7 +525,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::MultipleOf { multiple_of },
         }
     }
-    pub(crate) fn not(
+    pub(crate) const fn not(
         instance_path: JSONPointer,
         instance: &'a Value,
         schema: Value,
@@ -530,7 +536,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Not { schema },
         }
     }
-    pub(crate) fn one_of_multiple_valid(
+    pub(crate) const fn one_of_multiple_valid(
         instance_path: JSONPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
@@ -540,7 +546,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::OneOfMultipleValid,
         }
     }
-    pub(crate) fn one_of_not_valid(
+    pub(crate) const fn one_of_not_valid(
         instance_path: JSONPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
@@ -550,7 +556,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::OneOfNotValid,
         }
     }
-    pub(crate) fn pattern(
+    pub(crate) const fn pattern(
         instance_path: JSONPointer,
         instance: &'a Value,
         pattern: String,
@@ -574,7 +580,7 @@ impl<'a> ValidationError<'a> {
             },
         }
     }
-    pub(crate) fn required(
+    pub(crate) const fn required(
         instance_path: JSONPointer,
         instance: &'a Value,
         property: Value,
@@ -600,7 +606,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Schema,
         }
     }
-    pub(crate) fn single_type_error(
+    pub(crate) const fn single_type_error(
         instance_path: JSONPointer,
         instance: &'a Value,
         type_name: PrimitiveType,
@@ -613,7 +619,7 @@ impl<'a> ValidationError<'a> {
             },
         }
     }
-    pub(crate) fn multiple_type_error(
+    pub(crate) const fn multiple_type_error(
         instance_path: JSONPointer,
         instance: &'a Value,
         types: PrimitiveTypesBitMap,
@@ -626,7 +632,7 @@ impl<'a> ValidationError<'a> {
             },
         }
     }
-    pub(crate) fn unique_items(
+    pub(crate) const fn unique_items(
         instance_path: JSONPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {

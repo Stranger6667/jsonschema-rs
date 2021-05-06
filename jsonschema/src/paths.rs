@@ -7,6 +7,7 @@ use std::{fmt, fmt::Write};
 pub struct JSONPointer(Vec<PathChunk>);
 
 impl JSONPointer {
+    #[must_use]
     /// JSON pointer as a vector of strings. Each component is casted to `String`. Consumes `JSONPointer`.
     pub fn into_vec(self) -> Vec<String> {
         self.0
@@ -18,6 +19,7 @@ impl JSONPointer {
             .collect()
     }
 
+    #[must_use]
     /// Return an iterator over the underlying vector of path components.
     pub fn iter(&self) -> Iter<'_, PathChunk> {
         self.0.iter()
@@ -75,7 +77,7 @@ pub(crate) struct InstancePath<'a> {
 }
 
 impl<'a> InstancePath<'a> {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         InstancePath {
             chunk: None,
             parent: None,
@@ -150,7 +152,7 @@ impl From<&[&str]> for JSONPointer {
     fn from(path: &[&str]) -> Self {
         JSONPointer(
             path.iter()
-                .map(|item| PathChunk::Property(item.to_string()))
+                .map(|item| PathChunk::Property((*item).to_string()))
                 .collect(),
         )
     }
