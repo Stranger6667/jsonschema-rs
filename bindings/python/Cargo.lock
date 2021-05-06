@@ -452,7 +452,6 @@ dependencies = [
  "base64",
  "chrono",
  "fraction",
- "idna",
  "itoa",
  "lazy_static",
  "num-cmp",
@@ -466,7 +465,7 @@ dependencies = [
 
 [[package]]
 name = "jsonschema-python"
-version = "0.6.2"
+version = "0.8.0"
 dependencies = [
  "built",
  "jsonschema",

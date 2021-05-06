@@ -29,7 +29,6 @@ chrono = ">= 0.2"
 reqwest = { version = ">= 0.10", features = ["blocking", "json"], optional = true}
 parking_lot = ">= 0.1"
 num-cmp = ">= 0.1"
-idna = ">= 0.2"
 ahash = "0.7"
 structopt = { version = ">= 0.3", optional = true }
 itoa = "0.4"
