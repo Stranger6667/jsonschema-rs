@@ -147,6 +147,7 @@ pub(crate) fn compile(
 
 #[cfg(test)]
 mod tests {
+    use serde_json::{Value, json};
     use super::*;
     use test_case::test_case;
 
@@ -166,5 +167,20 @@ mod tests {
     #[test_case(r"\d\")]
     fn invalid_escape_sequences(pattern: &str) {
         assert!(convert_regex(pattern).is_err())
+    }
+
+    #[test_case("^(?!eo:)", "eo:bands", false)]
+    #[test_case("^(?!eo:)", "proj:epsg", true)]
+    fn negative_lookbehind_match(pattern: &str, text: &str, is_matching: bool) {
+        let pattern = Value::String(pattern.into());
+        let text = Value::String(text.into());
+        let schema = json!({});
+
+        let compiled = PatternValidator::compile(&pattern).unwrap();
+        let schema = JSONSchema::compile(&schema).unwrap();
+        assert_eq!(
+            compiled.is_valid(&schema, &text),
+            is_matching,
+        )
     }
 }
