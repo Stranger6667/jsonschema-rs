@@ -147,8 +147,8 @@ pub(crate) fn compile(
 
 #[cfg(test)]
 mod tests {
-    use serde_json::{Value, json};
     use super::*;
+    use serde_json::{json, Value};
     use test_case::test_case;
 
     #[test_case(r"^[\w\-\.\+]+$", "CC-BY-4.0", true)]
@@ -178,9 +178,6 @@ mod tests {
 
         let compiled = PatternValidator::compile(&pattern).unwrap();
         let schema = JSONSchema::compile(&schema).unwrap();
-        assert_eq!(
-            compiled.is_valid(&schema, &text),
-            is_matching,
-        )
+        assert_eq!(compiled.is_valid(&schema, &text), is_matching,)
     }
 }
