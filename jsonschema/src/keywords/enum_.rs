@@ -38,14 +38,14 @@ impl Validate for EnumValidator {
         instance: &'a Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
-        if !self.is_valid(schema, instance) {
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
             error(ValidationError::enumeration(
                 instance_path.into(),
                 instance,
                 &self.options,
             ))
-        } else {
-            no_error()
         }
     }
 
@@ -97,14 +97,14 @@ impl Validate for SingleValueEnumValidator {
         instance: &'a Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
-        if !self.is_valid(schema, instance) {
+        if self.is_valid(schema, instance) {
+            no_error()
+        } else {
             error(ValidationError::enumeration(
                 instance_path.into(),
                 instance,
                 &self.options,
             ))
-        } else {
-            no_error()
         }
     }
 

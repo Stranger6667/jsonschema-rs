@@ -46,6 +46,7 @@ impl<'a> JSONSchema<'a> {
     ///     .with_draft(Draft::Draft7)
     ///     .compile(&schema);
     /// ```
+    #[must_use]
     pub fn options() -> CompilationOptions {
         CompilationOptions::default()
     }

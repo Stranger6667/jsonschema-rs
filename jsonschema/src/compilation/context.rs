@@ -12,7 +12,7 @@ pub(crate) struct CompilationContext<'a> {
 }
 
 impl<'a> CompilationContext<'a> {
-    pub(crate) fn new(scope: Url, config: Cow<'a, CompilationOptions>) -> Self {
+    pub(crate) const fn new(scope: Url, config: Cow<'a, CompilationOptions>) -> Self {
         CompilationContext {
             scope: Cow::Owned(scope),
             config,

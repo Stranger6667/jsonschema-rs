@@ -29,7 +29,7 @@ impl Validate for MultipleOfFloatValidator {
                 // Involves heap allocations via the underlying `BigUint` type
                 let fraction = BigFraction::from(item) / BigFraction::from(self.multiple_of);
                 if let Some(denom) = fraction.denom() {
-                    return denom == &BigUint::from(1u8);
+                    return denom == &BigUint::from(1_u8);
                 }
             } else if !(remainder < EPSILON && remainder < (1. - EPSILON)) {
                 return false;
