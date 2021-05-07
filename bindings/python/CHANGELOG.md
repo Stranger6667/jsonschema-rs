@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.9.0] - 2021-05-07
+
 ### Added
 
 - Support for look-around patterns. [#183](https://github.com/Stranger6667/jsonschema-rs/issues/183)
@@ -166,7 +168,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.8.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.9.0...HEAD
+[0.9.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.8.0...python-v0.9.0
 [0.8.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.6.2...python-v0.8.0
 [0.6.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.6.1...python-v0.6.2
 [0.6.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.6.0...python-v0.6.1
