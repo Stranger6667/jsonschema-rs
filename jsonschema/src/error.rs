@@ -224,7 +224,7 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::AnyOf,
         }
     }
-    pub(crate) fn backtrack_limit(
+    pub(crate) const fn backtrack_limit(
         instance_path: JSONPointer,
         instance: &'a Value,
         error: fancy_regex::Error,
