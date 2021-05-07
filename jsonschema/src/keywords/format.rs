@@ -8,7 +8,7 @@ use crate::{
     Draft,
 };
 use chrono::{DateTime, NaiveDate};
-use regex::Regex;
+use fancy_regex::Regex;
 use serde_json::{Map, Value};
 
 use std::{net::IpAddr, str::FromStr};
@@ -82,7 +82,9 @@ impl Validate for DateValidator {
                 // Padding with zeroes is ignored by the underlying parser. The most efficient
                 // way to check it will be to use a custom parser that won't ignore zeroes,
                 // but this regex will do the trick and costs ~20% extra time in this validator.
-                DATE_RE.is_match(item.as_str())
+                DATE_RE
+                    .is_match(item.as_str())
+                    .expect("Simple DATE_RE pattern")
             } else {
                 false
             }
@@ -239,7 +241,9 @@ impl Validate for IRIReferenceValidator {
     validate!("iri-reference");
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            IRI_REFERENCE_RE.is_match(item)
+            IRI_REFERENCE_RE
+                .is_match(item)
+                .expect("Simple IRI_REFERENCE_RE pattern")
         } else {
             true
         }
@@ -250,7 +254,9 @@ impl Validate for JSONPointerValidator {
     validate!("json-pointer");
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            JSON_POINTER_RE.is_match(item)
+            JSON_POINTER_RE
+                .is_match(item)
+                .expect("Simple JSON_POINTER_RE pattern")
         } else {
             true
         }
@@ -272,7 +278,9 @@ impl Validate for RelativeJSONPointerValidator {
     validate!("relative-json-pointer");
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            RELATIVE_JSON_POINTER_RE.is_match(item)
+            RELATIVE_JSON_POINTER_RE
+                .is_match(item)
+                .expect("Simple RELATIVE_JSON_POINTER_RE pattern")
         } else {
             true
         }
@@ -283,7 +291,7 @@ impl Validate for TimeValidator {
     validate!("time");
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            TIME_RE.is_match(item)
+            TIME_RE.is_match(item).expect("Simple TIME_RE pattern")
         } else {
             true
         }
@@ -294,7 +302,9 @@ impl Validate for URIReferenceValidator {
     validate!("uri-reference");
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            URI_REFERENCE_RE.is_match(item)
+            URI_REFERENCE_RE
+                .is_match(item)
+                .expect("Simple URI_REFERENCE_RE pattern")
         } else {
             true
         }
@@ -305,7 +315,9 @@ impl Validate for URITemplateValidator {
     validate!("uri-template");
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            URI_TEMPLATE_RE.is_match(item)
+            URI_TEMPLATE_RE
+                .is_match(item)
+                .expect("Simple URI_TEMPLATE_RE pattern")
         } else {
             true
         }

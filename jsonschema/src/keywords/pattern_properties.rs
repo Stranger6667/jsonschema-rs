@@ -5,7 +5,7 @@ use crate::{
     paths::InstancePath,
     validator::Validate,
 };
-use regex::Regex;
+use fancy_regex::Regex;
 use serde_json::{Map, Value};
 
 pub(crate) struct PatternPropertiesValidator {
@@ -34,7 +34,7 @@ impl Validate for PatternPropertiesValidator {
         if let Value::Object(item) = instance {
             self.patterns.iter().all(move |(re, validators)| {
                 item.iter()
-                    .filter(move |(key, _)| re.is_match(key))
+                    .filter(move |(key, _)| re.is_match(key).unwrap_or(false))
                     .all(move |(_key, value)| {
                         validators
                             .iter()
@@ -58,7 +58,7 @@ impl Validate for PatternPropertiesValidator {
                 .iter()
                 .flat_map(move |(re, validators)| {
                     item.iter()
-                        .filter(move |(key, _)| re.is_match(key))
+                        .filter(move |(key, _)| re.is_match(key).unwrap_or(false))
                         .flat_map(move |(key, value)| {
                             let instance_path = instance_path.push(key.to_owned());
                             validators.iter().flat_map(move |validator| {
@@ -80,7 +80,9 @@ impl ToString for PatternPropertiesValidator {
             "patternProperties: {{{}}}",
             self.patterns
                 .iter()
-                .map(|(key, validators)| { format!("{}: {}", key, format_validators(validators)) })
+                .map(|(key, validators)| {
+                    format!("{:?}: {}", key, format_validators(validators))
+                })
                 .collect::<Vec<String>>()
                 .join(", ")
         )
@@ -110,7 +112,7 @@ impl Validate for SingleValuePatternPropertiesValidator {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             item.iter()
-                .filter(move |(key, _)| self.pattern.is_match(key))
+                .filter(move |(key, _)| self.pattern.is_match(key).unwrap_or(false))
                 .all(move |(_key, value)| {
                     self.validators
                         .iter()
@@ -130,7 +132,7 @@ impl Validate for SingleValuePatternPropertiesValidator {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = item
                 .iter()
-                .filter(move |(key, _)| self.pattern.is_match(key))
+                .filter(move |(key, _)| self.pattern.is_match(key).unwrap_or(false))
                 .flat_map(move |(key, value)| {
                     let instance_path = instance_path.push(key.to_owned());
                     self.validators.iter().flat_map(move |validator| {
@@ -148,7 +150,7 @@ impl Validate for SingleValuePatternPropertiesValidator {
 impl ToString for SingleValuePatternPropertiesValidator {
     fn to_string(&self) -> String {
         format!(
-            "patternProperties: {{{}: {}}}",
+            "patternProperties: {{{:?}: {}}}",
             self.pattern,
             format_validators(&self.validators)
         )

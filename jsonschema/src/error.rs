@@ -33,9 +33,9 @@ impl fmt::Display for CompilationError {
     }
 }
 
-impl From<regex::Error> for CompilationError {
+impl From<fancy_regex::Error> for CompilationError {
     #[inline]
-    fn from(_: regex::Error) -> Self {
+    fn from(_: fancy_regex::Error) -> Self {
         CompilationError::SchemaError
     }
 }
@@ -98,13 +98,15 @@ pub enum ValidationErrorKind {
     AdditionalProperties { unexpected: Vec<String> },
     /// The input value is not valid under any of the given schemas.
     AnyOf,
+    /// Results from a [`fancy_regex::Error::BacktrackLimitExceeded`] variant when matching
+    BacktrackLimitExceeded { error: fancy_regex::Error },
     /// The input value doesn't match expected constant.
     Constant { expected_value: Value },
     /// The input array doesn't contain items conforming to the specified schema.
     Contains,
-    /// Ths input value does not respect the defined contentEncoding
+    /// The input value does not respect the defined contentEncoding
     ContentEncoding { content_encoding: String },
-    /// Ths input value does not respect the defined contentMediaType
+    /// The input value does not respect the defined contentMediaType
     ContentMediaType { content_media_type: String },
     /// The input value doesn't match any of specified options.
     Enum { options: Value },
@@ -220,6 +222,17 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::AnyOf,
+        }
+    }
+    pub(crate) fn backtrack_limit(
+        instance_path: JSONPointer,
+        instance: &'a Value,
+        error: fancy_regex::Error,
+    ) -> ValidationError<'a> {
+        ValidationError {
+            instance_path,
+            instance: Cow::Borrowed(instance),
+            kind: ValidationErrorKind::BacktrackLimitExceeded { error },
         }
     }
     pub(crate) fn constant_array(
@@ -715,6 +728,7 @@ impl fmt::Display for ValidationError<'_> {
             ValidationErrorKind::Reqwest { error } => write!(f, "{}", error),
             ValidationErrorKind::FileNotFound { error } => write!(f, "{}", error),
             ValidationErrorKind::InvalidURL { error } => write!(f, "{}", error),
+            ValidationErrorKind::BacktrackLimitExceeded { error } => write!(f, "{}", error),
             ValidationErrorKind::UnknownReferenceScheme { scheme } => {
                 write!(f, "Unknown scheme: {}", scheme)
             }

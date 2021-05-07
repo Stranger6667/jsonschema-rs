@@ -14,7 +14,7 @@ use crate::{
     validator::Validate,
 };
 use ahash::AHashMap;
-use regex::Regex;
+use fancy_regex::Regex;
 use serde_json::{Map, Value};
 
 pub(crate) type PatternedValidators = Vec<(Regex, Validators)>;
@@ -106,7 +106,7 @@ macro_rules! is_valid_patterns {
         let mut has_match = false;
         for (re, validators) in $patterns {
             // If there is a match, then the value should match the sub-schema
-            if re.is_match($property) {
+            if re.is_match($property).unwrap_or(false) {
                 has_match = true;
                 is_valid_pattern_schema!(validators, $schema, $value)
             }
@@ -516,7 +516,7 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
             for (property, value) in item.iter() {
                 let mut has_match = false;
                 for (re, validators) in &self.patterns {
-                    if re.is_match(property) {
+                    if re.is_match(property).unwrap_or(false) {
                         has_match = true;
                         is_valid_pattern_schema!(validators, schema, value)
                     }
@@ -542,7 +542,7 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
                 errors.extend(
                     self.patterns
                         .iter()
-                        .filter(|(re, _)| re.is_match(property))
+                        .filter(|(re, _)| re.is_match(property).unwrap_or(false))
                         .flat_map(|(_, validators)| {
                             has_match = true;
                             validate!(validators, schema, value, instance_path, property)
@@ -631,7 +631,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
                 errors.extend(
                     self.patterns
                         .iter()
-                        .filter(|(re, _)| re.is_match(property))
+                        .filter(|(re, _)| re.is_match(property).unwrap_or(false))
                         .flat_map(|(_, validators)| {
                             has_match = true;
                             validate!(validators, schema, value, instance_path, property)
@@ -735,7 +735,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
                         // Valid for `properties`, check `patternProperties`
                         for (re, validators) in &self.patterns {
                             // If there is a match, then the value should match the sub-schema
-                            if re.is_match(property) {
+                            if re.is_match(property).unwrap_or(false) {
                                 is_valid_pattern_schema!(validators, schema, value)
                             }
                         }
@@ -747,7 +747,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
                     let mut has_match = false;
                     for (re, validators) in &self.patterns {
                         // If there is a match, then the value should match the sub-schema
-                        if re.is_match(property) {
+                        if re.is_match(property).unwrap_or(false) {
                             has_match = true;
                             is_valid_pattern_schema!(validators, schema, value)
                         }
@@ -777,7 +777,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
                     errors.extend(
                         self.patterns
                             .iter()
-                            .filter(|(re, _)| re.is_match(property))
+                            .filter(|(re, _)| re.is_match(property).unwrap_or(false))
                             .flat_map(|(_, validators)| {
                                 validate!(validators, schema, value, instance_path, name)
                             }),
@@ -787,7 +787,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
                     errors.extend(
                         self.patterns
                             .iter()
-                            .filter(|(re, _)| re.is_match(property))
+                            .filter(|(re, _)| re.is_match(property).unwrap_or(false))
                             .flat_map(|(_, validators)| {
                                 has_match = true;
                                 validate!(validators, schema, value, instance_path, property)
@@ -892,7 +892,7 @@ impl<M: PropertiesValidatorsMap> Validate
                         // Valid for `properties`, check `patternProperties`
                         for (re, validators) in &self.patterns {
                             // If there is a match, then the value should match the sub-schema
-                            if re.is_match(property) {
+                            if re.is_match(property).unwrap_or(false) {
                                 is_valid_pattern_schema!(validators, schema, value)
                             }
                         }
@@ -924,7 +924,7 @@ impl<M: PropertiesValidatorsMap> Validate
                     errors.extend(
                         self.patterns
                             .iter()
-                            .filter(|(re, _)| re.is_match(property))
+                            .filter(|(re, _)| re.is_match(property).unwrap_or(false))
                             .flat_map(|(_, validators)| {
                                 validate!(validators, schema, value, instance_path, name)
                             }),
@@ -934,7 +934,7 @@ impl<M: PropertiesValidatorsMap> Validate
                     errors.extend(
                         self.patterns
                             .iter()
-                            .filter(|(re, _)| re.is_match(property))
+                            .filter(|(re, _)| re.is_match(property).unwrap_or(false))
                             .flat_map(|(_, validators)| {
                                 has_match = true;
                                 validate!(validators, schema, value, instance_path, property)
@@ -1070,7 +1070,7 @@ fn compile_patterns(
 
 #[cfg(test)]
 mod tests {
-    use crate::{tests_util, JSONSchema};
+    use crate::tests_util;
     use serde_json::{json, Value};
     use test_case::test_case;
 
@@ -1439,23 +1439,5 @@ mod tests {
         let schema = schema_6();
         tests_util::is_not_valid(&schema, instance);
         tests_util::expect_errors(&schema, instance, expected)
-    }
-
-    #[test]
-    fn unsupported_regex_does_not_compile() {
-        // See GH-213
-        let schema = json!({
-            "type": "object",
-            "properties": {
-                "eo:cloud_cover": {
-                    "type": "number",
-                },
-            },
-            "patternProperties": {
-                "^(?!eo:)": {}
-            },
-            "additionalProperties": false
-        });
-        assert!(JSONSchema::compile(&schema).is_err())
     }
 }
