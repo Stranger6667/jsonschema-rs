@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Support for look-around patterns. [#183](https://github.com/Stranger6667/jsonschema-rs/issues/183)
+
 ### Fixed
 
 - Extend the `email` format validation. Relevant test case from the JSONSchema test suite - `email.json`.
