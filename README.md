@@ -33,7 +33,9 @@ fn main() -> Result<(), CompilationError> {
     if let Err(errors) = result {
         for error in errors {
             println!("Validation error: {}", error);
-            println!("Instance path: {}", error.instance_path);
+            println!(
+                "Instance path: {}", error.instance_path
+            );
         }
     }
     Ok(())
@@ -105,8 +107,8 @@ Here is the average time for each contender to validate Ratios are given against
 
 | Case           | jsonschema_valid        | valico                  | jsonschema (validate) | jsonschema (is_valid)  |
 | -------------- | ----------------------- | ----------------------- | --------------------- | ---------------------- |
-| OpenAPI        |                   - (1) |                   - (2) |              1.704 ms |   1.651 ms (**x0.96**) |
-| Swagger        |                   - (3) |  97.401 ms (**x18.37**) |              5.234 ms |   3.507 ms (**x0.66**) |
+| OpenAPI        |                   - (1) |                   - (1) |              1.704 ms |   1.651 ms (**x0.96**) |
+| Swagger        |                   - (2) |  97.401 ms (**x18.37**) |              5.234 ms |   3.507 ms (**x0.66**) |
 | Canada         |  45.555 ms (**x39.20**) | 164.12 ms (**x141.23**) |              1.162 ms |   1.165 ms (**x1.00**) |
 | CITM catalog   |    6.107 ms (**x2.28**) |   15.233 ms (**x5.69**) |              2.677 ms |  755.58 us (**x0.28**) |
 | Fast (valid)   |     2.04 us (**x5.67**) |    3.70 us (**x10.28**) |             359.59 ns |   93.40 ns (**x0.25**) |
@@ -114,9 +116,9 @@ Here is the average time for each contender to validate Ratios are given against
 
 Notes:
 
-1, 2. `jsonschema_valid` and `valico` do not handle valid path instances matching the `^\\/` regex.
+1. `jsonschema_valid` and `valico` do not handle valid path instances matching the `^\\/` regex.
 
-3. `jsonschema_valid` fails to resolve local references (e.g. `#/definitions/definitions`).
+2. `jsonschema_valid` fails to resolve local references (e.g. `#/definitions/definitions`).
 
 You can find benchmark code in `benches/jsonschema.rs`, Rust version is `1.51`.
 
