@@ -2,7 +2,7 @@ use crate::{compilation::context::CompilationContext, keywords};
 use serde_json::{Map, Value};
 
 /// JSON Schema Draft version
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, Hash, Eq)]
 pub enum Draft {
     /// JSON Schema Draft 4
     Draft4,

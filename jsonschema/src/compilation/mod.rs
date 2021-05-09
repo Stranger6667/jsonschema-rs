@@ -10,6 +10,7 @@ use crate::{
     keywords::Validators,
     paths::InstancePath,
     resolver::Resolver,
+    ValidationError,
 };
 use context::CompilationContext;
 use options::CompilationOptions;
@@ -54,7 +55,7 @@ impl<'a> JSONSchema<'a> {
     /// Compile the input schema into a validation tree.
     ///
     /// The method is equivalent to `JSONSchema::options().compile(schema)`
-    pub fn compile(schema: &'a Value) -> Result<JSONSchema<'a>, CompilationError> {
+    pub fn compile(schema: &'a Value) -> Result<JSONSchema<'a>, ValidationError> {
         Self::options().compile(schema)
     }
 
