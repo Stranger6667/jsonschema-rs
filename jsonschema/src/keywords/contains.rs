@@ -15,11 +15,12 @@ impl ContainsValidator {
     #[inline]
     pub(crate) fn compile<'a>(
         schema: &'a Value,
-        context: &CompilationContext,
+        context: &mut CompilationContext,
     ) -> CompilationResult<'a> {
-        Ok(Box::new(ContainsValidator {
-            validators: compile_validators(schema, context)?,
-        }))
+        context.schema_path.push(schema.to_string());
+        let validators = compile_validators(schema, context)?;
+        context.schema_path.pop();
+        Ok(Box::new(ContainsValidator { validators }))
     }
 }
 

@@ -21,7 +21,9 @@ impl AllOfValidator {
     ) -> CompilationResult<'a> {
         let mut schemas = Vec::with_capacity(items.len());
         for item in items {
+            context.schema_path.push(item.to_string());
             let validators = compile_validators(item, context)?;
+            context.schema_path.pop();
             schemas.push(validators)
         }
         Ok(Box::new(AllOfValidator { schemas }))

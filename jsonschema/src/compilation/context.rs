@@ -44,7 +44,7 @@ impl<'a> CompilationContext<'a> {
             Ok(CompilationContext {
                 scope: Cow::Borrowed(self.scope.as_ref()),
                 config: Cow::Borrowed(&self.config),
-                schema_path: self.schema_path.clone()
+                schema_path: self.schema_path.clone(),
             })
         }
     }
