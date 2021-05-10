@@ -62,7 +62,7 @@ impl ToString for NotValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     Some(NotValidator::compile(schema, context))
 }

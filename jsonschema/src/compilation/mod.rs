@@ -88,7 +88,7 @@ pub(crate) fn compile_validators<'a, 'c>(
     schema: &'a Value,
     context: &'c CompilationContext,
 ) -> Result<Validators, ValidationError<'a>> {
-    let context = context.push(schema)?;
+    let mut context = context.push(schema)?;
     match schema {
         Value::Bool(value) => match value {
             true => Ok(vec![]),
@@ -108,7 +108,7 @@ pub(crate) fn compile_validators<'a, 'c>(
                 let mut validators = Vec::with_capacity(object.len());
                 for (keyword, subschema) in object {
                     if let Some(compilation_func) = context.config.draft().get_validator(keyword) {
-                        if let Some(validator) = compilation_func(object, subschema, &context) {
+                        if let Some(validator) = compilation_func(object, subschema, &mut context) {
                             validators.push(validator?)
                         }
                     }

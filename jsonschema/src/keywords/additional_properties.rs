@@ -128,21 +128,25 @@ macro_rules! validate {
 
 fn compile_small_map<'a>(
     map: &'a Map<String, Value>,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Result<SmallValidatorsMap, ValidationError<'a>> {
     let mut properties = Vec::with_capacity(map.len());
     for (key, subschema) in map {
+        context.schema_path.push(subschema.to_string());
         properties.push((key.clone(), compile_validators(subschema, context)?));
+        context.schema_path.pop();
     }
     Ok(properties)
 }
 fn compile_big_map<'a>(
     map: &'a Map<String, Value>,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Result<BigValidatorsMap, ValidationError<'a>> {
     let mut properties = AHashMap::with_capacity(map.len());
     for (key, subschema) in map {
+        context.schema_path.push(subschema.to_string());
         properties.insert(key.clone(), compile_validators(subschema, context)?);
+        context.schema_path.pop();
     }
     Ok(properties)
 }
@@ -291,7 +295,7 @@ impl AdditionalPropertiesNotEmptyFalseValidator<SmallValidatorsMap> {
     #[inline]
     pub(crate) fn compile<'a>(
         map: &'a Map<String, Value>,
-        context: &CompilationContext,
+        context: &mut CompilationContext,
     ) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
             properties: compile_small_map(map, context)?,
@@ -302,7 +306,7 @@ impl AdditionalPropertiesNotEmptyFalseValidator<BigValidatorsMap> {
     #[inline]
     pub(crate) fn compile<'a>(
         map: &'a Map<String, Value>,
-        context: &CompilationContext,
+        context: &mut CompilationContext,
     ) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
             properties: compile_big_map(map, context)?,
@@ -389,7 +393,7 @@ impl AdditionalPropertiesNotEmptyValidator<SmallValidatorsMap> {
     pub(crate) fn compile<'a>(
         map: &'a Map<String, Value>,
         schema: &'a Value,
-        context: &CompilationContext,
+        context: &mut CompilationContext,
     ) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
             properties: compile_small_map(map, context)?,
@@ -402,7 +406,7 @@ impl AdditionalPropertiesNotEmptyValidator<BigValidatorsMap> {
     pub(crate) fn compile<'a>(
         map: &'a Map<String, Value>,
         schema: &'a Value,
-        context: &CompilationContext,
+        context: &mut CompilationContext,
     ) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
             properties: compile_big_map(map, context)?,
@@ -698,7 +702,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator<SmallValidatorsMap> {
         map: &'a Map<String, Value>,
         schema: &'a Value,
         patterns: PatternedValidators,
-        context: &CompilationContext,
+        context: &mut CompilationContext,
     ) -> CompilationResult<'a> {
         Ok(Box::new(
             AdditionalPropertiesWithPatternsNotEmptyValidator {
@@ -715,7 +719,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator<BigValidatorsMap> {
         map: &'a Map<String, Value>,
         schema: &'a Value,
         patterns: PatternedValidators,
-        context: &CompilationContext,
+        context: &mut CompilationContext,
     ) -> CompilationResult<'a> {
         Ok(Box::new(
             AdditionalPropertiesWithPatternsNotEmptyValidator {
@@ -854,7 +858,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator<SmallValidatorsMap> 
     pub(crate) fn compile<'a>(
         map: &'a Map<String, Value>,
         patterns: PatternedValidators,
-        context: &CompilationContext,
+        context: &mut CompilationContext,
     ) -> CompilationResult<'a> {
         Ok(Box::new(
             AdditionalPropertiesWithPatternsNotEmptyFalseValidator::<SmallValidatorsMap> {
@@ -869,7 +873,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator<BigValidatorsMap> {
     pub(crate) fn compile<'a>(
         map: &'a Map<String, Value>,
         patterns: PatternedValidators,
-        context: &CompilationContext,
+        context: &mut CompilationContext,
     ) -> CompilationResult<'a> {
         Ok(Box::new(
             AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
@@ -970,7 +974,7 @@ impl<M: PropertiesValidatorsMap> ToString
 pub(crate) fn compile<'a>(
     parent: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     let properties = parent.get("properties");
     if let Some(patterns) = parent.get("patternProperties") {

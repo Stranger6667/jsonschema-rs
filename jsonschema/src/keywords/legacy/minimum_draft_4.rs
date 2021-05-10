@@ -8,7 +8,7 @@ use serde_json::{Map, Value};
 pub(crate) fn compile<'a>(
     parent: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     if let Some(Value::Bool(true)) = parent.get("exclusiveMinimum") {
         exclusive_minimum::compile(parent, schema, context)

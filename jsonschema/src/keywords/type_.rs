@@ -349,7 +349,7 @@ fn is_integer(num: &Number) -> bool {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    _: &CompilationContext,
+    _: &mut CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     match schema {
         Value::String(item) => compile_single_type(item.as_str()),

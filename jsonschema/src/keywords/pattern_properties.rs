@@ -165,7 +165,7 @@ impl ToString for SingleValuePatternPropertiesValidator {
 pub(crate) fn compile<'a>(
     parent: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     match parent.get("additionalProperties") {
         // This type of `additionalProperties` validator handles `patternProperties` logic

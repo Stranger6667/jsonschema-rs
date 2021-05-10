@@ -129,7 +129,7 @@ impl ToString for ItemsObjectValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     match schema {
         Value::Array(items) => Some(ItemsArrayValidator::compile(items, context)),

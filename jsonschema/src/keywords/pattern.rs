@@ -143,7 +143,7 @@ fn replace_control_group(captures: &regex::Captures) -> String {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    _: &CompilationContext,
+    _: &mut CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     Some(PatternValidator::compile(schema))
 }

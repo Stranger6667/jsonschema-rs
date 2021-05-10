@@ -17,7 +17,7 @@ impl AllOfValidator {
     #[inline]
     pub(crate) fn compile<'a>(
         items: &'a [Value],
-        context: &CompilationContext,
+        context: &mut CompilationContext,
     ) -> CompilationResult<'a> {
         let mut schemas = Vec::with_capacity(items.len());
         for item in items {
@@ -107,7 +107,7 @@ impl ToString for SingleValueAllOfValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     if let Value::Array(items) = schema {
         if items.len() == 1 {

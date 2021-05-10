@@ -10,18 +10,20 @@ use serde_json::{Map, Value};
 pub(crate) struct AdditionalItemsObjectValidator {
     validators: Validators,
     items_count: usize,
+    schema_path: Vec<String>,
 }
 impl AdditionalItemsObjectValidator {
     #[inline]
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         items_count: usize,
-        context: &CompilationContext,
+        context: &mut CompilationContext,
     ) -> CompilationResult<'a> {
         let validators = compile_validators(schema, context)?;
         Ok(Box::new(AdditionalItemsObjectValidator {
             validators,
             items_count,
+            schema_path: context.schema_path.clone()
         }))
     }
 }
@@ -114,7 +116,7 @@ impl ToString for AdditionalItemsBooleanValidator {
 pub(crate) fn compile<'a>(
     parent: &Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     if let Some(items) = parent.get("items") {
         match items {

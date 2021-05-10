@@ -61,7 +61,7 @@ impl ToString for MinPropertiesValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    _: &CompilationContext,
+    _: &mut CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     Some(MinPropertiesValidator::compile(schema))
 }

@@ -115,7 +115,7 @@ impl ToString for MultipleOfIntegerValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    _: &CompilationContext,
+    _: &mut CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     if let Value::Number(multiple_of) = schema {
         let multiple_of = multiple_of.as_f64().expect("Always valid");

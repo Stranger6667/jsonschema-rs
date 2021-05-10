@@ -17,7 +17,7 @@ impl AnyOfValidator {
     #[inline]
     pub(crate) fn compile<'a>(
         schema: &'a Value,
-        context: &CompilationContext,
+        context: &mut CompilationContext,
     ) -> CompilationResult<'a> {
         if let Value::Array(items) = schema {
             let mut schemas = Vec::with_capacity(items.len());
@@ -68,7 +68,7 @@ impl ToString for AnyOfValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     Some(AnyOfValidator::compile(schema, context))
 }

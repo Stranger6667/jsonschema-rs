@@ -61,7 +61,7 @@ impl ToString for MaxItemsValidator {
 pub(crate) fn compile<'a>(
     _: &Map<String, Value>,
     schema: &'a Value,
-    _: &CompilationContext,
+    _: &mut CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     Some(MaxItemsValidator::compile(schema))
 }

@@ -122,7 +122,7 @@ impl ToString for PropertyNamesBooleanValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
+    context: &mut CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     match schema {
         Value::Object(_) => Some(PropertyNamesObjectValidator::compile(schema, context)),
