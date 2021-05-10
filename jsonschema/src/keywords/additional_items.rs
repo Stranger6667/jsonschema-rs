@@ -10,7 +10,6 @@ use serde_json::{Map, Value};
 pub(crate) struct AdditionalItemsObjectValidator {
     validators: Validators,
     items_count: usize,
-    schema_path: Vec<String>,
 }
 impl AdditionalItemsObjectValidator {
     #[inline]
@@ -19,11 +18,12 @@ impl AdditionalItemsObjectValidator {
         items_count: usize,
         context: &mut CompilationContext,
     ) -> CompilationResult<'a> {
+        context.schema_path.push(schema.to_string());
         let validators = compile_validators(schema, context)?;
+        context.schema_path.pop();
         Ok(Box::new(AdditionalItemsObjectValidator {
             validators,
             items_count,
-            schema_path: context.schema_path.clone()
         }))
     }
 }
