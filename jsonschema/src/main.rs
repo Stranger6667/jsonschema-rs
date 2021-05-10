@@ -48,25 +48,30 @@ fn validate_instances(instances: &[PathBuf], schema: PathBuf) -> BoxErrorResult<
 
     let schema_json = fs::read_to_string(schema)?;
     let schema_json = serde_json::from_str(&schema_json)?;
-    let schema = JSONSchema::compile(&schema_json)?;
+    match JSONSchema::compile(&schema_json) {
+        Ok(schema) => {
+            for instance in instances {
+                let instance_path_name = instance.to_str().unwrap();
+                let instance_json = fs::read_to_string(&instance)?;
+                let instance_json = serde_json::from_str(&instance_json)?;
+                let validation = schema.validate(&instance_json);
+                match validation {
+                    Ok(_) => println!("{} - VALID", instance_path_name),
+                    Err(errors) => {
+                        success = false;
 
-    for instance in instances {
-        let instance_path_name = instance.to_str().unwrap();
-        let instance_json = fs::read_to_string(&instance)?;
-        let instance_json = serde_json::from_str(&instance_json)?;
-        let validation = schema.validate(&instance_json);
-        match validation {
-            Ok(_) => println!("{} - VALID", instance_path_name),
-            Err(errors) => {
-                success = false;
-
-                println!("{} - INVALID. Errors:", instance_path_name);
-                for (i, e) in errors.enumerate() {
-                    println!("{}. {}", i + 1, e);
+                        println!("{} - INVALID. Errors:", instance_path_name);
+                        for (i, e) in errors.enumerate() {
+                            println!("{}. {}", i + 1, e);
+                        }
+                    }
                 }
             }
         }
+        Err(error) => {
+            println!("Schema is invalid. Error: {}", error);
+            success = false;
+        }
     }
-
     Ok(success)
 }

@@ -14,8 +14,8 @@ use std::{borrow::Cow, fmt};
 
 lazy_static::lazy_static! {
     static ref DRAFT4:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft4.json")).expect("Valid schema!");
-    static ref DRAFT6:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft4.json")).expect("Valid schema!");
-    static ref DRAFT7:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft4.json")).expect("Valid schema!");
+    static ref DRAFT6:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft6.json")).expect("Valid schema!");
+    static ref DRAFT7:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft7.json")).expect("Valid schema!");
 
     static ref META_SCHEMAS: AHashMap<String, serde_json::Value> = {
         let mut store = AHashMap::with_capacity(3);
@@ -74,7 +74,7 @@ impl CompilationOptions {
     pub fn compile<'a>(
         &self,
         schema: &'a serde_json::Value,
-    ) -> Result<JSONSchema<'a>, ValidationError> {
+    ) -> Result<JSONSchema<'a>, ValidationError<'a>> {
         // Draft is detected in the following precedence order:
         //   - Explicitly specified;
         //   - $schema field in the document;
@@ -102,11 +102,15 @@ impl CompilationOptions {
         let resolver = Resolver::new(draft, &scope, schema, self.store.clone())?;
         let context = CompilationContext::new(scope, processed_config);
 
-        META_SCHEMA_VALIDATORS
+        if let Some(mut errors) = META_SCHEMA_VALIDATORS
             .get(&draft)
             .expect("existing draft!")
             .validate(schema)
-            .expect("valid meta-schema!");
+            .err()
+        {
+            return Err(errors.next().expect("Should have at least one element"));
+        }
+
         let mut validators = compile_validators(schema, &context)?;
         validators.shrink_to_fit();
 
