@@ -1,7 +1,7 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
-    keywords::CompilationResult,
+    error::{error, no_error, ErrorIterator, ValidationError},
+    keywords::ValidationResult,
     paths::InstancePath,
     validator::Validate,
 };
@@ -21,16 +21,19 @@ pub(crate) struct PatternValidator {
 
 impl PatternValidator {
     #[inline]
-    pub(crate) fn compile(pattern: &Value) -> CompilationResult {
+    pub(crate) fn compile<'a>(pattern: &'a Value) -> ValidationResult<'a> {
         match pattern {
             Value::String(item) => {
-                let pattern = convert_regex(item)?;
+                let pattern = match convert_regex(item) {
+                    Ok(r) => r,
+                    Err(_) => return Err(ValidationError::schema(pattern)),
+                };
                 Ok(Box::new(PatternValidator {
                     original: item.clone(),
                     pattern,
                 }))
             }
-            _ => Err(CompilationError::SchemaError),
+            _ => Err(ValidationError::schema(pattern)),
         }
     }
 }
@@ -137,11 +140,11 @@ fn replace_control_group(captures: &regex::Captures) -> String {
 }
 
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
-    _: &CompilationContext,
-) -> Option<CompilationResult> {
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
+    _: &'a CompilationContext,
+) -> Option<ValidationResult<'a>> {
     Some(PatternValidator::compile(schema))
 }
 

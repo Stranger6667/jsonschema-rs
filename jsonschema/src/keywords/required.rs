@@ -1,7 +1,7 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
-    keywords::CompilationResult,
+    error::{error, no_error, ErrorIterator, ValidationError},
+    keywords::ValidationResult,
     paths::InstancePath,
     validator::Validate,
 };
@@ -13,12 +13,12 @@ pub(crate) struct RequiredValidator {
 
 impl RequiredValidator {
     #[inline]
-    pub(crate) fn compile(items: &[Value]) -> CompilationResult {
+    pub(crate) fn compile<'a>(items: &'a [Value]) -> ValidationResult<'a> {
         let mut required = Vec::with_capacity(items.len());
         for item in items {
             match item {
                 Value::String(string) => required.push(string.clone()),
-                _ => return Err(CompilationError::SchemaError),
+                _ => return Err(ValidationError::schema(item)),
             }
         }
         Ok(Box::new(RequiredValidator { required }))
@@ -74,7 +74,7 @@ pub(crate) struct SingleItemRequiredValidator {
 
 impl SingleItemRequiredValidator {
     #[inline]
-    pub(crate) fn compile(value: &str) -> CompilationResult {
+    pub(crate) fn compile<'a>(value: &'a str) -> ValidationResult<'a> {
         Ok(Box::new(SingleItemRequiredValidator {
             value: value.to_string(),
         }))
@@ -115,11 +115,11 @@ impl ToString for SingleItemRequiredValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
-    _: &CompilationContext,
-) -> Option<CompilationResult> {
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
+    _: &'a CompilationContext,
+) -> Option<ValidationResult<'a>> {
     // IMPORTANT: If this function will ever return `None`, adjust `dependencies.rs` accordingly
     match schema {
         Value::Array(items) => {
@@ -127,12 +127,12 @@ pub(crate) fn compile(
                 if let Some(Value::String(item)) = items.iter().next() {
                     Some(SingleItemRequiredValidator::compile(item))
                 } else {
-                    Some(Err(CompilationError::SchemaError))
+                    Some(Err(ValidationError::schema(schema)))
                 }
             } else {
                 Some(RequiredValidator::compile(items))
             }
         }
-        _ => Some(Err(CompilationError::SchemaError)),
+        _ => Some(Err(ValidationError::schema(schema))),
     }
 }

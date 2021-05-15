@@ -1,7 +1,7 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{format_validators, CompilationResult, Validators},
+    keywords::{format_validators, ValidationResult, Validators},
     paths::InstancePath,
     validator::Validate,
 };
@@ -15,7 +15,10 @@ pub(crate) struct NotValidator {
 
 impl NotValidator {
     #[inline]
-    pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        context: &'a CompilationContext,
+    ) -> ValidationResult<'a> {
         Ok(Box::new(NotValidator {
             original: schema.clone(),
             validators: compile_validators(schema, context)?,
@@ -56,10 +59,10 @@ impl ToString for NotValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
-    context: &CompilationContext,
-) -> Option<CompilationResult> {
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
+    context: &'a CompilationContext,
+) -> Option<ValidationResult<'a>> {
     Some(NotValidator::compile(schema, context))
 }

@@ -612,13 +612,23 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Reqwest { error },
         }
     }
-    pub(crate) fn schema() -> ValidationError<'a> {
+
+    pub(crate) fn schema(instance: &'a Value) -> ValidationError<'a> {
+        ValidationError {
+            instance_path: JSONPointer::default(),
+            instance: Cow::Borrowed(instance),
+            kind: ValidationErrorKind::Schema,
+        }
+    }
+
+    pub(crate) fn null_schema() -> ValidationError<'a> {
         ValidationError {
             instance_path: JSONPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::Schema,
         }
     }
+
     pub(crate) const fn single_type_error(
         instance_path: JSONPointer,
         instance: &'a Value,
@@ -674,7 +684,7 @@ impl<'a> ValidationError<'a> {
 impl From<CompilationError> for ValidationError<'_> {
     #[inline]
     fn from(_: CompilationError) -> Self {
-        ValidationError::schema()
+        ValidationError::null_schema()
     }
 }
 impl error::Error for ValidationError<'_> {}

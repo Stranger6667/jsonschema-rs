@@ -1,11 +1,13 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
-    error::{CompilationError, ErrorIterator},
-    keywords::{format_validators, format_vec_of_validators, CompilationResult, Validators},
+    error::{ErrorIterator, ValidationError},
+    keywords::{format_validators, format_vec_of_validators, Validators},
     paths::InstancePath,
     validator::Validate,
 };
 use serde_json::{Map, Value};
+
+use super::ValidationResult;
 
 pub(crate) struct AllOfValidator {
     schemas: Vec<Validators>,
@@ -13,7 +15,10 @@ pub(crate) struct AllOfValidator {
 
 impl AllOfValidator {
     #[inline]
-    pub(crate) fn compile(items: &[Value], context: &CompilationContext) -> CompilationResult {
+    pub(crate) fn compile<'a>(
+        items: &'a [Value],
+        context: &'a CompilationContext,
+    ) -> ValidationResult<'a> {
         let mut schemas = Vec::with_capacity(items.len());
         for item in items {
             let validators = compile_validators(item, context)?;
@@ -62,7 +67,10 @@ pub(crate) struct SingleValueAllOfValidator {
 
 impl SingleValueAllOfValidator {
     #[inline]
-    pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        context: &'a CompilationContext,
+    ) -> ValidationResult<'a> {
         let validators = compile_validators(schema, context)?;
         Ok(Box::new(SingleValueAllOfValidator { validators }))
     }
@@ -96,11 +104,11 @@ impl ToString for SingleValueAllOfValidator {
     }
 }
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
-    context: &CompilationContext,
-) -> Option<CompilationResult> {
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
+    context: &'a CompilationContext,
+) -> Option<ValidationResult<'a>> {
     if let Value::Array(items) = schema {
         if items.len() == 1 {
             let value = items.iter().next().expect("Vec is not empty");
@@ -109,6 +117,6 @@ pub(crate) fn compile(
             Some(AllOfValidator::compile(items, context))
         }
     } else {
-        Some(Err(CompilationError::SchemaError))
+        Some(Err(ValidationError::schema(schema)))
     }
 }

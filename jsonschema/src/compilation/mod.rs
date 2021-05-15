@@ -5,11 +5,7 @@ pub(crate) mod context;
 pub(crate) mod options;
 
 use crate::{
-    error::{CompilationError, ErrorIterator},
-    keywords,
-    keywords::Validators,
-    paths::InstancePath,
-    resolver::Resolver,
+    error::ErrorIterator, keywords, keywords::Validators, paths::InstancePath, resolver::Resolver,
     ValidationError,
 };
 use context::CompilationContext;
@@ -88,10 +84,10 @@ impl<'a> JSONSchema<'a> {
 
 /// Compile JSON schema into a tree of validators.
 #[inline]
-pub(crate) fn compile_validators(
-    schema: &Value,
-    context: &CompilationContext,
-) -> Result<Validators, CompilationError> {
+pub(crate) fn compile_validators<'a>(
+    schema: &'a Value,
+    context: &'a CompilationContext,
+) -> Result<Validators, ValidationError<'a>> {
     let context = context.push(schema)?;
     match schema {
         Value::Bool(value) => match value {
@@ -106,7 +102,7 @@ pub(crate) fn compile_validators(
                     Ok(vec![keywords::ref_::compile(schema, reference, &context)
                         .expect("Should always return Some")?])
                 } else {
-                    Err(CompilationError::SchemaError)
+                    Err(ValidationError::schema(schema))
                 }
             } else {
                 let mut validators = Vec::with_capacity(object.len());
@@ -120,7 +116,7 @@ pub(crate) fn compile_validators(
                 Ok(validators)
             }
         }
-        _ => Err(CompilationError::SchemaError),
+        _ => Err(ValidationError::schema(schema)),
     }
 }
 

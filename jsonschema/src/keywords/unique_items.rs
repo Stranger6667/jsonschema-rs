@@ -1,7 +1,7 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{helpers::equal, CompilationResult},
+    keywords::{helpers::equal, ValidationResult},
     validator::Validate,
 };
 use ahash::{AHashSet, AHasher};
@@ -86,7 +86,7 @@ pub(crate) struct UniqueItemsValidator {}
 
 impl UniqueItemsValidator {
     #[inline]
-    pub(crate) fn compile() -> CompilationResult {
+    pub(crate) fn compile<'a>() -> ValidationResult<'a> {
         Ok(Box::new(UniqueItemsValidator {}))
     }
 }
@@ -124,11 +124,11 @@ impl ToString for UniqueItemsValidator {
     }
 }
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
-    _: &CompilationContext,
-) -> Option<CompilationResult> {
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
+    _: &'a CompilationContext,
+) -> Option<ValidationResult<'a>> {
     if let Value::Bool(value) = schema {
         if *value {
             Some(UniqueItemsValidator::compile())

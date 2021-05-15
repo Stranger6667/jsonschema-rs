@@ -1,8 +1,8 @@
 //! Validator for `format` keyword.
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
-    keywords::{pattern, CompilationResult},
+    error::{error, no_error, ErrorIterator, ValidationError},
+    keywords::{pattern, ValidationResult},
     paths::InstancePath,
     validator::Validate,
     Draft,
@@ -38,7 +38,7 @@ macro_rules! format_validator {
     ($validator:ident, $format_name:tt) => {
         struct $validator {}
         impl $validator {
-            pub(crate) fn compile() -> CompilationResult {
+            pub(crate) fn compile<'a>() -> ValidationResult<'a> {
                 Ok(Box::new($validator {}))
             }
         }
@@ -325,11 +325,11 @@ impl Validate for URITemplateValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
-    context: &CompilationContext,
-) -> Option<CompilationResult> {
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
+    context: &'a CompilationContext,
+) -> Option<ValidationResult<'a>> {
     if let Value::String(format) = schema {
         let draft_version = context.config.draft();
         match format.as_str() {
@@ -365,7 +365,7 @@ pub(crate) fn compile(
             _ => None,
         }
     } else {
-        Some(Err(CompilationError::SchemaError))
+        Some(Err(ValidationError::schema(schema)))
     }
 }
 

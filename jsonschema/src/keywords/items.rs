@@ -1,7 +1,7 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator},
-    keywords::{format_validators, format_vec_of_validators, CompilationResult, Validators},
+    keywords::{format_validators, format_vec_of_validators, ValidationResult, Validators},
     paths::InstancePath,
     validator::Validate,
 };
@@ -12,7 +12,10 @@ pub(crate) struct ItemsArrayValidator {
 }
 impl ItemsArrayValidator {
     #[inline]
-    pub(crate) fn compile(schemas: &[Value], context: &CompilationContext) -> CompilationResult {
+    pub(crate) fn compile<'a>(
+        schemas: &'a [Value],
+        context: &'a CompilationContext,
+    ) -> ValidationResult<'a> {
         let mut items = Vec::with_capacity(schemas.len());
         for item in schemas {
             let validators = compile_validators(item, context)?;
@@ -72,7 +75,10 @@ pub(crate) struct ItemsObjectValidator {
 }
 impl ItemsObjectValidator {
     #[inline]
-    pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        context: &'a CompilationContext,
+    ) -> ValidationResult<'a> {
         let validators = compile_validators(schema, context)?;
         Ok(Box::new(ItemsObjectValidator { validators }))
     }
@@ -120,11 +126,11 @@ impl ToString for ItemsObjectValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
-    context: &CompilationContext,
-) -> Option<CompilationResult> {
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
+    context: &'a CompilationContext,
+) -> Option<ValidationResult<'a>> {
     match schema {
         Value::Array(items) => Some(ItemsArrayValidator::compile(items, context)),
         Value::Object(_) => Some(ItemsObjectValidator::compile(schema, context)),

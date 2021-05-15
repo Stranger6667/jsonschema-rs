@@ -1,7 +1,7 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{helpers, CompilationResult},
+    keywords::{helpers, ValidationResult},
     validator::Validate,
 };
 use serde_json::{Map, Number, Value};
@@ -14,7 +14,7 @@ struct ConstArrayValidator {
 }
 impl ConstArrayValidator {
     #[inline]
-    pub(crate) fn compile(value: &[Value]) -> CompilationResult {
+    pub(crate) fn compile<'a>(value: &'a [Value]) -> ValidationResult<'a> {
         Ok(Box::new(ConstArrayValidator {
             value: value.to_vec(),
         }))
@@ -66,7 +66,7 @@ struct ConstBooleanValidator {
 }
 impl ConstBooleanValidator {
     #[inline]
-    pub(crate) fn compile(value: bool) -> CompilationResult {
+    pub(crate) fn compile<'a>(value: bool) -> ValidationResult<'a> {
         Ok(Box::new(ConstBooleanValidator { value }))
     }
 }
@@ -107,7 +107,7 @@ impl ToString for ConstBooleanValidator {
 struct ConstNullValidator {}
 impl ConstNullValidator {
     #[inline]
-    pub(crate) fn compile() -> CompilationResult {
+    pub(crate) fn compile<'a>() -> ValidationResult<'a> {
         Ok(Box::new(ConstNullValidator {}))
     }
 }
@@ -148,7 +148,7 @@ struct ConstNumberValidator {
 
 impl ConstNumberValidator {
     #[inline]
-    pub(crate) fn compile(original_value: &Number) -> CompilationResult {
+    pub(crate) fn compile<'a>(original_value: &'a Number) -> ValidationResult<'a> {
         Ok(Box::new(ConstNumberValidator {
             original_value: original_value.clone(),
             value: original_value
@@ -197,7 +197,7 @@ pub(crate) struct ConstObjectValidator {
 
 impl ConstObjectValidator {
     #[inline]
-    pub(crate) fn compile(value: &Map<String, Value>) -> CompilationResult {
+    pub(crate) fn compile<'a>(value: &'a Map<String, Value>) -> ValidationResult<'a> {
         Ok(Box::new(ConstObjectValidator {
             value: value.clone(),
         }))
@@ -250,7 +250,7 @@ pub(crate) struct ConstStringValidator {
 
 impl ConstStringValidator {
     #[inline]
-    pub(crate) fn compile(value: &str) -> CompilationResult {
+    pub(crate) fn compile<'a>(value: &'a str) -> ValidationResult<'a> {
         Ok(Box::new(ConstStringValidator {
             value: value.to_string(),
         }))
@@ -291,11 +291,11 @@ impl ToString for ConstStringValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
-    _: &CompilationContext,
-) -> Option<CompilationResult> {
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
+    _: &'a CompilationContext,
+) -> Option<ValidationResult<'a>> {
     match schema {
         Value::Array(items) => Some(ConstArrayValidator::compile(items)),
         Value::Bool(item) => Some(ConstBooleanValidator::compile(*item)),

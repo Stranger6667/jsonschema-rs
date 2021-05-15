@@ -18,8 +18,11 @@ impl Default for Draft {
     }
 }
 
-type CompileFunc =
-    fn(&Map<String, Value>, &Value, &CompilationContext) -> Option<keywords::CompilationResult>;
+type CompileFunc<'a> = fn(
+    &'a Map<String, Value>,
+    &'a Value,
+    &'a CompilationContext,
+) -> Option<keywords::ValidationResult<'a>>;
 
 impl Draft {
     pub(crate) fn get_validator(self, keyword: &str) -> Option<CompileFunc> {

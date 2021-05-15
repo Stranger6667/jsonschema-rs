@@ -1,7 +1,7 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
-    keywords::{boolean::FalseValidator, format_validators, CompilationResult, Validators},
+    error::{error, no_error, ErrorIterator, ValidationError},
+    keywords::{boolean::FalseValidator, format_validators, ValidationResult, Validators},
     paths::InstancePath,
     validator::Validate,
 };
@@ -13,11 +13,11 @@ pub(crate) struct AdditionalItemsObjectValidator {
 }
 impl AdditionalItemsObjectValidator {
     #[inline]
-    pub(crate) fn compile(
-        schema: &Value,
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
         items_count: usize,
-        context: &CompilationContext,
-    ) -> CompilationResult {
+        context: &'a CompilationContext,
+    ) -> ValidationResult<'a> {
         let validators = compile_validators(schema, context)?;
         Ok(Box::new(AdditionalItemsObjectValidator {
             validators,
@@ -72,7 +72,7 @@ pub(crate) struct AdditionalItemsBooleanValidator {
 }
 impl AdditionalItemsBooleanValidator {
     #[inline]
-    pub(crate) fn compile(items_count: usize) -> CompilationResult {
+    pub(crate) fn compile<'a>(items_count: usize) -> ValidationResult<'a> {
         Ok(Box::new(AdditionalItemsBooleanValidator { items_count }))
     }
 }
@@ -111,11 +111,11 @@ impl ToString for AdditionalItemsBooleanValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    parent: &Map<String, Value>,
-    schema: &Value,
-    context: &CompilationContext,
-) -> Option<CompilationResult> {
+pub(crate) fn compile<'a>(
+    parent: &'a Map<String, Value>,
+    schema: &'a Value,
+    context: &'a CompilationContext,
+) -> Option<ValidationResult<'a>> {
     if let Some(items) = parent.get("items") {
         match items {
             Value::Object(_) => None,
@@ -140,7 +140,7 @@ pub(crate) fn compile(
                     Some(FalseValidator::compile())
                 }
             }
-            _ => Some(Err(CompilationError::SchemaError)),
+            _ => Some(Err(ValidationError::schema(schema))),
         }
     } else {
         None
