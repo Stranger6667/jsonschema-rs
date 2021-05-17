@@ -80,9 +80,7 @@ impl ToString for PatternPropertiesValidator {
             "patternProperties: {{{}}}",
             self.patterns
                 .iter()
-                .map(|(key, validators)| {
-                    format!("{:?}: {}", key, format_validators(validators))
-                })
+                .map(|(key, validators)| { format!("{}: {}", key, format_validators(validators)) })
                 .collect::<Vec<String>>()
                 .join(", ")
         )
@@ -150,7 +148,7 @@ impl Validate for SingleValuePatternPropertiesValidator {
 impl ToString for SingleValuePatternPropertiesValidator {
     fn to_string(&self) -> String {
         format!(
-            "patternProperties: {{{:?}: {}}}",
+            "patternProperties: {{{}: {}}}",
             self.pattern,
             format_validators(&self.validators)
         )
