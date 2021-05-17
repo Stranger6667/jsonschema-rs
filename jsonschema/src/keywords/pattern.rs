@@ -75,7 +75,7 @@ impl Validate for PatternValidator {
 
 impl ToString for PatternValidator {
     fn to_string(&self) -> String {
-        format!("pattern: {:?}", self.pattern)
+        format!("pattern: {}", self.pattern)
     }
 }
 
