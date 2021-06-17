@@ -39,14 +39,15 @@ lazy_static::lazy_static! {
         const EXPECT_MESSAGE: &str = "Valid meta-schema!";
         store.insert(
             schemas::Draft::Draft4,
-            JSONSchema::compile(&DRAFT4).expect(EXPECT_MESSAGE)
+            JSONSchema::options().without_schema_validation().compile(&DRAFT4).expect(EXPECT_MESSAGE)
         );
         store.insert(
             schemas::Draft::Draft6,
-            JSONSchema::compile(&DRAFT6).expect(EXPECT_MESSAGE)
-        );store.insert(
+            JSONSchema::options().without_schema_validation().compile(&DRAFT6).expect(EXPECT_MESSAGE)
+        );
+        store.insert(
             schemas::Draft::Draft7,
-            JSONSchema::compile(&DRAFT7).expect(EXPECT_MESSAGE)
+            JSONSchema::options().without_schema_validation().compile(&DRAFT7).expect(EXPECT_MESSAGE)
         );
         store
     };
@@ -56,13 +57,26 @@ lazy_static::lazy_static! {
 ///
 /// Using a `CompilationOptions` instance you can configure the supported draft,
 /// content media types and more (check the exposed methods)
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct CompilationOptions {
     draft: Option<schemas::Draft>,
     content_media_type_checks: AHashMap<&'static str, Option<ContentMediaTypeCheckType>>,
     content_encoding_checks_and_converters:
         AHashMap<&'static str, Option<(ContentEncodingCheckType, ContentEncodingConverterType)>>,
     store: AHashMap<String, serde_json::Value>,
+    validate_schema: bool,
+}
+
+impl Default for CompilationOptions {
+    fn default() -> Self {
+        CompilationOptions {
+            validate_schema: true,
+            draft: Default::default(),
+            content_media_type_checks: Default::default(),
+            content_encoding_checks_and_converters: Default::default(),
+            store: Default::default(),
+        }
+    }
 }
 
 impl CompilationOptions {
@@ -102,13 +116,15 @@ impl CompilationOptions {
         let resolver = Resolver::new(draft, &scope, schema, self.store.clone())?;
         let context = CompilationContext::new(scope, processed_config);
 
-        if let Some(mut errors) = META_SCHEMA_VALIDATORS
-            .get(&draft)
-            .expect("existing draft!")
-            .validate(schema)
-            .err()
-        {
-            return Err(errors.next().expect("Should have at least one element"));
+        if self.validate_schema {
+            if let Some(mut errors) = META_SCHEMA_VALIDATORS
+                .get(&draft)
+                .expect("Existing draft")
+                .validate(schema)
+                .err()
+            {
+                return Err(errors.next().expect("Should have at least one element"));
+            }
         }
 
         let mut validators = compile_validators(schema, &context)?;
@@ -329,6 +345,12 @@ impl CompilationOptions {
     #[inline]
     pub fn with_document(&mut self, id: String, document: serde_json::Value) -> &mut Self {
         self.store.insert(id, document);
+        self
+    }
+    /// Do not perform schema validation during compilation.
+    #[inline]
+    pub fn without_schema_validation(&mut self) -> &mut Self {
+        self.validate_schema = false;
         self
     }
 }
