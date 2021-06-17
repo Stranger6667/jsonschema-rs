@@ -15,7 +15,10 @@ pub(crate) struct NotValidator {
 
 impl NotValidator {
     #[inline]
-    pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
         Ok(Box::new(NotValidator {
             original: schema.clone(),
             validators: compile_validators(schema, context)?,
@@ -56,10 +59,10 @@ impl ToString for NotValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
     context: &CompilationContext,
-) -> Option<CompilationResult> {
+) -> Option<CompilationResult<'a>> {
     Some(NotValidator::compile(schema, context))
 }

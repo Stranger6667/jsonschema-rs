@@ -1,6 +1,6 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::InstancePath,
     validator::Validate,
@@ -18,7 +18,7 @@ impl RequiredValidator {
         for item in items {
             match item {
                 Value::String(string) => required.push(string.clone()),
-                _ => return Err(CompilationError::SchemaError),
+                _ => return Err(ValidationError::schema(item)),
             }
         }
         Ok(Box::new(RequiredValidator { required }))
@@ -115,11 +115,11 @@ impl ToString for SingleItemRequiredValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
     _: &CompilationContext,
-) -> Option<CompilationResult> {
+) -> Option<CompilationResult<'a>> {
     // IMPORTANT: If this function will ever return `None`, adjust `dependencies.rs` accordingly
     match schema {
         Value::Array(items) => {
@@ -127,12 +127,12 @@ pub(crate) fn compile(
                 if let Some(Value::String(item)) = items.iter().next() {
                     Some(SingleItemRequiredValidator::compile(item))
                 } else {
-                    Some(Err(CompilationError::SchemaError))
+                    Some(Err(ValidationError::schema(schema)))
                 }
             } else {
                 Some(RequiredValidator::compile(items))
             }
         }
-        _ => Some(Err(CompilationError::SchemaError)),
+        _ => Some(Err(ValidationError::schema(schema))),
     }
 }

@@ -66,7 +66,7 @@ struct ConstBooleanValidator {
 }
 impl ConstBooleanValidator {
     #[inline]
-    pub(crate) fn compile(value: bool) -> CompilationResult {
+    pub(crate) fn compile<'a>(value: bool) -> CompilationResult<'a> {
         Ok(Box::new(ConstBooleanValidator { value }))
     }
 }
@@ -107,7 +107,7 @@ impl ToString for ConstBooleanValidator {
 struct ConstNullValidator {}
 impl ConstNullValidator {
     #[inline]
-    pub(crate) fn compile() -> CompilationResult {
+    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
         Ok(Box::new(ConstNullValidator {}))
     }
 }
@@ -291,11 +291,11 @@ impl ToString for ConstStringValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
     _: &CompilationContext,
-) -> Option<CompilationResult> {
+) -> Option<CompilationResult<'a>> {
     match schema {
         Value::Array(items) => Some(ConstArrayValidator::compile(items)),
         Value::Bool(item) => Some(ConstBooleanValidator::compile(*item)),

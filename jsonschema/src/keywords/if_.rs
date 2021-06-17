@@ -14,11 +14,11 @@ pub(crate) struct IfThenValidator {
 
 impl IfThenValidator {
     #[inline]
-    pub(crate) fn compile(
-        schema: &Value,
-        then_schema: &Value,
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        then_schema: &'a Value,
         context: &CompilationContext,
-    ) -> CompilationResult {
+    ) -> CompilationResult<'a> {
         Ok(Box::new(IfThenValidator {
             schema: compile_validators(schema, context)?,
             then_schema: compile_validators(then_schema, context)?,
@@ -85,7 +85,7 @@ impl IfElseValidator {
         schema: &'a Value,
         else_schema: &'a Value,
         context: &CompilationContext,
-    ) -> CompilationResult {
+    ) -> CompilationResult<'a> {
         Ok(Box::new(IfElseValidator {
             schema: compile_validators(schema, context)?,
             else_schema: compile_validators(else_schema, context)?,
@@ -149,12 +149,12 @@ pub(crate) struct IfThenElseValidator {
 
 impl IfThenElseValidator {
     #[inline]
-    pub(crate) fn compile(
-        schema: &Value,
-        then_schema: &Value,
-        else_schema: &Value,
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        then_schema: &'a Value,
+        else_schema: &'a Value,
         context: &CompilationContext,
-    ) -> CompilationResult {
+    ) -> CompilationResult<'a> {
         Ok(Box::new(IfThenElseValidator {
             schema: compile_validators(schema, context)?,
             then_schema: compile_validators(then_schema, context)?,
@@ -220,11 +220,11 @@ impl ToString for IfThenElseValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    parent: &Map<String, Value>,
-    schema: &Value,
+pub(crate) fn compile<'a>(
+    parent: &'a Map<String, Value>,
+    schema: &'a Value,
     context: &CompilationContext,
-) -> Option<CompilationResult> {
+) -> Option<CompilationResult<'a>> {
     let then = parent.get("then");
     let else_ = parent.get("else");
     match (then, else_) {

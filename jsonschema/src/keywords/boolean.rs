@@ -11,7 +11,7 @@ use serde_json::Value;
 pub(crate) struct FalseValidator {}
 impl FalseValidator {
     #[inline]
-    pub(crate) fn compile() -> CompilationResult {
+    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
         Ok(Box::new(FalseValidator {}))
     }
 }

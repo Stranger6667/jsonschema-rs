@@ -1,6 +1,6 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::InstancePath,
     validator::Validate,
@@ -17,7 +17,7 @@ impl MaxItemsValidator {
         if let Some(limit) = schema.as_u64() {
             Ok(Box::new(MaxItemsValidator { limit }))
         } else {
-            Err(CompilationError::SchemaError)
+            Err(ValidationError::schema(schema))
         }
     }
 }
@@ -58,10 +58,10 @@ impl ToString for MaxItemsValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
+pub(crate) fn compile<'a>(
     _: &Map<String, Value>,
-    schema: &Value,
+    schema: &'a Value,
     _: &CompilationContext,
-) -> Option<CompilationResult> {
+) -> Option<CompilationResult<'a>> {
     Some(MaxItemsValidator::compile(schema))
 }

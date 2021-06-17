@@ -86,7 +86,7 @@ pub(crate) struct UniqueItemsValidator {}
 
 impl UniqueItemsValidator {
     #[inline]
-    pub(crate) fn compile() -> CompilationResult {
+    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
         Ok(Box::new(UniqueItemsValidator {}))
     }
 }
@@ -124,11 +124,11 @@ impl ToString for UniqueItemsValidator {
     }
 }
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
     _: &CompilationContext,
-) -> Option<CompilationResult> {
+) -> Option<CompilationResult<'a>> {
     if let Value::Bool(value) = schema {
         if *value {
             Some(UniqueItemsValidator::compile())

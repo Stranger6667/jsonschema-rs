@@ -1,6 +1,6 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
-    error::{no_error, CompilationError, ErrorIterator},
+    error::{no_error, ErrorIterator, ValidationError},
     keywords::{format_key_value_validators, CompilationResult, Validators},
     paths::InstancePath,
     validator::Validate,
@@ -13,7 +13,10 @@ pub(crate) struct PropertiesValidator {
 
 impl PropertiesValidator {
     #[inline]
-    pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
         match schema {
             Value::Object(map) => {
                 let mut properties = Vec::with_capacity(map.len());
@@ -22,7 +25,7 @@ impl PropertiesValidator {
                 }
                 Ok(Box::new(PropertiesValidator { properties }))
             }
-            _ => Err(CompilationError::SchemaError),
+            _ => Err(ValidationError::schema(schema)),
         }
     }
 }
@@ -80,11 +83,11 @@ impl ToString for PropertiesValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    parent: &Map<String, Value>,
-    schema: &Value,
+pub(crate) fn compile<'a>(
+    parent: &'a Map<String, Value>,
+    schema: &'a Value,
     context: &CompilationContext,
-) -> Option<CompilationResult> {
+) -> Option<CompilationResult<'a>> {
     match parent.get("additionalProperties") {
         // This type of `additionalProperties` validator handles `properties` logic
         Some(Value::Bool(false)) | Some(Value::Object(_)) => None,

@@ -1,6 +1,6 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
-    error::{no_error, CompilationError, ErrorIterator},
+    error::{no_error, ErrorIterator, ValidationError},
     keywords::{format_key_value_validators, required, CompilationResult, Validators},
     paths::InstancePath,
     validator::Validate,
@@ -13,7 +13,10 @@ pub(crate) struct DependenciesValidator {
 
 impl DependenciesValidator {
     #[inline]
-    pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
         if let Value::Object(map) = schema {
             let mut dependencies = Vec::with_capacity(map.len());
             for (key, subschema) in map {
@@ -28,7 +31,7 @@ impl DependenciesValidator {
             }
             Ok(Box::new(DependenciesValidator { dependencies }))
         } else {
-            Err(CompilationError::SchemaError)
+            Err(ValidationError::schema(schema))
         }
     }
 }
@@ -84,10 +87,10 @@ impl ToString for DependenciesValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
     context: &CompilationContext,
-) -> Option<CompilationResult> {
+) -> Option<CompilationResult<'a>> {
     Some(DependenciesValidator::compile(schema, context))
 }

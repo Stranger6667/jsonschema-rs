@@ -1,6 +1,6 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::InstancePath,
     validator::Validate,
@@ -15,7 +15,7 @@ pub(crate) struct MultipleOfFloatValidator {
 
 impl MultipleOfFloatValidator {
     #[inline]
-    pub(crate) fn compile(multiple_of: f64) -> CompilationResult {
+    pub(crate) fn compile<'a>(multiple_of: f64) -> CompilationResult<'a> {
         Ok(Box::new(MultipleOfFloatValidator { multiple_of }))
     }
 }
@@ -67,7 +67,7 @@ pub(crate) struct MultipleOfIntegerValidator {
 
 impl MultipleOfIntegerValidator {
     #[inline]
-    pub(crate) fn compile(multiple_of: f64) -> CompilationResult {
+    pub(crate) fn compile<'a>(multiple_of: f64) -> CompilationResult<'a> {
         Ok(Box::new(MultipleOfIntegerValidator { multiple_of }))
     }
 }
@@ -112,11 +112,11 @@ impl ToString for MultipleOfIntegerValidator {
     }
 }
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
     _: &CompilationContext,
-) -> Option<CompilationResult> {
+) -> Option<CompilationResult<'a>> {
     if let Value::Number(multiple_of) = schema {
         let multiple_of = multiple_of.as_f64().expect("Always valid");
         if multiple_of.fract() == 0. {
@@ -125,6 +125,6 @@ pub(crate) fn compile(
             Some(MultipleOfFloatValidator::compile(multiple_of))
         }
     } else {
-        Some(Err(CompilationError::SchemaError))
+        Some(Err(ValidationError::schema(schema)))
     }
 }

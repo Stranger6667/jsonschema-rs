@@ -14,7 +14,10 @@ pub(crate) struct PropertyNamesObjectValidator {
 
 impl PropertyNamesObjectValidator {
     #[inline]
-    pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
         Ok(Box::new(PropertyNamesObjectValidator {
             validators: compile_validators(schema, context)?,
         }))
@@ -78,7 +81,7 @@ pub(crate) struct PropertyNamesBooleanValidator {}
 
 impl PropertyNamesBooleanValidator {
     #[inline]
-    pub(crate) fn compile() -> CompilationResult {
+    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
         Ok(Box::new(PropertyNamesBooleanValidator {}))
     }
 }
@@ -117,11 +120,11 @@ impl ToString for PropertyNamesBooleanValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
     context: &CompilationContext,
-) -> Option<CompilationResult> {
+) -> Option<CompilationResult<'a>> {
     match schema {
         Value::Object(_) => Some(PropertyNamesObjectValidator::compile(schema, context)),
         Value::Bool(false) => Some(PropertyNamesBooleanValidator::compile()),

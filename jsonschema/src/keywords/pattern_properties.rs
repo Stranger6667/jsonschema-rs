@@ -1,6 +1,6 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
-    error::{no_error, CompilationError, ErrorIterator},
+    error::{no_error, ErrorIterator, ValidationError},
     keywords::{format_validators, CompilationResult, Validators},
     paths::InstancePath,
     validator::Validate,
@@ -14,14 +14,17 @@ pub(crate) struct PatternPropertiesValidator {
 
 impl PatternPropertiesValidator {
     #[inline]
-    pub(crate) fn compile(
-        map: &Map<String, Value>,
+    pub(crate) fn compile<'a>(
+        map: &'a Map<String, Value>,
         context: &CompilationContext,
-    ) -> CompilationResult {
+    ) -> CompilationResult<'a> {
         let mut patterns = Vec::with_capacity(map.len());
         for (pattern, subschema) in map {
             patterns.push((
-                Regex::new(pattern)?,
+                match Regex::new(pattern) {
+                    Ok(r) => r,
+                    Err(_) => return Err(ValidationError::schema(subschema)),
+                },
                 compile_validators(subschema, context)?,
             ));
         }
@@ -94,13 +97,16 @@ pub(crate) struct SingleValuePatternPropertiesValidator {
 
 impl SingleValuePatternPropertiesValidator {
     #[inline]
-    pub(crate) fn compile(
-        pattern: &str,
-        schema: &Value,
+    pub(crate) fn compile<'a>(
+        pattern: &'a str,
+        schema: &'a Value,
         context: &CompilationContext,
-    ) -> CompilationResult {
+    ) -> CompilationResult<'a> {
         Ok(Box::new(SingleValuePatternPropertiesValidator {
-            pattern: Regex::new(pattern)?,
+            pattern: match Regex::new(pattern) {
+                Ok(r) => r,
+                Err(_) => return Err(ValidationError::schema(schema)),
+            },
             validators: compile_validators(schema, context)?,
         }))
     }
@@ -156,11 +162,11 @@ impl ToString for SingleValuePatternPropertiesValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    parent: &Map<String, Value>,
-    schema: &Value,
+pub(crate) fn compile<'a>(
+    parent: &'a Map<String, Value>,
+    schema: &'a Value,
     context: &CompilationContext,
-) -> Option<CompilationResult> {
+) -> Option<CompilationResult<'a>> {
     match parent.get("additionalProperties") {
         // This type of `additionalProperties` validator handles `patternProperties` logic
         Some(Value::Bool(false)) | Some(Value::Object(_)) => None,
@@ -175,7 +181,7 @@ pub(crate) fn compile(
                     Some(PatternPropertiesValidator::compile(map, context))
                 }
             } else {
-                Some(Err(CompilationError::SchemaError))
+                Some(Err(ValidationError::schema(schema)))
             }
         }
     }

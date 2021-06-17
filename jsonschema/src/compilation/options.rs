@@ -5,28 +5,49 @@ use crate::{
         DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS,
     },
     content_media_type::{ContentMediaTypeCheckType, DEFAULT_CONTENT_MEDIA_TYPE_CHECKS},
-    error::CompilationError,
     resolver::Resolver,
-    schemas,
+    schemas, ValidationError,
 };
 use ahash::AHashMap;
-use serde_json::Value;
+
 use std::{borrow::Cow, fmt};
 
 lazy_static::lazy_static! {
-    static ref META_SCHEMAS: AHashMap<String, Value> = {
+    static ref DRAFT4:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft4.json")).expect("Valid schema!");
+    static ref DRAFT6:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft6.json")).expect("Valid schema!");
+    static ref DRAFT7:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft7.json")).expect("Valid schema!");
+
+    static ref META_SCHEMAS: AHashMap<String, serde_json::Value> = {
         let mut store = AHashMap::with_capacity(3);
         store.insert(
             "http://json-schema.org/draft-04/schema".to_string(),
-            serde_json::from_str(include_str!("../../meta_schemas/draft4.json")).expect("Valid schema!")
+            DRAFT4.clone()
         );
         store.insert(
             "http://json-schema.org/draft-06/schema".to_string(),
-            serde_json::from_str(include_str!("../../meta_schemas/draft6.json")).expect("Valid schema!")
+            DRAFT6.clone()
         );
         store.insert(
             "http://json-schema.org/draft-07/schema".to_string(),
-            serde_json::from_str(include_str!("../../meta_schemas/draft7.json")).expect("Valid schema!")
+            DRAFT7.clone()
+        );
+        store
+    };
+
+    static ref META_SCHEMA_VALIDATORS: AHashMap<schemas::Draft, JSONSchema<'static>> = {
+        let mut store = AHashMap::with_capacity(3);
+        const EXPECT_MESSAGE: &str = "Valid meta-schema!";
+        store.insert(
+            schemas::Draft::Draft4,
+            JSONSchema::options().without_schema_validation().compile(&DRAFT4).expect(EXPECT_MESSAGE)
+        );
+        store.insert(
+            schemas::Draft::Draft6,
+            JSONSchema::options().without_schema_validation().compile(&DRAFT6).expect(EXPECT_MESSAGE)
+        );
+        store.insert(
+            schemas::Draft::Draft7,
+            JSONSchema::options().without_schema_validation().compile(&DRAFT7).expect(EXPECT_MESSAGE)
         );
         store
     };
@@ -36,13 +57,26 @@ lazy_static::lazy_static! {
 ///
 /// Using a `CompilationOptions` instance you can configure the supported draft,
 /// content media types and more (check the exposed methods)
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct CompilationOptions {
     draft: Option<schemas::Draft>,
     content_media_type_checks: AHashMap<&'static str, Option<ContentMediaTypeCheckType>>,
     content_encoding_checks_and_converters:
         AHashMap<&'static str, Option<(ContentEncodingCheckType, ContentEncodingConverterType)>>,
-    store: AHashMap<String, Value>,
+    store: AHashMap<String, serde_json::Value>,
+    validate_schema: bool,
+}
+
+impl Default for CompilationOptions {
+    fn default() -> Self {
+        CompilationOptions {
+            validate_schema: true,
+            draft: Default::default(),
+            content_media_type_checks: Default::default(),
+            content_encoding_checks_and_converters: Default::default(),
+            store: Default::default(),
+        }
+    }
 }
 
 impl CompilationOptions {
@@ -51,7 +85,10 @@ impl CompilationOptions {
     }
 
     /// Compile `schema` into `JSONSchema` using the currently defined options.
-    pub fn compile<'a>(&self, schema: &'a Value) -> Result<JSONSchema<'a>, CompilationError> {
+    pub fn compile<'a>(
+        &self,
+        schema: &'a serde_json::Value,
+    ) -> Result<JSONSchema<'a>, ValidationError<'a>> {
         // Draft is detected in the following precedence order:
         //   - Explicitly specified;
         //   - $schema field in the document;
@@ -78,6 +115,17 @@ impl CompilationOptions {
         };
         let resolver = Resolver::new(draft, &scope, schema, self.store.clone())?;
         let context = CompilationContext::new(scope, processed_config);
+
+        if self.validate_schema {
+            if let Some(mut errors) = META_SCHEMA_VALIDATORS
+                .get(&draft)
+                .expect("Existing draft")
+                .validate(schema)
+                .err()
+            {
+                return Err(errors.next().expect("Should have at least one element"));
+            }
+        }
 
         let mut validators = compile_validators(schema, &context)?;
         validators.shrink_to_fit();
@@ -295,8 +343,19 @@ impl CompilationOptions {
     /// Add a new document to the store. It works as a cache to avoid making additional network
     /// calls to remote schemas via the `$ref` keyword.
     #[inline]
-    pub fn with_document(&mut self, id: String, document: Value) -> &mut Self {
+    pub fn with_document(&mut self, id: String, document: serde_json::Value) -> &mut Self {
         self.store.insert(id, document);
+        self
+    }
+
+    /// Do not perform schema validation during compilation.
+    /// This method is only used to disable meta-schema validation for meta-schemas itself to avoid
+    /// infinite recursion.
+    /// The end-user will still receive `ValidationError` that are crafted manually during
+    /// compilation.
+    #[inline]
+    pub(crate) fn without_schema_validation(&mut self) -> &mut Self {
+        self.validate_schema = false;
         self
     }
 }

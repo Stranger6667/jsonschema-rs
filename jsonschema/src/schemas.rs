@@ -2,7 +2,7 @@ use crate::{compilation::context::CompilationContext, keywords};
 use serde_json::{Map, Value};
 
 /// JSON Schema Draft version
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, Hash, Eq)]
 pub enum Draft {
     /// JSON Schema Draft 4
     Draft4,
@@ -18,8 +18,11 @@ impl Default for Draft {
     }
 }
 
-type CompileFunc =
-    fn(&Map<String, Value>, &Value, &CompilationContext) -> Option<keywords::CompilationResult>;
+type CompileFunc<'a> = fn(
+    &'a Map<String, Value>,
+    &'a Value,
+    &CompilationContext,
+) -> Option<keywords::CompilationResult<'a>>;
 
 impl Draft {
     pub(crate) fn get_validator(self, keyword: &str) -> Option<CompileFunc> {

@@ -22,13 +22,13 @@ jsonschema = "0.9"
 To validate documents against some schema and get validation errors (if any):
 
 ```rust
-use jsonschema::{JSONSchema, Draft, CompilationError};
+use jsonschema::{Draft, JSONSchema};
 use serde_json::json;
 
-fn main() -> Result<(), CompilationError> {
+fn main() {
     let schema = json!({"maxLength": 5});
     let instance = json!("foo");
-    let compiled = JSONSchema::compile(&schema)?;
+    let compiled = JSONSchema::compile(&schema).expect("A valid schema");
     let result = compiled.validate(&instance);
     if let Err(errors) = result {
         for error in errors {
@@ -38,7 +38,6 @@ fn main() -> Result<(), CompilationError> {
             );
         }
     }
-    Ok(())
 }
 ```
 
@@ -61,17 +60,16 @@ fn main() {
 Or use a compiled schema (preferred):
 
 ```rust
-use jsonschema::{JSONSchema, Draft, CompilationError};
+use jsonschema::{Draft, JSONSchema};
 use serde_json::json;
 
-fn main() -> Result<(), CompilationError> {
+fn main() {
     let schema = json!({"maxLength": 5});
     let instance = json!("foo");
     // Draft is detected automatically
     // with fallback to Draft7
-    let compiled = JSONSchema::compile(&schema)?;
+    let compiled = JSONSchema::compile(&schema).expect("A valid schema");
     assert!(compiled.is_valid(&instance));
-    Ok(())
 }
 ```
 

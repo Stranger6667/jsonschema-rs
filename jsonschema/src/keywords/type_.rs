@@ -1,6 +1,6 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
@@ -24,10 +24,10 @@ impl MultipleTypesValidator {
                     if let Ok(primitive_type) = PrimitiveType::try_from(string.as_str()) {
                         types |= primitive_type;
                     } else {
-                        return Err(CompilationError::SchemaError);
+                        return Err(ValidationError::schema(item));
                     }
                 }
-                _ => return Err(CompilationError::SchemaError),
+                _ => return Err(ValidationError::schema(item)),
             }
         }
         Ok(Box::new(MultipleTypesValidator { types }))
@@ -83,7 +83,7 @@ pub(crate) struct NullTypeValidator {}
 
 impl NullTypeValidator {
     #[inline]
-    pub(crate) fn compile() -> CompilationResult {
+    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
         Ok(Box::new(NullTypeValidator {}))
     }
 }
@@ -120,7 +120,7 @@ pub(crate) struct BooleanTypeValidator {}
 
 impl BooleanTypeValidator {
     #[inline]
-    pub(crate) fn compile() -> CompilationResult {
+    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
         Ok(Box::new(BooleanTypeValidator {}))
     }
 }
@@ -157,7 +157,7 @@ pub(crate) struct StringTypeValidator {}
 
 impl StringTypeValidator {
     #[inline]
-    pub(crate) fn compile() -> CompilationResult {
+    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
         Ok(Box::new(StringTypeValidator {}))
     }
 }
@@ -194,7 +194,7 @@ pub(crate) struct ArrayTypeValidator {}
 
 impl ArrayTypeValidator {
     #[inline]
-    pub(crate) fn compile() -> CompilationResult {
+    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
         Ok(Box::new(ArrayTypeValidator {}))
     }
 }
@@ -232,7 +232,7 @@ pub(crate) struct ObjectTypeValidator {}
 
 impl ObjectTypeValidator {
     #[inline]
-    pub(crate) fn compile() -> CompilationResult {
+    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
         Ok(Box::new(ObjectTypeValidator {}))
     }
 }
@@ -269,7 +269,7 @@ pub(crate) struct NumberTypeValidator {}
 
 impl NumberTypeValidator {
     #[inline]
-    pub(crate) fn compile() -> CompilationResult {
+    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
         Ok(Box::new(NumberTypeValidator {}))
     }
 }
@@ -304,7 +304,7 @@ pub(crate) struct IntegerTypeValidator {}
 
 impl IntegerTypeValidator {
     #[inline]
-    pub(crate) fn compile() -> CompilationResult {
+    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
         Ok(Box::new(IntegerTypeValidator {}))
     }
 }
@@ -346,11 +346,11 @@ fn is_integer(num: &Number) -> bool {
 }
 
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
     _: &CompilationContext,
-) -> Option<CompilationResult> {
+) -> Option<CompilationResult<'a>> {
     match schema {
         Value::String(item) => compile_single_type(item.as_str()),
         Value::Array(items) => {
@@ -358,13 +358,13 @@ pub(crate) fn compile(
                 if let Some(Value::String(item)) = items.iter().next() {
                     compile_single_type(item.as_str())
                 } else {
-                    Some(Err(CompilationError::SchemaError))
+                    Some(Err(ValidationError::schema(schema)))
                 }
             } else {
                 Some(MultipleTypesValidator::compile(items))
             }
         }
-        _ => Some(Err(CompilationError::SchemaError)),
+        _ => Some(Err(ValidationError::schema(schema))),
     }
 }
 
@@ -377,6 +377,6 @@ fn compile_single_type(item: &str) -> Option<CompilationResult> {
         Ok(PrimitiveType::Number) => Some(NumberTypeValidator::compile()),
         Ok(PrimitiveType::Object) => Some(ObjectTypeValidator::compile()),
         Ok(PrimitiveType::String) => Some(StringTypeValidator::compile()),
-        Err(()) => Some(Err(CompilationError::SchemaError)),
+        Err(()) => Some(Err(ValidationError::null_schema())),
     }
 }

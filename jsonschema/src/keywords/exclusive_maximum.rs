@@ -1,6 +1,6 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::InstancePath,
     validator::Validate,
@@ -104,11 +104,11 @@ impl ToString for ExclusiveMaximumF64Validator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
     _: &CompilationContext,
-) -> Option<CompilationResult> {
+) -> Option<CompilationResult<'a>> {
     if let Value::Number(limit) = schema {
         if let Some(limit) = limit.as_u64() {
             Some(Ok(Box::new(ExclusiveMaximumU64Validator { limit })))
@@ -119,7 +119,7 @@ pub(crate) fn compile(
             Some(Ok(Box::new(ExclusiveMaximumF64Validator { limit })))
         }
     } else {
-        Some(Err(CompilationError::SchemaError))
+        Some(Err(ValidationError::schema(schema)))
     }
 }
 

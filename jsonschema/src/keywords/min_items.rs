@@ -1,6 +1,6 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::InstancePath,
     validator::Validate,
@@ -17,7 +17,7 @@ impl MinItemsValidator {
         if let Some(limit) = schema.as_u64() {
             Ok(Box::new(MinItemsValidator { limit }))
         } else {
-            Err(CompilationError::SchemaError)
+            Err(ValidationError::schema(schema))
         }
     }
 }
@@ -58,10 +58,10 @@ impl ToString for MinItemsValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
     _: &CompilationContext,
-) -> Option<CompilationResult> {
+) -> Option<CompilationResult<'a>> {
     Some(MinItemsValidator::compile(schema))
 }

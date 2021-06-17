@@ -1,6 +1,6 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers, CompilationResult},
     paths::InstancePath,
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
@@ -18,7 +18,7 @@ pub(crate) struct EnumValidator {
 
 impl EnumValidator {
     #[inline]
-    pub(crate) fn compile(schema: &Value, items: &[Value]) -> CompilationResult {
+    pub(crate) fn compile<'a>(schema: &'a Value, items: &'a [Value]) -> CompilationResult<'a> {
         let mut types = PrimitiveTypesBitMap::new();
         for item in items.iter() {
             types |= PrimitiveType::from(item);
@@ -82,7 +82,7 @@ pub(crate) struct SingleValueEnumValidator {
 
 impl SingleValueEnumValidator {
     #[inline]
-    pub(crate) fn compile(schema: &Value, value: &Value) -> CompilationResult {
+    pub(crate) fn compile<'a>(schema: &'a Value, value: &'a Value) -> CompilationResult<'a> {
         Ok(Box::new(SingleValueEnumValidator {
             options: schema.clone(),
             value: value.clone(),
@@ -120,11 +120,11 @@ impl ToString for SingleValueEnumValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
     _: &CompilationContext,
-) -> Option<CompilationResult> {
+) -> Option<CompilationResult<'a>> {
     if let Value::Array(items) = schema {
         if items.len() == 1 {
             let value = items.iter().next().expect("Vec is not empty");
@@ -133,6 +133,6 @@ pub(crate) fn compile(
             Some(EnumValidator::compile(schema, items))
         }
     } else {
-        Some(Err(CompilationError::SchemaError))
+        Some(Err(ValidationError::schema(schema)))
     }
 }

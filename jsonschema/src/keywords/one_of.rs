@@ -1,6 +1,6 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
-    error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
+    error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{format_vec_of_validators, CompilationResult, Validators},
     paths::InstancePath,
     validator::Validate,
@@ -13,7 +13,10 @@ pub(crate) struct OneOfValidator {
 
 impl OneOfValidator {
     #[inline]
-    pub(crate) fn compile(schema: &Value, context: &CompilationContext) -> CompilationResult {
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
         if let Value::Array(items) = schema {
             let mut schemas = Vec::with_capacity(items.len());
             for item in items {
@@ -21,7 +24,7 @@ impl OneOfValidator {
             }
             Ok(Box::new(OneOfValidator { schemas }))
         } else {
-            Err(CompilationError::SchemaError)
+            Err(ValidationError::schema(schema))
         }
     }
 
@@ -92,10 +95,10 @@ impl ToString for OneOfValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    _: &Map<String, Value>,
-    schema: &Value,
+pub(crate) fn compile<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
     context: &CompilationContext,
-) -> Option<CompilationResult> {
+) -> Option<CompilationResult<'a>> {
     Some(OneOfValidator::compile(schema, context))
 }
