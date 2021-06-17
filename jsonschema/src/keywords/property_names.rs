@@ -6,7 +6,6 @@ use crate::{
     validator::Validate,
 };
 use serde_json::{Map, Value};
-use std::borrow::Borrow;
 
 pub(crate) struct PropertyNamesObjectValidator {
     validators: Validators,
@@ -26,8 +25,8 @@ impl PropertyNamesObjectValidator {
 
 impl Validate for PropertyNamesObjectValidator {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Value::Object(item) = &instance.borrow() {
-            self.validators.iter().all(move |validator| {
+        if let Value::Object(item) = &instance {
+            self.validators.iter().all(|validator| {
                 item.keys().all(move |key| {
                     let wrapper = Value::String(key.to_string());
                     validator.is_valid(schema, &wrapper)
@@ -44,11 +43,11 @@ impl Validate for PropertyNamesObjectValidator {
         instance: &'a Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'a> {
-        if let Value::Object(item) = &instance.borrow() {
+        if let Value::Object(item) = &instance {
             let errors: Vec<_> = self
                 .validators
                 .iter()
-                .flat_map(move |validator| {
+                .flat_map(|validator| {
                     item.keys().flat_map(move |key| {
                         let wrapper = Value::String(key.to_string());
                         let errors: Vec<_> = validator
