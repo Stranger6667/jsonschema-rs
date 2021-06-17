@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.10.0] - 2021-06-17
+
 ### Added
 
 - **BREAKING**: Meta-schema validation for input schemas. By default, all input schemas are validated with their respective meta-schemas
@@ -243,7 +245,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.9.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.10.0...HEAD
+[0.10.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.9.1...rust-v0.10.0
 [0.9.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.9.0...rust-v0.9.1
 [0.9.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.8.3...rust-v0.9.0
 [0.8.3]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.8.2...rust-v0.8.3
