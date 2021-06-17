@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.9.1] - 2021-06-17
+
 ### Fixed
 
 - The `format` validator incorrectly rejecting supported regex patterns. [#230](https://github.com/Stranger6667/jsonschema-rs/issues/230)
@@ -232,7 +234,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.9.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.9.1...HEAD
+[0.9.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.9.0...rust-v0.9.1
 [0.9.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.8.3...rust-v0.9.0
 [0.8.3]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.8.2...rust-v0.8.3
 [0.8.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.8.1...rust-v0.8.2
