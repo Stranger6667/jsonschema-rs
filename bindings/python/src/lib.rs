@@ -65,12 +65,9 @@ fn make_options(
 fn raise_on_error(compiled: &jsonschema::JSONSchema, instance: &PyAny) -> PyResult<()> {
     let instance = ser::to_value(instance)?;
     let result = compiled.validate(&instance);
-    let error = if let Some(mut errors) = result.err() {
-        // If we have `Err` case, then the iterator is not empty
-        Some(errors.next().expect("Iterator should not be empty"))
-    } else {
-        None
-    };
+    let error = result
+        .err()
+        .map(|mut errors| errors.next().expect("Iterator should not be empty"));
     error.map_or_else(
         || Ok(()),
         |err| {
