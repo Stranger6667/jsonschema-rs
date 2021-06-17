@@ -13,7 +13,7 @@ pub(crate) struct MinPropertiesValidator {
 
 impl MinPropertiesValidator {
     #[inline]
-    pub(crate) fn compile<'a>(schema: &'a Value) -> ValidationResult<'a> {
+    pub(crate) fn compile(schema: &Value) -> ValidationResult {
         if let Some(limit) = schema.as_u64() {
             Ok(Box::new(MinPropertiesValidator { limit }))
         } else {

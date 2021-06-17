@@ -16,7 +16,7 @@ pub(crate) struct MultipleTypesValidator {
 
 impl MultipleTypesValidator {
     #[inline]
-    pub(crate) fn compile<'a>(items: &'a [Value]) -> ValidationResult<'a> {
+    pub(crate) fn compile(items: &[Value]) -> ValidationResult {
         let mut types = PrimitiveTypesBitMap::new();
         for item in items {
             match item {
@@ -368,7 +368,7 @@ pub(crate) fn compile<'a>(
     }
 }
 
-fn compile_single_type<'a>(item: &'a str) -> Option<ValidationResult<'a>> {
+fn compile_single_type(item: &str) -> Option<ValidationResult> {
     match PrimitiveType::try_from(item) {
         Ok(PrimitiveType::Array) => Some(ArrayTypeValidator::compile()),
         Ok(PrimitiveType::Boolean) => Some(BooleanTypeValidator::compile()),

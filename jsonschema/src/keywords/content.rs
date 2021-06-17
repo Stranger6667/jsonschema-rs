@@ -18,10 +18,7 @@ pub(crate) struct ContentMediaTypeValidator {
 
 impl ContentMediaTypeValidator {
     #[inline]
-    pub(crate) fn compile<'a>(
-        media_type: &'a str,
-        func: ContentMediaTypeCheckType,
-    ) -> ValidationResult<'a> {
+    pub(crate) fn compile(media_type: &str, func: ContentMediaTypeCheckType) -> ValidationResult {
         Ok(Box::new(ContentMediaTypeValidator {
             media_type: media_type.to_string(),
             func,
@@ -75,10 +72,7 @@ pub(crate) struct ContentEncodingValidator {
 
 impl ContentEncodingValidator {
     #[inline]
-    pub(crate) fn compile<'a>(
-        encoding: &'a str,
-        func: ContentEncodingCheckType,
-    ) -> ValidationResult<'a> {
+    pub(crate) fn compile(encoding: &str, func: ContentEncodingCheckType) -> ValidationResult {
         Ok(Box::new(ContentEncodingValidator {
             encoding: encoding.to_string(),
             func,

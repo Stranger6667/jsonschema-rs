@@ -13,7 +13,7 @@ pub(crate) struct RequiredValidator {
 
 impl RequiredValidator {
     #[inline]
-    pub(crate) fn compile<'a>(items: &'a [Value]) -> ValidationResult<'a> {
+    pub(crate) fn compile(items: &[Value]) -> ValidationResult {
         let mut required = Vec::with_capacity(items.len());
         for item in items {
             match item {
@@ -74,7 +74,7 @@ pub(crate) struct SingleItemRequiredValidator {
 
 impl SingleItemRequiredValidator {
     #[inline]
-    pub(crate) fn compile<'a>(value: &'a str) -> ValidationResult<'a> {
+    pub(crate) fn compile(value: &str) -> ValidationResult {
         Ok(Box::new(SingleItemRequiredValidator {
             value: value.to_string(),
         }))

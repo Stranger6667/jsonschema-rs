@@ -21,7 +21,7 @@ pub(crate) struct PatternValidator {
 
 impl PatternValidator {
     #[inline]
-    pub(crate) fn compile<'a>(pattern: &'a Value) -> ValidationResult<'a> {
+    pub(crate) fn compile(pattern: &Value) -> ValidationResult {
         match pattern {
             Value::String(item) => {
                 let pattern = match convert_regex(item) {
