@@ -51,7 +51,7 @@ impl<'a> JSONSchema<'a> {
     /// Compile the input schema into a validation tree.
     ///
     /// The method is equivalent to `JSONSchema::options().compile(schema)`
-    pub fn compile(schema: &'a Value) -> Result<JSONSchema<'a>, ValidationError> {
+    pub fn compile(schema: &'a Value) -> Result<JSONSchema<'a>, ValidationError<'a>> {
         Self::options().compile(schema)
     }
 
@@ -84,9 +84,9 @@ impl<'a> JSONSchema<'a> {
 
 /// Compile JSON schema into a tree of validators.
 #[inline]
-pub(crate) fn compile_validators<'a>(
+pub(crate) fn compile_validators<'a, 'c>(
     schema: &'a Value,
-    context: &'a CompilationContext,
+    context: &'c CompilationContext,
 ) -> Result<Validators, ValidationError<'a>> {
     let context = context.push(schema)?;
     match schema {

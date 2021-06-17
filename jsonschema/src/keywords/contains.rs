@@ -15,7 +15,7 @@ impl ContainsValidator {
     #[inline]
     pub(crate) fn compile<'a>(
         schema: &'a Value,
-        context: &'a CompilationContext,
+        context: &CompilationContext,
     ) -> ValidationResult<'a> {
         Ok(Box::new(ContainsValidator {
             validators: compile_validators(schema, context)?,
@@ -74,7 +74,7 @@ impl ToString for ContainsValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &'a CompilationContext,
+    context: &CompilationContext,
 ) -> Option<ValidationResult<'a>> {
     Some(ContainsValidator::compile(schema, context))
 }

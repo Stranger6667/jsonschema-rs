@@ -17,7 +17,7 @@ impl AllOfValidator {
     #[inline]
     pub(crate) fn compile<'a>(
         items: &'a [Value],
-        context: &'a CompilationContext,
+        context: &CompilationContext,
     ) -> ValidationResult<'a> {
         let mut schemas = Vec::with_capacity(items.len());
         for item in items {
@@ -69,7 +69,7 @@ impl SingleValueAllOfValidator {
     #[inline]
     pub(crate) fn compile<'a>(
         schema: &'a Value,
-        context: &'a CompilationContext,
+        context: &CompilationContext,
     ) -> ValidationResult<'a> {
         let validators = compile_validators(schema, context)?;
         Ok(Box::new(SingleValueAllOfValidator { validators }))
@@ -107,7 +107,7 @@ impl ToString for SingleValueAllOfValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &'a CompilationContext,
+    context: &CompilationContext,
 ) -> Option<ValidationResult<'a>> {
     if let Value::Array(items) = schema {
         if items.len() == 1 {

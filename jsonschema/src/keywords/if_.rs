@@ -17,7 +17,7 @@ impl IfThenValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         then_schema: &'a Value,
-        context: &'a CompilationContext,
+        context: &CompilationContext,
     ) -> ValidationResult<'a> {
         Ok(Box::new(IfThenValidator {
             schema: compile_validators(schema, context)?,
@@ -84,7 +84,7 @@ impl IfElseValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         else_schema: &'a Value,
-        context: &'a CompilationContext,
+        context: &CompilationContext,
     ) -> ValidationResult<'a> {
         Ok(Box::new(IfElseValidator {
             schema: compile_validators(schema, context)?,
@@ -153,7 +153,7 @@ impl IfThenElseValidator {
         schema: &'a Value,
         then_schema: &'a Value,
         else_schema: &'a Value,
-        context: &'a CompilationContext,
+        context: &CompilationContext,
     ) -> ValidationResult<'a> {
         Ok(Box::new(IfThenElseValidator {
             schema: compile_validators(schema, context)?,
@@ -223,7 +223,7 @@ impl ToString for IfThenElseValidator {
 pub(crate) fn compile<'a>(
     parent: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &'a CompilationContext,
+    context: &CompilationContext,
 ) -> Option<ValidationResult<'a>> {
     let then = parent.get("then");
     let else_ = parent.get("else");

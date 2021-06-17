@@ -15,7 +15,7 @@ impl PropertiesValidator {
     #[inline]
     pub(crate) fn compile<'a>(
         schema: &'a Value,
-        context: &'a CompilationContext,
+        context: &CompilationContext,
     ) -> ValidationResult<'a> {
         match schema {
             Value::Object(map) => {
@@ -86,7 +86,7 @@ impl ToString for PropertiesValidator {
 pub(crate) fn compile<'a>(
     parent: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &'a CompilationContext,
+    context: &CompilationContext,
 ) -> Option<ValidationResult<'a>> {
     match parent.get("additionalProperties") {
         // This type of `additionalProperties` validator handles `properties` logic

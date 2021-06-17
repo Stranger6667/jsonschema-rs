@@ -123,7 +123,7 @@ impl ToString for SingleValueEnumValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    _: &'a CompilationContext,
+    _: &CompilationContext,
 ) -> Option<ValidationResult<'a>> {
     if let Value::Array(items) = schema {
         if items.len() == 1 {

@@ -16,7 +16,7 @@ impl AdditionalItemsObjectValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         items_count: usize,
-        context: &'a CompilationContext,
+        context: &CompilationContext,
     ) -> ValidationResult<'a> {
         let validators = compile_validators(schema, context)?;
         Ok(Box::new(AdditionalItemsObjectValidator {
@@ -112,9 +112,9 @@ impl ToString for AdditionalItemsBooleanValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
-    parent: &'a Map<String, Value>,
+    parent: &Map<String, Value>,
     schema: &'a Value,
-    context: &'a CompilationContext,
+    context: &CompilationContext,
 ) -> Option<ValidationResult<'a>> {
     if let Some(items) = parent.get("items") {
         match items {

@@ -61,7 +61,7 @@ impl ToString for MinLengthValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    _: &'a CompilationContext,
+    _: &CompilationContext,
 ) -> Option<ValidationResult<'a>> {
     Some(MinLengthValidator::compile(schema))
 }

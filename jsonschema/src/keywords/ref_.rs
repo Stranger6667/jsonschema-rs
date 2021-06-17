@@ -92,7 +92,7 @@ impl Validate for RefValidator {
                         *self.validators.write() = Some(validators);
                         result
                     }
-                    Err(err) => error(err.into()),
+                    Err(err) => error(err.into_owned()),
                 }
             }
             Err(err) => error(err),

@@ -118,7 +118,7 @@ impl ToString for SingleItemRequiredValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    _: &'a CompilationContext,
+    _: &CompilationContext,
 ) -> Option<ValidationResult<'a>> {
     // IMPORTANT: If this function will ever return `None`, adjust `dependencies.rs` accordingly
     match schema {

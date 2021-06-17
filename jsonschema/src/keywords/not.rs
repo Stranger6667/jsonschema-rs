@@ -17,7 +17,7 @@ impl NotValidator {
     #[inline]
     pub(crate) fn compile<'a>(
         schema: &'a Value,
-        context: &'a CompilationContext,
+        context: &CompilationContext,
     ) -> ValidationResult<'a> {
         Ok(Box::new(NotValidator {
             original: schema.clone(),
@@ -62,7 +62,7 @@ impl ToString for NotValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &'a CompilationContext,
+    context: &CompilationContext,
 ) -> Option<ValidationResult<'a>> {
     Some(NotValidator::compile(schema, context))
 }

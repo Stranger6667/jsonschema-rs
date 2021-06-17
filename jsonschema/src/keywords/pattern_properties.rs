@@ -16,7 +16,7 @@ impl PatternPropertiesValidator {
     #[inline]
     pub(crate) fn compile<'a>(
         map: &'a Map<String, Value>,
-        context: &'a CompilationContext,
+        context: &CompilationContext,
     ) -> ValidationResult<'a> {
         let mut patterns = Vec::with_capacity(map.len());
         for (pattern, subschema) in map {
@@ -100,7 +100,7 @@ impl SingleValuePatternPropertiesValidator {
     pub(crate) fn compile<'a>(
         pattern: &'a str,
         schema: &'a Value,
-        context: &'a CompilationContext,
+        context: &CompilationContext,
     ) -> ValidationResult<'a> {
         Ok(Box::new(SingleValuePatternPropertiesValidator {
             pattern: match Regex::new(pattern) {
@@ -165,7 +165,7 @@ impl ToString for SingleValuePatternPropertiesValidator {
 pub(crate) fn compile<'a>(
     parent: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &'a CompilationContext,
+    context: &CompilationContext,
 ) -> Option<ValidationResult<'a>> {
     match parent.get("additionalProperties") {
         // This type of `additionalProperties` validator handles `patternProperties` logic

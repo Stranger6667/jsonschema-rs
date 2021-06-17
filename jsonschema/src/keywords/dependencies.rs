@@ -15,7 +15,7 @@ impl DependenciesValidator {
     #[inline]
     pub(crate) fn compile<'a>(
         schema: &'a Value,
-        context: &'a CompilationContext,
+        context: &CompilationContext,
     ) -> ValidationResult<'a> {
         if let Value::Object(map) = schema {
             let mut dependencies = Vec::with_capacity(map.len());
@@ -90,7 +90,7 @@ impl ToString for DependenciesValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &'a CompilationContext,
+    context: &CompilationContext,
 ) -> Option<ValidationResult<'a>> {
     Some(DependenciesValidator::compile(schema, context))
 }

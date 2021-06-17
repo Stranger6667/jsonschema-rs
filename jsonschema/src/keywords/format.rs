@@ -328,7 +328,7 @@ impl Validate for URITemplateValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &'a CompilationContext,
+    context: &CompilationContext,
 ) -> Option<ValidationResult<'a>> {
     if let Value::String(format) = schema {
         let draft_version = context.config.draft();

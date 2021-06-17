@@ -206,7 +206,7 @@ impl ToString for ContentMediaTypeAndEncodingValidator {
 pub(crate) fn compile_media_type<'a>(
     schema: &'a Map<String, Value>,
     subschema: &'a Value,
-    context: &'a CompilationContext,
+    context: &CompilationContext,
 ) -> Option<ValidationResult<'a>> {
     match subschema {
         Value::String(media_type) => {
@@ -245,7 +245,7 @@ pub(crate) fn compile_media_type<'a>(
 pub(crate) fn compile_content_encoding<'a>(
     schema: &'a Map<String, Value>,
     subschema: &'a Value,
-    context: &'a CompilationContext,
+    context: &CompilationContext,
 ) -> Option<ValidationResult<'a>> {
     // Performed during media type validation
     if schema.get("contentMediaType").is_some() {

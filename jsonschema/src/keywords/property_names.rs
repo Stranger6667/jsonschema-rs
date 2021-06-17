@@ -16,7 +16,7 @@ impl PropertyNamesObjectValidator {
     #[inline]
     pub(crate) fn compile<'a>(
         schema: &'a Value,
-        context: &'a CompilationContext,
+        context: &CompilationContext,
     ) -> ValidationResult<'a> {
         Ok(Box::new(PropertyNamesObjectValidator {
             validators: compile_validators(schema, context)?,
@@ -123,7 +123,7 @@ impl ToString for PropertyNamesBooleanValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &'a CompilationContext,
+    context: &CompilationContext,
 ) -> Option<ValidationResult<'a>> {
     match schema {
         Value::Object(_) => Some(PropertyNamesObjectValidator::compile(schema, context)),

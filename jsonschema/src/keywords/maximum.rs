@@ -105,7 +105,7 @@ impl ToString for MaximumF64Validator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    _: &'a CompilationContext,
+    _: &CompilationContext,
 ) -> Option<ValidationResult<'a>> {
     if let Value::Number(limit) = schema {
         if let Some(limit) = limit.as_u64() {
