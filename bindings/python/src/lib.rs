@@ -28,16 +28,11 @@ const DRAFT4: u8 = 4;
 
 create_exception!(jsonschema_rs, ValidationError, exceptions::PyValueError);
 
-#[derive(Debug)]
-enum JSONSchemaError {
-    Compilation(jsonschema::CompilationError),
-}
+struct ValidationErrorWrapper<'a>(jsonschema::ValidationError<'a>);
 
-impl From<JSONSchemaError> for PyErr {
-    fn from(error: JSONSchemaError) -> PyErr {
-        exceptions::PyValueError::new_err(match error {
-            JSONSchemaError::Compilation(_) => "Invalid schema",
-        })
+impl<'a> From<ValidationErrorWrapper<'a>> for PyErr {
+    fn from(error: ValidationErrorWrapper<'a>) -> PyErr {
+        ValidationError::new_err(to_error_message(&error.0))
     }
 }
 
@@ -127,9 +122,7 @@ fn is_valid(
 ) -> PyResult<bool> {
     let options = make_options(draft, with_meta_schemas)?;
     let schema = ser::to_value(schema)?;
-    let compiled = options
-        .compile(&schema)
-        .map_err(JSONSchemaError::Compilation)?;
+    let compiled = options.compile(&schema).map_err(ValidationErrorWrapper)?;
     let instance = ser::to_value(instance)?;
     Ok(compiled.is_valid(&instance))
 }
@@ -155,9 +148,7 @@ fn validate(
 ) -> PyResult<()> {
     let options = make_options(draft, with_meta_schemas)?;
     let schema = ser::to_value(schema)?;
-    let compiled = options
-        .compile(&schema)
-        .map_err(JSONSchemaError::Compilation)?;
+    let compiled = options.compile(&schema).map_err(ValidationErrorWrapper)?;
     raise_on_error(&compiled, instance)
 }
 
@@ -187,9 +178,7 @@ impl JSONSchema {
         let raw_schema = ser::to_value(schema)?;
         let schema: &'static Value = Box::leak(Box::new(raw_schema));
         Ok(JSONSchema {
-            schema: options
-                .compile(schema)
-                .map_err(JSONSchemaError::Compilation)?,
+            schema: options.compile(schema).map_err(ValidationErrorWrapper)?,
             raw_schema: schema,
         })
     }

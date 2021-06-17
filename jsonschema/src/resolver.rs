@@ -2,7 +2,7 @@
 //! Is able to load documents from remote locations via HTTP(S).
 use crate::{
     compilation::{DEFAULT_ROOT_URL, DEFAULT_SCOPE},
-    error::{CompilationError, ValidationError},
+    error::ValidationError,
     schemas::{id_of, Draft},
 };
 use ahash::AHashMap;
@@ -26,7 +26,7 @@ impl<'a> Resolver<'a> {
         scope: &Url,
         schema: &'a Value,
         store: AHashMap<String, Value>,
-    ) -> Result<Resolver<'a>, CompilationError> {
+    ) -> Result<Resolver<'a>, ValidationError<'a>> {
         let mut schemas = AHashMap::new();
         // traverse the schema and store all named ones under their canonical ids
         find_schemas(draft, schema, scope, &mut |id, schema| {

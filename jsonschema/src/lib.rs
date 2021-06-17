@@ -11,46 +11,43 @@
 //! A schema can be compiled with two main flavours:
 //!  * using default configurations
 //! ```rust
-//! # use jsonschema::{CompilationError, Draft, JSONSchema};
+//! # use jsonschema::{Draft, JSONSchema};
 //! # use serde_json::json;
-//! # fn foo() -> Result<(), CompilationError> {
+//! # fn foo() {
 //! # let schema = json!({"maxLength": 5});
-//! let compiled_schema = JSONSchema::compile(&schema)?;
-//! # Ok(())
+//! let compiled_schema = JSONSchema::compile(&schema).expect("A valid schema");
 //! # }
 //! ```
 //!  * using custom configurations (such as define a Draft version)
 //! ```rust
-//! # use jsonschema::{CompilationError, Draft, JSONSchema};
+//! # use jsonschema::{Draft, JSONSchema};
 //! # use serde_json::json;
-//! # fn foo() -> Result<(), CompilationError> {
+//! # fn foo() {
 //! # let schema = json!({"maxLength": 5});
 //! let compiled_schema = JSONSchema::options()
 //!     .with_draft(Draft::Draft7)
-//!     .compile(&schema)?;
-//! # Ok(())
+//!     .compile(&schema)
+//!     .expect("A valid schema");
 //! # }
 //! ```
 //!
 //! ## Example (CLI tool to highlight print errors)
 //! ```rust
-//! use jsonschema::{CompilationError, Draft, JSONSchema};
+//! use jsonschema::{Draft, JSONSchema};
 //! use serde_json::json;
 //!
-//! fn main() -> Result<(), CompilationError> {
-//!     let schema = json!({"maxLength": 5});
-//!     let instance = json!("foo");
-//!     let compiled = JSONSchema::options()
-//!         .with_draft(Draft::Draft7)
-//!         .compile(&schema)?;
-//!     let result = compiled.validate(&instance);
-//!     if let Err(errors) = result {
-//!         for error in errors {
-//!             println!("Validation error: {}", error);
-//!             println!("Instance path: {}", error.instance_path);
-//!         }
+//! let schema = json!({"maxLength": 5});
+//! let instance = json!("foo");
+//! let compiled = JSONSchema::options()
+//!     .with_draft(Draft::Draft7)
+//!     .compile(&schema)
+//!     .expect("A valid schema");
+//! let result = compiled.validate(&instance);
+//! if let Err(errors) = result {
+//!     for error in errors {
+//!         println!("Validation error: {}", error);
+//!         println!("Instance path: {}", error.instance_path);
 //!     }
-//!     Ok(())
 //! }
 //! ```
 //! Each error has an `instance_path` attribute that indicates the path to the erroneous part within the validated instance.
@@ -91,7 +88,7 @@ mod schemas;
 mod validator;
 
 pub use compilation::{options::CompilationOptions, JSONSchema};
-pub use error::{CompilationError, ErrorIterator, ValidationError};
+pub use error::{ErrorIterator, ValidationError};
 pub use schemas::Draft;
 use serde_json::Value;
 

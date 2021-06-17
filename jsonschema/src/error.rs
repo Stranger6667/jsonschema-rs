@@ -7,44 +7,12 @@ use serde_json::{Map, Number, Value};
 use std::{
     borrow::Cow,
     error, fmt,
-    fmt::{Error, Formatter},
+    fmt::Formatter,
     io,
     iter::{empty, once},
     str::Utf8Error,
     string::FromUtf8Error,
 };
-
-/// The error type that happens when the input schema is not valid.
-///
-/// It includes cases when during validation a reference is resolved into an invalid schema,
-/// which we can't know upfront because schemas can be in remote locations.
-#[derive(Debug, PartialEq)]
-pub enum CompilationError {
-    /// Invalid schema structure
-    SchemaError,
-}
-
-impl error::Error for CompilationError {}
-
-impl fmt::Display for CompilationError {
-    #[inline]
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "Schema compilation error")
-    }
-}
-
-impl From<fancy_regex::Error> for CompilationError {
-    #[inline]
-    fn from(_: fancy_regex::Error) -> Self {
-        CompilationError::SchemaError
-    }
-}
-impl From<url::ParseError> for CompilationError {
-    #[inline]
-    fn from(_: url::ParseError) -> Self {
-        CompilationError::SchemaError
-    }
-}
 
 /// An error that can occur during validation.
 #[derive(Debug)]
@@ -681,12 +649,6 @@ impl<'a> ValidationError<'a> {
     }
 }
 
-impl From<CompilationError> for ValidationError<'_> {
-    #[inline]
-    fn from(_: CompilationError) -> Self {
-        ValidationError::null_schema()
-    }
-}
 impl error::Error for ValidationError<'_> {}
 impl From<serde_json::Error> for ValidationError<'_> {
     #[inline]

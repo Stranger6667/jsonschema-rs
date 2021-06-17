@@ -1,15 +1,15 @@
+use crate::keywords::ValidationResult;
+use crate::paths::InstancePath;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, ErrorIterator},
-    keywords::{CompilationResult, Validators},
+    keywords::Validators,
     validator::Validate,
 };
 use parking_lot::RwLock;
 use serde_json::Value;
 use std::borrow::Cow;
 use url::Url;
-
-use crate::paths::InstancePath;
 
 pub(crate) struct RefValidator {
     reference: Url,
@@ -23,7 +23,10 @@ pub(crate) struct RefValidator {
 
 impl RefValidator {
     #[inline]
-    pub(crate) fn compile(reference: &str, context: &CompilationContext) -> CompilationResult {
+    pub(crate) fn compile<'a>(
+        reference: &str,
+        context: &CompilationContext,
+    ) -> ValidationResult<'a> {
         let reference = context.build_url(reference)?;
         Ok(Box::new(RefValidator {
             reference,
@@ -107,10 +110,10 @@ impl ToString for RefValidator {
 }
 
 #[inline]
-pub(crate) fn compile(
-    _: &Value,
-    reference: &str,
+pub(crate) fn compile<'a>(
+    _: &'a Value,
+    reference: &'a str,
     context: &CompilationContext,
-) -> Option<CompilationResult> {
+) -> Option<ValidationResult<'a>> {
     Some(RefValidator::compile(reference, context))
 }
