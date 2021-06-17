@@ -93,10 +93,9 @@ macro_rules! is_valid_pattern_schema {
         if is_valid!($validators, $schema, $value) {
             // Matched & valid - check the next pattern
             continue;
-        } else {
-            // Invalid - there is no reason to check other patterns
-            return false;
         }
+        // Invalid - there is no reason to check other patterns
+        return false;
     }};
 }
 
@@ -120,7 +119,7 @@ macro_rules! is_valid_patterns {
 
 macro_rules! validate {
     ($validators:expr, $schema:ident, $value:ident, $instance_path:expr, $property_name:expr) => {{
-        let instance_path = $instance_path.push($property_name.to_owned());
+        let instance_path = $instance_path.push($property_name.clone());
         $validators
             .iter()
             .flat_map(move |validator| validator.validate($schema, $value, &instance_path))
@@ -316,10 +315,9 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
             for (property, value) in item {
                 if let Some(validators) = self.properties.get_validator(property) {
                     is_valid_pattern_schema!(validators, schema, value)
-                } else {
-                    // No extra properties are allowed
-                    return false;
                 }
+                // No extra properties are allowed
+                return false;
             }
         }
         true
@@ -340,7 +338,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
                     errors.extend(validate!(validators, schema, value, instance_path, name));
                 } else {
                     // No extra properties are allowed
-                    unexpected.push(property.to_owned());
+                    unexpected.push(property.clone());
                 }
             }
             if !unexpected.is_empty() {
@@ -418,11 +416,10 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValida
             for (property, value) in map {
                 if let Some(property_validators) = self.properties.get_validator(property) {
                     is_valid_pattern_schema!(property_validators, schema, value)
-                } else {
-                    for validator in &self.validators {
-                        if !validator.is_valid(schema, value) {
-                            return false;
-                        }
+                }
+                for validator in &self.validators {
+                    if !validator.is_valid(schema, value) {
+                        return false;
                     }
                 }
             }
@@ -641,7 +638,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
                         }),
                 );
                 if !has_match {
-                    unexpected.push(property.to_owned());
+                    unexpected.push(property.clone());
                 }
             }
             if !unexpected.is_empty() {
@@ -944,7 +941,7 @@ impl<M: PropertiesValidatorsMap> Validate
                             }),
                     );
                     if !has_match {
-                        unexpected.push(property.to_owned());
+                        unexpected.push(property.clone());
                     }
                 }
             }

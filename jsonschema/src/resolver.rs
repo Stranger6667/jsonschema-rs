@@ -233,7 +233,7 @@ fn parse_index(s: &str) -> Option<usize> {
 mod tests {
     use super::*;
     use crate::JSONSchema;
-    use serde_json::*;
+    use serde_json::json;
     use std::borrow::Cow;
     use url::Url;
 

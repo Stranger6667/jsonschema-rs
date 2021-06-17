@@ -24,8 +24,8 @@ struct PyCompactUnicodeObject {
     pub wstr_length: Py_ssize_t,
 }
 
-const STATE_ASCII: u32 = 0b00000000000000000000000001000000;
-const STATE_COMPACT: u32 = 0b00000000000000000000000000100000;
+const STATE_ASCII: u32 = 0b0000_0000_0000_0000_0000_0000_0100_0000;
+const STATE_COMPACT: u32 = 0b0000_0000_0000_0000_0000_0000_0010_0000;
 
 /// Read a UTF-8 string from a pointer and change the given size if needed.
 pub unsafe fn read_utf8_from_str(
@@ -43,6 +43,6 @@ pub unsafe fn read_utf8_from_str(
         *size = (*object_pointer.cast::<PyCompactUnicodeObject>()).utf8_length;
         (*object_pointer.cast::<PyCompactUnicodeObject>()).utf8 as *const u8
     } else {
-        PyUnicode_AsUTF8AndSize(object_pointer, size) as *const u8
+        PyUnicode_AsUTF8AndSize(object_pointer, size).cast::<u8>()
     }
 }
