@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.9.1] - 2021-06-17
+
 ### Fixed
 
 - The `format` validator incorrectly rejecting supported regex patterns. [#230](https://github.com/Stranger6667/jsonschema-rs/issues/230)
@@ -172,7 +174,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.9.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.9.1...HEAD
+[0.9.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.9.0...python-v0.9.1
 [0.9.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.8.0...python-v0.9.0
 [0.8.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.6.2...python-v0.8.0
 [0.6.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.6.1...python-v0.6.2
