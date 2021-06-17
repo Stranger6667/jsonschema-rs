@@ -80,7 +80,7 @@ impl ToString for PatternValidator {
 }
 
 // ECMA 262 has differences
-fn convert_regex(pattern: &str) -> Result<fancy_regex::Regex, fancy_regex::Error> {
+pub(crate) fn convert_regex(pattern: &str) -> Result<fancy_regex::Regex, fancy_regex::Error> {
     // replace control chars
     let new_pattern = CONTROL_GROUPS_RE.replace_all(pattern, replace_control_group);
     let mut out = String::with_capacity(new_pattern.len());

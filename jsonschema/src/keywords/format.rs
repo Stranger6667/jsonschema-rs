@@ -2,7 +2,7 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, CompilationError, ErrorIterator, ValidationError},
-    keywords::CompilationResult,
+    keywords::{pattern, CompilationResult},
     paths::InstancePath,
     validator::Validate,
     Draft,
@@ -267,7 +267,7 @@ impl Validate for RegexValidator {
     validate!("regex");
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            Regex::new(item).is_ok()
+            pattern::convert_regex(item).is_ok()
         } else {
             true
         }
@@ -378,6 +378,15 @@ mod tests {
     fn ignored_format() {
         let schema = json!({"format": "custom", "type": "string"});
         let instance = json!("foo");
+        let compiled = JSONSchema::compile(&schema).unwrap();
+        assert!(compiled.is_valid(&instance))
+    }
+
+    #[test]
+    fn ecma_regex() {
+        // See GH-230
+        let schema = json!({"format": "regex", "type": "string"});
+        let instance = json!("^\\cc$");
         let compiled = JSONSchema::compile(&schema).unwrap();
         assert!(compiled.is_valid(&instance))
     }
