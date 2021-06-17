@@ -1,8 +1,7 @@
-use crate::keywords::format_validators;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{CompilationError, ErrorIterator},
-    keywords::{format_vec_of_validators, CompilationResult, Validators},
+    keywords::{format_validators, format_vec_of_validators, CompilationResult, Validators},
     paths::InstancePath,
     validator::Validate,
 };

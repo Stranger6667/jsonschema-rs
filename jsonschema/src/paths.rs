@@ -1,6 +1,5 @@
 //! Facilities for working with paths within schemas or validated instances.
-use std::slice::Iter;
-use std::{fmt, fmt::Write};
+use std::{fmt, fmt::Write, slice::Iter};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// JSON Pointer as a wrapper around individual path components.
