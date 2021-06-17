@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.10.0] - 2021-06-17
+
 ### Added
 
 - Meta-schema validation for input schemas. [#198](https://github.com/Stranger6667/jsonschema-rs/issues/198)
@@ -178,7 +180,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.9.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.10.0...HEAD
+[0.10.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.9.1...python-v0.10.0
 [0.9.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.9.0...python-v0.9.1
 [0.9.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.8.0...python-v0.9.0
 [0.8.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.6.2...python-v0.8.0
