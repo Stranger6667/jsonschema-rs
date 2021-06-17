@@ -66,7 +66,7 @@ def test_recursive_list():
 @pytest.mark.parametrize(
     "schema, draft, error",
     (
-        ([], None, "Invalid schema"),
+        ([], None, r'\[\] is not of types "boolean", "object"'),
         ({}, 5, "Unknown draft: 5"),
     ),
 )
