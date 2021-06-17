@@ -3,7 +3,7 @@
 [![ci](https://github.com/Stranger6667/jsonschema-rs/workflows/ci/badge.svg)](https://github.com/Stranger6667/jsonschema-rs/actions)
 [![codecov](https://codecov.io/gh/Stranger6667/jsonschema-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/Stranger6667/jsonschema-rs)
 [![Crates.io](https://img.shields.io/crates/v/jsonschema.svg)](https://crates.io/crates/jsonschema)
-[![docs.rs](https://docs.rs/jsonschema/badge.svg?version=0.9.0)](https://docs.rs/jsonschema/0.9.0/jsonschema/)
+[![docs.rs](https://docs.rs/jsonschema/badge.svg)](https://docs.rs/jsonschema/)
 [![gitter](https://img.shields.io/gitter/room/Stranger6667/jsonschema-rs.svg)](https://gitter.im/Stranger6667/jsonschema-rs)
 
 A JSON Schema validator implementation. It compiles schema into a validation tree to have validation as fast as possible.
