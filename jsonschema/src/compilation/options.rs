@@ -9,7 +9,7 @@ use crate::{
     schemas, ValidationError,
 };
 use ahash::AHashMap;
-use serde_json;
+
 use std::{borrow::Cow, fmt};
 
 lazy_static::lazy_static! {
@@ -36,7 +36,7 @@ lazy_static::lazy_static! {
 
     static ref META_SCHEMA_VALIDATORS: AHashMap<schemas::Draft, JSONSchema<'static>> = {
         let mut store = AHashMap::with_capacity(3);
-        const EXPECT_MESSAGE : &str = "Valid meta-schema!";
+        const EXPECT_MESSAGE: &str = "Valid meta-schema!";
         store.insert(
             schemas::Draft::Draft4,
             JSONSchema::compile(&DRAFT4).expect(EXPECT_MESSAGE)
