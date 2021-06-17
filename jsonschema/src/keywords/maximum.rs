@@ -127,8 +127,8 @@ mod tests {
     use serde_json::{json, Value};
     use test_case::test_case;
 
-    #[test_case(&json!({"maximum": 1u64 << 54}), &json!((1u64 << 54) + 1))]
-    #[test_case(&json!({"maximum": 1i64 << 54}), &json!((1i64 << 54) + 1))]
+    #[test_case(&json!({"maximum": 1_u64 << 54}), &json!((1_u64 << 54) + 1))]
+    #[test_case(&json!({"maximum": 1_i64 << 54}), &json!((1_i64 << 54) + 1))]
     fn is_not_valid(schema: &Value, instance: &Value) {
         tests_util::is_not_valid(schema, instance)
     }

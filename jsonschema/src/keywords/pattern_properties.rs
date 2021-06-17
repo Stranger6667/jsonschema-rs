@@ -63,7 +63,7 @@ impl Validate for PatternPropertiesValidator {
                     item.iter()
                         .filter(move |(key, _)| re.is_match(key).unwrap_or(false))
                         .flat_map(move |(key, value)| {
-                            let instance_path = instance_path.push(key.to_owned());
+                            let instance_path = instance_path.push(key.clone());
                             validators.iter().flat_map(move |validator| {
                                 validator.validate(schema, value, &instance_path)
                             })
@@ -138,7 +138,7 @@ impl Validate for SingleValuePatternPropertiesValidator {
                 .iter()
                 .filter(move |(key, _)| self.pattern.is_match(key).unwrap_or(false))
                 .flat_map(move |(key, value)| {
-                    let instance_path = instance_path.push(key.to_owned());
+                    let instance_path = instance_path.push(key.clone());
                     self.validators.iter().flat_map(move |validator| {
                         validator.validate(schema, value, &instance_path)
                     })

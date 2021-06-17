@@ -64,6 +64,7 @@
     clippy::redundant_closure,
     clippy::trivially_copy_pass_by_ref,
     clippy::missing_const_for_fn,
+    clippy::unseparated_literal_suffix,
     missing_debug_implementations,
     missing_docs,
     trivial_casts,

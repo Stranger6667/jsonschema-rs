@@ -1,4 +1,7 @@
-use pyo3::ffi::*;
+use pyo3::ffi::{
+    PyDict_New, PyFloat_FromDouble, PyList_New, PyLong_FromLongLong, PyTypeObject, PyUnicode_New,
+    Py_None, Py_TYPE, Py_True,
+};
 use std::sync::Once;
 
 pub static mut TRUE: *mut pyo3::ffi::PyObject = 0 as *mut pyo3::ffi::PyObject;

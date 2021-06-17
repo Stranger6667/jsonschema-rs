@@ -1,4 +1,13 @@
-use pyo3::{exceptions, ffi::*, prelude::*, types::PyAny, AsPyPointer};
+use pyo3::{
+    exceptions,
+    ffi::{
+        PyDictObject, PyFloat_AS_DOUBLE, PyList_GET_ITEM, PyList_GET_SIZE, PyLong_AsLongLong,
+        Py_TYPE,
+    },
+    prelude::*,
+    types::PyAny,
+    AsPyPointer,
+};
 use serde::{
     ser::{self, Serialize, SerializeMap, SerializeSeq},
     Serializer,
@@ -38,7 +47,7 @@ impl SerializePyObject {
     }
 
     #[inline]
-    pub fn with_obtype(
+    pub const fn with_obtype(
         object: *mut pyo3::ffi::PyObject,
         object_type: ObjectType,
         recursion_depth: u8,
@@ -113,7 +122,7 @@ impl Serialize for SerializePyObject {
                     serializer.serialize_map(Some(0))?.end()
                 } else {
                     let mut map = serializer.serialize_map(Some(length))?;
-                    let mut pos = 0isize;
+                    let mut pos = 0_isize;
                     let mut str_size: pyo3::ffi::Py_ssize_t = 0;
                     let mut key: *mut pyo3::ffi::PyObject = std::ptr::null_mut();
                     let mut value: *mut pyo3::ffi::PyObject = std::ptr::null_mut();
@@ -153,14 +162,14 @@ impl Serialize for SerializePyObject {
                         let current_ob_type = unsafe { Py_TYPE(elem) };
                         if current_ob_type != type_ptr {
                             type_ptr = current_ob_type;
-                            ob_type = get_object_type(current_ob_type)
+                            ob_type = get_object_type(current_ob_type);
                         }
                         #[allow(clippy::integer_arithmetic)]
                         sequence.serialize_element(&SerializePyObject::with_obtype(
                             elem,
                             ob_type.clone(),
                             self.recursion_depth + 1,
-                        ))?
+                        ))?;
                     }
                     sequence.end()
                 }

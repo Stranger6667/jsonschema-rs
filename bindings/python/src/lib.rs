@@ -8,6 +8,8 @@
     clippy::integer_arithmetic,
     clippy::cast_possible_truncation,
     clippy::map_unwrap_or,
+    clippy::unseparated_literal_suffix,
+    clippy::cargo,
     clippy::unwrap_used
 )]
 #![allow(clippy::upper_case_acronyms)]
@@ -168,11 +170,11 @@ struct JSONSchema {
 #[pymethods]
 impl JSONSchema {
     #[new]
-    fn new(schema: &PyAny, draft: Option<u8>, with_meta_schemas: Option<bool>) -> PyResult<Self> {
+    fn new(pyschema: &PyAny, draft: Option<u8>, with_meta_schemas: Option<bool>) -> PyResult<Self> {
         let options = make_options(draft, with_meta_schemas)?;
         // Currently, it is the simplest way to pass a reference to `JSONSchema`
         // It is cleaned up in the `Drop` implementation
-        let raw_schema = ser::to_value(schema)?;
+        let raw_schema = ser::to_value(pyschema)?;
         let schema: &'static Value = Box::leak(Box::new(raw_schema));
         Ok(JSONSchema {
             schema: options.compile(schema).map_err(ValidationErrorWrapper)?,

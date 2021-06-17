@@ -9,8 +9,9 @@ use crate::{
     schemas, ValidationError,
 };
 use ahash::AHashMap;
-
 use std::{borrow::Cow, fmt};
+
+const EXPECT_MESSAGE: &str = "Valid meta-schema!";
 
 lazy_static::lazy_static! {
     static ref DRAFT4:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft4.json")).expect("Valid schema!");
@@ -36,7 +37,6 @@ lazy_static::lazy_static! {
 
     static ref META_SCHEMA_VALIDATORS: AHashMap<schemas::Draft, JSONSchema<'static>> = {
         let mut store = AHashMap::with_capacity(3);
-        const EXPECT_MESSAGE: &str = "Valid meta-schema!";
         store.insert(
             schemas::Draft::Draft4,
             JSONSchema::options().without_schema_validation().compile(&DRAFT4).expect(EXPECT_MESSAGE)
@@ -71,10 +71,10 @@ impl Default for CompilationOptions {
     fn default() -> Self {
         CompilationOptions {
             validate_schema: true,
-            draft: Default::default(),
-            content_media_type_checks: Default::default(),
-            content_encoding_checks_and_converters: Default::default(),
-            store: Default::default(),
+            draft: Option::default(),
+            content_media_type_checks: AHashMap::default(),
+            content_encoding_checks_and_converters: AHashMap::default(),
+            store: AHashMap::default(),
         }
     }
 }
