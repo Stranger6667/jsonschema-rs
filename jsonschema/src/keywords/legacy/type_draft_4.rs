@@ -1,7 +1,7 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{type_, ValidationResult},
+    keywords::{type_, CompilationResult},
     paths::InstancePath,
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
@@ -15,7 +15,7 @@ pub(crate) struct MultipleTypesValidator {
 
 impl MultipleTypesValidator {
     #[inline]
-    pub(crate) fn compile(items: &[Value]) -> ValidationResult {
+    pub(crate) fn compile(items: &[Value]) -> CompilationResult {
         let mut types = PrimitiveTypesBitMap::new();
         for item in items {
             match item {
@@ -82,7 +82,7 @@ pub(crate) struct IntegerTypeValidator {}
 
 impl IntegerTypeValidator {
     #[inline]
-    pub(crate) fn compile<'a>() -> ValidationResult<'a> {
+    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
         Ok(Box::new(IntegerTypeValidator {}))
     }
 }
@@ -129,7 +129,7 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     _: &CompilationContext,
-) -> Option<ValidationResult<'a>> {
+) -> Option<CompilationResult<'a>> {
     match schema {
         Value::String(item) => compile_single_type(item.as_str()),
         Value::Array(items) => {
@@ -147,7 +147,7 @@ pub(crate) fn compile<'a>(
     }
 }
 
-fn compile_single_type<'a>(item: &str) -> Option<ValidationResult<'a>> {
+fn compile_single_type<'a>(item: &str) -> Option<CompilationResult<'a>> {
     match PrimitiveType::try_from(item) {
         Ok(PrimitiveType::Array) => Some(type_::ArrayTypeValidator::compile()),
         Ok(PrimitiveType::Boolean) => Some(type_::BooleanTypeValidator::compile()),

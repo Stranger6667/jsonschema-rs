@@ -1,9 +1,8 @@
-use crate::keywords::ValidationResult;
-use crate::paths::InstancePath;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, ErrorIterator},
-    keywords::Validators,
+    keywords::{CompilationResult, Validators},
+    paths::InstancePath,
     validator::Validate,
 };
 use parking_lot::RwLock;
@@ -26,7 +25,7 @@ impl RefValidator {
     pub(crate) fn compile<'a>(
         reference: &str,
         context: &CompilationContext,
-    ) -> ValidationResult<'a> {
+    ) -> CompilationResult<'a> {
         let reference = context.build_url(reference)?;
         Ok(Box::new(RefValidator {
             reference,
@@ -114,6 +113,6 @@ pub(crate) fn compile<'a>(
     _: &'a Value,
     reference: &'a str,
     context: &CompilationContext,
-) -> Option<ValidationResult<'a>> {
+) -> Option<CompilationResult<'a>> {
     Some(RefValidator::compile(reference, context))
 }

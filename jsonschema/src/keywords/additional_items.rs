@@ -1,7 +1,7 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{boolean::FalseValidator, format_validators, ValidationResult, Validators},
+    keywords::{boolean::FalseValidator, format_validators, CompilationResult, Validators},
     paths::InstancePath,
     validator::Validate,
 };
@@ -17,7 +17,7 @@ impl AdditionalItemsObjectValidator {
         schema: &'a Value,
         items_count: usize,
         context: &CompilationContext,
-    ) -> ValidationResult<'a> {
+    ) -> CompilationResult<'a> {
         let validators = compile_validators(schema, context)?;
         Ok(Box::new(AdditionalItemsObjectValidator {
             validators,
@@ -72,7 +72,7 @@ pub(crate) struct AdditionalItemsBooleanValidator {
 }
 impl AdditionalItemsBooleanValidator {
     #[inline]
-    pub(crate) fn compile<'a>(items_count: usize) -> ValidationResult<'a> {
+    pub(crate) fn compile<'a>(items_count: usize) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalItemsBooleanValidator { items_count }))
     }
 }
@@ -115,7 +115,7 @@ pub(crate) fn compile<'a>(
     parent: &Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
-) -> Option<ValidationResult<'a>> {
+) -> Option<CompilationResult<'a>> {
     if let Some(items) = parent.get("items") {
         match items {
             Value::Object(_) => None,

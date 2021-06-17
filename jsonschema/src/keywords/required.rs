@@ -1,7 +1,7 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::ValidationResult,
+    keywords::CompilationResult,
     paths::InstancePath,
     validator::Validate,
 };
@@ -13,7 +13,7 @@ pub(crate) struct RequiredValidator {
 
 impl RequiredValidator {
     #[inline]
-    pub(crate) fn compile(items: &[Value]) -> ValidationResult {
+    pub(crate) fn compile(items: &[Value]) -> CompilationResult {
         let mut required = Vec::with_capacity(items.len());
         for item in items {
             match item {
@@ -74,7 +74,7 @@ pub(crate) struct SingleItemRequiredValidator {
 
 impl SingleItemRequiredValidator {
     #[inline]
-    pub(crate) fn compile(value: &str) -> ValidationResult {
+    pub(crate) fn compile(value: &str) -> CompilationResult {
         Ok(Box::new(SingleItemRequiredValidator {
             value: value.to_string(),
         }))
@@ -119,7 +119,7 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     _: &CompilationContext,
-) -> Option<ValidationResult<'a>> {
+) -> Option<CompilationResult<'a>> {
     // IMPORTANT: If this function will ever return `None`, adjust `dependencies.rs` accordingly
     match schema {
         Value::Array(items) => {

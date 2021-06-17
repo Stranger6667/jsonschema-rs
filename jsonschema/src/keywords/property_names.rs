@@ -1,7 +1,7 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{format_validators, ValidationResult, Validators},
+    keywords::{format_validators, CompilationResult, Validators},
     paths::InstancePath,
     validator::Validate,
 };
@@ -17,7 +17,7 @@ impl PropertyNamesObjectValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         context: &CompilationContext,
-    ) -> ValidationResult<'a> {
+    ) -> CompilationResult<'a> {
         Ok(Box::new(PropertyNamesObjectValidator {
             validators: compile_validators(schema, context)?,
         }))
@@ -81,7 +81,7 @@ pub(crate) struct PropertyNamesBooleanValidator {}
 
 impl PropertyNamesBooleanValidator {
     #[inline]
-    pub(crate) fn compile<'a>() -> ValidationResult<'a> {
+    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
         Ok(Box::new(PropertyNamesBooleanValidator {}))
     }
 }
@@ -124,7 +124,7 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
-) -> Option<ValidationResult<'a>> {
+) -> Option<CompilationResult<'a>> {
     match schema {
         Value::Object(_) => Some(PropertyNamesObjectValidator::compile(schema, context)),
         Value::Bool(false) => Some(PropertyNamesBooleanValidator::compile()),

@@ -1,7 +1,7 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::ValidationResult,
+    keywords::CompilationResult,
     paths::InstancePath,
     validator::Validate,
 };
@@ -21,7 +21,7 @@ pub(crate) struct PatternValidator {
 
 impl PatternValidator {
     #[inline]
-    pub(crate) fn compile(pattern: &Value) -> ValidationResult {
+    pub(crate) fn compile(pattern: &Value) -> CompilationResult {
         match pattern {
             Value::String(item) => {
                 let pattern = match convert_regex(item) {
@@ -144,7 +144,7 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     _: &CompilationContext,
-) -> Option<ValidationResult<'a>> {
+) -> Option<CompilationResult<'a>> {
     Some(PatternValidator::compile(schema))
 }
 

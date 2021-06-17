@@ -1,7 +1,7 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator, ValidationError},
-    keywords::{format_key_value_validators, ValidationResult, Validators},
+    keywords::{format_key_value_validators, CompilationResult, Validators},
     paths::InstancePath,
     validator::Validate,
 };
@@ -16,7 +16,7 @@ impl PropertiesValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         context: &CompilationContext,
-    ) -> ValidationResult<'a> {
+    ) -> CompilationResult<'a> {
         match schema {
             Value::Object(map) => {
                 let mut properties = Vec::with_capacity(map.len());
@@ -87,7 +87,7 @@ pub(crate) fn compile<'a>(
     parent: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
-) -> Option<ValidationResult<'a>> {
+) -> Option<CompilationResult<'a>> {
     match parent.get("additionalProperties") {
         // This type of `additionalProperties` validator handles `properties` logic
         Some(Value::Bool(false)) | Some(Value::Object(_)) => None,

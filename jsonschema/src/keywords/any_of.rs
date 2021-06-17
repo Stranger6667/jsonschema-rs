@@ -7,7 +7,7 @@ use crate::{
 };
 use serde_json::{Map, Value};
 
-use super::ValidationResult;
+use super::CompilationResult;
 
 pub(crate) struct AnyOfValidator {
     schemas: Vec<Validators>,
@@ -18,7 +18,7 @@ impl AnyOfValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         context: &CompilationContext,
-    ) -> ValidationResult<'a> {
+    ) -> CompilationResult<'a> {
         if let Value::Array(items) = schema {
             let mut schemas = Vec::with_capacity(items.len());
             for item in items {
@@ -69,6 +69,6 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
-) -> Option<ValidationResult<'a>> {
+) -> Option<CompilationResult<'a>> {
     Some(AnyOfValidator::compile(schema, context))
 }

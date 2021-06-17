@@ -347,9 +347,14 @@ impl CompilationOptions {
         self.store.insert(id, document);
         self
     }
+
     /// Do not perform schema validation during compilation.
+    /// This method is only used to disable meta-schema validation for meta-schemas itself to avoid
+    /// infinite recursion.
+    /// The end-user will still receive `ValidationError` that are crafted manually during
+    /// compilation.
     #[inline]
-    pub fn without_schema_validation(&mut self) -> &mut Self {
+    pub(crate) fn without_schema_validation(&mut self) -> &mut Self {
         self.validate_schema = false;
         self
     }

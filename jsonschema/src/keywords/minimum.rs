@@ -1,7 +1,7 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::ValidationResult,
+    keywords::CompilationResult,
     paths::InstancePath,
     validator::Validate,
 };
@@ -106,7 +106,7 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     _: &CompilationContext,
-) -> Option<ValidationResult<'a>> {
+) -> Option<CompilationResult<'a>> {
     if let Value::Number(limit) = schema {
         if let Some(limit) = limit.as_u64() {
             Some(Ok(Box::new(MinimumU64Validator { limit })))

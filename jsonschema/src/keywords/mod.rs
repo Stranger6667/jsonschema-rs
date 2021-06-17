@@ -36,7 +36,7 @@ pub(crate) mod type_;
 pub(crate) mod unique_items;
 use crate::{error, validator::Validate};
 
-pub(crate) type ValidationResult<'a> = Result<BoxedValidator, error::ValidationError<'a>>;
+pub(crate) type CompilationResult<'a> = Result<BoxedValidator, error::ValidationError<'a>>;
 pub(crate) type BoxedValidator = Box<dyn Validate + Send + Sync>;
 pub(crate) type Validators = Vec<BoxedValidator>;
 

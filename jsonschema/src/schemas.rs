@@ -22,7 +22,7 @@ type CompileFunc<'a> = fn(
     &'a Map<String, Value>,
     &'a Value,
     &CompilationContext,
-) -> Option<keywords::ValidationResult<'a>>;
+) -> Option<keywords::CompilationResult<'a>>;
 
 impl Draft {
     pub(crate) fn get_validator(self, keyword: &str) -> Option<CompileFunc> {

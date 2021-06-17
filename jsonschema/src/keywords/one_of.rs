@@ -1,7 +1,7 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{format_vec_of_validators, ValidationResult, Validators},
+    keywords::{format_vec_of_validators, CompilationResult, Validators},
     paths::InstancePath,
     validator::Validate,
 };
@@ -16,7 +16,7 @@ impl OneOfValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         context: &CompilationContext,
-    ) -> ValidationResult<'a> {
+    ) -> CompilationResult<'a> {
         if let Value::Array(items) = schema {
             let mut schemas = Vec::with_capacity(items.len());
             for item in items {
@@ -99,6 +99,6 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
-) -> Option<ValidationResult<'a>> {
+) -> Option<CompilationResult<'a>> {
     Some(OneOfValidator::compile(schema, context))
 }

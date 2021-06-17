@@ -2,7 +2,7 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{pattern, ValidationResult},
+    keywords::{pattern, CompilationResult},
     paths::InstancePath,
     validator::Validate,
     Draft,
@@ -38,7 +38,7 @@ macro_rules! format_validator {
     ($validator:ident, $format_name:tt) => {
         struct $validator {}
         impl $validator {
-            pub(crate) fn compile<'a>() -> ValidationResult<'a> {
+            pub(crate) fn compile<'a>() -> CompilationResult<'a> {
                 Ok(Box::new($validator {}))
             }
         }
@@ -329,7 +329,7 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
-) -> Option<ValidationResult<'a>> {
+) -> Option<CompilationResult<'a>> {
     if let Value::String(format) = schema {
         let draft_version = context.config.draft();
         match format.as_str() {

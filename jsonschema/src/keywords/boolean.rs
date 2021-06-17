@@ -3,7 +3,7 @@ use crate::paths::InstancePath;
 use crate::{
     compilation::JSONSchema,
     error::{error, ErrorIterator, ValidationError},
-    keywords::ValidationResult,
+    keywords::CompilationResult,
     validator::Validate,
 };
 use serde_json::Value;
@@ -11,7 +11,7 @@ use serde_json::Value;
 pub(crate) struct FalseValidator {}
 impl FalseValidator {
     #[inline]
-    pub(crate) fn compile<'a>() -> ValidationResult<'a> {
+    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
         Ok(Box::new(FalseValidator {}))
     }
 }

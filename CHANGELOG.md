@@ -4,6 +4,13 @@
 
 ### Added
 
+- **BREAKING**: Meta-schema validation for input schemas. By default, all input schemas are validated with their respective meta-schemas
+  and instead of `CompilationError` there will be the usual `ValidationError`. [#198](https://github.com/Stranger6667/jsonschema-rs/issues/198)
+
+### Removed
+
+- `CompilationError`. Use `ValidationError` instead.
+
 ## [0.9.1] - 2021-06-17
 
 ### Fixed

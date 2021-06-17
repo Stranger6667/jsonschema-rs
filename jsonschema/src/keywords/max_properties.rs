@@ -1,7 +1,7 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::ValidationResult,
+    keywords::CompilationResult,
     paths::InstancePath,
     validator::Validate,
 };
@@ -13,7 +13,7 @@ pub(crate) struct MaxPropertiesValidator {
 
 impl MaxPropertiesValidator {
     #[inline]
-    pub(crate) fn compile(schema: &Value) -> ValidationResult {
+    pub(crate) fn compile(schema: &Value) -> CompilationResult {
         if let Some(limit) = schema.as_u64() {
             Ok(Box::new(MaxPropertiesValidator { limit }))
         } else {
@@ -62,6 +62,6 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     _: &CompilationContext,
-) -> Option<ValidationResult<'a>> {
+) -> Option<CompilationResult<'a>> {
     Some(MaxPropertiesValidator::compile(schema))
 }

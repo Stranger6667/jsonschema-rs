@@ -1,7 +1,7 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{format_validators, ValidationResult, Validators},
+    keywords::{format_validators, CompilationResult, Validators},
     paths::InstancePath,
     validator::Validate,
 };
@@ -16,7 +16,7 @@ impl ContainsValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         context: &CompilationContext,
-    ) -> ValidationResult<'a> {
+    ) -> CompilationResult<'a> {
         Ok(Box::new(ContainsValidator {
             validators: compile_validators(schema, context)?,
         }))
@@ -75,6 +75,6 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
-) -> Option<ValidationResult<'a>> {
+) -> Option<CompilationResult<'a>> {
     Some(ContainsValidator::compile(schema, context))
 }

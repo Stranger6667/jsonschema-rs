@@ -7,7 +7,7 @@ use crate::{
 };
 use serde_json::{Map, Value};
 
-use super::ValidationResult;
+use super::CompilationResult;
 
 pub(crate) struct AllOfValidator {
     schemas: Vec<Validators>,
@@ -18,7 +18,7 @@ impl AllOfValidator {
     pub(crate) fn compile<'a>(
         items: &'a [Value],
         context: &CompilationContext,
-    ) -> ValidationResult<'a> {
+    ) -> CompilationResult<'a> {
         let mut schemas = Vec::with_capacity(items.len());
         for item in items {
             let validators = compile_validators(item, context)?;
@@ -70,7 +70,7 @@ impl SingleValueAllOfValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         context: &CompilationContext,
-    ) -> ValidationResult<'a> {
+    ) -> CompilationResult<'a> {
         let validators = compile_validators(schema, context)?;
         Ok(Box::new(SingleValueAllOfValidator { validators }))
     }
@@ -108,7 +108,7 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
-) -> Option<ValidationResult<'a>> {
+) -> Option<CompilationResult<'a>> {
     if let Value::Array(items) = schema {
         if items.len() == 1 {
             let value = items.iter().next().expect("Vec is not empty");
