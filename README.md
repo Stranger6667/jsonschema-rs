@@ -28,7 +28,8 @@ use serde_json::json;
 fn main() {
     let schema = json!({"maxLength": 5});
     let instance = json!("foo");
-    let compiled = JSONSchema::compile(&schema).expect("A valid schema");
+    let compiled = JSONSchema::compile(&schema)
+        .expect("A valid schema");
     let result = compiled.validate(&instance);
     if let Err(errors) = result {
         for error in errors {
@@ -68,7 +69,8 @@ fn main() {
     let instance = json!("foo");
     // Draft is detected automatically
     // with fallback to Draft7
-    let compiled = JSONSchema::compile(&schema).expect("A valid schema");
+    let compiled = JSONSchema::compile(&schema)
+        .expect("A valid schema");
     assert!(compiled.is_valid(&instance));
 }
 ```
