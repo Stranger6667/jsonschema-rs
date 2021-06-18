@@ -14,6 +14,7 @@ impl JSONPointer {
             .map(|item| match item {
                 PathChunk::Property(value) => value,
                 PathChunk::Index(idx) => idx.to_string(),
+                PathChunk::Keyword(keyword) => keyword.to_string(),
             })
             .collect()
     }
@@ -22,6 +23,26 @@ impl JSONPointer {
     /// Return an iterator over the underlying vector of path components.
     pub fn iter(&self) -> Iter<'_, PathChunk> {
         self.0.iter()
+    }
+    /// Take the last pointer chunk.
+    #[inline]
+    pub fn last(&self) -> Option<&PathChunk> {
+        self.0.last()
+    }
+
+    pub(crate) fn clone_with(&self, chunk: impl Into<PathChunk>) -> Self {
+        let mut new = self.clone();
+        new.0.push(chunk.into());
+        new
+    }
+
+    pub(crate) fn extend_with(&self, chunks: &[PathChunk]) -> Self {
+        let mut new = self.clone();
+        new.0.extend_from_slice(chunks);
+        new
+    }
+    pub(crate) fn as_slice(&self) -> &[PathChunk] {
+        &self.0
     }
 }
 
@@ -47,6 +68,7 @@ impl fmt::Display for JSONPointer {
                         }
                     }
                     PathChunk::Index(idx) => itoa::fmt(&mut f, *idx)?,
+                    PathChunk::Keyword(keyword) => f.write_str(keyword)?,
                 }
             }
         }
@@ -75,9 +97,11 @@ pub enum PathChunk {
     Property(String),
     /// Index within a JSON array.
     Index(usize),
+    /// JSON Schema keyword.
+    Keyword(&'static str),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct InstancePath<'a> {
     pub(crate) chunk: Option<PathChunk>,
     pub(crate) parent: Option<&'a InstancePath<'a>>,
@@ -140,6 +164,12 @@ impl From<String> for PathChunk {
         PathChunk::Property(value)
     }
 }
+impl From<&'static str> for PathChunk {
+    #[inline]
+    fn from(value: &'static str) -> Self {
+        PathChunk::Keyword(value)
+    }
+}
 impl From<usize> for PathChunk {
     #[inline]
     fn from(value: usize) -> Self {
@@ -150,6 +180,13 @@ impl From<usize> for PathChunk {
 impl<'a> From<&'a InstancePath<'a>> for JSONPointer {
     #[inline]
     fn from(path: &'a InstancePath<'a>) -> Self {
+        JSONPointer(path.to_vec())
+    }
+}
+
+impl From<InstancePath<'_>> for JSONPointer {
+    #[inline]
+    fn from(path: InstancePath<'_>) -> Self {
         JSONPointer(path.to_vec())
     }
 }

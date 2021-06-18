@@ -17,13 +17,13 @@ impl AllOfValidator {
     #[inline]
     pub(crate) fn compile<'a>(
         items: &'a [Value],
-        context: &mut CompilationContext,
+        context: &CompilationContext,
     ) -> CompilationResult<'a> {
+        let keyword_context = context.with_path("allOf");
         let mut schemas = Vec::with_capacity(items.len());
-        for item in items {
-            context.schema_path.push(item.to_string());
-            let validators = compile_validators(item, context)?;
-            context.schema_path.pop();
+        for (idx, item) in items.iter().enumerate() {
+            let item_context = keyword_context.with_path(idx);
+            let validators = compile_validators(item, &item_context)?;
             schemas.push(validators)
         }
         Ok(Box::new(AllOfValidator { schemas }))
@@ -73,7 +73,9 @@ impl SingleValueAllOfValidator {
         schema: &'a Value,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        let validators = compile_validators(schema, context)?;
+        let keyword_context = context.with_path("allOf");
+        let item_context = keyword_context.with_path(0);
+        let validators = compile_validators(schema, &item_context)?;
         Ok(Box::new(SingleValueAllOfValidator { validators }))
     }
 }
@@ -109,7 +111,7 @@ impl ToString for SingleValueAllOfValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &mut CompilationContext,
+    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     if let Value::Array(items) = schema {
         if items.len() == 1 {
@@ -120,5 +122,18 @@ pub(crate) fn compile<'a>(
         }
     } else {
         Some(Err(ValidationError::schema(schema)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_util;
+    use serde_json::{json, Value};
+    use test_case::test_case;
+
+    #[test_case(&json!({"allOf": [{"type": "string"}]}), &json!(1), "/allOf/0/type")]
+    #[test_case(&json!({"allOf": [{"type": "integer"}, {"maximum": 5}]}), &json!(6), "/allOf/1/maximum")]
+    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_path(schema, instance, expected)
     }
 }

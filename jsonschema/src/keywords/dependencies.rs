@@ -15,17 +15,22 @@ impl DependenciesValidator {
     #[inline]
     pub(crate) fn compile<'a>(
         schema: &'a Value,
-        context: &mut CompilationContext,
+        context: &CompilationContext,
     ) -> CompilationResult<'a> {
         if let Value::Object(map) = schema {
+            let keyword_context = context.with_path("dependencies");
             let mut dependencies = Vec::with_capacity(map.len());
             for (key, subschema) in map {
+                let item_context = keyword_context.with_path(key.to_string());
                 let s = match subschema {
                     Value::Array(_) => {
-                        vec![required::compile(map, subschema, context)
-                            .expect("The required validator compilation does not return None")?]
+                        vec![required::compile_with_path(
+                            subschema,
+                            (&keyword_context.schema_path).into(),
+                        )
+                        .expect("The required validator compilation does not return None")?]
                     }
-                    _ => compile_validators(subschema, context)?,
+                    _ => compile_validators(subschema, &item_context)?,
                 };
                 dependencies.push((key.clone(), s))
             }
@@ -90,7 +95,20 @@ impl ToString for DependenciesValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &mut CompilationContext,
+    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     Some(DependenciesValidator::compile(schema, context))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_util;
+    use serde_json::{json, Value};
+    use test_case::test_case;
+
+    #[test_case(&json!({"dependencies": {"bar": ["foo"]}}), &json!({"bar": 1}), "/dependencies")]
+    #[test_case(&json!({"dependencies": {"bar": {"type": "string"}}}), &json!({"bar": 1}), "/dependencies/bar/type")]
+    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_path(schema, instance, expected)
+    }
 }

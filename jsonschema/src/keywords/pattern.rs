@@ -7,6 +7,7 @@ use crate::{
 };
 use serde_json::{Map, Value};
 
+use crate::paths::JSONPointer;
 use std::ops::Index;
 
 lazy_static::lazy_static! {
@@ -17,11 +18,15 @@ lazy_static::lazy_static! {
 pub(crate) struct PatternValidator {
     original: String,
     pattern: fancy_regex::Regex,
+    schema_path: JSONPointer,
 }
 
 impl PatternValidator {
     #[inline]
-    pub(crate) fn compile(pattern: &Value) -> CompilationResult {
+    pub(crate) fn compile<'a>(
+        pattern: &'a Value,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
         match pattern {
             Value::String(item) => {
                 let pattern = match convert_regex(item) {
@@ -31,6 +36,7 @@ impl PatternValidator {
                 Ok(Box::new(PatternValidator {
                     original: item.clone(),
                     pattern,
+                    schema_path: context.as_pointer_with("pattern"),
                 }))
             }
             _ => Err(ValidationError::schema(pattern)),
@@ -50,6 +56,7 @@ impl Validate for PatternValidator {
                 Ok(is_match) => {
                     if !is_match {
                         return error(ValidationError::pattern(
+                            self.schema_path.clone(),
                             instance_path.into(),
                             instance,
                             self.original.clone(),
@@ -58,6 +65,7 @@ impl Validate for PatternValidator {
                 }
                 Err(e) => {
                     return error(ValidationError::backtrack_limit(
+                        self.schema_path.clone(),
                         instance_path.into(),
                         instance,
                         e,
@@ -143,14 +151,15 @@ fn replace_control_group(captures: &regex::Captures) -> String {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    _: &mut CompilationContext,
+    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
-    Some(PatternValidator::compile(schema))
+    Some(PatternValidator::compile(schema, context))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{compilation::DEFAULT_SCOPE, tests_util};
     use serde_json::{json, Value};
     use test_case::test_case;
 
@@ -178,9 +187,14 @@ mod tests {
         let pattern = Value::String(pattern.into());
         let text = Value::String(text.into());
         let schema = json!({});
-
-        let compiled = PatternValidator::compile(&pattern).unwrap();
         let schema = JSONSchema::compile(&schema).unwrap();
+        let context = CompilationContext::new(DEFAULT_SCOPE.clone(), schema.context.config.clone());
+        let compiled = PatternValidator::compile(&pattern, &context).unwrap();
         assert_eq!(compiled.is_valid(&schema, &text), is_matching,)
+    }
+
+    #[test]
+    fn schema_path() {
+        tests_util::assert_schema_path(&json!({"pattern": "^f"}), &json!("b"), "/pattern")
     }
 }

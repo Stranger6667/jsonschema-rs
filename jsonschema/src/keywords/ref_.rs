@@ -2,7 +2,7 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, ErrorIterator},
     keywords::{CompilationResult, Validators},
-    paths::InstancePath,
+    paths::{InstancePath, JSONPointer},
     validator::Validate,
 };
 use parking_lot::RwLock;
@@ -18,6 +18,7 @@ pub(crate) struct RefValidator {
     /// and at the same time during validation we iterate over shared
     /// references (&self) and not owned references (&mut self).
     validators: RwLock<Option<Validators>>,
+    schema_path: JSONPointer,
 }
 
 impl RefValidator {
@@ -30,6 +31,7 @@ impl RefValidator {
         Ok(Box::new(RefValidator {
             reference,
             validators: RwLock::new(None),
+            schema_path: context.schema_path.clone().into(),
         }))
     }
 }
@@ -86,7 +88,15 @@ impl Validate for RefValidator {
                             validators
                                 .iter()
                                 .flat_map(move |validator| {
-                                    validator.validate(schema, instance, instance_path)
+                                    let schema_path = self.schema_path.clone();
+                                    validator.validate(schema, instance, instance_path).map(
+                                        move |mut error| {
+                                            // Prepend $ref path to the actual error
+                                            error.schema_path = schema_path
+                                                .extend_with(error.schema_path.as_slice());
+                                            error
+                                        },
+                                    )
                                 })
                                 .collect::<Vec<_>>()
                                 .into_iter(),
@@ -115,4 +125,19 @@ pub(crate) fn compile<'a>(
     context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     Some(RefValidator::compile(reference, context))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_util;
+    use serde_json::json;
+
+    #[test]
+    fn schema_path() {
+        tests_util::assert_schema_path(
+            &json!({"properties": {"foo": {"$ref": "#/definitions/foo"}}, "definitions": {"foo": {"type": "string"}}}),
+            &json!({"foo": 42}),
+            "/properties/foo/type",
+        )
+    }
 }

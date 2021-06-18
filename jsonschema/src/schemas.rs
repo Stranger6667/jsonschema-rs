@@ -21,7 +21,7 @@ impl Default for Draft {
 type CompileFunc<'a> = fn(
     &'a Map<String, Value>,
     &'a Value,
-    &mut CompilationContext,
+    &CompilationContext,
 ) -> Option<keywords::CompilationResult<'a>>;
 
 impl Draft {

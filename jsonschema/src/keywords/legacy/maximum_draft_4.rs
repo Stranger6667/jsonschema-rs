@@ -8,7 +8,7 @@ use serde_json::{Map, Value};
 pub(crate) fn compile<'a>(
     parent: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &mut CompilationContext,
+    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     if let Some(Value::Bool(true)) = parent.get("exclusiveMaximum") {
         exclusive_maximum::compile(parent, schema, context)

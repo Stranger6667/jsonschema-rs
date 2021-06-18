@@ -16,9 +16,11 @@ impl ItemsArrayValidator {
         schemas: &'a [Value],
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
+        let keyword_context = context.with_path("items");
         let mut items = Vec::with_capacity(schemas.len());
-        for item in schemas {
-            let validators = compile_validators(item, context)?;
+        for (idx, item) in schemas.iter().enumerate() {
+            let item_context = keyword_context.with_path(idx);
+            let validators = compile_validators(item, &item_context)?;
             items.push(validators)
         }
         Ok(Box::new(ItemsArrayValidator { items }))
@@ -79,7 +81,8 @@ impl ItemsObjectValidator {
         schema: &'a Value,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        let validators = compile_validators(schema, context)?;
+        let keyword_context = context.with_path("items");
+        let validators = compile_validators(schema, &keyword_context)?;
         Ok(Box::new(ItemsObjectValidator { validators }))
     }
 }
@@ -129,7 +132,7 @@ impl ToString for ItemsObjectValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &mut CompilationContext,
+    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     match schema {
         Value::Array(items) => Some(ItemsArrayValidator::compile(items, context)),
@@ -142,5 +145,19 @@ pub(crate) fn compile<'a>(
             }
         }
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_util;
+    use serde_json::{json, Value};
+    use test_case::test_case;
+
+    #[test_case(&json!({"items": false}), &json!([1]), "/items")]
+    #[test_case(&json!({"items": {"type": "string"}}), &json!([1]), "/items/type")]
+    #[test_case(&json!({"items": [{"type": "string"}]}), &json!([1]), "/items/0/type")]
+    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_path(schema, instance, expected)
     }
 }

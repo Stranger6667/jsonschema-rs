@@ -7,16 +7,18 @@ use crate::{
 use serde_json::{Map, Number, Value};
 use std::f64::EPSILON;
 
-use crate::paths::InstancePath;
+use crate::paths::{InstancePath, JSONPointer};
 
 struct ConstArrayValidator {
     value: Vec<Value>,
+    schema_path: JSONPointer,
 }
 impl ConstArrayValidator {
     #[inline]
-    pub(crate) fn compile(value: &[Value]) -> CompilationResult {
+    pub(crate) fn compile(value: &[Value], schema_path: JSONPointer) -> CompilationResult {
         Ok(Box::new(ConstArrayValidator {
             value: value.to_vec(),
+            schema_path,
         }))
     }
 }
@@ -32,6 +34,7 @@ impl Validate for ConstArrayValidator {
             no_error()
         } else {
             error(ValidationError::constant_array(
+                self.schema_path.clone(),
                 instance_path.into(),
                 instance,
                 &self.value,
@@ -63,11 +66,12 @@ impl ToString for ConstArrayValidator {
 
 struct ConstBooleanValidator {
     value: bool,
+    schema_path: JSONPointer,
 }
 impl ConstBooleanValidator {
     #[inline]
-    pub(crate) fn compile<'a>(value: bool) -> CompilationResult<'a> {
-        Ok(Box::new(ConstBooleanValidator { value }))
+    pub(crate) fn compile<'a>(value: bool, schema_path: JSONPointer) -> CompilationResult<'a> {
+        Ok(Box::new(ConstBooleanValidator { value, schema_path }))
     }
 }
 impl Validate for ConstBooleanValidator {
@@ -82,6 +86,7 @@ impl Validate for ConstBooleanValidator {
             no_error()
         } else {
             error(ValidationError::constant_boolean(
+                self.schema_path.clone(),
                 instance_path.into(),
                 instance,
                 self.value,
@@ -104,11 +109,13 @@ impl ToString for ConstBooleanValidator {
     }
 }
 
-struct ConstNullValidator {}
+struct ConstNullValidator {
+    schema_path: JSONPointer,
+}
 impl ConstNullValidator {
     #[inline]
-    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
-        Ok(Box::new(ConstNullValidator {}))
+    pub(crate) fn compile<'a>(schema_path: JSONPointer) -> CompilationResult<'a> {
+        Ok(Box::new(ConstNullValidator { schema_path }))
     }
 }
 impl Validate for ConstNullValidator {
@@ -123,6 +130,7 @@ impl Validate for ConstNullValidator {
             no_error()
         } else {
             error(ValidationError::constant_null(
+                self.schema_path.clone(),
                 instance_path.into(),
                 instance,
             ))
@@ -144,16 +152,18 @@ struct ConstNumberValidator {
     // This is saved in order to ensure that the error message is not altered by precision loss
     original_value: Number,
     value: f64,
+    schema_path: JSONPointer,
 }
 
 impl ConstNumberValidator {
     #[inline]
-    pub(crate) fn compile(original_value: &Number) -> CompilationResult {
+    pub(crate) fn compile(original_value: &Number, schema_path: JSONPointer) -> CompilationResult {
         Ok(Box::new(ConstNumberValidator {
             original_value: original_value.clone(),
             value: original_value
                 .as_f64()
                 .expect("A JSON number will always be representable as f64"),
+            schema_path,
         }))
     }
 }
@@ -169,6 +179,7 @@ impl Validate for ConstNumberValidator {
             no_error()
         } else {
             error(ValidationError::constant_number(
+                self.schema_path.clone(),
                 instance_path.into(),
                 instance,
                 &self.original_value,
@@ -193,13 +204,18 @@ impl ToString for ConstNumberValidator {
 
 pub(crate) struct ConstObjectValidator {
     value: Map<String, Value>,
+    schema_path: JSONPointer,
 }
 
 impl ConstObjectValidator {
     #[inline]
-    pub(crate) fn compile(value: &Map<String, Value>) -> CompilationResult {
+    pub(crate) fn compile(
+        value: &Map<String, Value>,
+        schema_path: JSONPointer,
+    ) -> CompilationResult {
         Ok(Box::new(ConstObjectValidator {
             value: value.clone(),
+            schema_path,
         }))
     }
 }
@@ -215,6 +231,7 @@ impl Validate for ConstObjectValidator {
             no_error()
         } else {
             error(ValidationError::constant_object(
+                self.schema_path.clone(),
                 instance_path.into(),
                 instance,
                 &self.value,
@@ -246,13 +263,15 @@ impl ToString for ConstObjectValidator {
 
 pub(crate) struct ConstStringValidator {
     value: String,
+    schema_path: JSONPointer,
 }
 
 impl ConstStringValidator {
     #[inline]
-    pub(crate) fn compile(value: &str) -> CompilationResult {
+    pub(crate) fn compile(value: &str, schema_path: JSONPointer) -> CompilationResult {
         Ok(Box::new(ConstStringValidator {
             value: value.to_string(),
+            schema_path,
         }))
     }
 }
@@ -268,6 +287,7 @@ impl Validate for ConstStringValidator {
             no_error()
         } else {
             error(ValidationError::constant_string(
+                self.schema_path.clone(),
                 instance_path.into(),
                 instance,
                 &self.value,
@@ -294,14 +314,32 @@ impl ToString for ConstStringValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    _: &mut CompilationContext,
+    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
+    let schema_path = context.as_pointer_with("const");
     match schema {
-        Value::Array(items) => Some(ConstArrayValidator::compile(items)),
-        Value::Bool(item) => Some(ConstBooleanValidator::compile(*item)),
-        Value::Null => Some(ConstNullValidator::compile()),
-        Value::Number(item) => Some(ConstNumberValidator::compile(item)),
-        Value::Object(map) => Some(ConstObjectValidator::compile(map)),
-        Value::String(string) => Some(ConstStringValidator::compile(string)),
+        Value::Array(items) => Some(ConstArrayValidator::compile(items, schema_path)),
+        Value::Bool(item) => Some(ConstBooleanValidator::compile(*item, schema_path)),
+        Value::Null => Some(ConstNullValidator::compile(schema_path)),
+        Value::Number(item) => Some(ConstNumberValidator::compile(item, schema_path)),
+        Value::Object(map) => Some(ConstObjectValidator::compile(map, schema_path)),
+        Value::String(string) => Some(ConstStringValidator::compile(string, schema_path)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_util;
+    use serde_json::{json, Value};
+    use test_case::test_case;
+
+    #[test_case(&json!({"const": 1}), &json!(2), "/const")]
+    #[test_case(&json!({"const": null}), &json!(3), "/const")]
+    #[test_case(&json!({"const": false}), &json!(4), "/const")]
+    #[test_case(&json!({"const": []}), &json!(5), "/const")]
+    #[test_case(&json!({"const": {}}), &json!(6), "/const")]
+    #[test_case(&json!({"const": ""}), &json!(7), "/const")]
+    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_path(schema, instance, expected)
     }
 }

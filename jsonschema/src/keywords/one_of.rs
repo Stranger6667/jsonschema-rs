@@ -2,13 +2,14 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{format_vec_of_validators, CompilationResult, Validators},
-    paths::InstancePath,
+    paths::{InstancePath, JSONPointer},
     validator::Validate,
 };
 use serde_json::{Map, Value};
 
 pub(crate) struct OneOfValidator {
     schemas: Vec<Validators>,
+    schema_path: JSONPointer,
 }
 
 impl OneOfValidator {
@@ -18,11 +19,15 @@ impl OneOfValidator {
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
         if let Value::Array(items) = schema {
+            let keyword_context = context.with_path("oneOf");
             let mut schemas = Vec::with_capacity(items.len());
             for item in items {
-                schemas.push(compile_validators(item, context)?)
+                schemas.push(compile_validators(item, &keyword_context)?)
             }
-            Ok(Box::new(OneOfValidator { schemas }))
+            Ok(Box::new(OneOfValidator {
+                schemas,
+                schema_path: keyword_context.into_pointer(),
+            }))
         } else {
             Err(ValidationError::schema(schema))
         }
@@ -74,6 +79,7 @@ impl Validate for OneOfValidator {
         if let Some(idx) = first_valid_idx {
             if self.are_others_valid(schema, instance, idx) {
                 return error(ValidationError::one_of_multiple_valid(
+                    self.schema_path.clone(),
                     instance_path.into(),
                     instance,
                 ));
@@ -81,6 +87,7 @@ impl Validate for OneOfValidator {
             no_error()
         } else {
             error(ValidationError::one_of_not_valid(
+                self.schema_path.clone(),
                 instance_path.into(),
                 instance,
             ))
@@ -98,7 +105,20 @@ impl ToString for OneOfValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &mut CompilationContext,
+    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     Some(OneOfValidator::compile(schema, context))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_util;
+    use serde_json::{json, Value};
+    use test_case::test_case;
+
+    #[test_case(&json!({"oneOf": [{"type": "string"}]}), &json!(0), "/oneOf")]
+    #[test_case(&json!({"oneOf": [{"type": "string"}, {"maxLength": 3}]}), &json!(""), "/oneOf")]
+    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_path(schema, instance, expected)
+    }
 }

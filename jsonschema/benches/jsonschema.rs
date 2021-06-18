@@ -87,6 +87,9 @@ macro_rules! jsonschema_rs_bench {
             .expect("Invalid schema");
         assert!(validator.is_valid(&$instance), "Invalid instance");
         assert!(validator.validate(&$instance).is_ok(), "Invalid instance");
+        $c.bench_function(&format!("jsonschema-rs {} compile", $name), |b| {
+            b.iter(|| JSONSchema::options().with_meta_schemas().compile(&$schema))
+        });
         $c.bench_function(&format!("jsonschema-rs {} is_valid", $name), |b| {
             b.iter(|| validator.is_valid(&$instance))
         });

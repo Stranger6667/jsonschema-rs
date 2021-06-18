@@ -17,12 +17,14 @@ use std::{
 /// An error that can occur during validation.
 #[derive(Debug)]
 pub struct ValidationError<'a> {
-    /// Value of the property that failed validation
+    /// Value of the property that failed validation.
     pub instance: Cow<'a, Value>,
-    /// Type of validation error
+    /// Type of validation error.
     pub kind: ValidationErrorKind,
-    /// Path of the property that failed validation
+    /// Path to the value that failed validation.
     pub instance_path: JSONPointer,
+    /// Path to the JSON Schema keyword that failed validation.
+    pub schema_path: JSONPointer,
 }
 
 /// An iterator over instances of `ValidationError` that represent validation error for the
@@ -157,10 +159,12 @@ impl<'a> ValidationError<'a> {
             instance_path: self.instance_path.clone(),
             instance: Cow::Owned(self.instance.into_owned()),
             kind: self.kind,
+            schema_path: self.schema_path,
         }
     }
 
     pub(crate) const fn additional_items(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: usize,
@@ -169,9 +173,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::AdditionalItems { limit },
+            schema_path,
         }
     }
-    pub(crate) fn additional_properties(
+    pub(crate) const fn additional_properties(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         unexpected: Vec<String>,
@@ -180,9 +186,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::AdditionalProperties { unexpected },
+            schema_path,
         }
     }
     pub(crate) const fn any_of(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
@@ -190,9 +198,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::AnyOf,
+            schema_path,
         }
     }
     pub(crate) const fn backtrack_limit(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         error: fancy_regex::Error,
@@ -201,9 +211,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::BacktrackLimitExceeded { error },
+            schema_path,
         }
     }
     pub(crate) fn constant_array(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         expected_value: &[Value],
@@ -214,9 +226,11 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Constant {
                 expected_value: Value::Array(expected_value.to_vec()),
             },
+            schema_path,
         }
     }
     pub(crate) const fn constant_boolean(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         expected_value: bool,
@@ -227,9 +241,11 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Constant {
                 expected_value: Value::Bool(expected_value),
             },
+            schema_path,
         }
     }
     pub(crate) const fn constant_null(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
@@ -239,9 +255,11 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Constant {
                 expected_value: Value::Null,
             },
+            schema_path,
         }
     }
     pub(crate) fn constant_number(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         expected_value: &Number,
@@ -252,9 +270,11 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Constant {
                 expected_value: Value::Number(expected_value.clone()),
             },
+            schema_path,
         }
     }
     pub(crate) fn constant_object(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         expected_value: &Map<String, Value>,
@@ -265,9 +285,11 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Constant {
                 expected_value: Value::Object(expected_value.clone()),
             },
+            schema_path,
         }
     }
     pub(crate) fn constant_string(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         expected_value: &str,
@@ -278,9 +300,11 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Constant {
                 expected_value: Value::String(expected_value.to_string()),
             },
+            schema_path,
         }
     }
     pub(crate) const fn contains(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
@@ -288,9 +312,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Contains,
+            schema_path,
         }
     }
     pub(crate) fn content_encoding(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         encoding: &str,
@@ -301,9 +327,11 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::ContentEncoding {
                 content_encoding: encoding.to_string(),
             },
+            schema_path,
         }
     }
     pub(crate) fn content_media_type(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         media_type: &str,
@@ -314,9 +342,11 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::ContentMediaType {
                 content_media_type: media_type.to_string(),
             },
+            schema_path,
         }
     }
     pub(crate) fn enumeration(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         options: &Value,
@@ -327,9 +357,11 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Enum {
                 options: options.clone(),
             },
+            schema_path,
         }
     }
     pub(crate) const fn exclusive_maximum(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: f64,
@@ -338,9 +370,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::ExclusiveMaximum { limit },
+            schema_path,
         }
     }
     pub(crate) const fn exclusive_minimum(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: f64,
@@ -349,9 +383,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::ExclusiveMinimum { limit },
+            schema_path,
         }
     }
     pub(crate) const fn false_schema(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
@@ -359,6 +395,7 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::FalseSchema,
+            schema_path,
         }
     }
     pub(crate) fn file_not_found(error: io::Error) -> ValidationError<'a> {
@@ -366,9 +403,11 @@ impl<'a> ValidationError<'a> {
             instance_path: JSONPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::FileNotFound { error },
+            schema_path: JSONPointer::default(),
         }
     }
     pub(crate) const fn format(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         format: &'static str,
@@ -377,6 +416,7 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Format { format },
+            schema_path,
         }
     }
     pub(crate) fn from_utf8(error: FromUtf8Error) -> ValidationError<'a> {
@@ -384,6 +424,7 @@ impl<'a> ValidationError<'a> {
             instance_path: JSONPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::FromUtf8 { error },
+            schema_path: JSONPointer::default(),
         }
     }
     pub(crate) fn json_parse(error: serde_json::Error) -> ValidationError<'a> {
@@ -391,6 +432,7 @@ impl<'a> ValidationError<'a> {
             instance_path: JSONPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::JSONParse { error },
+            schema_path: JSONPointer::default(),
         }
     }
     pub(crate) fn invalid_reference(reference: String) -> ValidationError<'a> {
@@ -398,6 +440,7 @@ impl<'a> ValidationError<'a> {
             instance_path: JSONPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::InvalidReference { reference },
+            schema_path: JSONPointer::default(),
         }
     }
     pub(crate) fn invalid_url(error: url::ParseError) -> ValidationError<'a> {
@@ -405,9 +448,11 @@ impl<'a> ValidationError<'a> {
             instance_path: JSONPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::InvalidURL { error },
+            schema_path: JSONPointer::default(),
         }
     }
     pub(crate) const fn max_items(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: u64,
@@ -416,9 +461,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MaxItems { limit },
+            schema_path,
         }
     }
     pub(crate) const fn maximum(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: f64,
@@ -427,9 +474,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Maximum { limit },
+            schema_path,
         }
     }
     pub(crate) const fn max_length(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: u64,
@@ -438,9 +487,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MaxLength { limit },
+            schema_path,
         }
     }
     pub(crate) const fn max_properties(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: u64,
@@ -449,9 +500,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MaxProperties { limit },
+            schema_path,
         }
     }
     pub(crate) const fn min_items(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: u64,
@@ -460,9 +513,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MinItems { limit },
+            schema_path,
         }
     }
     pub(crate) const fn minimum(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: f64,
@@ -471,9 +526,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Minimum { limit },
+            schema_path,
         }
     }
     pub(crate) const fn min_length(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: u64,
@@ -482,9 +539,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MinLength { limit },
+            schema_path,
         }
     }
     pub(crate) const fn min_properties(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         limit: u64,
@@ -493,9 +552,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MinProperties { limit },
+            schema_path,
         }
     }
     pub(crate) const fn multiple_of(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         multiple_of: f64,
@@ -504,9 +565,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::MultipleOf { multiple_of },
+            schema_path,
         }
     }
     pub(crate) const fn not(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         schema: Value,
@@ -515,9 +578,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Not { schema },
+            schema_path,
         }
     }
     pub(crate) const fn one_of_multiple_valid(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
@@ -525,9 +590,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::OneOfMultipleValid,
+            schema_path,
         }
     }
     pub(crate) const fn one_of_not_valid(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
@@ -535,9 +602,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::OneOfNotValid,
+            schema_path,
         }
     }
     pub(crate) const fn pattern(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         pattern: String,
@@ -546,9 +615,11 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Pattern { pattern },
+            schema_path,
         }
     }
     pub(crate) fn property_names(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         error: ValidationError<'a>,
@@ -559,9 +630,11 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::PropertyNames {
                 error: Box::new(error.into_owned()),
             },
+            schema_path,
         }
     }
     pub(crate) const fn required(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         property: Value,
@@ -570,6 +643,7 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Required { property },
+            schema_path,
         }
     }
     #[cfg(any(feature = "reqwest", test))]
@@ -578,6 +652,7 @@ impl<'a> ValidationError<'a> {
             instance_path: JSONPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::Reqwest { error },
+            schema_path: JSONPointer::default(),
         }
     }
 
@@ -586,6 +661,7 @@ impl<'a> ValidationError<'a> {
             instance_path: JSONPointer::default(),
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::Schema,
+            schema_path: JSONPointer::default(),
         }
     }
 
@@ -594,10 +670,12 @@ impl<'a> ValidationError<'a> {
             instance_path: JSONPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::Schema,
+            schema_path: JSONPointer::default(),
         }
     }
 
     pub(crate) const fn single_type_error(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         type_name: PrimitiveType,
@@ -608,9 +686,11 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Type {
                 kind: TypeKind::Single(type_name),
             },
+            schema_path,
         }
     }
     pub(crate) const fn multiple_type_error(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
         types: PrimitiveTypesBitMap,
@@ -621,9 +701,11 @@ impl<'a> ValidationError<'a> {
             kind: ValidationErrorKind::Type {
                 kind: TypeKind::Multiple(types),
             },
+            schema_path,
         }
     }
     pub(crate) const fn unique_items(
+        schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
@@ -631,6 +713,7 @@ impl<'a> ValidationError<'a> {
             instance_path,
             instance: Cow::Borrowed(instance),
             kind: ValidationErrorKind::UniqueItems,
+            schema_path,
         }
     }
     pub(crate) fn unknown_reference_scheme(scheme: String) -> ValidationError<'a> {
@@ -638,6 +721,7 @@ impl<'a> ValidationError<'a> {
             instance_path: JSONPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::UnknownReferenceScheme { scheme },
+            schema_path: JSONPointer::default(),
         }
     }
     pub(crate) fn utf8(error: Utf8Error) -> ValidationError<'a> {
@@ -645,6 +729,7 @@ impl<'a> ValidationError<'a> {
             instance_path: JSONPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::Utf8 { error },
+            schema_path: JSONPointer::default(),
         }
     }
 }
@@ -906,6 +991,7 @@ mod tests {
         let instance = json!(42);
         let err = ValidationError::single_type_error(
             JSONPointer::default(),
+            JSONPointer::default(),
             &instance,
             PrimitiveType::String,
         );
@@ -916,6 +1002,7 @@ mod tests {
     fn multiple_types_error() {
         let instance = json!(42);
         let err = ValidationError::multiple_type_error(
+            JSONPointer::default(),
             JSONPointer::default(),
             &instance,
             vec![PrimitiveType::String, PrimitiveType::Number].into(),

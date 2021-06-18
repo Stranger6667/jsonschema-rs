@@ -2,7 +2,7 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{boolean::FalseValidator, format_validators, CompilationResult, Validators},
-    paths::InstancePath,
+    paths::{InstancePath, JSONPointer},
     validator::Validate,
 };
 use serde_json::{Map, Value};
@@ -16,11 +16,9 @@ impl AdditionalItemsObjectValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         items_count: usize,
-        context: &mut CompilationContext,
+        context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        context.schema_path.push(schema.to_string());
         let validators = compile_validators(schema, context)?;
-        context.schema_path.pop();
         Ok(Box::new(AdditionalItemsObjectValidator {
             validators,
             items_count,
@@ -71,11 +69,18 @@ impl ToString for AdditionalItemsObjectValidator {
 
 pub(crate) struct AdditionalItemsBooleanValidator {
     items_count: usize,
+    schema_path: JSONPointer,
 }
 impl AdditionalItemsBooleanValidator {
     #[inline]
-    pub(crate) fn compile<'a>(items_count: usize) -> CompilationResult<'a> {
-        Ok(Box::new(AdditionalItemsBooleanValidator { items_count }))
+    pub(crate) fn compile<'a>(
+        items_count: usize,
+        schema_path: JSONPointer,
+    ) -> CompilationResult<'a> {
+        Ok(Box::new(AdditionalItemsBooleanValidator {
+            items_count,
+            schema_path,
+        }))
     }
 }
 impl Validate for AdditionalItemsBooleanValidator {
@@ -97,6 +102,7 @@ impl Validate for AdditionalItemsBooleanValidator {
         if let Value::Array(items) = instance {
             if items.len() > self.items_count {
                 return error(ValidationError::additional_items(
+                    self.schema_path.clone(),
                     instance_path.into(),
                     instance,
                     self.items_count,
@@ -116,22 +122,24 @@ impl ToString for AdditionalItemsBooleanValidator {
 pub(crate) fn compile<'a>(
     parent: &Map<String, Value>,
     schema: &'a Value,
-    context: &mut CompilationContext,
+    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     if let Some(items) = parent.get("items") {
         match items {
             Value::Object(_) => None,
             Value::Array(items) => {
+                let keyword_context = context.with_path("additionalItems");
                 let items_count = items.len();
                 match schema {
                     Value::Object(_) => Some(AdditionalItemsObjectValidator::compile(
                         schema,
                         items_count,
-                        context,
+                        &keyword_context,
                     )),
-                    Value::Bool(false) => {
-                        Some(AdditionalItemsBooleanValidator::compile(items_count))
-                    }
+                    Value::Bool(false) => Some(AdditionalItemsBooleanValidator::compile(
+                        items_count,
+                        keyword_context.into_pointer(),
+                    )),
                     _ => None,
                 }
             }
@@ -139,12 +147,27 @@ pub(crate) fn compile<'a>(
                 if *value {
                     None
                 } else {
-                    Some(FalseValidator::compile())
+                    let schema_path = context.as_pointer_with("additionalItems");
+                    Some(FalseValidator::compile(schema_path))
                 }
             }
             _ => Some(Err(ValidationError::schema(schema))),
         }
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_util;
+    use serde_json::{json, Value};
+    use test_case::test_case;
+
+    #[test_case(&json!({"additionalItems": false, "items": false}), &json!([1]), "/additionalItems")]
+    #[test_case(&json!({"additionalItems": false, "items": [{}]}), &json!([1, 2]), "/additionalItems")]
+    #[test_case(&json!({"additionalItems": {"type": "string"}, "items": [{}]}), &json!([1, 2]), "/additionalItems/type")]
+    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_path(schema, instance, expected)
     }
 }

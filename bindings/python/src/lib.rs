@@ -83,16 +83,42 @@ fn to_error_message(error: &jsonschema::ValidationError) -> String {
     let mut message = error.to_string();
     message.push('\n');
     message.push('\n');
+    message.push_str("Failed validating");
+
+    let push_quoted = |m: &mut String, s: &str| {
+        m.push('"');
+        m.push_str(s);
+        m.push('"');
+    };
+
+    let push_chunk = |m: &mut String, chunk: &jsonschema::paths::PathChunk| {
+        match chunk {
+            jsonschema::paths::PathChunk::Property(property) => push_quoted(m, property),
+            jsonschema::paths::PathChunk::Index(index) => m.push_str(&index.to_string()),
+            jsonschema::paths::PathChunk::Keyword(keyword) => push_quoted(m, keyword),
+        };
+    };
+
+    if let Some(last) = error.schema_path.last() {
+        message.push(' ');
+        push_chunk(&mut message, last)
+    }
+    message.push_str(" in schema");
+    for chunk in &error.schema_path {
+        message.push('[');
+        push_chunk(&mut message, chunk);
+        message.push(']');
+    }
+    message.push('\n');
+    message.push('\n');
     message.push_str("On instance");
     for chunk in &error.instance_path {
         message.push('[');
         match chunk {
-            jsonschema::paths::PathChunk::Property(property) => {
-                message.push('"');
-                message.push_str(property);
-                message.push('"');
-            }
+            jsonschema::paths::PathChunk::Property(property) => push_quoted(&mut message, property),
             jsonschema::paths::PathChunk::Index(index) => message.push_str(&index.to_string()),
+            // Keywords are not used for instances
+            jsonschema::paths::PathChunk::Keyword(_) => unreachable!("Internal error"),
         };
         message.push(']');
     }

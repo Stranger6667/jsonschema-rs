@@ -114,6 +114,8 @@ def test_error_message():
             str(exc)
             == """null is not of type "integer"
 
+Failed validating "type" in schema["properties"]["foo"]["type"]
+
 On instance["foo"]:
     null"""
         )

@@ -1,5 +1,8 @@
 use super::options::CompilationOptions;
-use crate::schemas;
+use crate::{
+    paths::{InstancePath, JSONPointer, PathChunk},
+    schemas,
+};
 use serde_json::Value;
 use std::borrow::Cow;
 use url::{ParseError, Url};
@@ -9,7 +12,7 @@ use url::{ParseError, Url};
 pub(crate) struct CompilationContext<'a> {
     pub(crate) scope: Cow<'a, Url>,
     pub(crate) config: Cow<'a, CompilationOptions>,
-    pub(crate) schema_path: Vec<String>,
+    pub(crate) schema_path: InstancePath<'a>,
 }
 
 impl<'a> CompilationContext<'a> {
@@ -17,7 +20,7 @@ impl<'a> CompilationContext<'a> {
         CompilationContext {
             scope: Cow::Owned(scope),
             config,
-            schema_path: Vec::with_capacity(4),
+            schema_path: InstancePath::new(),
         }
     }
 
@@ -47,6 +50,28 @@ impl<'a> CompilationContext<'a> {
                 schema_path: self.schema_path.clone(),
             })
         }
+    }
+
+    #[inline]
+    pub(crate) fn with_path(&'a self, chunk: impl Into<PathChunk>) -> Self {
+        let schema_path = self.schema_path.push(chunk);
+        CompilationContext {
+            scope: Cow::Borrowed(self.scope.as_ref()),
+            config: Cow::Borrowed(&self.config),
+            schema_path,
+        }
+    }
+
+    /// Create a JSON Pointer from the current `schema_path` & a new chunk.
+    #[inline]
+    pub(crate) fn into_pointer(self) -> JSONPointer {
+        self.schema_path.into()
+    }
+
+    /// Create a JSON Pointer from the current `schema_path` & a new chunk.
+    #[inline]
+    pub(crate) fn as_pointer_with(&self, chunk: impl Into<PathChunk>) -> JSONPointer {
+        self.schema_path.push(chunk).into()
     }
 
     /// Build a new URL. Used for `ref` compilation to keep their full paths.
