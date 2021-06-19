@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Report schema paths in validation errors. At the moment, it only displayed in the `ValidationError` message. [#199](https://github.com/Stranger6667/jsonschema-rs/issues/199)
+
 ## [0.10.0] - 2021-06-17
 
 ### Added
