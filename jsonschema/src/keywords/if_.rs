@@ -20,8 +20,14 @@ impl IfThenValidator {
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
         Ok(Box::new(IfThenValidator {
-            schema: compile_validators(schema, context)?,
-            then_schema: compile_validators(then_schema, context)?,
+            schema: {
+                let if_context = context.with_path("if");
+                compile_validators(schema, &if_context)?
+            },
+            then_schema: {
+                let then_context = context.with_path("then");
+                compile_validators(then_schema, &then_context)?
+            },
         }))
     }
 }
@@ -87,8 +93,14 @@ impl IfElseValidator {
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
         Ok(Box::new(IfElseValidator {
-            schema: compile_validators(schema, context)?,
-            else_schema: compile_validators(else_schema, context)?,
+            schema: {
+                let if_context = context.with_path("if");
+                compile_validators(schema, &if_context)?
+            },
+            else_schema: {
+                let else_context = context.with_path("else");
+                compile_validators(else_schema, &else_context)?
+            },
         }))
     }
 }
@@ -156,9 +168,18 @@ impl IfThenElseValidator {
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
         Ok(Box::new(IfThenElseValidator {
-            schema: compile_validators(schema, context)?,
-            then_schema: compile_validators(then_schema, context)?,
-            else_schema: compile_validators(else_schema, context)?,
+            schema: {
+                let if_context = context.with_path("if");
+                compile_validators(schema, &if_context)?
+            },
+            then_schema: {
+                let then_context = context.with_path("then");
+                compile_validators(then_schema, &then_context)?
+            },
+            else_schema: {
+                let else_context = context.with_path("else");
+                compile_validators(else_schema, &else_context)?
+            },
         }))
     }
 }
@@ -237,5 +258,20 @@ pub(crate) fn compile<'a>(
         (None, Some(else_schema)) => Some(IfElseValidator::compile(schema, else_schema, context)),
         (Some(then_schema), None) => Some(IfThenValidator::compile(schema, then_schema, context)),
         (None, None) => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_util;
+    use serde_json::{json, Value};
+    use test_case::test_case;
+
+    #[test_case(&json!({"if": {"minimum": 0}, "else": {"multipleOf": 2}}), &json!(-1), "/else/multipleOf")]
+    #[test_case(&json!({"if": {"minimum": 0}, "then": {"multipleOf": 2}}), &json!(3), "/then/multipleOf")]
+    #[test_case(&json!({"if": {"minimum": 0}, "then": {"multipleOf": 2}, "else": {"multipleOf": 2}}), &json!(-1), "/else/multipleOf")]
+    #[test_case(&json!({"if": {"minimum": 0}, "then": {"multipleOf": 2}, "else": {"multipleOf": 2}}), &json!(3), "/then/multipleOf")]
+    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_path(schema, instance, expected)
     }
 }

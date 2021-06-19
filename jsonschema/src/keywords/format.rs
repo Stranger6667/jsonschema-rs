@@ -3,7 +3,7 @@ use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{pattern, CompilationResult},
-    paths::InstancePath,
+    paths::{InstancePath, JSONPointer},
     validator::Validate,
     Draft,
 };
@@ -36,10 +36,13 @@ lazy_static::lazy_static! {
 
 macro_rules! format_validator {
     ($validator:ident, $format_name:tt) => {
-        struct $validator {}
+        struct $validator {
+            schema_path: JSONPointer,
+        }
         impl $validator {
-            pub(crate) fn compile<'a>() -> CompilationResult<'a> {
-                Ok(Box::new($validator {}))
+            pub(crate) fn compile<'a>(context: &CompilationContext) -> CompilationResult<'a> {
+                let schema_path = context.as_pointer_with("format");
+                Ok(Box::new($validator { schema_path }))
             }
         }
 
@@ -62,6 +65,7 @@ macro_rules! validate {
             if let Value::String(_item) = instance {
                 if !self.is_valid(schema, instance) {
                     return error(ValidationError::format(
+                        self.schema_path.clone(),
                         instance_path.into(),
                         instance,
                         $format,
@@ -333,35 +337,35 @@ pub(crate) fn compile<'a>(
     if let Value::String(format) = schema {
         let draft_version = context.config.draft();
         match format.as_str() {
-            "date-time" => Some(DateTimeValidator::compile()),
-            "date" => Some(DateValidator::compile()),
-            "email" => Some(EmailValidator::compile()),
-            "hostname" => Some(HostnameValidator::compile()),
-            "idn-email" => Some(IDNEmailValidator::compile()),
+            "date-time" => Some(DateTimeValidator::compile(context)),
+            "date" => Some(DateValidator::compile(context)),
+            "email" => Some(EmailValidator::compile(context)),
+            "hostname" => Some(HostnameValidator::compile(context)),
+            "idn-email" => Some(IDNEmailValidator::compile(context)),
             "idn-hostname" if draft_version == Draft::Draft7 => {
-                Some(IDNHostnameValidator::compile())
+                Some(IDNHostnameValidator::compile(context))
             }
-            "ipv4" => Some(IpV4Validator::compile()),
-            "ipv6" => Some(IpV6Validator::compile()),
+            "ipv4" => Some(IpV4Validator::compile(context)),
+            "ipv6" => Some(IpV6Validator::compile(context)),
             "iri-reference" if draft_version == Draft::Draft7 => {
-                Some(IRIReferenceValidator::compile())
+                Some(IRIReferenceValidator::compile(context))
             }
-            "iri" if draft_version == Draft::Draft7 => Some(IRIValidator::compile()),
+            "iri" if draft_version == Draft::Draft7 => Some(IRIValidator::compile(context)),
             "json-pointer" if draft_version == Draft::Draft6 || draft_version == Draft::Draft7 => {
-                Some(JSONPointerValidator::compile())
+                Some(JSONPointerValidator::compile(context))
             }
-            "regex" => Some(RegexValidator::compile()),
+            "regex" => Some(RegexValidator::compile(context)),
             "relative-json-pointer" if draft_version == Draft::Draft7 => {
-                Some(RelativeJSONPointerValidator::compile())
+                Some(RelativeJSONPointerValidator::compile(context))
             }
-            "time" => Some(TimeValidator::compile()),
+            "time" => Some(TimeValidator::compile(context)),
             "uri-reference" if draft_version == Draft::Draft6 || draft_version == Draft::Draft7 => {
-                Some(URIReferenceValidator::compile())
+                Some(URIReferenceValidator::compile(context))
             }
             "uri-template" if draft_version == Draft::Draft6 || draft_version == Draft::Draft7 => {
-                Some(URITemplateValidator::compile())
+                Some(URITemplateValidator::compile(context))
             }
-            "uri" => Some(URIValidator::compile()),
+            "uri" => Some(URIValidator::compile(context)),
             _ => None,
         }
     } else {
@@ -371,7 +375,7 @@ pub(crate) fn compile<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::compilation::JSONSchema;
+    use crate::{compilation::JSONSchema, tests_util};
     use serde_json::json;
 
     #[test]
@@ -389,5 +393,10 @@ mod tests {
         let instance = json!("^\\cc$");
         let compiled = JSONSchema::compile(&schema).unwrap();
         assert!(compiled.is_valid(&instance))
+    }
+
+    #[test]
+    fn schema_path() {
+        tests_util::assert_schema_path(&json!({"format": "date"}), &json!("bla"), "/format")
     }
 }

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Report schema paths in validation errors - `ValidationError.schema_path`. [#199](https://github.com/Stranger6667/jsonschema-rs/issues/199)
+
 ### Fixed
 
 - Incorrect encoding of `/` and `~` characters in `fmt::Display` implementation for `JSONPointer`. [#233](https://github.com/Stranger6667/jsonschema-rs/issues/233)

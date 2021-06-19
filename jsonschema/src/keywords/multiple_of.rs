@@ -2,7 +2,7 @@ use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::InstancePath,
+    paths::{InstancePath, JSONPointer},
     validator::Validate,
 };
 use fraction::{BigFraction, BigUint};
@@ -11,12 +11,16 @@ use std::f64::EPSILON;
 
 pub(crate) struct MultipleOfFloatValidator {
     multiple_of: f64,
+    schema_path: JSONPointer,
 }
 
 impl MultipleOfFloatValidator {
     #[inline]
-    pub(crate) fn compile<'a>(multiple_of: f64) -> CompilationResult<'a> {
-        Ok(Box::new(MultipleOfFloatValidator { multiple_of }))
+    pub(crate) fn compile<'a>(multiple_of: f64, schema_path: JSONPointer) -> CompilationResult<'a> {
+        Ok(Box::new(MultipleOfFloatValidator {
+            multiple_of,
+            schema_path,
+        }))
     }
 }
 
@@ -46,6 +50,7 @@ impl Validate for MultipleOfFloatValidator {
     ) -> ErrorIterator<'a> {
         if !self.is_valid(schema, instance) {
             return error(ValidationError::multiple_of(
+                self.schema_path.clone(),
                 instance_path.into(),
                 instance,
                 self.multiple_of,
@@ -63,12 +68,16 @@ impl ToString for MultipleOfFloatValidator {
 
 pub(crate) struct MultipleOfIntegerValidator {
     multiple_of: f64,
+    schema_path: JSONPointer,
 }
 
 impl MultipleOfIntegerValidator {
     #[inline]
-    pub(crate) fn compile<'a>(multiple_of: f64) -> CompilationResult<'a> {
-        Ok(Box::new(MultipleOfIntegerValidator { multiple_of }))
+    pub(crate) fn compile<'a>(multiple_of: f64, schema_path: JSONPointer) -> CompilationResult<'a> {
+        Ok(Box::new(MultipleOfIntegerValidator {
+            multiple_of,
+            schema_path,
+        }))
     }
 }
 
@@ -97,6 +106,7 @@ impl Validate for MultipleOfIntegerValidator {
     ) -> ErrorIterator<'a> {
         if !self.is_valid(schema, instance) {
             return error(ValidationError::multiple_of(
+                self.schema_path.clone(),
                 instance_path.into(),
                 instance,
                 self.multiple_of,
@@ -115,16 +125,33 @@ impl ToString for MultipleOfIntegerValidator {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    _: &CompilationContext,
+    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     if let Value::Number(multiple_of) = schema {
         let multiple_of = multiple_of.as_f64().expect("Always valid");
+        let schema_path = context.as_pointer_with("multipleOf");
         if multiple_of.fract() == 0. {
-            Some(MultipleOfIntegerValidator::compile(multiple_of))
+            Some(MultipleOfIntegerValidator::compile(
+                multiple_of,
+                schema_path,
+            ))
         } else {
-            Some(MultipleOfFloatValidator::compile(multiple_of))
+            Some(MultipleOfFloatValidator::compile(multiple_of, schema_path))
         }
     } else {
         Some(Err(ValidationError::schema(schema)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_util;
+    use serde_json::{json, Value};
+    use test_case::test_case;
+
+    #[test_case(&json!({"multipleOf": 2}), &json!(3), "/multipleOf")]
+    #[test_case(&json!({"multipleOf": 1.5}), &json!(5), "/multipleOf")]
+    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_path(schema, instance, expected)
     }
 }

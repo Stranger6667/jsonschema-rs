@@ -8,15 +8,16 @@ use crate::{
 use serde_json::{Map, Number, Value};
 use std::convert::TryFrom;
 
-use crate::paths::InstancePath;
+use crate::paths::{InstancePath, JSONPointer};
 
 pub(crate) struct MultipleTypesValidator {
     types: PrimitiveTypesBitMap,
+    schema_path: JSONPointer,
 }
 
 impl MultipleTypesValidator {
     #[inline]
-    pub(crate) fn compile(items: &[Value]) -> CompilationResult {
+    pub(crate) fn compile(items: &[Value], schema_path: JSONPointer) -> CompilationResult {
         let mut types = PrimitiveTypesBitMap::new();
         for item in items {
             match item {
@@ -30,7 +31,7 @@ impl MultipleTypesValidator {
                 _ => return Err(ValidationError::schema(item)),
             }
         }
-        Ok(Box::new(MultipleTypesValidator { types }))
+        Ok(Box::new(MultipleTypesValidator { types, schema_path }))
     }
 }
 
@@ -58,6 +59,7 @@ impl Validate for MultipleTypesValidator {
             no_error()
         } else {
             error(ValidationError::multiple_type_error(
+                self.schema_path.clone(),
                 instance_path.into(),
                 instance,
                 self.types,
@@ -79,12 +81,14 @@ impl ToString for MultipleTypesValidator {
     }
 }
 
-pub(crate) struct NullTypeValidator {}
+pub(crate) struct NullTypeValidator {
+    schema_path: JSONPointer,
+}
 
 impl NullTypeValidator {
     #[inline]
-    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
-        Ok(Box::new(NullTypeValidator {}))
+    pub(crate) fn compile<'a>(schema_path: JSONPointer) -> CompilationResult<'a> {
+        Ok(Box::new(NullTypeValidator { schema_path }))
     }
 }
 
@@ -102,6 +106,7 @@ impl Validate for NullTypeValidator {
             no_error()
         } else {
             error(ValidationError::single_type_error(
+                self.schema_path.clone(),
                 instance_path.into(),
                 instance,
                 PrimitiveType::Null,
@@ -116,12 +121,14 @@ impl ToString for NullTypeValidator {
     }
 }
 
-pub(crate) struct BooleanTypeValidator {}
+pub(crate) struct BooleanTypeValidator {
+    schema_path: JSONPointer,
+}
 
 impl BooleanTypeValidator {
     #[inline]
-    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
-        Ok(Box::new(BooleanTypeValidator {}))
+    pub(crate) fn compile<'a>(schema_path: JSONPointer) -> CompilationResult<'a> {
+        Ok(Box::new(BooleanTypeValidator { schema_path }))
     }
 }
 
@@ -139,6 +146,7 @@ impl Validate for BooleanTypeValidator {
             no_error()
         } else {
             error(ValidationError::single_type_error(
+                self.schema_path.clone(),
                 instance_path.into(),
                 instance,
                 PrimitiveType::Boolean,
@@ -153,12 +161,14 @@ impl ToString for BooleanTypeValidator {
     }
 }
 
-pub(crate) struct StringTypeValidator {}
+pub(crate) struct StringTypeValidator {
+    schema_path: JSONPointer,
+}
 
 impl StringTypeValidator {
     #[inline]
-    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
-        Ok(Box::new(StringTypeValidator {}))
+    pub(crate) fn compile<'a>(schema_path: JSONPointer) -> CompilationResult<'a> {
+        Ok(Box::new(StringTypeValidator { schema_path }))
     }
 }
 
@@ -177,6 +187,7 @@ impl Validate for StringTypeValidator {
             no_error()
         } else {
             error(ValidationError::single_type_error(
+                self.schema_path.clone(),
                 instance_path.into(),
                 instance,
                 PrimitiveType::String,
@@ -190,12 +201,14 @@ impl ToString for StringTypeValidator {
     }
 }
 
-pub(crate) struct ArrayTypeValidator {}
+pub(crate) struct ArrayTypeValidator {
+    schema_path: JSONPointer,
+}
 
 impl ArrayTypeValidator {
     #[inline]
-    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
-        Ok(Box::new(ArrayTypeValidator {}))
+    pub(crate) fn compile<'a>(schema_path: JSONPointer) -> CompilationResult<'a> {
+        Ok(Box::new(ArrayTypeValidator { schema_path }))
     }
 }
 
@@ -214,6 +227,7 @@ impl Validate for ArrayTypeValidator {
             no_error()
         } else {
             error(ValidationError::single_type_error(
+                self.schema_path.clone(),
                 instance_path.into(),
                 instance,
                 PrimitiveType::Array,
@@ -228,12 +242,14 @@ impl ToString for ArrayTypeValidator {
     }
 }
 
-pub(crate) struct ObjectTypeValidator {}
+pub(crate) struct ObjectTypeValidator {
+    schema_path: JSONPointer,
+}
 
 impl ObjectTypeValidator {
     #[inline]
-    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
-        Ok(Box::new(ObjectTypeValidator {}))
+    pub(crate) fn compile<'a>(schema_path: JSONPointer) -> CompilationResult<'a> {
+        Ok(Box::new(ObjectTypeValidator { schema_path }))
     }
 }
 
@@ -251,6 +267,7 @@ impl Validate for ObjectTypeValidator {
             no_error()
         } else {
             error(ValidationError::single_type_error(
+                self.schema_path.clone(),
                 instance_path.into(),
                 instance,
                 PrimitiveType::Object,
@@ -265,12 +282,14 @@ impl ToString for ObjectTypeValidator {
     }
 }
 
-pub(crate) struct NumberTypeValidator {}
+pub(crate) struct NumberTypeValidator {
+    schema_path: JSONPointer,
+}
 
 impl NumberTypeValidator {
     #[inline]
-    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
-        Ok(Box::new(NumberTypeValidator {}))
+    pub(crate) fn compile<'a>(schema_path: JSONPointer) -> CompilationResult<'a> {
+        Ok(Box::new(NumberTypeValidator { schema_path }))
     }
 }
 
@@ -288,6 +307,7 @@ impl Validate for NumberTypeValidator {
             no_error()
         } else {
             error(ValidationError::single_type_error(
+                self.schema_path.clone(),
                 instance_path.into(),
                 instance,
                 PrimitiveType::Number,
@@ -300,12 +320,14 @@ impl ToString for NumberTypeValidator {
         "type: number".to_string()
     }
 }
-pub(crate) struct IntegerTypeValidator {}
+pub(crate) struct IntegerTypeValidator {
+    schema_path: JSONPointer,
+}
 
 impl IntegerTypeValidator {
     #[inline]
-    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
-        Ok(Box::new(IntegerTypeValidator {}))
+    pub(crate) fn compile<'a>(schema_path: JSONPointer) -> CompilationResult<'a> {
+        Ok(Box::new(IntegerTypeValidator { schema_path }))
     }
 }
 
@@ -327,6 +349,7 @@ impl Validate for IntegerTypeValidator {
             no_error()
         } else {
             error(ValidationError::single_type_error(
+                self.schema_path.clone(),
                 instance_path.into(),
                 instance,
                 PrimitiveType::Integer,
@@ -349,34 +372,54 @@ fn is_integer(num: &Number) -> bool {
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    _: &CompilationContext,
+    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
+    let schema_path = context.as_pointer_with("type");
     match schema {
-        Value::String(item) => compile_single_type(item.as_str()),
+        Value::String(item) => compile_single_type(item.as_str(), schema_path),
         Value::Array(items) => {
             if items.len() == 1 {
                 if let Some(Value::String(item)) = items.iter().next() {
-                    compile_single_type(item.as_str())
+                    compile_single_type(item.as_str(), schema_path)
                 } else {
                     Some(Err(ValidationError::schema(schema)))
                 }
             } else {
-                Some(MultipleTypesValidator::compile(items))
+                Some(MultipleTypesValidator::compile(items, schema_path))
             }
         }
         _ => Some(Err(ValidationError::schema(schema))),
     }
 }
 
-fn compile_single_type(item: &str) -> Option<CompilationResult> {
+fn compile_single_type(item: &str, schema_path: JSONPointer) -> Option<CompilationResult> {
     match PrimitiveType::try_from(item) {
-        Ok(PrimitiveType::Array) => Some(ArrayTypeValidator::compile()),
-        Ok(PrimitiveType::Boolean) => Some(BooleanTypeValidator::compile()),
-        Ok(PrimitiveType::Integer) => Some(IntegerTypeValidator::compile()),
-        Ok(PrimitiveType::Null) => Some(NullTypeValidator::compile()),
-        Ok(PrimitiveType::Number) => Some(NumberTypeValidator::compile()),
-        Ok(PrimitiveType::Object) => Some(ObjectTypeValidator::compile()),
-        Ok(PrimitiveType::String) => Some(StringTypeValidator::compile()),
+        Ok(PrimitiveType::Array) => Some(ArrayTypeValidator::compile(schema_path)),
+        Ok(PrimitiveType::Boolean) => Some(BooleanTypeValidator::compile(schema_path)),
+        Ok(PrimitiveType::Integer) => Some(IntegerTypeValidator::compile(schema_path)),
+        Ok(PrimitiveType::Null) => Some(NullTypeValidator::compile(schema_path)),
+        Ok(PrimitiveType::Number) => Some(NumberTypeValidator::compile(schema_path)),
+        Ok(PrimitiveType::Object) => Some(ObjectTypeValidator::compile(schema_path)),
+        Ok(PrimitiveType::String) => Some(StringTypeValidator::compile(schema_path)),
         Err(()) => Some(Err(ValidationError::null_schema())),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_util;
+    use serde_json::{json, Value};
+    use test_case::test_case;
+
+    #[test_case(&json!({"type": "array"}), &json!(1), "/type")]
+    #[test_case(&json!({"type": "boolean"}), &json!(1), "/type")]
+    #[test_case(&json!({"type": "integer"}), &json!("f"), "/type")]
+    #[test_case(&json!({"type": "null"}), &json!(1), "/type")]
+    #[test_case(&json!({"type": "number"}), &json!("f"), "/type")]
+    #[test_case(&json!({"type": "object"}), &json!(1), "/type")]
+    #[test_case(&json!({"type": "string"}), &json!(1), "/type")]
+    #[test_case(&json!({"type": ["string", "object"]}), &json!(1), "/type")]
+    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_path(schema, instance, expected)
     }
 }

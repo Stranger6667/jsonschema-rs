@@ -114,6 +114,7 @@ pub fn is_valid(schema: &Value, instance: &Value) -> bool {
 #[cfg(test)]
 pub(crate) mod tests_util {
     use super::JSONSchema;
+    use crate::ValidationError;
     use serde_json::Value;
 
     pub(crate) fn is_not_valid(schema: &Value, instance: &Value) {
@@ -155,6 +156,30 @@ pub(crate) mod tests_util {
             "{} should be valid (via validate)",
             instance
         );
+    }
+
+    pub(crate) fn validate(schema: &Value, instance: &Value) -> ValidationError<'static> {
+        let compiled = JSONSchema::compile(schema).unwrap();
+        let err = compiled
+            .validate(instance)
+            .expect_err("Should be an error")
+            .next()
+            .expect("Should be an error")
+            .into_owned();
+        err
+    }
+
+    pub(crate) fn assert_schema_path(schema: &Value, instance: &Value, expected: &str) {
+        let error = validate(schema, instance);
+        assert_eq!(error.schema_path.to_string(), expected)
+    }
+
+    pub(crate) fn assert_schema_paths(schema: &Value, instance: &Value, expected: &[&str]) {
+        let compiled = JSONSchema::compile(schema).unwrap();
+        let errors = compiled.validate(instance).expect_err("Should be an error");
+        for (error, schema_path) in errors.zip(expected) {
+            assert_eq!(error.schema_path.to_string(), *schema_path)
+        }
     }
 }
 

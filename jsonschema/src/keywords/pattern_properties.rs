@@ -18,14 +18,16 @@ impl PatternPropertiesValidator {
         map: &'a Map<String, Value>,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
+        let keyword_context = context.with_path("patternProperties");
         let mut patterns = Vec::with_capacity(map.len());
         for (pattern, subschema) in map {
+            let pattern_context = keyword_context.with_path(pattern.to_string());
             patterns.push((
                 match Regex::new(pattern) {
                     Ok(r) => r,
                     Err(_) => return Err(ValidationError::schema(subschema)),
                 },
-                compile_validators(subschema, context)?,
+                compile_validators(subschema, &pattern_context)?,
             ));
         }
         Ok(Box::new(PatternPropertiesValidator { patterns }))
@@ -102,12 +104,14 @@ impl SingleValuePatternPropertiesValidator {
         schema: &'a Value,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
+        let keyword_context = context.with_path("patternProperties");
+        let pattern_context = keyword_context.with_path(pattern.to_string());
         Ok(Box::new(SingleValuePatternPropertiesValidator {
             pattern: match Regex::new(pattern) {
                 Ok(r) => r,
                 Err(_) => return Err(ValidationError::schema(schema)),
             },
-            validators: compile_validators(schema, context)?,
+            validators: compile_validators(schema, &pattern_context)?,
         }))
     }
 }
@@ -184,5 +188,18 @@ pub(crate) fn compile<'a>(
                 Some(Err(ValidationError::schema(schema)))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_util;
+    use serde_json::{json, Value};
+    use test_case::test_case;
+
+    #[test_case(&json!({"patternProperties": {"^f": {"type": "string"}}}), &json!({"f": 42}), "/patternProperties/^f/type")]
+    #[test_case(&json!({"patternProperties": {"^f": {"type": "string"}, "^x": {"type": "string"}}}), &json!({"f": 42}), "/patternProperties/^f/type")]
+    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_path(schema, instance, expected)
     }
 }

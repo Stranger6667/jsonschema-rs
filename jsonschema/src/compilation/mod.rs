@@ -92,9 +92,10 @@ pub(crate) fn compile_validators<'a, 'c>(
     match schema {
         Value::Bool(value) => match value {
             true => Ok(vec![]),
-            false => Ok(vec![
-                keywords::boolean::FalseValidator::compile().expect("Should always compile")
-            ]),
+            false => Ok(vec![keywords::boolean::FalseValidator::compile(
+                context.into_pointer(),
+            )
+            .expect("Should always compile")]),
         },
         Value::Object(object) => {
             if let Some(reference) = object.get("$ref") {

@@ -10,7 +10,7 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{format_validators, CompilationResult, Validators},
-    paths::InstancePath,
+    paths::{InstancePath, JSONPointer},
     validator::Validate,
 };
 use ahash::AHashMap;
@@ -64,7 +64,7 @@ impl PropertiesValidatorsMap for BigValidatorsMap {
 }
 
 macro_rules! dynamic_map {
-    ($validator:tt, $properties:ident, $( $arg:tt ),* $(,)*) => {{
+    ($validator:tt, $properties:ident, $( $arg:expr ),* $(,)*) => {{
         if let Value::Object(map) = $properties {
             if map.len() < MAP_SIZE_THRESHOLD {
                 Some($validator::<SmallValidatorsMap>::compile(
@@ -131,8 +131,13 @@ fn compile_small_map<'a>(
     context: &CompilationContext,
 ) -> Result<SmallValidatorsMap, ValidationError<'a>> {
     let mut properties = Vec::with_capacity(map.len());
+    let keyword_context = context.with_path("properties");
     for (key, subschema) in map {
-        properties.push((key.clone(), compile_validators(subschema, context)?));
+        let property_context = keyword_context.with_path(key.clone());
+        properties.push((
+            key.clone(),
+            compile_validators(subschema, &property_context)?,
+        ));
     }
     Ok(properties)
 }
@@ -141,8 +146,13 @@ fn compile_big_map<'a>(
     context: &CompilationContext,
 ) -> Result<BigValidatorsMap, ValidationError<'a>> {
     let mut properties = AHashMap::with_capacity(map.len());
+    let keyword_context = context.with_path("properties");
     for (key, subschema) in map {
-        properties.insert(key.clone(), compile_validators(subschema, context)?);
+        let property_context = keyword_context.with_path(key.clone());
+        properties.insert(
+            key.clone(),
+            compile_validators(subschema, &property_context)?,
+        );
     }
     Ok(properties)
 }
@@ -171,8 +181,9 @@ impl AdditionalPropertiesValidator {
         schema: &'a Value,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
+        let keyword_context = context.with_path("additionalProperties");
         Ok(Box::new(AdditionalPropertiesValidator {
-            validators: compile_validators(schema, context)?,
+            validators: compile_validators(schema, &keyword_context)?,
         }))
     }
 }
@@ -230,11 +241,13 @@ impl ToString for AdditionalPropertiesValidator {
 /// ```json
 /// {}
 /// ```
-pub(crate) struct AdditionalPropertiesFalseValidator {}
+pub(crate) struct AdditionalPropertiesFalseValidator {
+    schema_path: JSONPointer,
+}
 impl AdditionalPropertiesFalseValidator {
     #[inline]
-    pub(crate) fn compile<'a>() -> CompilationResult<'a> {
-        Ok(Box::new(AdditionalPropertiesFalseValidator {}))
+    pub(crate) fn compile<'a>(schema_path: JSONPointer) -> CompilationResult<'a> {
+        Ok(Box::new(AdditionalPropertiesFalseValidator { schema_path }))
     }
 }
 impl Validate for AdditionalPropertiesFalseValidator {
@@ -254,7 +267,11 @@ impl Validate for AdditionalPropertiesFalseValidator {
     ) -> ErrorIterator<'a> {
         if let Value::Object(item) = instance {
             if let Some((_, value)) = item.iter().next() {
-                return error(ValidationError::false_schema(instance_path.into(), value));
+                return error(ValidationError::false_schema(
+                    self.schema_path.clone(),
+                    instance_path.into(),
+                    value,
+                ));
             }
         }
         no_error()
@@ -286,6 +303,7 @@ impl ToString for AdditionalPropertiesFalseValidator {
 /// ```
 pub(crate) struct AdditionalPropertiesNotEmptyFalseValidator<M: PropertiesValidatorsMap> {
     properties: M,
+    schema_path: JSONPointer,
 }
 impl AdditionalPropertiesNotEmptyFalseValidator<SmallValidatorsMap> {
     #[inline]
@@ -295,6 +313,7 @@ impl AdditionalPropertiesNotEmptyFalseValidator<SmallValidatorsMap> {
     ) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
             properties: compile_small_map(map, context)?,
+            schema_path: context.as_pointer_with("additionalProperties"),
         }))
     }
 }
@@ -306,6 +325,7 @@ impl AdditionalPropertiesNotEmptyFalseValidator<BigValidatorsMap> {
     ) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
             properties: compile_big_map(map, context)?,
+            schema_path: context.as_pointer_with("additionalProperties"),
         }))
     }
 }
@@ -343,6 +363,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
             }
             if !unexpected.is_empty() {
                 errors.push(ValidationError::additional_properties(
+                    self.schema_path.clone(),
                     instance_path.into(),
                     instance,
                     unexpected,
@@ -391,9 +412,10 @@ impl AdditionalPropertiesNotEmptyValidator<SmallValidatorsMap> {
         schema: &'a Value,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
+        let keyword_context = context.with_path("additionalProperties");
         Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
             properties: compile_small_map(map, context)?,
-            validators: compile_validators(schema, context)?,
+            validators: compile_validators(schema, &keyword_context)?,
         }))
     }
 }
@@ -404,9 +426,10 @@ impl AdditionalPropertiesNotEmptyValidator<BigValidatorsMap> {
         schema: &'a Value,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
+        let keyword_context = context.with_path("additionalProperties");
         Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
             properties: compile_big_map(map, context)?,
-            validators: compile_validators(schema, context)?,
+            validators: compile_validators(schema, &keyword_context)?,
         }))
     }
 }
@@ -597,12 +620,17 @@ impl ToString for AdditionalPropertiesWithPatternsValidator {
 /// ```
 pub(crate) struct AdditionalPropertiesWithPatternsFalseValidator {
     patterns: PatternedValidators,
+    schema_path: JSONPointer,
 }
 impl AdditionalPropertiesWithPatternsFalseValidator {
     #[inline]
-    pub(crate) fn compile<'a>(patterns: PatternedValidators) -> CompilationResult<'a> {
+    pub(crate) fn compile<'a>(
+        patterns: PatternedValidators,
+        schema_path: JSONPointer,
+    ) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalPropertiesWithPatternsFalseValidator {
             patterns,
+            schema_path,
         }))
     }
 }
@@ -643,6 +671,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
             }
             if !unexpected.is_empty() {
                 errors.push(ValidationError::additional_properties(
+                    self.schema_path.clone(),
                     instance_path.into(),
                     instance,
                     unexpected,
@@ -700,9 +729,10 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator<SmallValidatorsMap> {
         patterns: PatternedValidators,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
+        let keyword_context = context.with_path("additionalProperties");
         Ok(Box::new(
             AdditionalPropertiesWithPatternsNotEmptyValidator {
-                validators: compile_validators(schema, context)?,
+                validators: compile_validators(schema, &keyword_context)?,
                 properties: compile_small_map(map, context)?,
                 patterns,
             },
@@ -717,9 +747,10 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator<BigValidatorsMap> {
         patterns: PatternedValidators,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
+        let keyword_context = context.with_path("additionalProperties");
         Ok(Box::new(
             AdditionalPropertiesWithPatternsNotEmptyValidator {
-                validators: compile_validators(schema, context)?,
+                validators: compile_validators(schema, &keyword_context)?,
                 properties: compile_big_map(map, context)?,
                 patterns,
             },
@@ -848,6 +879,7 @@ pub(crate) struct AdditionalPropertiesWithPatternsNotEmptyFalseValidator<M: Prop
 {
     properties: M,
     patterns: PatternedValidators,
+    schema_path: JSONPointer,
 }
 impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator<SmallValidatorsMap> {
     #[inline]
@@ -860,6 +892,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator<SmallValidatorsMap> 
             AdditionalPropertiesWithPatternsNotEmptyFalseValidator::<SmallValidatorsMap> {
                 properties: compile_small_map(map, context)?,
                 patterns,
+                schema_path: context.schema_path.push("additionalProperties").into(),
             },
         ))
     }
@@ -875,6 +908,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator<BigValidatorsMap> {
             AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
                 properties: compile_big_map(map, context)?,
                 patterns,
+                schema_path: context.schema_path.push("additionalProperties").into(),
             },
         ))
     }
@@ -947,6 +981,7 @@ impl<M: PropertiesValidatorsMap> Validate
             }
             if !unexpected.is_empty() {
                 errors.push(ValidationError::additional_properties(
+                    self.schema_path.clone(),
                     instance_path.into(),
                     instance,
                     unexpected,
@@ -990,10 +1025,12 @@ pub(crate) fn compile<'a>(
                         } else {
                             Some(AdditionalPropertiesWithPatternsFalseValidator::compile(
                                 compiled_patterns,
+                                context.as_pointer_with("additionalProperties"),
                             ))
                         }
                     }
                     _ => {
+                        let keyword_context = context.with_path("additionalProperties");
                         if let Some(properties) = properties {
                             dynamic_map!(
                                 AdditionalPropertiesWithPatternsNotEmptyValidator,
@@ -1006,7 +1043,7 @@ pub(crate) fn compile<'a>(
                             Some(AdditionalPropertiesWithPatternsValidator::compile(
                                 schema,
                                 compiled_patterns,
-                                context,
+                                &keyword_context,
                             ))
                         }
                     }
@@ -1028,7 +1065,8 @@ pub(crate) fn compile<'a>(
                         context
                     )
                 } else {
-                    Some(AdditionalPropertiesFalseValidator::compile())
+                    let schema_path = context.as_pointer_with("additionalProperties");
+                    Some(AdditionalPropertiesFalseValidator::compile(schema_path))
                 }
             }
             _ => {
@@ -1053,10 +1091,12 @@ fn compile_patterns<'a>(
     obj: &'a Map<String, Value>,
     context: &CompilationContext,
 ) -> Result<PatternedValidators, ValidationError<'a>> {
+    let keyword_context = context.with_path("patternProperties");
     let mut compiled_patterns = Vec::with_capacity(obj.len());
     for (pattern, subschema) in obj {
+        let pattern_context = keyword_context.with_path(pattern.to_string());
         if let Ok(compiled_pattern) = Regex::new(pattern) {
-            if let Ok(validators) = compile_validators(subschema, context) {
+            if let Ok(validators) = compile_validators(subschema, &pattern_context) {
                 compiled_patterns.push((compiled_pattern, validators));
             } else {
                 return Err(ValidationError::schema(subschema));
@@ -1112,43 +1152,50 @@ mod tests {
         tests_util::is_valid(&schema, instance)
     }
 
-    // `properties.bar` - should be a string
-    #[test_case(&json!({"foo": 3}), &["3 is not of type \"string\""])]
+    // `properties.foo` - should be a string
+    #[test_case(&json!({"foo": 3}), &["3 is not of type \"string\""], &["/properties/foo/type"])]
     // `additionalProperties` - extra keyword & not in `properties` / `patternProperties`
-    #[test_case(&json!({"faz": 1}), &["Additional properties are not allowed (\'faz\' was unexpected)"])]
-    #[test_case(&json!({"faz": 1, "haz": 1}), &["Additional properties are not allowed (\'faz\', \'haz\' were unexpected)"])]
+    #[test_case(&json!({"faz": 1}), &["Additional properties are not allowed (\'faz\' was unexpected)"], &["/additionalProperties"])]
+    #[test_case(&json!({"faz": 1, "haz": 1}), &["Additional properties are not allowed (\'faz\', \'haz\' were unexpected)"], &["/additionalProperties"])]
     // `properties.foo` - should be a string & `patternProperties.^bar` - invalid
-    #[test_case(&json!({"foo": 3, "bar": 4}), &["4 is less than the minimum of 5", "3 is not of type \"string\""])]
+    #[test_case(&json!({"foo": 3, "bar": 4}), &["4 is less than the minimum of 5", "3 is not of type \"string\""], &["/patternProperties/^bar/minimum", "/properties/foo/type"])]
     // `properties.barbaz` - valid; `patternProperties.^bar` - invalid
-    #[test_case(&json!({"barbaz": 3}), &["3 is less than the minimum of 5"])]
+    #[test_case(&json!({"barbaz": 3}), &["3 is less than the minimum of 5"], &["/patternProperties/^bar/minimum"])]
     // `patternProperties.^bar` (should be >=5)
-    #[test_case(&json!({"bar": 4}), &["4 is less than the minimum of 5"])]
+    #[test_case(&json!({"bar": 4}), &["4 is less than the minimum of 5"], &["/patternProperties/^bar/minimum"])]
     // `patternProperties.spam$` (should be <=10)
-    #[test_case(&json!({"spam": 11}), &["11 is greater than the maximum of 10"])]
+    #[test_case(&json!({"spam": 11}), &["11 is greater than the maximum of 10"], &["/patternProperties/spam$/maximum"])]
     // `patternProperties` - both values are invalid
-    #[test_case(&json!({"bar": 4, "spam": 11}), &["4 is less than the minimum of 5", "11 is greater than the maximum of 10"])]
+    #[test_case(&json!({"bar": 4, "spam": 11}), &["4 is less than the minimum of 5", "11 is greater than the maximum of 10"], &["/patternProperties/^bar/minimum", "/patternProperties/spam$/maximum"])]
     // `patternProperties` - `bar` is valid, `spam` is invalid
-    #[test_case(&json!({"bar": 6, "spam": 11}), &["11 is greater than the maximum of 10"])]
+    #[test_case(&json!({"bar": 6, "spam": 11}), &["11 is greater than the maximum of 10"], &["/patternProperties/spam$/maximum"])]
     // `patternProperties` - `bar` is invalid, `spam` is valid
-    #[test_case(&json!({"bar": 4, "spam": 8}), &["4 is less than the minimum of 5"])]
+    #[test_case(&json!({"bar": 4, "spam": 8}), &["4 is less than the minimum of 5"], &["/patternProperties/^bar/minimum"])]
     // `patternProperties.^bar` - (should be >=5), but valid for `patternProperties.spam$`
-    #[test_case(&json!({"barspam": 4}), &["4 is less than the minimum of 5"])]
+    #[test_case(&json!({"barspam": 4}), &["4 is less than the minimum of 5"], &["/patternProperties/^bar/minimum"])]
     // `patternProperties.spam$` - (should be <=10), but valid for `patternProperties.^bar`
-    #[test_case(&json!({"barspam": 11}), &["11 is greater than the maximum of 10"])]
+    #[test_case(&json!({"barspam": 11}), &["11 is greater than the maximum of 10"], &["/patternProperties/spam$/maximum"])]
     // All combined
     #[test_case(
       &json!({"bar": 4, "spam": 11, "foo": 3, "faz": 1}),
       &[
-         "4 is less than the minimum of 5",
-         "3 is not of type \"string\"",
-         "11 is greater than the maximum of 10",
-         "Additional properties are not allowed (\'faz\' was unexpected)"
+          "4 is less than the minimum of 5",
+          "3 is not of type \"string\"",
+          "11 is greater than the maximum of 10",
+          "Additional properties are not allowed (\'faz\' was unexpected)"
+      ],
+      &[
+          "/patternProperties/^bar/minimum",
+          "/properties/foo/type",
+          "/patternProperties/spam$/maximum",
+          "/additionalProperties"
       ]
     )]
-    fn schema_1_invalid(instance: &Value, expected: &[&str]) {
+    fn schema_1_invalid(instance: &Value, expected: &[&str], schema_paths: &[&str]) {
         let schema = schema_1();
         tests_util::is_not_valid(&schema, instance);
-        tests_util::expect_errors(&schema, instance, expected)
+        tests_util::expect_errors(&schema, instance, expected);
+        tests_util::assert_schema_paths(&schema, instance, schema_paths)
     }
 
     fn schema_2() -> Value {
@@ -1182,34 +1229,40 @@ mod tests {
     }
 
     // `additionalProperties` - extra keyword & not in `patternProperties`
-    #[test_case(&json!({"faz": "a"}), &["Additional properties are not allowed (\'faz\' was unexpected)"])]
+    #[test_case(&json!({"faz": "a"}), &["Additional properties are not allowed (\'faz\' was unexpected)"], &["/additionalProperties"])]
     // `patternProperties.^bar` (should be >=5)
-    #[test_case(&json!({"bar": 4}), &["4 is less than the minimum of 5"])]
+    #[test_case(&json!({"bar": 4}), &["4 is less than the minimum of 5"], &["/patternProperties/^bar/minimum"])]
     // `patternProperties.spam$` (should be <=10)
-    #[test_case(&json!({"spam": 11}), &["11 is greater than the maximum of 10"])]
+    #[test_case(&json!({"spam": 11}), &["11 is greater than the maximum of 10"], &["/patternProperties/spam$/maximum"])]
     // `patternProperties` - both values are invalid
-    #[test_case(&json!({"bar": 4, "spam": 11}), &["4 is less than the minimum of 5", "11 is greater than the maximum of 10"])]
+    #[test_case(&json!({"bar": 4, "spam": 11}), &["4 is less than the minimum of 5", "11 is greater than the maximum of 10"], &["/patternProperties/^bar/minimum", "/patternProperties/spam$/maximum"])]
     // `patternProperties` - `bar` is valid, `spam` is invalid
-    #[test_case(&json!({"bar": 6, "spam": 11}), &["11 is greater than the maximum of 10"])]
+    #[test_case(&json!({"bar": 6, "spam": 11}), &["11 is greater than the maximum of 10"], &["/patternProperties/spam$/maximum"])]
     // `patternProperties` - `bar` is invalid, `spam` is valid
-    #[test_case(&json!({"bar": 4, "spam": 8}), &["4 is less than the minimum of 5"])]
+    #[test_case(&json!({"bar": 4, "spam": 8}), &["4 is less than the minimum of 5"], &["/patternProperties/^bar/minimum"])]
     // `patternProperties.^bar` - (should be >=5), but valid for `patternProperties.spam$`
-    #[test_case(&json!({"barspam": 4}), &["4 is less than the minimum of 5"])]
+    #[test_case(&json!({"barspam": 4}), &["4 is less than the minimum of 5"], &["/patternProperties/^bar/minimum"])]
     // `patternProperties.spam$` - (should be <=10), but valid for `patternProperties.^bar`
-    #[test_case(&json!({"barspam": 11}), &["11 is greater than the maximum of 10"])]
+    #[test_case(&json!({"barspam": 11}), &["11 is greater than the maximum of 10"], &["/patternProperties/spam$/maximum"])]
     // All combined
     #[test_case(
       &json!({"bar": 4, "spam": 11, "faz": 1}),
       &[
-         "4 is less than the minimum of 5",
-         "11 is greater than the maximum of 10",
-         "Additional properties are not allowed (\'faz\' was unexpected)"
+          "4 is less than the minimum of 5",
+          "11 is greater than the maximum of 10",
+          "Additional properties are not allowed (\'faz\' was unexpected)"
+      ],
+      &[
+          "/patternProperties/^bar/minimum",
+          "/patternProperties/spam$/maximum",
+          "/additionalProperties"
       ]
     )]
-    fn schema_2_invalid(instance: &Value, expected: &[&str]) {
+    fn schema_2_invalid(instance: &Value, expected: &[&str], schema_paths: &[&str]) {
         let schema = schema_2();
         tests_util::is_not_valid(&schema, instance);
-        tests_util::expect_errors(&schema, instance, expected)
+        tests_util::expect_errors(&schema, instance, expected);
+        tests_util::assert_schema_paths(&schema, instance, schema_paths)
     }
 
     fn schema_3() -> Value {
@@ -1234,22 +1287,27 @@ mod tests {
     }
 
     // `properties` - should be a string
-    #[test_case(&json!({"foo": 3}), &["3 is not of type \"string\""])]
+    #[test_case(&json!({"foo": 3}), &["3 is not of type \"string\""], &["/properties/foo/type"])]
     // `additionalProperties` - extra keyword & not in `properties`
-    #[test_case(&json!({"faz": "a"}), &["Additional properties are not allowed (\'faz\' was unexpected)"])]
+    #[test_case(&json!({"faz": "a"}), &["Additional properties are not allowed (\'faz\' was unexpected)"], &["/additionalProperties"])]
     // All combined
     #[test_case(
       &json!(
         {"foo": 3, "faz": "a"}),
         &[
-          "3 is not of type \"string\"",
-          "Additional properties are not allowed (\'faz\' was unexpected)",
+            "3 is not of type \"string\"",
+            "Additional properties are not allowed (\'faz\' was unexpected)",
+        ],
+        &[
+            "/properties/foo/type",
+            "/additionalProperties",
         ]
     )]
-    fn schema_3_invalid(instance: &Value, expected: &[&str]) {
+    fn schema_3_invalid(instance: &Value, expected: &[&str], schema_paths: &[&str]) {
         let schema = schema_3();
         tests_util::is_not_valid(&schema, instance);
-        tests_util::expect_errors(&schema, instance, expected)
+        tests_util::expect_errors(&schema, instance, expected);
+        tests_util::assert_schema_paths(&schema, instance, schema_paths)
     }
 
     fn schema_4() -> Value {
@@ -1278,22 +1336,27 @@ mod tests {
     }
 
     // `properties` - should be a string
-    #[test_case(&json!({"foo": 3}), &["3 is not of type \"string\""])]
+    #[test_case(&json!({"foo": 3}), &["3 is not of type \"string\""], &["/properties/foo/type"])]
     // `additionalProperties` - should be an integer
-    #[test_case(&json!({"bar": "a"}), &["\"a\" is not of type \"integer\""])]
+    #[test_case(&json!({"bar": "a"}), &["\"a\" is not of type \"integer\""], &["/additionalProperties/type"])]
     // All combined
     #[test_case(
       &json!(
         {"foo": 3, "bar": "a"}),
         &[
-          "\"a\" is not of type \"integer\"",
-          "3 is not of type \"string\""
+            "\"a\" is not of type \"integer\"",
+            "3 is not of type \"string\""
+        ],
+        &[
+            "/additionalProperties/type",
+            "/properties/foo/type",
         ]
     )]
-    fn schema_4_invalid(instance: &Value, expected: &[&str]) {
+    fn schema_4_invalid(instance: &Value, expected: &[&str], schema_paths: &[&str]) {
         let schema = schema_4();
         tests_util::is_not_valid(&schema, instance);
-        tests_util::expect_errors(&schema, instance, expected)
+        tests_util::expect_errors(&schema, instance, expected);
+        tests_util::assert_schema_paths(&schema, instance, schema_paths)
     }
 
     fn schema_5() -> Value {
@@ -1337,42 +1400,49 @@ mod tests {
     }
 
     // `properties.bar` - should be a string
-    #[test_case(&json!({"foo": 3}), &["3 is not of type \"string\""])]
+    #[test_case(&json!({"foo": 3}), &["3 is not of type \"string\""], &["/properties/foo/type"])]
     // `additionalProperties` - extra keyword that doesn't match `additionalProperties`
-    #[test_case(&json!({"faz": "a"}), &["\"a\" is not of type \"integer\""])]
-    #[test_case(&json!({"faz": "a", "haz": "a"}), &["\"a\" is not of type \"integer\"", "\"a\" is not of type \"integer\""])]
+    #[test_case(&json!({"faz": "a"}), &["\"a\" is not of type \"integer\""], &["/additionalProperties/type"])]
+    #[test_case(&json!({"faz": "a", "haz": "a"}), &["\"a\" is not of type \"integer\"", "\"a\" is not of type \"integer\""], &["/additionalProperties/type", "/additionalProperties/type"])]
     // `properties.foo` - should be a string & `patternProperties.^bar` - invalid
-    #[test_case(&json!({"foo": 3, "bar": 4}), &["4 is less than the minimum of 5", "3 is not of type \"string\""])]
+    #[test_case(&json!({"foo": 3, "bar": 4}), &["4 is less than the minimum of 5", "3 is not of type \"string\""], &["/patternProperties/^bar/minimum", "/properties/foo/type"])]
     // `properties.barbaz` - valid; `patternProperties.^bar` - invalid
-    #[test_case(&json!({"barbaz": 3}), &["3 is less than the minimum of 5"])]
+    #[test_case(&json!({"barbaz": 3}), &["3 is less than the minimum of 5"], &["/patternProperties/^bar/minimum"])]
     // `patternProperties.^bar` (should be >=5)
-    #[test_case(&json!({"bar": 4}), &["4 is less than the minimum of 5"])]
+    #[test_case(&json!({"bar": 4}), &["4 is less than the minimum of 5"], &["/patternProperties/^bar/minimum"])]
     // `patternProperties.spam$` (should be <=10)
-    #[test_case(&json!({"spam": 11}), &["11 is greater than the maximum of 10"])]
+    #[test_case(&json!({"spam": 11}), &["11 is greater than the maximum of 10"], &["/patternProperties/spam$/maximum"])]
     // `patternProperties` - both values are invalid
-    #[test_case(&json!({"bar": 4, "spam": 11}), &["4 is less than the minimum of 5", "11 is greater than the maximum of 10"])]
+    #[test_case(&json!({"bar": 4, "spam": 11}), &["4 is less than the minimum of 5", "11 is greater than the maximum of 10"], &["/patternProperties/^bar/minimum", "/patternProperties/spam$/maximum"])]
     // `patternProperties` - `bar` is valid, `spam` is invalid
-    #[test_case(&json!({"bar": 6, "spam": 11}), &["11 is greater than the maximum of 10"])]
+    #[test_case(&json!({"bar": 6, "spam": 11}), &["11 is greater than the maximum of 10"], &["/patternProperties/spam$/maximum"])]
     // `patternProperties` - `bar` is invalid, `spam` is valid
-    #[test_case(&json!({"bar": 4, "spam": 8}), &["4 is less than the minimum of 5"])]
+    #[test_case(&json!({"bar": 4, "spam": 8}), &["4 is less than the minimum of 5"], &["/patternProperties/^bar/minimum"])]
     // `patternProperties.^bar` - (should be >=5), but valid for `patternProperties.spam$`
-    #[test_case(&json!({"barspam": 4}), &["4 is less than the minimum of 5"])]
+    #[test_case(&json!({"barspam": 4}), &["4 is less than the minimum of 5"], &["/patternProperties/^bar/minimum"])]
     // `patternProperties.spam$` - (should be <=10), but valid for `patternProperties.^bar`
-    #[test_case(&json!({"barspam": 11}), &["11 is greater than the maximum of 10"])]
+    #[test_case(&json!({"barspam": 11}), &["11 is greater than the maximum of 10"], &["/patternProperties/spam$/maximum"])]
     // All combined + valid via `additionalProperties`
     #[test_case(
       &json!({"bar": 4, "spam": 11, "foo": 3, "faz": "a", "fam": 42}),
       &[
-         "4 is less than the minimum of 5",
-         "\"a\" is not of type \"integer\"",
-         "3 is not of type \"string\"",
-         "11 is greater than the maximum of 10",
+          "4 is less than the minimum of 5",
+          "\"a\" is not of type \"integer\"",
+          "3 is not of type \"string\"",
+          "11 is greater than the maximum of 10",
+      ],
+      &[
+          "/patternProperties/^bar/minimum",
+          "/additionalProperties/type",
+          "/properties/foo/type",
+          "/patternProperties/spam$/maximum",
       ]
     )]
-    fn schema_5_invalid(instance: &Value, expected: &[&str]) {
+    fn schema_5_invalid(instance: &Value, expected: &[&str], schema_paths: &[&str]) {
         let schema = schema_5();
         tests_util::is_not_valid(&schema, instance);
-        tests_util::expect_errors(&schema, instance, expected)
+        tests_util::expect_errors(&schema, instance, expected);
+        tests_util::assert_schema_paths(&schema, instance, schema_paths)
     }
 
     fn schema_6() -> Value {
@@ -1408,36 +1478,42 @@ mod tests {
     }
 
     // `additionalProperties` - extra keyword that doesn't match `additionalProperties`
-    #[test_case(&json!({"faz": "a"}), &["\"a\" is not of type \"integer\""])]
-    #[test_case(&json!({"faz": "a", "haz": "a"}), &["\"a\" is not of type \"integer\"", "\"a\" is not of type \"integer\""])]
+    #[test_case(&json!({"faz": "a"}), &["\"a\" is not of type \"integer\""], &["/additionalProperties/type"])]
+    #[test_case(&json!({"faz": "a", "haz": "a"}), &["\"a\" is not of type \"integer\"", "\"a\" is not of type \"integer\""], &["/additionalProperties/type", "/additionalProperties/type"])]
     // `additionalProperties` - should be an integer & `patternProperties.^bar` - invalid
-    #[test_case(&json!({"foo": "a", "bar": 4}), &["4 is less than the minimum of 5", "\"a\" is not of type \"integer\""])]
+    #[test_case(&json!({"foo": "a", "bar": 4}), &["4 is less than the minimum of 5", "\"a\" is not of type \"integer\""], &["/patternProperties/^bar/minimum", "/additionalProperties/type"])]
     // `patternProperties.^bar` (should be >=5)
-    #[test_case(&json!({"bar": 4}), &["4 is less than the minimum of 5"])]
+    #[test_case(&json!({"bar": 4}), &["4 is less than the minimum of 5"], &["/patternProperties/^bar/minimum"])]
     // `patternProperties.spam$` (should be <=10)
-    #[test_case(&json!({"spam": 11}), &["11 is greater than the maximum of 10"])]
+    #[test_case(&json!({"spam": 11}), &["11 is greater than the maximum of 10"], &["/patternProperties/spam$/maximum"])]
     // `patternProperties` - both values are invalid
-    #[test_case(&json!({"bar": 4, "spam": 11}), &["4 is less than the minimum of 5", "11 is greater than the maximum of 10"])]
+    #[test_case(&json!({"bar": 4, "spam": 11}), &["4 is less than the minimum of 5", "11 is greater than the maximum of 10"], &["/patternProperties/^bar/minimum", "/patternProperties/spam$/maximum"])]
     // `patternProperties` - `bar` is valid, `spam` is invalid
-    #[test_case(&json!({"bar": 6, "spam": 11}), &["11 is greater than the maximum of 10"])]
+    #[test_case(&json!({"bar": 6, "spam": 11}), &["11 is greater than the maximum of 10"], &["/patternProperties/spam$/maximum"])]
     // `patternProperties` - `bar` is invalid, `spam` is valid
-    #[test_case(&json!({"bar": 4, "spam": 8}), &["4 is less than the minimum of 5"])]
+    #[test_case(&json!({"bar": 4, "spam": 8}), &["4 is less than the minimum of 5"], &["/patternProperties/^bar/minimum"])]
     // `patternProperties.^bar` - (should be >=5), but valid for `patternProperties.spam$`
-    #[test_case(&json!({"barspam": 4}), &["4 is less than the minimum of 5"])]
+    #[test_case(&json!({"barspam": 4}), &["4 is less than the minimum of 5"], &["/patternProperties/^bar/minimum"])]
     // `patternProperties.spam$` - (should be <=10), but valid for `patternProperties.^bar`
-    #[test_case(&json!({"barspam": 11}), &["11 is greater than the maximum of 10"])]
+    #[test_case(&json!({"barspam": 11}), &["11 is greater than the maximum of 10"], &["/patternProperties/spam$/maximum"])]
     // All combined + valid via `additionalProperties`
     #[test_case(
       &json!({"bar": 4, "spam": 11, "faz": "a", "fam": 42}),
       &[
-         "4 is less than the minimum of 5",
-         "\"a\" is not of type \"integer\"",
-         "11 is greater than the maximum of 10",
+          "4 is less than the minimum of 5",
+          "\"a\" is not of type \"integer\"",
+          "11 is greater than the maximum of 10",
+      ],
+      &[
+          "/patternProperties/^bar/minimum",
+          "/additionalProperties/type",
+          "/patternProperties/spam$/maximum",
       ]
     )]
-    fn schema_6_invalid(instance: &Value, expected: &[&str]) {
+    fn schema_6_invalid(instance: &Value, expected: &[&str], schema_paths: &[&str]) {
         let schema = schema_6();
         tests_util::is_not_valid(&schema, instance);
-        tests_util::expect_errors(&schema, instance, expected)
+        tests_util::expect_errors(&schema, instance, expected);
+        tests_util::assert_schema_paths(&schema, instance, schema_paths)
     }
 }

@@ -19,9 +19,14 @@ impl PropertiesValidator {
     ) -> CompilationResult<'a> {
         match schema {
             Value::Object(map) => {
+                let context = context.with_path("properties".to_string());
                 let mut properties = Vec::with_capacity(map.len());
                 for (key, subschema) in map {
-                    properties.push((key.clone(), compile_validators(subschema, context)?));
+                    let property_context = context.with_path(key.clone());
+                    properties.push((
+                        key.clone(),
+                        compile_validators(subschema, &property_context)?,
+                    ));
                 }
                 Ok(Box::new(PropertiesValidator { properties }))
             }
@@ -92,5 +97,20 @@ pub(crate) fn compile<'a>(
         // This type of `additionalProperties` validator handles `properties` logic
         Some(Value::Bool(false)) | Some(Value::Object(_)) => None,
         _ => Some(PropertiesValidator::compile(schema, context)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests_util;
+    use serde_json::json;
+
+    #[test]
+    fn schema_path() {
+        tests_util::assert_schema_path(
+            &json!({"properties": {"foo": {"properties": {"bar": {"required": ["spam"]}}}}}),
+            &json!({"foo": {"bar": {}}}),
+            "/properties/foo/properties/bar/required",
+        )
     }
 }
