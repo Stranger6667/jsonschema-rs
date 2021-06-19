@@ -16,7 +16,7 @@ Supported drafts:
 
 ```toml
 # Cargo.toml
-jsonschema = "0.10"
+jsonschema = "0.11"
 ```
 
 To validate documents against some schema and get validation errors (if any):
