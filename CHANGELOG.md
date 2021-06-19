@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Incorrect encoding of `/` and `~` characters in `fmt::Display` implementation for `JSONPointer`. [#233](https://github.com/Stranger6667/jsonschema-rs/issues/233)
+
 ## [0.10.0] - 2021-06-17
 
 ### Added
