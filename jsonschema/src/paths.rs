@@ -37,7 +37,15 @@ impl fmt::Display for JSONPointer {
             for chunk in &self.0 {
                 f.write_char('/')?;
                 match chunk {
-                    PathChunk::Property(value) => f.write_str(value)?,
+                    PathChunk::Property(value) => {
+                        for ch in value.chars() {
+                            match ch {
+                                '/' => f.write_str("~1")?,
+                                '~' => f.write_str("~0")?,
+                                _ => f.write_char(ch)?,
+                            }
+                        }
+                    }
                     PathChunk::Index(idx) => itoa::fmt(&mut f, *idx)?,
                 }
             }
@@ -160,5 +168,20 @@ impl From<&[PathChunk]> for JSONPointer {
     #[inline]
     fn from(path: &[PathChunk]) -> Self {
         JSONPointer(path.to_vec())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::JSONPointer;
+    use serde_json::json;
+
+    #[test]
+    fn json_pointer_to_string() {
+        let chunks = ["/", "~"];
+        let pointer = JSONPointer::from(&chunks[..]).to_string();
+        assert_eq!(pointer, "/~1/~0");
+        let data = json!({"/": {"~": 42}});
+        assert_eq!(data.pointer(&pointer), Some(&json!(42)))
     }
 }
