@@ -474,7 +474,7 @@ dependencies = [
 
 [[package]]
 name = "jsonschema"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "ahash",
  "base64",
@@ -494,7 +494,7 @@ dependencies = [
 
 [[package]]
 name = "jsonschema-python"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "built",
  "jsonschema",
