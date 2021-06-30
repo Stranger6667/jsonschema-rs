@@ -16,7 +16,7 @@ name = "jsonschema_rs"
 crate-type = ["cdylib"]
 
 [build-dependencies]
-built = { version = "0.4", features = ["chrono"] }
+built = { version = "0.5", features = ["chrono"] }
 
 [dependencies.jsonschema]
 path = "../../jsonschema"
