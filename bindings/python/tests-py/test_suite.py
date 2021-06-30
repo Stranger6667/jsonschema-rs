@@ -1,18 +1,48 @@
 import json
 import os
+import random
+import socket
 import subprocess
 import sys
+from time import sleep
+from urllib.parse import urlparse
 
 import pytest
 
 import jsonschema_rs
 
 TEST_SUITE_PATH = "../../jsonschema/tests/suite"
+EXPONENTIAL_BASE = 2
+JITTER = (0.0, 0.5)
+INITIAL_RETRY_DELAY = 0.05
+MAX_WAITING_RETRIES = 10
+
+
+def is_available(url: str) -> bool:
+    """Whether the `url` is available for connection or not."""
+    parsed = urlparse(url)
+    try:
+        with socket.create_connection((parsed.hostname, parsed.port or 80)):
+            return True
+    except ConnectionError:
+        return False
+
+
+def wait_until_responsive(url: str, retries: int = MAX_WAITING_RETRIES, delay: float = INITIAL_RETRY_DELAY) -> None:
+    while retries > 0:
+        if is_available(url):
+            return
+        retries -= 1
+        delay *= EXPONENTIAL_BASE
+        delay += random.uniform(*JITTER)
+        sleep(delay)
+    raise RuntimeError(f"{url} is not available")
 
 
 @pytest.fixture(scope="session", autouse=True)
 def mock_server():
     process = subprocess.Popen(args=[sys.executable, f"{TEST_SUITE_PATH}/bin/jsonschema_suite", "serve"])
+    wait_until_responsive("http://127.0.0.1:1234")
     try:
         yield
     finally:
