@@ -63,6 +63,14 @@ def test_recursive_list():
         is_valid(True, instance)
 
 
+def test_paths():
+    with pytest.raises(ValidationError) as exc:
+        validate({"items": [{"type": "string"}]}, [1])
+    assert exc.value.schema_path == ["items", 0, "type"]
+    assert exc.value.instance_path == [0]
+    assert exc.value.message == '1 is not of type "string"'
+
+
 @pytest.mark.parametrize(
     "schema, draft, error",
     (

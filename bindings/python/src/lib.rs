@@ -13,9 +13,13 @@
     clippy::unwrap_used
 )]
 #![allow(clippy::upper_case_acronyms)]
-use jsonschema::Draft;
+
+use jsonschema::{paths::JSONPointer, Draft};
 use pyo3::{
-    create_exception, exceptions, prelude::*, types::PyAny, wrap_pyfunction, PyObjectProtocol,
+    exceptions,
+    prelude::*,
+    types::{PyAny, PyList, PyType},
+    wrap_pyfunction, AsPyPointer, PyObjectProtocol,
 };
 use serde_json::Value;
 
@@ -23,19 +27,73 @@ mod ser;
 mod string;
 mod types;
 
-const VALIDATION_ERROR_DOCSTRING: &str = "An error that can occur during validation";
 const DRAFT7: u8 = 7;
 const DRAFT6: u8 = 6;
 const DRAFT4: u8 = 4;
 
-create_exception!(jsonschema_rs, ValidationError, exceptions::PyValueError);
+/// An instance is invalid under a provided schema.
+#[pyclass(extends=exceptions::PyValueError, module="jsonschema_rs")]
+#[derive(Debug)]
+struct ValidationError {
+    #[pyo3(get)]
+    message: String,
+    verbose_message: String,
+    #[pyo3(get)]
+    schema_path: Py<PyList>,
+    #[pyo3(get)]
+    instance_path: Py<PyList>,
+}
 
-struct ValidationErrorWrapper<'a>(jsonschema::ValidationError<'a>);
-
-impl<'a> From<ValidationErrorWrapper<'a>> for PyErr {
-    fn from(error: ValidationErrorWrapper<'a>) -> PyErr {
-        ValidationError::new_err(to_error_message(&error.0))
+#[pymethods]
+impl ValidationError {
+    #[new]
+    fn new(
+        message: String,
+        long_message: String,
+        schema_path: Py<PyList>,
+        instance_path: Py<PyList>,
+    ) -> Self {
+        ValidationError {
+            message,
+            verbose_message: long_message,
+            schema_path,
+            instance_path,
+        }
     }
+}
+
+#[pyproto]
+impl<'p> PyObjectProtocol<'p> for ValidationError {
+    fn __str__(&'p self) -> PyResult<String> {
+        Ok(self.verbose_message.clone())
+    }
+    fn __repr__(&'p self) -> PyResult<String> {
+        Ok(format!("<ValidationError: '{}'>", self.message))
+    }
+}
+
+fn into_py_err(py: Python, error: jsonschema::ValidationError) -> PyResult<PyErr> {
+    let pyerror_type = PyType::new::<ValidationError>(py);
+    let message = error.to_string();
+    let verbose_message = to_error_message(&error);
+    let schema_path = into_path(py, error.schema_path)?;
+    let instance_path = into_path(py, error.instance_path)?;
+    Ok(PyErr::from_type(
+        pyerror_type,
+        (message, verbose_message, schema_path, instance_path),
+    ))
+}
+
+fn into_path(py: Python, pointer: JSONPointer) -> PyResult<Py<PyList>> {
+    let path = PyList::empty(py);
+    for chunk in pointer {
+        match chunk {
+            jsonschema::paths::PathChunk::Property(property) => path.append(property)?,
+            jsonschema::paths::PathChunk::Index(index) => path.append(index)?,
+            jsonschema::paths::PathChunk::Keyword(keyword) => path.append(keyword)?,
+        };
+    }
+    Ok(path.into_py(py))
 }
 
 fn get_draft(draft: u8) -> PyResult<Draft> {
@@ -64,19 +122,13 @@ fn make_options(
     Ok(options)
 }
 
-fn raise_on_error(compiled: &jsonschema::JSONSchema, instance: &PyAny) -> PyResult<()> {
+fn raise_on_error(py: Python, compiled: &jsonschema::JSONSchema, instance: &PyAny) -> PyResult<()> {
     let instance = ser::to_value(instance)?;
     let result = compiled.validate(&instance);
     let error = result
         .err()
         .map(|mut errors| errors.next().expect("Iterator should not be empty"));
-    error.map_or_else(
-        || Ok(()),
-        |err| {
-            let message = to_error_message(&err);
-            Err(ValidationError::new_err(message))
-        },
-    )
+    error.map_or_else(|| Ok(()), |err| Err(into_py_err(py, err)?))
 }
 
 fn to_error_message(error: &jsonschema::ValidationError) -> String {
@@ -140,6 +192,7 @@ fn to_error_message(error: &jsonschema::ValidationError) -> String {
 #[pyfunction]
 #[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False)")]
 fn is_valid(
+    py: Python,
     schema: &PyAny,
     instance: &PyAny,
     draft: Option<u8>,
@@ -147,9 +200,13 @@ fn is_valid(
 ) -> PyResult<bool> {
     let options = make_options(draft, with_meta_schemas)?;
     let schema = ser::to_value(schema)?;
-    let compiled = options.compile(&schema).map_err(ValidationErrorWrapper)?;
-    let instance = ser::to_value(instance)?;
-    Ok(compiled.is_valid(&instance))
+    match options.compile(&schema) {
+        Ok(compiled) => {
+            let instance = ser::to_value(instance)?;
+            Ok(compiled.is_valid(&instance))
+        }
+        Err(error) => Err(into_py_err(py, error)?),
+    }
 }
 
 /// validate(schema, instance, draft=None, with_meta_schemas=False)
@@ -166,6 +223,7 @@ fn is_valid(
 #[pyfunction]
 #[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False)")]
 fn validate(
+    py: Python,
     schema: &PyAny,
     instance: &PyAny,
     draft: Option<u8>,
@@ -173,8 +231,10 @@ fn validate(
 ) -> PyResult<()> {
     let options = make_options(draft, with_meta_schemas)?;
     let schema = ser::to_value(schema)?;
-    let compiled = options.compile(&schema).map_err(ValidationErrorWrapper)?;
-    raise_on_error(&compiled, instance)
+    match options.compile(&schema) {
+        Ok(compiled) => raise_on_error(py, &compiled, instance),
+        Err(error) => Err(into_py_err(py, error)?),
+    }
 }
 
 /// JSONSchema(schema, draft=None, with_meta_schemas=False)
@@ -196,16 +256,24 @@ struct JSONSchema {
 #[pymethods]
 impl JSONSchema {
     #[new]
-    fn new(pyschema: &PyAny, draft: Option<u8>, with_meta_schemas: Option<bool>) -> PyResult<Self> {
+    fn new(
+        py: Python,
+        pyschema: &PyAny,
+        draft: Option<u8>,
+        with_meta_schemas: Option<bool>,
+    ) -> PyResult<Self> {
         let options = make_options(draft, with_meta_schemas)?;
         // Currently, it is the simplest way to pass a reference to `JSONSchema`
         // It is cleaned up in the `Drop` implementation
         let raw_schema = ser::to_value(pyschema)?;
         let schema: &'static Value = Box::leak(Box::new(raw_schema));
-        Ok(JSONSchema {
-            schema: options.compile(schema).map_err(ValidationErrorWrapper)?,
-            raw_schema: schema,
-        })
+        match options.compile(schema) {
+            Ok(compiled) => Ok(JSONSchema {
+                schema: compiled,
+                raw_schema: schema,
+            }),
+            Err(error) => Err(into_py_err(py, error)?),
+        }
     }
 
     /// is_valid(instance)
@@ -234,8 +302,8 @@ impl JSONSchema {
     ///
     /// If the input instance is invalid, only the first occurred error is raised.
     #[pyo3(text_signature = "(instance)")]
-    fn validate(&self, instance: &PyAny) -> PyResult<()> {
-        raise_on_error(&self.schema, instance)
+    fn validate(&self, py: Python, instance: &PyAny) -> PyResult<()> {
+        raise_on_error(py, &self.schema, instance)
     }
 }
 
@@ -274,9 +342,7 @@ fn jsonschema_rs(py: Python, module: &PyModule) -> PyResult<()> {
     module.add_wrapped(wrap_pyfunction!(is_valid))?;
     module.add_wrapped(wrap_pyfunction!(validate))?;
     module.add_class::<JSONSchema>()?;
-    let validation_error = py.get_type::<ValidationError>();
-    validation_error.setattr("__doc__", VALIDATION_ERROR_DOCSTRING)?;
-    module.add("ValidationError", validation_error)?;
+    module.add("ValidationError", py.get_type::<ValidationError>())?;
     module.add("Draft4", DRAFT4)?;
     module.add("Draft6", DRAFT6)?;
     module.add("Draft7", DRAFT7)?;
