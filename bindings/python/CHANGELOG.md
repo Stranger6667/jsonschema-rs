@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Additional attributes to `ValidationError`. They are `message`, `schema_path` and `instance_path`. [#197](https://github.com/Stranger6667/jsonschema-rs/issues/197)
+
 ### Changed
 
 - Update `pyo3` to `0.14.1`.
