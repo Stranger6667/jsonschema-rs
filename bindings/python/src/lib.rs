@@ -138,7 +138,7 @@ fn to_error_message(error: &jsonschema::ValidationError) -> String {
 /// If your workflow implies validating against the same schema, consider using `JSONSchema.is_valid`
 /// instead.
 #[pyfunction]
-#[text_signature = "(schema, instance, draft=None, with_meta_schemas=False)"]
+#[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False)")]
 fn is_valid(
     schema: &PyAny,
     instance: &PyAny,
@@ -164,7 +164,7 @@ fn is_valid(
 /// If your workflow implies validating against the same schema, consider using `JSONSchema.validate`
 /// instead.
 #[pyfunction]
-#[text_signature = "(schema, instance, draft=None, with_meta_schemas=False)"]
+#[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False)")]
 fn validate(
     schema: &PyAny,
     instance: &PyAny,
@@ -187,7 +187,7 @@ fn validate(
 ///
 /// By default Draft 7 will be used for compilation.
 #[pyclass]
-#[text_signature = "(schema, draft=None, with_meta_schemas=False)"]
+#[pyo3(text_signature = "(schema, draft=None, with_meta_schemas=False)")]
 struct JSONSchema {
     schema: jsonschema::JSONSchema<'static>,
     raw_schema: &'static Value,
@@ -217,7 +217,7 @@ impl JSONSchema {
     ///     False
     ///
     /// The output is a boolean value, that indicates whether the instance is valid or not.
-    #[text_signature = "(instance)"]
+    #[pyo3(text_signature = "(instance)")]
     fn is_valid(&self, instance: &PyAny) -> PyResult<bool> {
         let instance = ser::to_value(instance)?;
         Ok(self.schema.is_valid(&instance))
@@ -233,7 +233,7 @@ impl JSONSchema {
     ///     ValidationError: 3 is less than the minimum of 5
     ///
     /// If the input instance is invalid, only the first occurred error is raised.
-    #[text_signature = "(instance)"]
+    #[pyo3(text_signature = "(instance)")]
     fn validate(&self, instance: &PyAny) -> PyResult<()> {
         raise_on_error(&self.schema, instance)
     }
@@ -281,6 +281,8 @@ fn jsonschema_rs(py: Python, module: &PyModule) -> PyResult<()> {
     module.add("Draft6", DRAFT6)?;
     module.add("Draft7", DRAFT7)?;
 
+    // Allow deprecated, unless `pyo3-built` is updated
+    #[allow(deprecated)]
     // Add build metadata to ease triaging incoming issues
     module.add("__build__", pyo3_built::pyo3_built!(py, build))?;
 
