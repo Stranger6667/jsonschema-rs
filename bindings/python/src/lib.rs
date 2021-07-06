@@ -19,7 +19,7 @@ use pyo3::{
     exceptions,
     prelude::*,
     types::{PyAny, PyList, PyType},
-    wrap_pyfunction, AsPyPointer, PyObjectProtocol,
+    wrap_pyfunction, PyObjectProtocol,
 };
 use serde_json::Value;
 
