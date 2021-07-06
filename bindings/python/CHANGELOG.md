@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.11.1] - 2021-07-06
+
 ### Added
 
 - Additional attributes to `ValidationError`. They are `message`, `schema_path` and `instance_path`. [#197](https://github.com/Stranger6667/jsonschema-rs/issues/197)
@@ -191,10 +193,10 @@
 - Enable Link-Time Optimizations and set `codegen-units` to 1. [#104](https://github.com/Stranger6667/jsonschema-rs/issues/104)
 
 ## 0.1.0 - 2020-06-09
-
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.11.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.11.1...HEAD
+[0.11.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.11.0...python-v0.11.1
 [0.11.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.10.0...python-v0.11.0
 [0.10.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.9.1...python-v0.10.0
 [0.9.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.9.0...python-v0.9.1
