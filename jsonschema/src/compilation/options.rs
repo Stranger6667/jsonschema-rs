@@ -64,6 +64,7 @@ pub struct CompilationOptions {
     content_encoding_checks_and_converters:
         AHashMap<&'static str, Option<(ContentEncodingCheckType, ContentEncodingConverterType)>>,
     store: AHashMap<String, serde_json::Value>,
+    formats: AHashMap<&'static str, fn(&str) -> bool>,
     validate_schema: bool,
 }
 
@@ -75,6 +76,7 @@ impl Default for CompilationOptions {
             content_media_type_checks: AHashMap::default(),
             content_encoding_checks_and_converters: AHashMap::default(),
             store: AHashMap::default(),
+            formats: AHashMap::default(),
         }
     }
 }
@@ -347,7 +349,38 @@ impl CompilationOptions {
         self.store.insert(id, document);
         self
     }
-
+    /// Register a custom "format" validator.
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// # use jsonschema::JSONSchema;
+    /// # use serde_json::json;
+    /// fn my_format(s: &str) -> bool {
+    ///    // Your awesome format check!
+    ///    s.ends_with("42!")
+    /// }
+    /// # fn foo() {
+    /// let schema = json!({"type": "string", "format": "custom"});
+    /// let compiled = JSONSchema::options()
+    ///     .with_format("custom", my_format)
+    ///     .compile(&schema)
+    ///     .expect("Valid schema");
+    /// // Invalid string
+    /// assert!(!compiled.is_valid(&json!("foo")));
+    /// // Valid string
+    /// assert!(compiled.is_valid(&json!("foo42!")));
+    /// # }
+    /// ```
+    ///
+    /// The format check function should receive `&str` and return `bool`.
+    pub fn with_format(&mut self, name: &'static str, format: fn(&str) -> bool) -> &mut Self {
+        self.formats.insert(name, format);
+        self
+    }
+    pub(crate) fn format(&self, format: &str) -> FormatKV<'_> {
+        self.formats.get_key_value(format)
+    }
     /// Do not perform schema validation during compilation.
     /// This method is only used to disable meta-schema validation for meta-schemas itself to avoid
     /// infinite recursion.
@@ -359,6 +392,8 @@ impl CompilationOptions {
         self
     }
 }
+// format name & a pointer to a check function
+type FormatKV<'a> = Option<(&'a &'static str, &'a fn(&str) -> bool)>;
 
 impl fmt::Debug for CompilationOptions {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -404,8 +439,23 @@ mod tests {
                 json!({"rule": {"minLength": 5}}),
             )
             .compile(&schema)
-            .unwrap();
+            .expect("Valid schema");
         assert!(!compiled.is_valid(&json!("foo")));
         assert!(compiled.is_valid(&json!("foobar")));
+    }
+
+    fn custom(s: &str) -> bool {
+        s.ends_with("42!")
+    }
+
+    #[test]
+    fn custom_format() {
+        let schema = json!({"type": "string", "format": "custom"});
+        let compiled = JSONSchema::options()
+            .with_format("custom", custom)
+            .compile(&schema)
+            .expect("Valid schema");
+        assert!(!compiled.is_valid(&json!("foo")));
+        assert!(compiled.is_valid(&json!("foo42!")));
     }
 }

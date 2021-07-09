@@ -328,6 +328,60 @@ impl Validate for URITemplateValidator {
     }
 }
 
+struct CustomFormatValidator {
+    schema_path: JSONPointer,
+    format_name: &'static str,
+    check: fn(&str) -> bool,
+}
+impl CustomFormatValidator {
+    pub(crate) fn compile<'a>(
+        context: &CompilationContext,
+        format_name: &'static str,
+        check: fn(&str) -> bool,
+    ) -> CompilationResult<'a> {
+        let schema_path = context.as_pointer_with("format");
+        Ok(Box::new(CustomFormatValidator {
+            schema_path,
+            format_name,
+            check,
+        }))
+    }
+}
+impl ToString for CustomFormatValidator {
+    fn to_string(&self) -> String {
+        format!("format: {}", self.format_name)
+    }
+}
+
+impl Validate for CustomFormatValidator {
+    fn validate<'a>(
+        &self,
+        schema: &'a JSONSchema,
+        instance: &'a Value,
+        instance_path: &InstancePath,
+    ) -> ErrorIterator<'a> {
+        if let Value::String(_item) = instance {
+            if !self.is_valid(schema, instance) {
+                return error(ValidationError::format(
+                    self.schema_path.clone(),
+                    instance_path.into(),
+                    instance,
+                    self.format_name,
+                ));
+            }
+        }
+        no_error()
+    }
+
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            (self.check)(item)
+        } else {
+            true
+        }
+    }
+}
+
 #[inline]
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
@@ -335,6 +389,9 @@ pub(crate) fn compile<'a>(
     context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     if let Value::String(format) = schema {
+        if let Some((format, func)) = context.config.format(format) {
+            return Some(CustomFormatValidator::compile(context, format, *func));
+        }
         let draft_version = context.config.draft();
         match format.as_str() {
             "date-time" => Some(DateTimeValidator::compile(context)),
