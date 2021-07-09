@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Support for custom `format` validators. [#158](https://github.com/Stranger6667/jsonschema-rs/issues/158)
+
 ## [0.11.0] - 2021-06-19
 
 ### Added
