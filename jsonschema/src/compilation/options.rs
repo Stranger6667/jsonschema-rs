@@ -5,10 +5,10 @@ use crate::{
         DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS,
     },
     content_media_type::{ContentMediaTypeCheckType, DEFAULT_CONTENT_MEDIA_TYPE_CHECKS},
-    resolver::Resolver,
     schemas, ValidationError,
 };
 use ahash::AHashMap;
+use serde_json::Value;
 use std::{borrow::Cow, fmt};
 
 const EXPECT_MESSAGE: &str = "Valid meta-schema!";
@@ -87,10 +87,7 @@ impl CompilationOptions {
     }
 
     /// Compile `schema` into `JSONSchema` using the currently defined options.
-    pub fn compile<'a>(
-        &self,
-        schema: &'a serde_json::Value,
-    ) -> Result<JSONSchema<'a>, ValidationError<'a>> {
+    pub fn compile<'a>(&self, schema: &'a Value) -> Result<JSONSchema<'a>, ValidationError<'a>> {
         // Draft is detected in the following precedence order:
         //   - Explicitly specified;
         //   - $schema field in the document;
@@ -115,7 +112,6 @@ impl CompilationOptions {
             Some(url) => url::Url::parse(url)?,
             None => DEFAULT_SCOPE.clone(),
         };
-        let resolver = Resolver::new(draft, &scope, schema, self.store.clone())?;
         let context = CompilationContext::new(scope, processed_config);
 
         if self.validate_schema {
@@ -135,7 +131,6 @@ impl CompilationOptions {
         Ok(JSONSchema {
             schema,
             validators,
-            resolver,
             context,
         })
     }
@@ -410,6 +405,8 @@ impl fmt::Debug for CompilationOptions {
 
 #[cfg(test)]
 mod tests {
+    use std::borrow::Cow;
+
     use super::CompilationOptions;
     use crate::{schemas::Draft, JSONSchema};
     use serde_json::{json, Value};

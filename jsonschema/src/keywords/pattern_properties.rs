@@ -1,9 +1,9 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator, ValidationError},
-    keywords::{format_validators, CompilationResult, Validators},
+    keywords::CompilationResult,
     paths::InstancePath,
-    validator::Validate,
+    validator::{format_validators, Validate, ValidatorBuf, Validators},
 };
 use fancy_regex::Regex;
 use serde_json::{Map, Value};
@@ -30,7 +30,7 @@ impl PatternPropertiesValidator {
                 compile_validators(subschema, &pattern_context)?,
             ));
         }
-        Ok(Box::new(PatternPropertiesValidator { patterns }))
+        Ok(context.add_validator(ValidatorBuf::new(PatternPropertiesValidator { patterns })))
     }
 }
 
@@ -79,9 +79,10 @@ impl Validate for PatternPropertiesValidator {
     }
 }
 
-impl ToString for PatternPropertiesValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for PatternPropertiesValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "patternProperties: {{{}}}",
             self.patterns
                 .iter()
@@ -106,13 +107,15 @@ impl SingleValuePatternPropertiesValidator {
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("patternProperties");
         let pattern_context = keyword_context.with_path(pattern.to_string());
-        Ok(Box::new(SingleValuePatternPropertiesValidator {
-            pattern: match Regex::new(pattern) {
-                Ok(r) => r,
-                Err(_) => return Err(ValidationError::schema(schema)),
-            },
-            validators: compile_validators(schema, &pattern_context)?,
-        }))
+        Ok(
+            context.add_validator(ValidatorBuf::new(SingleValuePatternPropertiesValidator {
+                pattern: match Regex::new(pattern) {
+                    Ok(r) => r,
+                    Err(_) => return Err(ValidationError::schema(schema)),
+                },
+                validators: compile_validators(schema, &pattern_context)?,
+            })),
+        )
     }
 }
 
@@ -155,9 +158,10 @@ impl Validate for SingleValuePatternPropertiesValidator {
     }
 }
 
-impl ToString for SingleValuePatternPropertiesValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for SingleValuePatternPropertiesValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "patternProperties: {{{}: {}}}",
             self.pattern,
             format_validators(&self.validators)

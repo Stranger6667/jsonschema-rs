@@ -3,7 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
-    validator::Validate,
+    validator::{Validate, ValidatorBuf},
 };
 use serde_json::{Map, Value};
 
@@ -14,9 +14,13 @@ pub(crate) struct MinLengthValidator {
 
 impl MinLengthValidator {
     #[inline]
-    pub(crate) fn compile(schema: &Value, schema_path: JSONPointer) -> CompilationResult {
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        schema_path: JSONPointer,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
         if let Some(limit) = schema.as_u64() {
-            Ok(Box::new(MinLengthValidator { limit, schema_path }))
+            Ok(context.add_validator(ValidatorBuf::new(MinLengthValidator { limit, schema_path })))
         } else {
             Err(ValidationError::schema(schema))
         }
@@ -53,9 +57,9 @@ impl Validate for MinLengthValidator {
     }
 }
 
-impl ToString for MinLengthValidator {
-    fn to_string(&self) -> String {
-        format!("minLength: {}", self.limit)
+impl core::fmt::Display for MinLengthValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "minLength: {}", self.limit)
     }
 }
 
@@ -66,7 +70,7 @@ pub(crate) fn compile<'a>(
     context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     let schema_path = context.as_pointer_with("minLength");
-    Some(MinLengthValidator::compile(schema, schema_path))
+    Some(MinLengthValidator::compile(schema, schema_path, context))
 }
 
 #[cfg(test)]

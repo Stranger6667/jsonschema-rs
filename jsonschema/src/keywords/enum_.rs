@@ -4,7 +4,7 @@ use crate::{
     keywords::{helpers, CompilationResult},
     paths::{InstancePath, JSONPointer},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
-    validator::Validate,
+    validator::{Validate, ValidatorBuf},
 };
 use serde_json::{Map, Value};
 
@@ -23,17 +23,18 @@ impl EnumValidator {
         schema: &'a Value,
         items: &'a [Value],
         schema_path: JSONPointer,
+        context: &CompilationContext,
     ) -> CompilationResult<'a> {
         let mut types = PrimitiveTypesBitMap::new();
         for item in items.iter() {
             types |= PrimitiveType::from(item);
         }
-        Ok(Box::new(EnumValidator {
+        Ok(context.add_validator(ValidatorBuf::new(EnumValidator {
             options: schema.clone(),
             items: items.to_vec(),
             types,
             schema_path,
-        }))
+        })))
     }
 }
 
@@ -68,9 +69,10 @@ impl Validate for EnumValidator {
     }
 }
 
-impl ToString for EnumValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for EnumValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "enum: [{}]",
             self.items
                 .iter()
@@ -94,12 +96,15 @@ impl SingleValueEnumValidator {
         schema: &'a Value,
         value: &'a Value,
         schema_path: JSONPointer,
+        context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        Ok(Box::new(SingleValueEnumValidator {
-            options: schema.clone(),
-            value: value.clone(),
-            schema_path,
-        }))
+        Ok(
+            context.add_validator(ValidatorBuf::new(SingleValueEnumValidator {
+                options: schema.clone(),
+                value: value.clone(),
+                schema_path,
+            })),
+        )
     }
 }
 
@@ -127,9 +132,9 @@ impl Validate for SingleValueEnumValidator {
     }
 }
 
-impl ToString for SingleValueEnumValidator {
-    fn to_string(&self) -> String {
-        format!("enum: [{}]", self.value)
+impl core::fmt::Display for SingleValueEnumValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "enum: [{}]", self.value)
     }
 }
 
@@ -147,9 +152,10 @@ pub(crate) fn compile<'a>(
                 schema,
                 value,
                 schema_path,
+                context,
             ))
         } else {
-            Some(EnumValidator::compile(schema, items, schema_path))
+            Some(EnumValidator::compile(schema, items, schema_path, context))
         }
     } else {
         Some(Err(ValidationError::schema(schema)))

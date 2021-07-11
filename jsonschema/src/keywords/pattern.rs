@@ -3,7 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::InstancePath,
-    validator::Validate,
+    validator::{Validate, ValidatorBuf},
 };
 use serde_json::{Map, Value};
 
@@ -33,11 +33,11 @@ impl PatternValidator {
                     Ok(r) => r,
                     Err(_) => return Err(ValidationError::schema(pattern)),
                 };
-                Ok(Box::new(PatternValidator {
+                Ok(context.add_validator(ValidatorBuf::new(PatternValidator {
                     original: item.clone(),
                     pattern,
                     schema_path: context.as_pointer_with("pattern"),
-                }))
+                })))
             }
             _ => Err(ValidationError::schema(pattern)),
         }
@@ -84,9 +84,9 @@ impl Validate for PatternValidator {
     }
 }
 
-impl ToString for PatternValidator {
-    fn to_string(&self) -> String {
-        format!("pattern: {}", self.pattern)
+impl core::fmt::Display for PatternValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "pattern: {}", self.pattern)
     }
 }
 

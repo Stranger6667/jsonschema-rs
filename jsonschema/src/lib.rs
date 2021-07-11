@@ -84,7 +84,7 @@ pub mod error;
 mod keywords;
 pub mod paths;
 pub mod primitive_type;
-mod resolver;
+pub mod resolver;
 mod schemas;
 mod validator;
 
@@ -178,13 +178,15 @@ pub(crate) mod tests_util {
         let compiled = JSONSchema::compile(schema).unwrap();
         let errors = compiled.validate(instance).expect_err("Should be an error");
         for (error, schema_path) in errors.zip(expected) {
+            // dbg!(error.schema_path.to_string());
+            // dbg!(schema_path);
             assert_eq!(error.schema_path.to_string(), *schema_path)
         }
     }
 }
 
 #[cfg(test)]
-mod tests {
+ mod tests {
     use super::is_valid;
     use serde_json::json;
 

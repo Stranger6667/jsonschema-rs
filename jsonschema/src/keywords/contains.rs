@@ -1,11 +1,12 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{format_validators, CompilationResult, Validators},
     paths::{InstancePath, JSONPointer},
-    validator::Validate,
+    validator::{format_validators, Validate, ValidatorBuf, Validators},
 };
 use serde_json::{Map, Value};
+
+use super::CompilationResult;
 
 pub(crate) struct ContainsValidator {
     validators: Validators,
@@ -19,10 +20,10 @@ impl ContainsValidator {
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("contains");
-        Ok(Box::new(ContainsValidator {
+        Ok(context.add_validator(ValidatorBuf::new(ContainsValidator {
             validators: compile_validators(schema, &keyword_context)?,
             schema_path: keyword_context.into_pointer(),
-        }))
+        })))
     }
 }
 
@@ -71,9 +72,9 @@ impl Validate for ContainsValidator {
     }
 }
 
-impl ToString for ContainsValidator {
-    fn to_string(&self) -> String {
-        format!("contains: {}", format_validators(&self.validators))
+impl core::fmt::Display for ContainsValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "contains: {}", format_validators(&self.validators))
     }
 }
 

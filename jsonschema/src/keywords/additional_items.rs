@@ -1,9 +1,9 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{boolean::FalseValidator, format_validators, CompilationResult, Validators},
+    keywords::{boolean::FalseValidator, CompilationResult},
     paths::{InstancePath, JSONPointer},
-    validator::Validate,
+    validator::{format_validators, Validate, ValidatorBuf, Validators},
 };
 use serde_json::{Map, Value};
 
@@ -19,10 +19,12 @@ impl AdditionalItemsObjectValidator {
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
         let validators = compile_validators(schema, context)?;
-        Ok(Box::new(AdditionalItemsObjectValidator {
-            validators,
-            items_count,
-        }))
+        Ok(
+            context.add_validator(ValidatorBuf::new(AdditionalItemsObjectValidator {
+                validators,
+                items_count,
+            })),
+        )
     }
 }
 impl Validate for AdditionalItemsObjectValidator {
@@ -61,9 +63,14 @@ impl Validate for AdditionalItemsObjectValidator {
         }
     }
 }
-impl ToString for AdditionalItemsObjectValidator {
-    fn to_string(&self) -> String {
-        format!("additionalItems: {}", format_validators(&self.validators))
+
+impl core::fmt::Display for AdditionalItemsObjectValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "additionalItems: {}",
+            format_validators(&self.validators)
+        )
     }
 }
 
@@ -76,11 +83,14 @@ impl AdditionalItemsBooleanValidator {
     pub(crate) fn compile<'a>(
         items_count: usize,
         schema_path: JSONPointer,
+        context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        Ok(Box::new(AdditionalItemsBooleanValidator {
-            items_count,
-            schema_path,
-        }))
+        Ok(
+            context.add_validator(ValidatorBuf::new(AdditionalItemsBooleanValidator {
+                items_count,
+                schema_path,
+            })),
+        )
     }
 }
 impl Validate for AdditionalItemsBooleanValidator {
@@ -112,15 +122,15 @@ impl Validate for AdditionalItemsBooleanValidator {
         no_error()
     }
 }
-impl ToString for AdditionalItemsBooleanValidator {
-    fn to_string(&self) -> String {
-        "additionalItems: false".to_string()
+impl core::fmt::Display for AdditionalItemsBooleanValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "additionalItems: false".fmt(f)
     }
 }
 
 #[inline]
 pub(crate) fn compile<'a>(
-    parent: &Map<String, Value>,
+    parent: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
@@ -139,6 +149,7 @@ pub(crate) fn compile<'a>(
                     Value::Bool(false) => Some(AdditionalItemsBooleanValidator::compile(
                         items_count,
                         keyword_context.into_pointer(),
+                        context,
                     )),
                     _ => None,
                 }
@@ -148,7 +159,7 @@ pub(crate) fn compile<'a>(
                     None
                 } else {
                     let schema_path = context.as_pointer_with("additionalItems");
-                    Some(FalseValidator::compile(schema_path))
+                    Some(FalseValidator::compile(schema_path, context))
                 }
             }
             _ => Some(Err(ValidationError::schema(schema))),

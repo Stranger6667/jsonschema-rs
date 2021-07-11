@@ -6,7 +6,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
-    validator::Validate,
+    validator::{Validate, ValidatorBuf},
 };
 use serde_json::{Map, Value};
 
@@ -19,16 +19,19 @@ pub(crate) struct ContentMediaTypeValidator {
 
 impl ContentMediaTypeValidator {
     #[inline]
-    pub(crate) fn compile(
+    pub(crate) fn compile<'a>(
         media_type: &str,
         func: ContentMediaTypeCheckType,
         schema_path: JSONPointer,
-    ) -> CompilationResult {
-        Ok(Box::new(ContentMediaTypeValidator {
-            media_type: media_type.to_string(),
-            func,
-            schema_path,
-        }))
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
+        Ok(
+            context.add_validator(ValidatorBuf::new(ContentMediaTypeValidator {
+                media_type: media_type.to_string(),
+                func,
+                schema_path,
+            })),
+        )
     }
 }
 
@@ -65,9 +68,9 @@ impl Validate for ContentMediaTypeValidator {
     }
 }
 
-impl ToString for ContentMediaTypeValidator {
-    fn to_string(&self) -> String {
-        format!("contentMediaType: {}", self.media_type)
+impl core::fmt::Display for ContentMediaTypeValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "contentMediaType: {}", self.media_type)
     }
 }
 
@@ -80,16 +83,19 @@ pub(crate) struct ContentEncodingValidator {
 
 impl ContentEncodingValidator {
     #[inline]
-    pub(crate) fn compile(
+    pub(crate) fn compile<'a>(
         encoding: &str,
         func: ContentEncodingCheckType,
         schema_path: JSONPointer,
-    ) -> CompilationResult {
-        Ok(Box::new(ContentEncodingValidator {
-            encoding: encoding.to_string(),
-            func,
-            schema_path,
-        }))
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
+        Ok(
+            context.add_validator(ValidatorBuf::new(ContentEncodingValidator {
+                encoding: encoding.to_string(),
+                func,
+                schema_path,
+            })),
+        )
     }
 }
 
@@ -125,9 +131,9 @@ impl Validate for ContentEncodingValidator {
     }
 }
 
-impl ToString for ContentEncodingValidator {
-    fn to_string(&self) -> String {
-        format!("contentEncoding: {}", self.encoding)
+impl core::fmt::Display for ContentEncodingValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "contentEncoding: {}", self.encoding)
     }
 }
 
@@ -148,14 +154,17 @@ impl ContentMediaTypeAndEncodingValidator {
         func: ContentMediaTypeCheckType,
         converter: ContentEncodingConverterType,
         schema_path: JSONPointer,
+        context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        Ok(Box::new(ContentMediaTypeAndEncodingValidator {
-            media_type: media_type.to_string(),
-            encoding: encoding.to_string(),
-            func,
-            converter,
-            schema_path,
-        }))
+        Ok(
+            context.add_validator(ValidatorBuf::new(ContentMediaTypeAndEncodingValidator {
+                media_type: media_type.to_string(),
+                encoding: encoding.to_string(),
+                func,
+                converter,
+                schema_path,
+            })),
+        )
     }
 }
 
@@ -206,9 +215,10 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
     }
 }
 
-impl ToString for ContentMediaTypeAndEncodingValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for ContentMediaTypeAndEncodingValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "{{contentMediaType: {}, contentEncoding: {}}}",
             self.media_type, self.encoding
         )
@@ -243,6 +253,7 @@ pub(crate) fn compile_media_type<'a>(
                             func,
                             converter,
                             context.schema_path.clone().into(),
+                            context,
                         ))
                     }
                     _ => Some(Err(ValidationError::schema(subschema))),
@@ -252,6 +263,7 @@ pub(crate) fn compile_media_type<'a>(
                     media_type,
                     func,
                     context.as_pointer_with("contentMediaType"),
+                    context,
                 ))
             }
         }
@@ -283,6 +295,7 @@ pub(crate) fn compile_content_encoding<'a>(
                 content_encoding,
                 func,
                 context.as_pointer_with("contentEncoding"),
+                context,
             ))
         }
         _ => Some(Err(ValidationError::schema(subschema))),

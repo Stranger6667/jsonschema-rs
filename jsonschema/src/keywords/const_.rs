@@ -2,7 +2,7 @@ use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers, CompilationResult},
-    validator::Validate,
+    validator::{Validate, ValidatorBuf},
 };
 use serde_json::{Map, Number, Value};
 use std::f64::EPSILON;
@@ -15,11 +15,17 @@ struct ConstArrayValidator {
 }
 impl ConstArrayValidator {
     #[inline]
-    pub(crate) fn compile(value: &[Value], schema_path: JSONPointer) -> CompilationResult {
-        Ok(Box::new(ConstArrayValidator {
-            value: value.to_vec(),
-            schema_path,
-        }))
+    pub(crate) fn compile<'a>(
+        value: &[Value],
+        schema_path: JSONPointer,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
+        Ok(
+            context.add_validator(ValidatorBuf::new(ConstArrayValidator {
+                value: value.to_vec(),
+                schema_path,
+            })),
+        )
     }
 }
 impl Validate for ConstArrayValidator {
@@ -51,9 +57,10 @@ impl Validate for ConstArrayValidator {
         }
     }
 }
-impl ToString for ConstArrayValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for ConstArrayValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "const: [{}]",
             self.value
                 .iter()
@@ -70,8 +77,17 @@ struct ConstBooleanValidator {
 }
 impl ConstBooleanValidator {
     #[inline]
-    pub(crate) fn compile<'a>(value: bool, schema_path: JSONPointer) -> CompilationResult<'a> {
-        Ok(Box::new(ConstBooleanValidator { value, schema_path }))
+    pub(crate) fn compile<'a>(
+        value: bool,
+        schema_path: JSONPointer,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
+        Ok(
+            context.add_validator(ValidatorBuf::new(ConstBooleanValidator {
+                value,
+                schema_path,
+            })),
+        )
     }
 }
 impl Validate for ConstBooleanValidator {
@@ -103,9 +119,9 @@ impl Validate for ConstBooleanValidator {
         }
     }
 }
-impl ToString for ConstBooleanValidator {
-    fn to_string(&self) -> String {
-        format!("const: {}", self.value)
+impl core::fmt::Display for ConstBooleanValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "const: {}", self.value)
     }
 }
 
@@ -114,8 +130,11 @@ struct ConstNullValidator {
 }
 impl ConstNullValidator {
     #[inline]
-    pub(crate) fn compile<'a>(schema_path: JSONPointer) -> CompilationResult<'a> {
-        Ok(Box::new(ConstNullValidator { schema_path }))
+    pub(crate) fn compile<'a>(
+        schema_path: JSONPointer,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
+        Ok(context.add_validator(ValidatorBuf::new(ConstNullValidator { schema_path })))
     }
 }
 impl Validate for ConstNullValidator {
@@ -142,9 +161,9 @@ impl Validate for ConstNullValidator {
         instance.is_null()
     }
 }
-impl ToString for ConstNullValidator {
-    fn to_string(&self) -> String {
-        format!("const: {}", Value::Null)
+impl core::fmt::Display for ConstNullValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "const: {}", Value::Null)
     }
 }
 
@@ -157,14 +176,20 @@ struct ConstNumberValidator {
 
 impl ConstNumberValidator {
     #[inline]
-    pub(crate) fn compile(original_value: &Number, schema_path: JSONPointer) -> CompilationResult {
-        Ok(Box::new(ConstNumberValidator {
-            original_value: original_value.clone(),
-            value: original_value
-                .as_f64()
-                .expect("A JSON number will always be representable as f64"),
-            schema_path,
-        }))
+    pub(crate) fn compile<'a>(
+        original_value: &Number,
+        schema_path: JSONPointer,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
+        Ok(
+            context.add_validator(ValidatorBuf::new(ConstNumberValidator {
+                original_value: original_value.clone(),
+                value: original_value
+                    .as_f64()
+                    .expect("A JSON number will always be representable as f64"),
+                schema_path,
+            })),
+        )
     }
 }
 
@@ -196,9 +221,9 @@ impl Validate for ConstNumberValidator {
     }
 }
 
-impl ToString for ConstNumberValidator {
-    fn to_string(&self) -> String {
-        format!("const: {}", self.original_value)
+impl core::fmt::Display for ConstNumberValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "const: {}", self.original_value)
     }
 }
 
@@ -209,14 +234,17 @@ pub(crate) struct ConstObjectValidator {
 
 impl ConstObjectValidator {
     #[inline]
-    pub(crate) fn compile(
+    pub(crate) fn compile<'a>(
         value: &Map<String, Value>,
         schema_path: JSONPointer,
-    ) -> CompilationResult {
-        Ok(Box::new(ConstObjectValidator {
-            value: value.clone(),
-            schema_path,
-        }))
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
+        Ok(
+            context.add_validator(ValidatorBuf::new(ConstObjectValidator {
+                value: value.clone(),
+                schema_path,
+            })),
+        )
     }
 }
 
@@ -248,9 +276,10 @@ impl Validate for ConstObjectValidator {
     }
 }
 
-impl ToString for ConstObjectValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for ConstObjectValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "const: {{{}}}",
             self.value
                 .iter()
@@ -268,11 +297,17 @@ pub(crate) struct ConstStringValidator {
 
 impl ConstStringValidator {
     #[inline]
-    pub(crate) fn compile(value: &str, schema_path: JSONPointer) -> CompilationResult {
-        Ok(Box::new(ConstStringValidator {
-            value: value.to_string(),
-            schema_path,
-        }))
+    pub(crate) fn compile<'a>(
+        value: &str,
+        schema_path: JSONPointer,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
+        Ok(
+            context.add_validator(ValidatorBuf::new(ConstStringValidator {
+                value: value.to_string(),
+                schema_path,
+            })),
+        )
     }
 }
 
@@ -304,9 +339,9 @@ impl Validate for ConstStringValidator {
     }
 }
 
-impl ToString for ConstStringValidator {
-    fn to_string(&self) -> String {
-        format!("const: {}", self.value)
+impl core::fmt::Display for ConstStringValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "const: {}", self.value)
     }
 }
 
@@ -318,12 +353,12 @@ pub(crate) fn compile<'a>(
 ) -> Option<CompilationResult<'a>> {
     let schema_path = context.as_pointer_with("const");
     match schema {
-        Value::Array(items) => Some(ConstArrayValidator::compile(items, schema_path)),
-        Value::Bool(item) => Some(ConstBooleanValidator::compile(*item, schema_path)),
-        Value::Null => Some(ConstNullValidator::compile(schema_path)),
-        Value::Number(item) => Some(ConstNumberValidator::compile(item, schema_path)),
-        Value::Object(map) => Some(ConstObjectValidator::compile(map, schema_path)),
-        Value::String(string) => Some(ConstStringValidator::compile(string, schema_path)),
+        Value::Array(items) => Some(ConstArrayValidator::compile(items, schema_path, context)),
+        Value::Bool(item) => Some(ConstBooleanValidator::compile(*item, schema_path, context)),
+        Value::Null => Some(ConstNullValidator::compile(schema_path, context)),
+        Value::Number(item) => Some(ConstNumberValidator::compile(item, schema_path, context)),
+        Value::Object(map) => Some(ConstObjectValidator::compile(map, schema_path, context)),
+        Value::String(string) => Some(ConstStringValidator::compile(string, schema_path, context)),
     }
 }
 

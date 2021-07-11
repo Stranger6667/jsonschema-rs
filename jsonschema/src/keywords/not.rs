@@ -1,9 +1,9 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{format_validators, CompilationResult, Validators},
+    keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
-    validator::Validate,
+    validator::{format_validators, Validate, Validators},
 };
 use serde_json::{Map, Value};
 
@@ -21,11 +21,11 @@ impl NotValidator {
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("not");
-        Ok(Box::new(NotValidator {
+        Ok(context.add_validator(crate::validator::ValidatorBuf::new(NotValidator {
             original: schema.clone(),
             validators: compile_validators(schema, &keyword_context)?,
             schema_path: keyword_context.into_pointer(),
-        }))
+        })))
     }
 }
 
@@ -56,9 +56,9 @@ impl Validate for NotValidator {
     }
 }
 
-impl ToString for NotValidator {
-    fn to_string(&self) -> String {
-        format!("not: {}", format_validators(&self.validators))
+impl core::fmt::Display for NotValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "not: {}", format_validators(&self.validators))
     }
 }
 

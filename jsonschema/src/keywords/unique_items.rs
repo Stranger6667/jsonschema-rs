@@ -2,7 +2,7 @@ use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers::equal, CompilationResult},
-    validator::Validate,
+    validator::{Validate, ValidatorBuf},
 };
 use ahash::{AHashSet, AHasher};
 use serde_json::{Map, Value};
@@ -88,8 +88,11 @@ pub(crate) struct UniqueItemsValidator {
 
 impl UniqueItemsValidator {
     #[inline]
-    pub(crate) fn compile<'a>(schema_path: JSONPointer) -> CompilationResult<'a> {
-        Ok(Box::new(UniqueItemsValidator { schema_path }))
+    pub(crate) fn compile<'a>(
+        schema_path: JSONPointer,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
+        Ok(context.add_validator(ValidatorBuf::new(UniqueItemsValidator { schema_path })))
     }
 }
 
@@ -121,11 +124,12 @@ impl Validate for UniqueItemsValidator {
     }
 }
 
-impl ToString for UniqueItemsValidator {
-    fn to_string(&self) -> String {
-        "uniqueItems: true".to_string()
+impl core::fmt::Display for UniqueItemsValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "uniqueItems: true".fmt(f)
     }
 }
+
 #[inline]
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
@@ -135,7 +139,7 @@ pub(crate) fn compile<'a>(
     if let Value::Bool(value) = schema {
         if *value {
             let schema_path = context.as_pointer_with("uniqueItems");
-            Some(UniqueItemsValidator::compile(schema_path))
+            Some(UniqueItemsValidator::compile(schema_path, context))
         } else {
             None
         }

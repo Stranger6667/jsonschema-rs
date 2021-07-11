@@ -6,12 +6,13 @@
 //!   - `patternProperties`
 //!
 //! Each valid combination of these keywords has a validator here.
+
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{format_validators, CompilationResult, Validators},
+    keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
-    validator::Validate,
+    validator::{format_validators, Validate, ValidatorBuf, Validators},
 };
 use ahash::AHashMap;
 use fancy_regex::Regex;
@@ -182,9 +183,11 @@ impl AdditionalPropertiesValidator {
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("additionalProperties");
-        Ok(Box::new(AdditionalPropertiesValidator {
-            validators: compile_validators(schema, &keyword_context)?,
-        }))
+        Ok(
+            context.add_validator(ValidatorBuf::new(AdditionalPropertiesValidator {
+                validators: compile_validators(schema, &keyword_context)?,
+            })),
+        )
     }
 }
 impl Validate for AdditionalPropertiesValidator {
@@ -219,9 +222,10 @@ impl Validate for AdditionalPropertiesValidator {
     }
 }
 
-impl ToString for AdditionalPropertiesValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for AdditionalPropertiesValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "additionalProperties: {}",
             format_validators(&self.validators)
         )
@@ -246,8 +250,15 @@ pub(crate) struct AdditionalPropertiesFalseValidator {
 }
 impl AdditionalPropertiesFalseValidator {
     #[inline]
-    pub(crate) fn compile<'a>(schema_path: JSONPointer) -> CompilationResult<'a> {
-        Ok(Box::new(AdditionalPropertiesFalseValidator { schema_path }))
+    pub(crate) fn compile<'a>(
+        schema_path: JSONPointer,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
+        Ok(
+            context.add_validator(ValidatorBuf::new(AdditionalPropertiesFalseValidator {
+                schema_path,
+            })),
+        )
     }
 }
 impl Validate for AdditionalPropertiesFalseValidator {
@@ -277,9 +288,9 @@ impl Validate for AdditionalPropertiesFalseValidator {
         no_error()
     }
 }
-impl ToString for AdditionalPropertiesFalseValidator {
-    fn to_string(&self) -> String {
-        "additionalProperties: false".to_string()
+impl core::fmt::Display for AdditionalPropertiesFalseValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "additionalProperties: false".fmt(f)
     }
 }
 
@@ -311,10 +322,12 @@ impl AdditionalPropertiesNotEmptyFalseValidator<SmallValidatorsMap> {
         map: &'a Map<String, Value>,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
-            properties: compile_small_map(map, context)?,
-            schema_path: context.as_pointer_with("additionalProperties"),
-        }))
+        Ok(context.add_validator(ValidatorBuf::new(
+            AdditionalPropertiesNotEmptyFalseValidator {
+                properties: compile_small_map(map, context)?,
+                schema_path: context.as_pointer_with("additionalProperties"),
+            },
+        )))
     }
 }
 impl AdditionalPropertiesNotEmptyFalseValidator<BigValidatorsMap> {
@@ -323,10 +336,12 @@ impl AdditionalPropertiesNotEmptyFalseValidator<BigValidatorsMap> {
         map: &'a Map<String, Value>,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
-            properties: compile_big_map(map, context)?,
-            schema_path: context.as_pointer_with("additionalProperties"),
-        }))
+        Ok(context.add_validator(ValidatorBuf::new(
+            AdditionalPropertiesNotEmptyFalseValidator {
+                properties: compile_big_map(map, context)?,
+                schema_path: context.as_pointer_with("additionalProperties"),
+            },
+        )))
     }
 }
 impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseValidator<M> {
@@ -376,9 +391,11 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
     }
 }
 
-impl<M: PropertiesValidatorsMap> ToString for AdditionalPropertiesNotEmptyFalseValidator<M> {
-    fn to_string(&self) -> String {
-        "additionalProperties: false".to_string()
+impl<M: PropertiesValidatorsMap> core::fmt::Display
+    for AdditionalPropertiesNotEmptyFalseValidator<M>
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "additionalProperties: false".fmt(f)
     }
 }
 
@@ -413,10 +430,12 @@ impl AdditionalPropertiesNotEmptyValidator<SmallValidatorsMap> {
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("additionalProperties");
-        Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
-            properties: compile_small_map(map, context)?,
-            validators: compile_validators(schema, &keyword_context)?,
-        }))
+        Ok(
+            context.add_validator(ValidatorBuf::new(AdditionalPropertiesNotEmptyValidator {
+                properties: compile_small_map(map, context)?,
+                validators: compile_validators(schema, &keyword_context)?,
+            })),
+        )
     }
 }
 impl AdditionalPropertiesNotEmptyValidator<BigValidatorsMap> {
@@ -427,10 +446,12 @@ impl AdditionalPropertiesNotEmptyValidator<BigValidatorsMap> {
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("additionalProperties");
-        Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
-            properties: compile_big_map(map, context)?,
-            validators: compile_validators(schema, &keyword_context)?,
-        }))
+        Ok(
+            context.add_validator(ValidatorBuf::new(AdditionalPropertiesNotEmptyValidator {
+                properties: compile_big_map(map, context)?,
+                validators: compile_validators(schema, &keyword_context)?,
+            })),
+        )
     }
 }
 impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValidator<M> {
@@ -486,9 +507,10 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValida
     }
 }
 
-impl<M: PropertiesValidatorsMap> ToString for AdditionalPropertiesNotEmptyValidator<M> {
-    fn to_string(&self) -> String {
-        format!(
+impl<M: PropertiesValidatorsMap> core::fmt::Display for AdditionalPropertiesNotEmptyValidator<M> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "additionalProperties: {}",
             format_validators(&self.validators)
         )
@@ -527,10 +549,12 @@ impl AdditionalPropertiesWithPatternsValidator {
         patterns: PatternedValidators,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        Ok(Box::new(AdditionalPropertiesWithPatternsValidator {
-            validators: compile_validators(schema, context)?,
-            patterns,
-        }))
+        Ok(context.add_validator(ValidatorBuf::new(
+            AdditionalPropertiesWithPatternsValidator {
+                validators: compile_validators(schema, context)?,
+                patterns,
+            },
+        )))
     }
 }
 impl Validate for AdditionalPropertiesWithPatternsValidator {
@@ -588,9 +612,10 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
     }
 }
 
-impl ToString for AdditionalPropertiesWithPatternsValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for AdditionalPropertiesWithPatternsValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "additionalProperties: {}",
             format_validators(&self.validators)
         )
@@ -627,11 +652,14 @@ impl AdditionalPropertiesWithPatternsFalseValidator {
     pub(crate) fn compile<'a>(
         patterns: PatternedValidators,
         schema_path: JSONPointer,
+        context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        Ok(Box::new(AdditionalPropertiesWithPatternsFalseValidator {
-            patterns,
-            schema_path,
-        }))
+        Ok(context.add_validator(ValidatorBuf::new(
+            AdditionalPropertiesWithPatternsFalseValidator {
+                patterns,
+                schema_path,
+            },
+        )))
     }
 }
 impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
@@ -684,9 +712,9 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
     }
 }
 
-impl ToString for AdditionalPropertiesWithPatternsFalseValidator {
-    fn to_string(&self) -> String {
-        "additionalProperties: false".to_string()
+impl core::fmt::Display for AdditionalPropertiesWithPatternsFalseValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "additionalProperties: false".fmt(f)
     }
 }
 
@@ -730,13 +758,13 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator<SmallValidatorsMap> {
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("additionalProperties");
-        Ok(Box::new(
+        Ok(context.add_validator(ValidatorBuf::new(
             AdditionalPropertiesWithPatternsNotEmptyValidator {
                 validators: compile_validators(schema, &keyword_context)?,
                 properties: compile_small_map(map, context)?,
                 patterns,
             },
-        ))
+        )))
     }
 }
 impl AdditionalPropertiesWithPatternsNotEmptyValidator<BigValidatorsMap> {
@@ -748,13 +776,13 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator<BigValidatorsMap> {
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("additionalProperties");
-        Ok(Box::new(
+        Ok(context.add_validator(ValidatorBuf::new(
             AdditionalPropertiesWithPatternsNotEmptyValidator {
                 validators: compile_validators(schema, &keyword_context)?,
                 properties: compile_big_map(map, context)?,
                 patterns,
             },
-        ))
+        )))
     }
 }
 impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNotEmptyValidator<M> {
@@ -841,9 +869,12 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
         }
     }
 }
-impl<M: PropertiesValidatorsMap> ToString for AdditionalPropertiesWithPatternsNotEmptyValidator<M> {
-    fn to_string(&self) -> String {
-        format!(
+impl<M: PropertiesValidatorsMap> core::fmt::Display
+    for AdditionalPropertiesWithPatternsNotEmptyValidator<M>
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "additionalProperties: {}",
             format_validators(&self.validators)
         )
@@ -888,13 +919,13 @@ impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator<SmallValidatorsMap> 
         patterns: PatternedValidators,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        Ok(Box::new(
+        Ok(context.add_validator(ValidatorBuf::new(
             AdditionalPropertiesWithPatternsNotEmptyFalseValidator::<SmallValidatorsMap> {
                 properties: compile_small_map(map, context)?,
                 patterns,
                 schema_path: context.schema_path.push("additionalProperties").into(),
             },
-        ))
+        )))
     }
 }
 impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator<BigValidatorsMap> {
@@ -904,13 +935,13 @@ impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator<BigValidatorsMap> {
         patterns: PatternedValidators,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        Ok(Box::new(
+        Ok(context.add_validator(ValidatorBuf::new(
             AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
                 properties: compile_big_map(map, context)?,
                 patterns,
                 schema_path: context.schema_path.push("additionalProperties").into(),
             },
-        ))
+        )))
     }
 }
 
@@ -994,11 +1025,11 @@ impl<M: PropertiesValidatorsMap> Validate
     }
 }
 
-impl<M: PropertiesValidatorsMap> ToString
+impl<M: PropertiesValidatorsMap> core::fmt::Display
     for AdditionalPropertiesWithPatternsNotEmptyFalseValidator<M>
 {
-    fn to_string(&self) -> String {
-        "additionalProperties: false".to_string()
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "additionalProperties: false".fmt(f)
     }
 }
 #[inline]
@@ -1026,6 +1057,7 @@ pub(crate) fn compile<'a>(
                             Some(AdditionalPropertiesWithPatternsFalseValidator::compile(
                                 compiled_patterns,
                                 context.as_pointer_with("additionalProperties"),
+                                context,
                             ))
                         }
                     }
@@ -1066,7 +1098,10 @@ pub(crate) fn compile<'a>(
                     )
                 } else {
                     let schema_path = context.as_pointer_with("additionalProperties");
-                    Some(AdditionalPropertiesFalseValidator::compile(schema_path))
+                    Some(AdditionalPropertiesFalseValidator::compile(
+                        schema_path,
+                        context,
+                    ))
                 }
             }
             _ => {

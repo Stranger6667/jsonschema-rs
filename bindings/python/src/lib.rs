@@ -266,7 +266,7 @@ impl JSONSchema {
         // Currently, it is the simplest way to pass a reference to `JSONSchema`
         // It is cleaned up in the `Drop` implementation
         let raw_schema = ser::to_value(pyschema)?;
-        let schema: &'static Value = Box::leak(Box::new(raw_schema));
+        let schema: &'static Value = Box::leak(Arc::new(raw_schema));
         match options.compile(schema) {
             Ok(compiled) => Ok(JSONSchema {
                 schema: compiled,
