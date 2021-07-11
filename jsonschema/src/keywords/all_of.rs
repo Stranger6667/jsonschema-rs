@@ -58,9 +58,9 @@ impl Validate for AllOfValidator {
     }
 }
 
-impl ToString for AllOfValidator {
-    fn to_string(&self) -> String {
-        format!("allOf: [{}]", format_vec_of_validators(&self.schemas))
+impl core::fmt::Display for AllOfValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "allOf: [{}]", format_vec_of_validators(&self.schemas))
     }
 }
 pub(crate) struct SingleValueAllOfValidator {
@@ -102,9 +102,9 @@ impl Validate for SingleValueAllOfValidator {
     }
 }
 
-impl ToString for SingleValueAllOfValidator {
-    fn to_string(&self) -> String {
-        format!("allOf: [{}]", format_validators(&self.validators))
+impl core::fmt::Display for SingleValueAllOfValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "allOf: [{}]", format_validators(&self.validators))
     }
 }
 #[inline]

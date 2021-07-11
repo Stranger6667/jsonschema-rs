@@ -72,9 +72,9 @@ impl Validate for PropertyNamesObjectValidator {
         }
     }
 }
-impl ToString for PropertyNamesObjectValidator {
-    fn to_string(&self) -> String {
-        format!("propertyNames: {}", format_validators(&self.validators))
+impl core::fmt::Display for PropertyNamesObjectValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "propertyNames: {}", format_validators(&self.validators))
     }
 }
 
@@ -118,9 +118,9 @@ impl Validate for PropertyNamesBooleanValidator {
     }
 }
 
-impl ToString for PropertyNamesBooleanValidator {
-    fn to_string(&self) -> String {
-        "propertyNames: false".to_string()
+impl core::fmt::Display for PropertyNamesBooleanValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "propertyNames: false".fmt(f)
     }
 }
 

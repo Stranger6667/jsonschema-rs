@@ -61,9 +61,14 @@ impl Validate for AdditionalItemsObjectValidator {
         }
     }
 }
-impl ToString for AdditionalItemsObjectValidator {
-    fn to_string(&self) -> String {
-        format!("additionalItems: {}", format_validators(&self.validators))
+
+impl core::fmt::Display for AdditionalItemsObjectValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "additionalItems: {}",
+            format_validators(&self.validators)
+        )
     }
 }
 
@@ -112,9 +117,9 @@ impl Validate for AdditionalItemsBooleanValidator {
         no_error()
     }
 }
-impl ToString for AdditionalItemsBooleanValidator {
-    fn to_string(&self) -> String {
-        "additionalItems: false".to_string()
+impl core::fmt::Display for AdditionalItemsBooleanValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "additionalItems: false".fmt(f)
     }
 }
 

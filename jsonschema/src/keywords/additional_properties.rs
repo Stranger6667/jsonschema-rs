@@ -219,9 +219,10 @@ impl Validate for AdditionalPropertiesValidator {
     }
 }
 
-impl ToString for AdditionalPropertiesValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for AdditionalPropertiesValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "additionalProperties: {}",
             format_validators(&self.validators)
         )
@@ -277,9 +278,9 @@ impl Validate for AdditionalPropertiesFalseValidator {
         no_error()
     }
 }
-impl ToString for AdditionalPropertiesFalseValidator {
-    fn to_string(&self) -> String {
-        "additionalProperties: false".to_string()
+impl core::fmt::Display for AdditionalPropertiesFalseValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "additionalProperties: false".fmt(f)
     }
 }
 
@@ -376,9 +377,11 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
     }
 }
 
-impl<M: PropertiesValidatorsMap> ToString for AdditionalPropertiesNotEmptyFalseValidator<M> {
-    fn to_string(&self) -> String {
-        "additionalProperties: false".to_string()
+impl<M: PropertiesValidatorsMap> core::fmt::Display
+    for AdditionalPropertiesNotEmptyFalseValidator<M>
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "additionalProperties: false".fmt(f)
     }
 }
 
@@ -486,9 +489,10 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValida
     }
 }
 
-impl<M: PropertiesValidatorsMap> ToString for AdditionalPropertiesNotEmptyValidator<M> {
-    fn to_string(&self) -> String {
-        format!(
+impl<M: PropertiesValidatorsMap> core::fmt::Display for AdditionalPropertiesNotEmptyValidator<M> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "additionalProperties: {}",
             format_validators(&self.validators)
         )
@@ -588,9 +592,10 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
     }
 }
 
-impl ToString for AdditionalPropertiesWithPatternsValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for AdditionalPropertiesWithPatternsValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "additionalProperties: {}",
             format_validators(&self.validators)
         )
@@ -684,9 +689,9 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
     }
 }
 
-impl ToString for AdditionalPropertiesWithPatternsFalseValidator {
-    fn to_string(&self) -> String {
-        "additionalProperties: false".to_string()
+impl core::fmt::Display for AdditionalPropertiesWithPatternsFalseValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "additionalProperties: false".fmt(f)
     }
 }
 
@@ -841,9 +846,12 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
         }
     }
 }
-impl<M: PropertiesValidatorsMap> ToString for AdditionalPropertiesWithPatternsNotEmptyValidator<M> {
-    fn to_string(&self) -> String {
-        format!(
+impl<M: PropertiesValidatorsMap> core::fmt::Display
+    for AdditionalPropertiesWithPatternsNotEmptyValidator<M>
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "additionalProperties: {}",
             format_validators(&self.validators)
         )
@@ -994,11 +1002,11 @@ impl<M: PropertiesValidatorsMap> Validate
     }
 }
 
-impl<M: PropertiesValidatorsMap> ToString
+impl<M: PropertiesValidatorsMap> core::fmt::Display
     for AdditionalPropertiesWithPatternsNotEmptyFalseValidator<M>
 {
-    fn to_string(&self) -> String {
-        "additionalProperties: false".to_string()
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "additionalProperties: false".fmt(f)
     }
 }
 #[inline]

@@ -78,9 +78,10 @@ impl Validate for PropertiesValidator {
     }
 }
 
-impl ToString for PropertiesValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for PropertiesValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "properties: {{{}}}",
             format_key_value_validators(&self.properties)
         )

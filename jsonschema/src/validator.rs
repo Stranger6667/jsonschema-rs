@@ -2,7 +2,7 @@ use crate::{compilation::JSONSchema, error::ErrorIterator, paths::InstancePath};
 use serde_json::Value;
 use std::fmt;
 
-pub(crate) trait Validate: Send + Sync + ToString {
+pub(crate) trait Validate: Send + Sync + core::fmt::Display {
     fn validate<'a>(
         &self,
         schema: &'a JSONSchema,

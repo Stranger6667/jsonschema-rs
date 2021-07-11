@@ -53,9 +53,9 @@ impl Validate for MinPropertiesValidator {
     }
 }
 
-impl ToString for MinPropertiesValidator {
-    fn to_string(&self) -> String {
-        format!("minProperties: {}", self.limit)
+impl core::fmt::Display for MinPropertiesValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "minProperties: {}", self.limit)
     }
 }
 

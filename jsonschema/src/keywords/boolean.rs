@@ -36,9 +36,9 @@ impl Validate for FalseValidator {
     }
 }
 
-impl ToString for FalseValidator {
-    fn to_string(&self) -> String {
-        "false".to_string()
+impl core::fmt::Display for FalseValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "false".fmt(f)
     }
 }
 

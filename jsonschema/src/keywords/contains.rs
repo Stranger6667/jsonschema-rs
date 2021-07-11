@@ -71,9 +71,9 @@ impl Validate for ContainsValidator {
     }
 }
 
-impl ToString for ContainsValidator {
-    fn to_string(&self) -> String {
-        format!("contains: {}", format_validators(&self.validators))
+impl core::fmt::Display for ContainsValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "contains: {}", format_validators(&self.validators))
     }
 }
 

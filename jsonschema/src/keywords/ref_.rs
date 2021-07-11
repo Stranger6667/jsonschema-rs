@@ -112,9 +112,9 @@ impl Validate for RefValidator {
     }
 }
 
-impl ToString for RefValidator {
-    fn to_string(&self) -> String {
-        format!("$ref: {}", self.reference)
+impl core::fmt::Display for RefValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "$ref: {}", self.reference)
     }
 }
 

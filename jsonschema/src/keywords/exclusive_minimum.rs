@@ -56,9 +56,9 @@ macro_rules! validate {
                 true
             }
         }
-        impl ToString for $validator {
-            fn to_string(&self) -> String {
-                format!("exclusiveMinimum: {}", self.limit)
+        impl core::fmt::Display for $validator {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "exclusiveMinimum: {}", self.limit)
             }
         }
     };
@@ -100,9 +100,9 @@ impl Validate for ExclusiveMinimumF64Validator {
         }
     }
 }
-impl ToString for ExclusiveMinimumF64Validator {
-    fn to_string(&self) -> String {
-        format!("exclusiveMinimum: {}", self.limit)
+impl core::fmt::Display for ExclusiveMinimumF64Validator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "exclusiveMinimum: {}", self.limit)
     }
 }
 

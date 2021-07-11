@@ -70,9 +70,9 @@ impl Validate for AnyOfValidator {
     }
 }
 
-impl ToString for AnyOfValidator {
-    fn to_string(&self) -> String {
-        format!("anyOf: [{}]", format_vec_of_validators(&self.schemas))
+impl core::fmt::Display for AnyOfValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "anyOf: [{}]", format_vec_of_validators(&self.schemas))
     }
 }
 #[inline]

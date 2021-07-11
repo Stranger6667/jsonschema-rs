@@ -53,9 +53,9 @@ impl Validate for MaxLengthValidator {
     }
 }
 
-impl ToString for MaxLengthValidator {
-    fn to_string(&self) -> String {
-        format!("maxLength: {}", self.limit)
+impl core::fmt::Display for MaxLengthValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "maxLength: {}", self.limit)
     }
 }
 

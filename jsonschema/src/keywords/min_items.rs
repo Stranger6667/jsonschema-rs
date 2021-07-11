@@ -53,9 +53,9 @@ impl Validate for MinItemsValidator {
     }
 }
 
-impl ToString for MinItemsValidator {
-    fn to_string(&self) -> String {
-        format!("minItems: {}", self.limit)
+impl core::fmt::Display for MinItemsValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "minItems: {}", self.limit)
     }
 }
 

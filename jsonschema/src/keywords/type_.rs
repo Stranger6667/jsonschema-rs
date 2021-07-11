@@ -68,9 +68,10 @@ impl Validate for MultipleTypesValidator {
     }
 }
 
-impl ToString for MultipleTypesValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for MultipleTypesValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "type: [{}]",
             self.types
                 .into_iter()
@@ -115,9 +116,9 @@ impl Validate for NullTypeValidator {
     }
 }
 
-impl ToString for NullTypeValidator {
-    fn to_string(&self) -> String {
-        "type: null".to_string()
+impl core::fmt::Display for NullTypeValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "type: null".fmt(f)
     }
 }
 
@@ -155,9 +156,9 @@ impl Validate for BooleanTypeValidator {
     }
 }
 
-impl ToString for BooleanTypeValidator {
-    fn to_string(&self) -> String {
-        "type: boolean".to_string()
+impl core::fmt::Display for BooleanTypeValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "type: boolean".fmt(f)
     }
 }
 
@@ -195,9 +196,9 @@ impl Validate for StringTypeValidator {
         }
     }
 }
-impl ToString for StringTypeValidator {
-    fn to_string(&self) -> String {
-        "type: string".to_string()
+impl core::fmt::Display for StringTypeValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "type: string".fmt(f)
     }
 }
 
@@ -236,9 +237,9 @@ impl Validate for ArrayTypeValidator {
     }
 }
 
-impl ToString for ArrayTypeValidator {
-    fn to_string(&self) -> String {
-        "type: array".to_string()
+impl core::fmt::Display for ArrayTypeValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "type: array".fmt(f)
     }
 }
 
@@ -276,9 +277,9 @@ impl Validate for ObjectTypeValidator {
     }
 }
 
-impl ToString for ObjectTypeValidator {
-    fn to_string(&self) -> String {
-        "type: object".to_string()
+impl core::fmt::Display for ObjectTypeValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "type: object".fmt(f)
     }
 }
 
@@ -315,9 +316,9 @@ impl Validate for NumberTypeValidator {
         }
     }
 }
-impl ToString for NumberTypeValidator {
-    fn to_string(&self) -> String {
-        "type: number".to_string()
+impl core::fmt::Display for NumberTypeValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "type: number".fmt(f)
     }
 }
 pub(crate) struct IntegerTypeValidator {
@@ -358,9 +359,9 @@ impl Validate for IntegerTypeValidator {
     }
 }
 
-impl ToString for IntegerTypeValidator {
-    fn to_string(&self) -> String {
-        "type: integer".to_string()
+impl core::fmt::Display for IntegerTypeValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "type: integer".fmt(f)
     }
 }
 

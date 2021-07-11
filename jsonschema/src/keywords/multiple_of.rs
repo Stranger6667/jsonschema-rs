@@ -60,9 +60,9 @@ impl Validate for MultipleOfFloatValidator {
     }
 }
 
-impl ToString for MultipleOfFloatValidator {
-    fn to_string(&self) -> String {
-        format!("multipleOf: {}", self.multiple_of)
+impl core::fmt::Display for MultipleOfFloatValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "multipleOf: {}", self.multiple_of)
     }
 }
 
@@ -116,9 +116,9 @@ impl Validate for MultipleOfIntegerValidator {
     }
 }
 
-impl ToString for MultipleOfIntegerValidator {
-    fn to_string(&self) -> String {
-        format!("multipleOf: {}", self.multiple_of)
+impl core::fmt::Display for MultipleOfIntegerValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "multipleOf: {}", self.multiple_of)
     }
 }
 #[inline]

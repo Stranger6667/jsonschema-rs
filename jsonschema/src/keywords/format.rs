@@ -46,9 +46,9 @@ macro_rules! format_validator {
             }
         }
 
-        impl ToString for $validator {
-            fn to_string(&self) -> String {
-                concat!("format: ", $format_name).to_string()
+        impl core::fmt::Display for $validator {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                concat!("format: ", $format_name).fmt(f)
             }
         }
     };
@@ -347,9 +347,9 @@ impl CustomFormatValidator {
         }))
     }
 }
-impl ToString for CustomFormatValidator {
-    fn to_string(&self) -> String {
-        format!("format: {}", self.format_name)
+impl core::fmt::Display for CustomFormatValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "format: {}", self.format_name)
     }
 }
 

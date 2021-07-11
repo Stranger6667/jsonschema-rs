@@ -82,9 +82,10 @@ impl Validate for DependenciesValidator {
     }
 }
 
-impl ToString for DependenciesValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for DependenciesValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "dependencies: {{{}}}",
             format_key_value_validators(&self.dependencies)
         )

@@ -51,9 +51,10 @@ impl Validate for ConstArrayValidator {
         }
     }
 }
-impl ToString for ConstArrayValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for ConstArrayValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "const: [{}]",
             self.value
                 .iter()
@@ -103,9 +104,9 @@ impl Validate for ConstBooleanValidator {
         }
     }
 }
-impl ToString for ConstBooleanValidator {
-    fn to_string(&self) -> String {
-        format!("const: {}", self.value)
+impl core::fmt::Display for ConstBooleanValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "const: {}", self.value)
     }
 }
 
@@ -142,9 +143,9 @@ impl Validate for ConstNullValidator {
         instance.is_null()
     }
 }
-impl ToString for ConstNullValidator {
-    fn to_string(&self) -> String {
-        format!("const: {}", Value::Null)
+impl core::fmt::Display for ConstNullValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "const: {}", Value::Null)
     }
 }
 
@@ -196,9 +197,9 @@ impl Validate for ConstNumberValidator {
     }
 }
 
-impl ToString for ConstNumberValidator {
-    fn to_string(&self) -> String {
-        format!("const: {}", self.original_value)
+impl core::fmt::Display for ConstNumberValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "const: {}", self.original_value)
     }
 }
 
@@ -248,9 +249,10 @@ impl Validate for ConstObjectValidator {
     }
 }
 
-impl ToString for ConstObjectValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for ConstObjectValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "const: {{{}}}",
             self.value
                 .iter()
@@ -304,9 +306,9 @@ impl Validate for ConstStringValidator {
     }
 }
 
-impl ToString for ConstStringValidator {
-    fn to_string(&self) -> String {
-        format!("const: {}", self.value)
+impl core::fmt::Display for ConstStringValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "const: {}", self.value)
     }
 }
 

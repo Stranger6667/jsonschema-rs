@@ -6,6 +6,10 @@
 
 - Support for custom `format` validators. [#158](https://github.com/Stranger6667/jsonschema-rs/issues/158)
 
+### Changed
+
+- Validators now implement `Display` instead of `ToString`.
+
 ## [0.11.0] - 2021-06-19
 
 ### Added

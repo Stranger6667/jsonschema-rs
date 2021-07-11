@@ -53,9 +53,9 @@ impl Validate for MaxPropertiesValidator {
     }
 }
 
-impl ToString for MaxPropertiesValidator {
-    fn to_string(&self) -> String {
-        format!("maxProperties: {}", self.limit)
+impl core::fmt::Display for MaxPropertiesValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "maxProperties: {}", self.limit)
     }
 }
 

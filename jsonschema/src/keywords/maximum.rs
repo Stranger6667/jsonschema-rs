@@ -56,9 +56,9 @@ macro_rules! validate {
                 true
             }
         }
-        impl ToString for $validator {
-            fn to_string(&self) -> String {
-                format!("maximum: {}", self.limit)
+        impl core::fmt::Display for $validator {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "maximum: {}", self.limit)
             }
         }
     };
@@ -100,9 +100,9 @@ impl Validate for MaximumF64Validator {
         }
     }
 }
-impl ToString for MaximumF64Validator {
-    fn to_string(&self) -> String {
-        format!("maximum: {}", self.limit)
+impl core::fmt::Display for MaximumF64Validator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "maximum: {}", self.limit)
     }
 }
 
