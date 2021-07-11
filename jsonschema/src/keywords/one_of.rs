@@ -95,9 +95,9 @@ impl Validate for OneOfValidator {
     }
 }
 
-impl ToString for OneOfValidator {
-    fn to_string(&self) -> String {
-        format!("oneOf: [{}]", format_vec_of_validators(&self.schemas))
+impl core::fmt::Display for OneOfValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "oneOf: [{}]", format_vec_of_validators(&self.schemas))
     }
 }
 

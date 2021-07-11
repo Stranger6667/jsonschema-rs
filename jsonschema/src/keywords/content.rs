@@ -65,9 +65,9 @@ impl Validate for ContentMediaTypeValidator {
     }
 }
 
-impl ToString for ContentMediaTypeValidator {
-    fn to_string(&self) -> String {
-        format!("contentMediaType: {}", self.media_type)
+impl core::fmt::Display for ContentMediaTypeValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "contentMediaType: {}", self.media_type)
     }
 }
 
@@ -125,9 +125,9 @@ impl Validate for ContentEncodingValidator {
     }
 }
 
-impl ToString for ContentEncodingValidator {
-    fn to_string(&self) -> String {
-        format!("contentEncoding: {}", self.encoding)
+impl core::fmt::Display for ContentEncodingValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "contentEncoding: {}", self.encoding)
     }
 }
 
@@ -206,9 +206,10 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
     }
 }
 
-impl ToString for ContentMediaTypeAndEncodingValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for ContentMediaTypeAndEncodingValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "{{contentMediaType: {}, contentEncoding: {}}}",
             self.media_type, self.encoding
         )

@@ -121,9 +121,9 @@ impl Validate for UniqueItemsValidator {
     }
 }
 
-impl ToString for UniqueItemsValidator {
-    fn to_string(&self) -> String {
-        "uniqueItems: true".to_string()
+impl core::fmt::Display for UniqueItemsValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "uniqueItems: true".fmt(f)
     }
 }
 #[inline]

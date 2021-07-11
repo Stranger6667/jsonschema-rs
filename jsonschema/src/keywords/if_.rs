@@ -70,9 +70,10 @@ impl Validate for IfThenValidator {
     }
 }
 
-impl ToString for IfThenValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for IfThenValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "if: {}, then: {}",
             format_validators(&self.schema),
             format_validators(&self.then_schema)
@@ -143,9 +144,10 @@ impl Validate for IfElseValidator {
     }
 }
 
-impl ToString for IfElseValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for IfElseValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "if: {}, else: {}",
             format_validators(&self.schema),
             format_validators(&self.else_schema)
@@ -229,9 +231,10 @@ impl Validate for IfThenElseValidator {
     }
 }
 
-impl ToString for IfThenElseValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for IfThenElseValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "if: {}, then: {}, else: {}",
             format_validators(&self.schema),
             format_validators(&self.then_schema),

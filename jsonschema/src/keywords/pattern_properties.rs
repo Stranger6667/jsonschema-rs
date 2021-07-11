@@ -79,9 +79,10 @@ impl Validate for PatternPropertiesValidator {
     }
 }
 
-impl ToString for PatternPropertiesValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for PatternPropertiesValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "patternProperties: {{{}}}",
             self.patterns
                 .iter()
@@ -155,9 +156,10 @@ impl Validate for SingleValuePatternPropertiesValidator {
     }
 }
 
-impl ToString for SingleValuePatternPropertiesValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for SingleValuePatternPropertiesValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "patternProperties: {{{}: {}}}",
             self.pattern,
             format_validators(&self.validators)

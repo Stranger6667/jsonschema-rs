@@ -68,9 +68,10 @@ impl Validate for EnumValidator {
     }
 }
 
-impl ToString for EnumValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for EnumValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "enum: [{}]",
             self.items
                 .iter()
@@ -127,9 +128,9 @@ impl Validate for SingleValueEnumValidator {
     }
 }
 
-impl ToString for SingleValueEnumValidator {
-    fn to_string(&self) -> String {
-        format!("enum: [{}]", self.value)
+impl core::fmt::Display for SingleValueEnumValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "enum: [{}]", self.value)
     }
 }
 

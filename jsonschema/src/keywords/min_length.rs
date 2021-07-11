@@ -53,9 +53,9 @@ impl Validate for MinLengthValidator {
     }
 }
 
-impl ToString for MinLengthValidator {
-    fn to_string(&self) -> String {
-        format!("minLength: {}", self.limit)
+impl core::fmt::Display for MinLengthValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "minLength: {}", self.limit)
     }
 }
 

@@ -56,9 +56,9 @@ impl Validate for NotValidator {
     }
 }
 
-impl ToString for NotValidator {
-    fn to_string(&self) -> String {
-        format!("not: {}", format_validators(&self.validators))
+impl core::fmt::Display for NotValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "not: {}", format_validators(&self.validators))
     }
 }
 

@@ -53,9 +53,9 @@ impl Validate for MaxItemsValidator {
     }
 }
 
-impl ToString for MaxItemsValidator {
-    fn to_string(&self) -> String {
-        format!("maxItems: {}", self.limit)
+impl core::fmt::Display for MaxItemsValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "maxItems: {}", self.limit)
     }
 }
 

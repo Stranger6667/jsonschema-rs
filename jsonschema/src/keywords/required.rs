@@ -67,9 +67,9 @@ impl Validate for RequiredValidator {
     }
 }
 
-impl ToString for RequiredValidator {
-    fn to_string(&self) -> String {
-        format!("required: [{}]", self.required.join(", "))
+impl core::fmt::Display for RequiredValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "required: [{}]", self.required.join(", "))
     }
 }
 
@@ -116,9 +116,9 @@ impl Validate for SingleItemRequiredValidator {
     }
 }
 
-impl ToString for SingleItemRequiredValidator {
-    fn to_string(&self) -> String {
-        format!("required: [{}]", self.value)
+impl core::fmt::Display for SingleItemRequiredValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "required: [{}]", self.value)
     }
 }
 

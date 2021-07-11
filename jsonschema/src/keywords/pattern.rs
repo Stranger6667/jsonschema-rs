@@ -84,9 +84,9 @@ impl Validate for PatternValidator {
     }
 }
 
-impl ToString for PatternValidator {
-    fn to_string(&self) -> String {
-        format!("pattern: {}", self.pattern)
+impl core::fmt::Display for PatternValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "pattern: {}", self.pattern)
     }
 }
 

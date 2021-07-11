@@ -66,9 +66,9 @@ impl Validate for ItemsArrayValidator {
     }
 }
 
-impl ToString for ItemsArrayValidator {
-    fn to_string(&self) -> String {
-        format!("items: [{}]", format_vec_of_validators(&self.items))
+impl core::fmt::Display for ItemsArrayValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "items: [{}]", format_vec_of_validators(&self.items))
     }
 }
 
@@ -122,9 +122,9 @@ impl Validate for ItemsObjectValidator {
     }
 }
 
-impl ToString for ItemsObjectValidator {
-    fn to_string(&self) -> String {
-        format!("items: {}", format_validators(&self.validators))
+impl core::fmt::Display for ItemsObjectValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "items: {}", format_validators(&self.validators))
     }
 }
 

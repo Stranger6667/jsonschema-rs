@@ -67,9 +67,10 @@ impl Validate for MultipleTypesValidator {
     }
 }
 
-impl ToString for MultipleTypesValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for MultipleTypesValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "type: [{}]",
             self.types
                 .into_iter()
@@ -119,9 +120,9 @@ impl Validate for IntegerTypeValidator {
     }
 }
 
-impl ToString for IntegerTypeValidator {
-    fn to_string(&self) -> String {
-        "type: integer".to_string()
+impl core::fmt::Display for IntegerTypeValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "type: integer".fmt(f)
     }
 }
 
