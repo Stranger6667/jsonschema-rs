@@ -1,9 +1,8 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{ErrorIterator, ValidationError},
-    keywords::{format_validators, format_vec_of_validators, Validators},
     paths::InstancePath,
-    validator::Validate,
+    validator::{format_validators, format_vec_of_validators, Validate, ValidatorBuf, Validators},
 };
 use serde_json::{Map, Value};
 
@@ -26,7 +25,7 @@ impl AllOfValidator {
             let validators = compile_validators(item, &item_context)?;
             schemas.push(validators)
         }
-        Ok(Box::new(AllOfValidator { schemas }))
+        Ok(context.add_validator(ValidatorBuf::new(AllOfValidator { schemas })))
     }
 }
 
@@ -58,9 +57,9 @@ impl Validate for AllOfValidator {
     }
 }
 
-impl ToString for AllOfValidator {
-    fn to_string(&self) -> String {
-        format!("allOf: [{}]", format_vec_of_validators(&self.schemas))
+impl core::fmt::Display for AllOfValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "allOf: [{}]", format_vec_of_validators(&self.schemas))
     }
 }
 pub(crate) struct SingleValueAllOfValidator {
@@ -76,7 +75,7 @@ impl SingleValueAllOfValidator {
         let keyword_context = context.with_path("allOf");
         let item_context = keyword_context.with_path(0);
         let validators = compile_validators(schema, &item_context)?;
-        Ok(Box::new(SingleValueAllOfValidator { validators }))
+        Ok(context.add_validator(ValidatorBuf::new(SingleValueAllOfValidator { validators })))
     }
 }
 
@@ -102,11 +101,12 @@ impl Validate for SingleValueAllOfValidator {
     }
 }
 
-impl ToString for SingleValueAllOfValidator {
-    fn to_string(&self) -> String {
-        format!("allOf: [{}]", format_validators(&self.validators))
+impl core::fmt::Display for SingleValueAllOfValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "allOf: [{}]", format_validators(&self.validators))
     }
 }
+
 #[inline]
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,

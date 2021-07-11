@@ -1,9 +1,9 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator, ValidationError},
-    keywords::{format_key_value_validators, required, CompilationResult, Validators},
+    keywords::{required, CompilationResult},
     paths::InstancePath,
-    validator::Validate,
+    validator::{format_key_value_validators, Validate, ValidatorBuf, Validators},
 };
 use serde_json::{Map, Value};
 
@@ -27,6 +27,7 @@ impl DependenciesValidator {
                         vec![required::compile_with_path(
                             subschema,
                             (&keyword_context.schema_path).into(),
+                            context,
                         )
                         .expect("The required validator compilation does not return None")?]
                     }
@@ -34,7 +35,7 @@ impl DependenciesValidator {
                 };
                 dependencies.push((key.clone(), s))
             }
-            Ok(Box::new(DependenciesValidator { dependencies }))
+            Ok(context.add_validator(ValidatorBuf::new(DependenciesValidator { dependencies })))
         } else {
             Err(ValidationError::schema(schema))
         }
@@ -82,9 +83,10 @@ impl Validate for DependenciesValidator {
     }
 }
 
-impl ToString for DependenciesValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for DependenciesValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "dependencies: {{{}}}",
             format_key_value_validators(&self.dependencies)
         )

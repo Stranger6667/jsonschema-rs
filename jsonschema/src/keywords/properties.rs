@@ -1,9 +1,9 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator, ValidationError},
-    keywords::{format_key_value_validators, CompilationResult, Validators},
+    keywords::CompilationResult,
     paths::InstancePath,
-    validator::Validate,
+    validator::{format_key_value_validators, Validate, ValidatorBuf, Validators},
 };
 use serde_json::{Map, Value};
 
@@ -28,7 +28,7 @@ impl PropertiesValidator {
                         compile_validators(subschema, &property_context)?,
                     ));
                 }
-                Ok(Box::new(PropertiesValidator { properties }))
+                Ok(context.add_validator(ValidatorBuf::new(PropertiesValidator { properties })))
             }
             _ => Err(ValidationError::schema(schema)),
         }
@@ -78,9 +78,10 @@ impl Validate for PropertiesValidator {
     }
 }
 
-impl ToString for PropertiesValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for PropertiesValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "properties: {{{}}}",
             format_key_value_validators(&self.properties)
         )

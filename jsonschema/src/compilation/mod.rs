@@ -4,8 +4,13 @@
 pub(crate) mod context;
 pub(crate) mod options;
 
+use std::borrow::Cow;
+
 use crate::{
-    error::ErrorIterator, keywords, keywords::Validators, paths::InstancePath, resolver::Resolver,
+    error::ErrorIterator,
+    keywords,
+    paths::InstancePath,
+    validator::{Validate, Validators},
     ValidationError,
 };
 use context::CompilationContext;
@@ -20,7 +25,6 @@ pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
 pub struct JSONSchema<'a> {
     pub(crate) schema: &'a Value,
     pub(crate) validators: Validators,
-    pub(crate) resolver: Resolver<'a>,
     pub(crate) context: CompilationContext<'a>,
 }
 
@@ -88,24 +92,26 @@ pub(crate) fn compile_validators<'a, 'c>(
     schema: &'a Value,
     context: &'c CompilationContext,
 ) -> Result<Validators, ValidationError<'a>> {
-    let context = context.push(schema)?;
+    let ctx = context.push(schema)?;
     match schema {
         Value::Bool(value) => match value {
             true => Ok(vec![]),
             false => Ok(vec![keywords::boolean::FalseValidator::compile(
-                context.into_pointer(),
+                ctx.into_pointer(),
+                &context,
             )
             .expect("Should always compile")]),
         },
-        Value::Object(object) => {
-            if let Some(reference) = object.get("$ref") {
+        Value::Object(object) => match object.get("$ref") {
+            Some(reference) => {
                 if let Value::String(reference) = reference {
-                    Ok(vec![keywords::ref_::compile(schema, reference, &context)
-                        .expect("Should always return Some")?])
+                    // TODO refs
+                    Ok(vec![])
                 } else {
                     Err(ValidationError::schema(schema))
                 }
-            } else {
+            }
+            None => {
                 let mut validators = Vec::with_capacity(object.len());
                 for (keyword, subschema) in object {
                     if let Some(compilation_func) = context.config.draft().get_validator(keyword) {
@@ -116,7 +122,7 @@ pub(crate) fn compile_validators<'a, 'c>(
                 }
                 Ok(validators)
             }
-        }
+        },
         _ => Err(ValidationError::schema(schema)),
     }
 }
@@ -150,21 +156,6 @@ mod tests {
         assert_eq!(compiled.validators.len(), 1);
         assert!(compiled.validate(&value1).is_ok());
         assert!(compiled.validate(&value2).is_err());
-    }
-
-    #[test]
-    fn resolve_ref() {
-        let schema = load("tests/suite/tests/draft7/ref.json", 4);
-        let compiled = JSONSchema::compile(&schema).unwrap();
-        let url = Url::parse("json-schema:///#/definitions/a").unwrap();
-        if let (resource, Cow::Borrowed(resolved)) = compiled
-            .resolver
-            .resolve_fragment(schemas::Draft::Draft7, &url, &schema)
-            .unwrap()
-        {
-            assert_eq!(resource, Url::parse("json-schema:///").unwrap());
-            assert_eq!(resolved, schema.pointer("/definitions/a").unwrap());
-        }
     }
 
     #[test]

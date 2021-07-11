@@ -4,7 +4,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{pattern, CompilationResult},
     paths::{InstancePath, JSONPointer},
-    validator::Validate,
+    validator::{Validate, ValidatorBuf},
     Draft,
 };
 use chrono::{DateTime, NaiveDate};
@@ -42,13 +42,13 @@ macro_rules! format_validator {
         impl $validator {
             pub(crate) fn compile<'a>(context: &CompilationContext) -> CompilationResult<'a> {
                 let schema_path = context.as_pointer_with("format");
-                Ok(Box::new($validator { schema_path }))
+                Ok(context.add_validator(ValidatorBuf::new($validator { schema_path })))
             }
         }
 
-        impl ToString for $validator {
-            fn to_string(&self) -> String {
-                concat!("format: ", $format_name).to_string()
+        impl core::fmt::Display for $validator {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                concat!("format: ", $format_name).fmt(f)
             }
         }
     };
@@ -340,16 +340,18 @@ impl CustomFormatValidator {
         check: fn(&str) -> bool,
     ) -> CompilationResult<'a> {
         let schema_path = context.as_pointer_with("format");
-        Ok(Box::new(CustomFormatValidator {
-            schema_path,
-            format_name,
-            check,
-        }))
+        Ok(
+            context.add_validator(ValidatorBuf::new(CustomFormatValidator {
+                schema_path,
+                format_name,
+                check,
+            })),
+        )
     }
 }
-impl ToString for CustomFormatValidator {
-    fn to_string(&self) -> String {
-        format!("format: {}", self.format_name)
+impl core::fmt::Display for CustomFormatValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "format: {}", self.format_name)
     }
 }
 

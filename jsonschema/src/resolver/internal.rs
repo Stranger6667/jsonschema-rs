@@ -1,80 +1,38 @@
 //! Reference resolver. Implements logic, required by `$ref` keyword.
 //! Is able to load documents from remote locations via HTTP(S).
 use crate::{
-    compilation::{DEFAULT_ROOT_URL, DEFAULT_SCOPE},
+    compilation::DEFAULT_SCOPE,
     error::ValidationError,
     schemas::{id_of, Draft},
 };
 use ahash::AHashMap;
-use parking_lot::RwLock;
 use serde_json::Value;
 use std::borrow::Cow;
 use url::Url;
 
 #[derive(Debug)]
-pub(crate) struct Resolver<'a> {
+pub(crate) struct InternalResolver<'a> {
     // canonical_id: sub-schema mapping to resolve documents by their ID
     // canonical_id is composed with the root document id
     // (if not specified, then `DEFAULT_ROOT_URL` is used for this purpose)
     schemas: AHashMap<String, &'a Value>,
-    store: RwLock<AHashMap<String, Value>>,
 }
 
-impl<'a> Resolver<'a> {
+impl<'a> InternalResolver<'a> {
     pub(crate) fn new(
         draft: Draft,
         scope: &Url,
         schema: &'a Value,
-        store: AHashMap<String, Value>,
-    ) -> Result<Resolver<'a>, ValidationError<'a>> {
+    ) -> Result<InternalResolver<'a>, ValidationError<'a>> {
         let mut schemas = AHashMap::new();
         // traverse the schema and store all named ones under their canonical ids
         find_schemas(draft, schema, scope, &mut |id, schema| {
             schemas.insert(id, schema);
             None
         })?;
-        Ok(Resolver {
-            schemas,
-            store: RwLock::new(store),
-        })
+        Ok(InternalResolver { schemas })
     }
 
-    /// Load a document for the given `url`.
-    /// It may be:
-    ///   - the root document (`DEFAULT_ROOT_URL`) case;
-    ///   - named subschema that is stored in `self.schemas`;
-    ///   - document from a remote location;
-    fn resolve_url(&self, url: &Url, schema: &'a Value) -> Result<Cow<'a, Value>, ValidationError> {
-        match url.as_str() {
-            DEFAULT_ROOT_URL => Ok(Cow::Borrowed(schema)),
-            url_str => {
-                if let Some(cached) = self.store.read().get(url_str) {
-                    return Ok(Cow::Owned(cached.clone()));
-                }
-                match self.schemas.get(url_str) {
-                    Some(value) => Ok(Cow::Borrowed(value)),
-                    None => match url.scheme() {
-                        "http" | "https" => {
-                            #[cfg(any(feature = "reqwest", test))]
-                            {
-                                let response = reqwest::blocking::get(url.as_str())?;
-                                let document: Value = response.json()?;
-                                self.store
-                                    .write()
-                                    .insert(url_str.to_string(), document.clone());
-                                Ok(Cow::Owned(document))
-                            }
-                            #[cfg(not(any(feature = "reqwest", test)))]
-                            panic!("trying to resolve an http(s), but reqwest support has not been included");
-                        }
-                        http_scheme => Err(ValidationError::unknown_reference_scheme(
-                            http_scheme.to_owned(),
-                        )),
-                    },
-                }
-            }
-        }
-    }
     pub(crate) fn resolve_fragment(
         &self,
         draft: Draft,
@@ -98,21 +56,13 @@ impl<'a> Resolver<'a> {
             return Ok((resource, Cow::Borrowed(x)));
         }
 
-        // Each resolved document may be in a changed subfolder
-        // They are tracked when JSON pointer is resolved and added to the resource
-        match self.resolve_url(&resource, schema)? {
-            Cow::Borrowed(document) => match pointer(draft, document, fragment.as_ref()) {
-                Some((folders, resolved)) => {
-                    Ok((join_folders(resource, &folders)?, Cow::Borrowed(resolved)))
-                }
-                None => Err(ValidationError::invalid_reference(url.as_str().to_string())),
-            },
-            Cow::Owned(document) => match pointer(draft, &document, fragment.as_ref()) {
-                Some((folders, x)) => {
-                    Ok((join_folders(resource, &folders)?, Cow::Owned(x.clone())))
-                }
-                None => Err(ValidationError::invalid_reference(url.as_str().to_string())),
-            },
+        let document = schema;
+
+        match pointer(draft, document, fragment.as_ref()) {
+            Some((folders, resolved)) => {
+                Ok((join_folders(resource, &folders)?, Cow::Borrowed(resolved)))
+            }
+            None => Err(ValidationError::invalid_reference(url.as_str().to_string())),
         }
     }
 }
@@ -237,12 +187,11 @@ mod tests {
     use std::borrow::Cow;
     use url::Url;
 
-    fn make_resolver(schema: &Value) -> Resolver {
-        Resolver::new(
+    fn make_resolver(schema: &Value) -> InternalResolver {
+        InternalResolver::new(
             Draft::Draft7,
             &Url::parse("json-schema:///").unwrap(),
             schema,
-            AHashMap::new(),
         )
         .unwrap()
     }
@@ -460,28 +409,5 @@ mod tests {
             assert_eq!(resource, Url::parse("json-schema:///").unwrap());
             assert_eq!(resolved, schema.pointer("/definitions/a").unwrap());
         }
-    }
-
-    #[test]
-    fn id_value_is_cleaned() {
-        let schema = json!({
-            "$id": "http://foo.com/schema.json#",
-            "properties": {
-                "foo": {
-                    "$ref": "#/definitions/Bar"
-                }
-            },
-            "definitions": {
-                "Bar": {
-                    "const": 42
-                }
-            }
-        });
-        let compiled = JSONSchema::compile(&schema).unwrap();
-        // `#` should be removed
-        assert!(compiled
-            .resolver
-            .schemas
-            .contains_key("http://foo.com/schema.json"));
     }
 }

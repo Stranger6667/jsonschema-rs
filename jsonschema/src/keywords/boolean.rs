@@ -1,5 +1,7 @@
+use crate::compilation::context::CompilationContext;
 use crate::paths::{InstancePath, JSONPointer};
 
+use crate::validator::ValidatorBuf;
 use crate::{
     compilation::JSONSchema,
     error::{error, ErrorIterator, ValidationError},
@@ -13,8 +15,11 @@ pub(crate) struct FalseValidator {
 }
 impl FalseValidator {
     #[inline]
-    pub(crate) fn compile<'a>(schema_path: JSONPointer) -> CompilationResult<'a> {
-        Ok(Box::new(FalseValidator { schema_path }))
+    pub(crate) fn compile<'a>(
+        schema_path: JSONPointer,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
+        Ok(context.add_validator(ValidatorBuf::new(FalseValidator { schema_path })))
     }
 }
 impl Validate for FalseValidator {
@@ -36,9 +41,9 @@ impl Validate for FalseValidator {
     }
 }
 
-impl ToString for FalseValidator {
-    fn to_string(&self) -> String {
-        "false".to_string()
+impl core::fmt::Display for FalseValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "false".fmt(f)
     }
 }
 

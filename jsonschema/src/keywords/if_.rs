@@ -1,9 +1,9 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator},
-    keywords::{format_validators, CompilationResult, Validators},
+    keywords::CompilationResult,
     paths::InstancePath,
-    validator::Validate,
+    validator::{format_validators, Validate, ValidatorBuf, Validators},
 };
 use serde_json::{Map, Value};
 
@@ -19,7 +19,7 @@ impl IfThenValidator {
         then_schema: &'a Value,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        Ok(Box::new(IfThenValidator {
+        Ok(context.add_validator(ValidatorBuf::new(IfThenValidator {
             schema: {
                 let if_context = context.with_path("if");
                 compile_validators(schema, &if_context)?
@@ -28,7 +28,7 @@ impl IfThenValidator {
                 let then_context = context.with_path("then");
                 compile_validators(then_schema, &then_context)?
             },
-        }))
+        })))
     }
 }
 
@@ -70,9 +70,10 @@ impl Validate for IfThenValidator {
     }
 }
 
-impl ToString for IfThenValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for IfThenValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "if: {}, then: {}",
             format_validators(&self.schema),
             format_validators(&self.then_schema)
@@ -92,7 +93,7 @@ impl IfElseValidator {
         else_schema: &'a Value,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        Ok(Box::new(IfElseValidator {
+        Ok(context.add_validator(ValidatorBuf::new(IfElseValidator {
             schema: {
                 let if_context = context.with_path("if");
                 compile_validators(schema, &if_context)?
@@ -101,7 +102,7 @@ impl IfElseValidator {
                 let else_context = context.with_path("else");
                 compile_validators(else_schema, &else_context)?
             },
-        }))
+        })))
     }
 }
 
@@ -143,9 +144,10 @@ impl Validate for IfElseValidator {
     }
 }
 
-impl ToString for IfElseValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for IfElseValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "if: {}, else: {}",
             format_validators(&self.schema),
             format_validators(&self.else_schema)
@@ -167,20 +169,22 @@ impl IfThenElseValidator {
         else_schema: &'a Value,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        Ok(Box::new(IfThenElseValidator {
-            schema: {
-                let if_context = context.with_path("if");
-                compile_validators(schema, &if_context)?
-            },
-            then_schema: {
-                let then_context = context.with_path("then");
-                compile_validators(then_schema, &then_context)?
-            },
-            else_schema: {
-                let else_context = context.with_path("else");
-                compile_validators(else_schema, &else_context)?
-            },
-        }))
+        Ok(
+            context.add_validator(ValidatorBuf::new(IfThenElseValidator {
+                schema: {
+                    let if_context = context.with_path("if");
+                    compile_validators(schema, &if_context)?
+                },
+                then_schema: {
+                    let then_context = context.with_path("then");
+                    compile_validators(then_schema, &then_context)?
+                },
+                else_schema: {
+                    let else_context = context.with_path("else");
+                    compile_validators(else_schema, &else_context)?
+                },
+            })),
+        )
     }
 }
 
@@ -229,9 +233,10 @@ impl Validate for IfThenElseValidator {
     }
 }
 
-impl ToString for IfThenElseValidator {
-    fn to_string(&self) -> String {
-        format!(
+impl core::fmt::Display for IfThenElseValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "if: {}, then: {}, else: {}",
             format_validators(&self.schema),
             format_validators(&self.then_schema),

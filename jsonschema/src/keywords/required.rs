@@ -3,7 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
-    validator::Validate,
+    validator::{Validate, ValidatorBuf},
 };
 use serde_json::{Map, Value};
 
@@ -14,7 +14,11 @@ pub(crate) struct RequiredValidator {
 
 impl RequiredValidator {
     #[inline]
-    pub(crate) fn compile(items: &[Value], schema_path: JSONPointer) -> CompilationResult {
+    pub(crate) fn compile<'a>(
+        items: &'a [Value],
+        schema_path: JSONPointer,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
         let mut required = Vec::with_capacity(items.len());
         for item in items {
             match item {
@@ -22,10 +26,10 @@ impl RequiredValidator {
                 _ => return Err(ValidationError::schema(item)),
             }
         }
-        Ok(Box::new(RequiredValidator {
+        Ok(context.add_validator(ValidatorBuf::new(RequiredValidator {
             required,
             schema_path,
-        }))
+        })))
     }
 }
 
@@ -67,9 +71,9 @@ impl Validate for RequiredValidator {
     }
 }
 
-impl ToString for RequiredValidator {
-    fn to_string(&self) -> String {
-        format!("required: [{}]", self.required.join(", "))
+impl core::fmt::Display for RequiredValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "required: [{}]", self.required.join(", "))
     }
 }
 
@@ -80,11 +84,17 @@ pub(crate) struct SingleItemRequiredValidator {
 
 impl SingleItemRequiredValidator {
     #[inline]
-    pub(crate) fn compile(value: &str, schema_path: JSONPointer) -> CompilationResult {
-        Ok(Box::new(SingleItemRequiredValidator {
-            value: value.to_string(),
-            schema_path,
-        }))
+    pub(crate) fn compile<'a>(
+        value: &str,
+        schema_path: JSONPointer,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
+        Ok(
+            context.add_validator(ValidatorBuf::new(SingleItemRequiredValidator {
+                value: value.to_string(),
+                schema_path,
+            })),
+        )
     }
 }
 
@@ -116,9 +126,9 @@ impl Validate for SingleItemRequiredValidator {
     }
 }
 
-impl ToString for SingleItemRequiredValidator {
-    fn to_string(&self) -> String {
-        format!("required: [{}]", self.value)
+impl core::fmt::Display for SingleItemRequiredValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "required: [{}]", self.value)
     }
 }
 
@@ -129,25 +139,30 @@ pub(crate) fn compile<'a>(
     context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     let schema_path = context.as_pointer_with("required");
-    compile_with_path(schema, schema_path)
+    compile_with_path(schema, schema_path, context)
 }
 
 #[inline]
-pub(crate) fn compile_with_path(
-    schema: &Value,
+pub(crate) fn compile_with_path<'a>(
+    schema: &'a Value,
     schema_path: JSONPointer,
-) -> Option<CompilationResult> {
+    context: &CompilationContext,
+) -> Option<CompilationResult<'a>> {
     // IMPORTANT: If this function will ever return `None`, adjust `dependencies.rs` accordingly
     match schema {
         Value::Array(items) => {
             if items.len() == 1 {
                 if let Some(Value::String(item)) = items.iter().next() {
-                    Some(SingleItemRequiredValidator::compile(item, schema_path))
+                    Some(SingleItemRequiredValidator::compile(
+                        item,
+                        schema_path,
+                        context,
+                    ))
                 } else {
                     Some(Err(ValidationError::schema(schema)))
                 }
             } else {
-                Some(RequiredValidator::compile(items, schema_path))
+                Some(RequiredValidator::compile(items, schema_path, context))
             }
         }
         _ => Some(Err(ValidationError::schema(schema))),

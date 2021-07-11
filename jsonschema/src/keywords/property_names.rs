@@ -1,9 +1,9 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{format_validators, CompilationResult, Validators},
+    keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
-    validator::Validate,
+    validator::{format_validators, Validate, ValidatorBuf, Validators},
 };
 use serde_json::{Map, Value};
 
@@ -18,9 +18,11 @@ impl PropertyNamesObjectValidator {
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("propertyNames");
-        Ok(Box::new(PropertyNamesObjectValidator {
-            validators: compile_validators(schema, &keyword_context)?,
-        }))
+        Ok(
+            context.add_validator(ValidatorBuf::new(PropertyNamesObjectValidator {
+                validators: compile_validators(schema, &keyword_context)?,
+            })),
+        )
     }
 }
 
@@ -72,9 +74,9 @@ impl Validate for PropertyNamesObjectValidator {
         }
     }
 }
-impl ToString for PropertyNamesObjectValidator {
-    fn to_string(&self) -> String {
-        format!("propertyNames: {}", format_validators(&self.validators))
+impl core::fmt::Display for PropertyNamesObjectValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "propertyNames: {}", format_validators(&self.validators))
     }
 }
 
@@ -86,7 +88,11 @@ impl PropertyNamesBooleanValidator {
     #[inline]
     pub(crate) fn compile<'a>(context: &CompilationContext) -> CompilationResult<'a> {
         let schema_path = context.as_pointer_with("propertyNames");
-        Ok(Box::new(PropertyNamesBooleanValidator { schema_path }))
+        Ok(
+            context.add_validator(ValidatorBuf::new(PropertyNamesBooleanValidator {
+                schema_path,
+            })),
+        )
     }
 }
 
@@ -118,9 +124,9 @@ impl Validate for PropertyNamesBooleanValidator {
     }
 }
 
-impl ToString for PropertyNamesBooleanValidator {
-    fn to_string(&self) -> String {
-        "propertyNames: false".to_string()
+impl core::fmt::Display for PropertyNamesBooleanValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "propertyNames: false".fmt(f)
     }
 }
 

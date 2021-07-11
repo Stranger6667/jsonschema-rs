@@ -1,10 +1,4 @@
-use crate::{
-    compilation::{context::CompilationContext, JSONSchema},
-    error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::CompilationResult,
-    paths::{InstancePath, JSONPointer},
-    validator::Validate,
-};
+use crate::{compilation::{context::CompilationContext, JSONSchema}, error::{error, no_error, ErrorIterator, ValidationError}, keywords::CompilationResult, paths::{InstancePath, JSONPointer}, validator::{Validate, ValidatorBuf}};
 use fraction::{BigFraction, BigUint};
 use serde_json::{Map, Value};
 use std::f64::EPSILON;
@@ -16,11 +10,15 @@ pub(crate) struct MultipleOfFloatValidator {
 
 impl MultipleOfFloatValidator {
     #[inline]
-    pub(crate) fn compile<'a>(multiple_of: f64, schema_path: JSONPointer) -> CompilationResult<'a> {
-        Ok(Box::new(MultipleOfFloatValidator {
+    pub(crate) fn compile<'a>(
+        multiple_of: f64,
+        schema_path: JSONPointer,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
+        Ok(context.add_validator(ValidatorBuf::new(MultipleOfFloatValidator {
             multiple_of,
             schema_path,
-        }))
+        })))
     }
 }
 
@@ -60,9 +58,9 @@ impl Validate for MultipleOfFloatValidator {
     }
 }
 
-impl ToString for MultipleOfFloatValidator {
-    fn to_string(&self) -> String {
-        format!("multipleOf: {}", self.multiple_of)
+impl core::fmt::Display for MultipleOfFloatValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "multipleOf: {}", self.multiple_of)
     }
 }
 
@@ -73,11 +71,15 @@ pub(crate) struct MultipleOfIntegerValidator {
 
 impl MultipleOfIntegerValidator {
     #[inline]
-    pub(crate) fn compile<'a>(multiple_of: f64, schema_path: JSONPointer) -> CompilationResult<'a> {
-        Ok(Box::new(MultipleOfIntegerValidator {
+    pub(crate) fn compile<'a>(
+        multiple_of: f64,
+        schema_path: JSONPointer,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
+        Ok(context.add_validator(ValidatorBuf::new(MultipleOfIntegerValidator {
             multiple_of,
             schema_path,
-        }))
+        })))
     }
 }
 
@@ -116,9 +118,9 @@ impl Validate for MultipleOfIntegerValidator {
     }
 }
 
-impl ToString for MultipleOfIntegerValidator {
-    fn to_string(&self) -> String {
-        format!("multipleOf: {}", self.multiple_of)
+impl core::fmt::Display for MultipleOfIntegerValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "multipleOf: {}", self.multiple_of)
     }
 }
 #[inline]
@@ -134,9 +136,14 @@ pub(crate) fn compile<'a>(
             Some(MultipleOfIntegerValidator::compile(
                 multiple_of,
                 schema_path,
+                context,
             ))
         } else {
-            Some(MultipleOfFloatValidator::compile(multiple_of, schema_path))
+            Some(MultipleOfFloatValidator::compile(
+                multiple_of,
+                schema_path,
+                context,
+            ))
         }
     } else {
         Some(Err(ValidationError::schema(schema)))

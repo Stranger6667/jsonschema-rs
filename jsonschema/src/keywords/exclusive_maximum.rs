@@ -3,7 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
-    validator::Validate,
+    validator::{Validate, ValidatorBuf},
 };
 use num_cmp::NumCmp;
 use serde_json::{Map, Value};
@@ -57,9 +57,9 @@ macro_rules! validate {
                 }
             }
         }
-        impl ToString for $validator {
-            fn to_string(&self) -> String {
-                format!("exclusiveMaximum: {}", self.limit)
+        impl core::fmt::Display for $validator {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "exclusiveMaximum: {}", self.limit)
             }
         }
     };
@@ -102,9 +102,9 @@ impl Validate for ExclusiveMaximumF64Validator {
         }
     }
 }
-impl ToString for ExclusiveMaximumF64Validator {
-    fn to_string(&self) -> String {
-        format!("exclusiveMaximum: {}", self.limit)
+impl core::fmt::Display for ExclusiveMaximumF64Validator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "exclusiveMaximum: {}", self.limit)
     }
 }
 
@@ -117,21 +117,18 @@ pub(crate) fn compile<'a>(
     if let Value::Number(limit) = schema {
         let schema_path = context.as_pointer_with("exclusiveMaximum");
         if let Some(limit) = limit.as_u64() {
-            Some(Ok(Box::new(ExclusiveMaximumU64Validator {
-                limit,
-                schema_path,
-            })))
+            Some(Ok(context.add_validator(ValidatorBuf::new(
+                ExclusiveMaximumU64Validator { limit, schema_path },
+            ))))
         } else if let Some(limit) = limit.as_i64() {
-            Some(Ok(Box::new(ExclusiveMaximumI64Validator {
-                limit,
-                schema_path,
-            })))
+            Some(Ok(context.add_validator(ValidatorBuf::new(
+                ExclusiveMaximumI64Validator { limit, schema_path },
+            ))))
         } else {
             let limit = limit.as_f64().expect("Always valid");
-            Some(Ok(Box::new(ExclusiveMaximumF64Validator {
-                limit,
-                schema_path,
-            })))
+            Some(Ok(context.add_validator(ValidatorBuf::new(
+                ExclusiveMaximumF64Validator { limit, schema_path },
+            ))))
         }
     } else {
         Some(Err(ValidationError::schema(schema)))

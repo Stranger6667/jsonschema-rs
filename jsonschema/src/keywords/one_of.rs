@@ -1,9 +1,9 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{format_vec_of_validators, CompilationResult, Validators},
+    keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
-    validator::Validate,
+    validator::{format_vec_of_validators, Validate, ValidatorBuf, Validators},
 };
 use serde_json::{Map, Value};
 
@@ -24,10 +24,10 @@ impl OneOfValidator {
             for item in items {
                 schemas.push(compile_validators(item, &keyword_context)?)
             }
-            Ok(Box::new(OneOfValidator {
+            Ok(context.add_validator(ValidatorBuf::new(OneOfValidator {
                 schemas,
                 schema_path: keyword_context.into_pointer(),
-            }))
+            })))
         } else {
             Err(ValidationError::schema(schema))
         }
@@ -95,9 +95,9 @@ impl Validate for OneOfValidator {
     }
 }
 
-impl ToString for OneOfValidator {
-    fn to_string(&self) -> String {
-        format!("oneOf: [{}]", format_vec_of_validators(&self.schemas))
+impl core::fmt::Display for OneOfValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "oneOf: [{}]", format_vec_of_validators(&self.schemas))
     }
 }
 

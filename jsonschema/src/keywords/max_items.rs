@@ -3,7 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
-    validator::Validate,
+    validator::{Validate, ValidatorBuf},
 };
 use serde_json::{Map, Value};
 
@@ -14,9 +14,13 @@ pub(crate) struct MaxItemsValidator {
 
 impl MaxItemsValidator {
     #[inline]
-    pub(crate) fn compile(schema: &Value, schema_path: JSONPointer) -> CompilationResult {
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        schema_path: JSONPointer,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
         if let Some(limit) = schema.as_u64() {
-            Ok(Box::new(MaxItemsValidator { limit, schema_path }))
+            Ok(context.add_validator(ValidatorBuf::new(MaxItemsValidator { limit, schema_path })))
         } else {
             Err(ValidationError::schema(schema))
         }
@@ -53,9 +57,9 @@ impl Validate for MaxItemsValidator {
     }
 }
 
-impl ToString for MaxItemsValidator {
-    fn to_string(&self) -> String {
-        format!("maxItems: {}", self.limit)
+impl core::fmt::Display for MaxItemsValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "maxItems: {}", self.limit)
     }
 }
 
@@ -66,7 +70,7 @@ pub(crate) fn compile<'a>(
     context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     let schema_path = context.as_pointer_with("maxItems");
-    Some(MaxItemsValidator::compile(schema, schema_path))
+    Some(MaxItemsValidator::compile(schema, schema_path, context))
 }
 
 #[cfg(test)]

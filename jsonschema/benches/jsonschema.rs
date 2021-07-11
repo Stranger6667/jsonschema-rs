@@ -524,12 +524,12 @@ bench!(
   valid = {"ABC": 1};
   invalid = {"ABCD": 1};
 );
-bench!(
-  name = "ref";
-  schema = {"items": [{"type": "integer"},{"$ref": "#/items/0"}]};
-  valid = [1, 2];
-  invalid = [1, "b"];
-);
+// bench!(
+//   name = "ref";
+//   schema = {"items": [{"type": "integer"},{"$ref": "#/items/0"}]};
+//   valid = [1, 2];
+//   invalid = [1, "b"];
+// );
 bench!(
   name = "required";
   schema = {"required": ["a"]};
@@ -613,7 +613,7 @@ criterion_group!(
     bench_pattern_properties,
     bench_properties,
     bench_property_names,
-    bench_ref,
+    // bench_ref,
     bench_required,
     bench_type_integer,
     bench_type_string,

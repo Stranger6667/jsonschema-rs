@@ -61,6 +61,7 @@ pub(crate) fn error(instance: ValidationError) -> ErrorIterator {
 /// Kinds of errors that may happen during validation
 #[derive(Debug)]
 #[allow(missing_docs)]
+#[non_exhaustive]
 pub enum ValidationErrorKind {
     /// The input array contain more items than expected.
     AdditionalItems { limit: usize },
@@ -132,9 +133,6 @@ pub enum ValidationErrorKind {
     },
     /// When a required property is missing.
     Required { property: Value },
-    /// Any error that happens during network request via `reqwest` crate
-    #[cfg(any(feature = "reqwest", test))]
-    Reqwest { error: reqwest::Error },
     /// Resolved schema failed to compile.
     Schema,
     /// When the input value doesn't match one or multiple required types.
@@ -646,15 +644,6 @@ impl<'a> ValidationError<'a> {
             schema_path,
         }
     }
-    #[cfg(any(feature = "reqwest", test))]
-    pub(crate) fn reqwest(error: reqwest::Error) -> ValidationError<'a> {
-        ValidationError {
-            instance_path: JSONPointer::default(),
-            instance: Cow::Owned(Value::Null),
-            kind: ValidationErrorKind::Reqwest { error },
-            schema_path: JSONPointer::default(),
-        }
-    }
 
     pub(crate) fn schema(instance: &'a Value) -> ValidationError<'a> {
         ValidationError {
@@ -765,13 +754,6 @@ impl From<url::ParseError> for ValidationError<'_> {
         ValidationError::invalid_url(err)
     }
 }
-#[cfg(any(feature = "reqwest", test))]
-impl From<reqwest::Error> for ValidationError<'_> {
-    #[inline]
-    fn from(err: reqwest::Error) -> Self {
-        ValidationError::reqwest(err)
-    }
-}
 
 /// Textual representation of various validation errors.
 impl fmt::Display for ValidationError<'_> {
@@ -781,8 +763,6 @@ impl fmt::Display for ValidationError<'_> {
         match &self.kind {
             ValidationErrorKind::Schema => write!(f, "Schema error"),
             ValidationErrorKind::JSONParse { error } => write!(f, "{}", error),
-            #[cfg(any(feature = "reqwest", test))]
-            ValidationErrorKind::Reqwest { error } => write!(f, "{}", error),
             ValidationErrorKind::FileNotFound { error } => write!(f, "{}", error),
             ValidationErrorKind::InvalidURL { error } => write!(f, "{}", error),
             ValidationErrorKind::BacktrackLimitExceeded { error } => write!(f, "{}", error),

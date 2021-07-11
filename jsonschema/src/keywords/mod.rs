@@ -30,54 +30,12 @@ pub(crate) mod pattern;
 pub(crate) mod pattern_properties;
 pub(crate) mod properties;
 pub(crate) mod property_names;
-pub(crate) mod ref_;
 pub(crate) mod required;
 pub(crate) mod type_;
 pub(crate) mod unique_items;
-use crate::{error, validator::Validate};
+use crate::{error, validator::ValidatorRef};
 
-pub(crate) type CompilationResult<'a> = Result<BoxedValidator, error::ValidationError<'a>>;
-pub(crate) type BoxedValidator = Box<dyn Validate + Send + Sync>;
-pub(crate) type Validators = Vec<BoxedValidator>;
-
-fn format_validators(validators: &[BoxedValidator]) -> String {
-    match validators.len() {
-        0 => "{}".to_string(),
-        1 => {
-            let name = validators[0].to_string();
-            match name.as_str() {
-                // boolean validators are represented as is, without brackets because if they
-                // occur in a vector, then the schema is not a key/value mapping
-                "true" | "false" => name,
-                _ => format!("{{{}}}", name),
-            }
-        }
-        _ => format!(
-            "{{{}}}",
-            validators
-                .iter()
-                .map(|validator| format!("{:?}", validator))
-                .collect::<Vec<String>>()
-                .join(", ")
-        ),
-    }
-}
-
-fn format_vec_of_validators(validators: &[Validators]) -> String {
-    validators
-        .iter()
-        .map(|v| format_validators(v))
-        .collect::<Vec<String>>()
-        .join(", ")
-}
-
-fn format_key_value_validators(validators: &[(String, Validators)]) -> String {
-    validators
-        .iter()
-        .map(|(name, validators)| format!("{}: {}", name, format_validators(validators)))
-        .collect::<Vec<String>>()
-        .join(", ")
-}
+pub(crate) type CompilationResult<'a> = Result<ValidatorRef, error::ValidationError<'a>>;
 
 #[cfg(test)]
 mod tests {

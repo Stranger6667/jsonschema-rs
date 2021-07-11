@@ -1,9 +1,9 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator},
-    keywords::{format_validators, format_vec_of_validators, CompilationResult, Validators},
+    keywords::CompilationResult,
     paths::InstancePath,
-    validator::Validate,
+    validator::{format_validators, format_vec_of_validators, Validate, ValidatorBuf, Validators},
 };
 use serde_json::{Map, Value};
 
@@ -23,7 +23,7 @@ impl ItemsArrayValidator {
             let validators = compile_validators(item, &item_context)?;
             items.push(validators)
         }
-        Ok(Box::new(ItemsArrayValidator { items }))
+        Ok(context.add_validator(ValidatorBuf::new(ItemsArrayValidator { items })))
     }
 }
 impl Validate for ItemsArrayValidator {
@@ -66,9 +66,9 @@ impl Validate for ItemsArrayValidator {
     }
 }
 
-impl ToString for ItemsArrayValidator {
-    fn to_string(&self) -> String {
-        format!("items: [{}]", format_vec_of_validators(&self.items))
+impl core::fmt::Display for ItemsArrayValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "items: [{}]", format_vec_of_validators(&self.items))
     }
 }
 
@@ -83,7 +83,7 @@ impl ItemsObjectValidator {
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("items");
         let validators = compile_validators(schema, &keyword_context)?;
-        Ok(Box::new(ItemsObjectValidator { validators }))
+        Ok(context.add_validator(ValidatorBuf::new(ItemsObjectValidator { validators })))
     }
 }
 impl Validate for ItemsObjectValidator {
@@ -122,9 +122,9 @@ impl Validate for ItemsObjectValidator {
     }
 }
 
-impl ToString for ItemsObjectValidator {
-    fn to_string(&self) -> String {
-        format!("items: {}", format_validators(&self.validators))
+impl core::fmt::Display for ItemsObjectValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "items: {}", format_validators(&self.validators))
     }
 }
 
