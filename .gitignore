@@ -1,6 +1,7 @@
 # Rust
 /jsonschema/target
 /bindings/*/target
+/bench_helpers/target
 .hypothesis
 .benchmarks
 /jsonschema/Cargo.lock
