@@ -5,7 +5,7 @@ pub(crate) mod context;
 pub(crate) mod options;
 
 use crate::{
-    error::ErrorIterator, keywords, keywords::Validators, paths::InstancePath, resolver::Resolver,
+    error::ErrorIterator, keywords, paths::InstancePath, resolver::Resolver, validator::Validators,
     ValidationError,
 };
 use context::CompilationContext;

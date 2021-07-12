@@ -1,9 +1,9 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, ErrorIterator},
-    keywords::{CompilationResult, Validators},
+    keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
-    validator::Validate,
+    validator::{Validate, Validators},
 };
 use parking_lot::RwLock;
 use serde_json::Value;
