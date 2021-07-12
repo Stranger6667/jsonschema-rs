@@ -40,13 +40,25 @@ criterion = ">= 0.1"
 mockito = ">= 0"
 json_schema_test_suite = ">= 0.3"
 jsonschema-valid = "0.4.0"
+bench_helpers = { path = "../bench_helpers" }
 valico = "3.6.0"
 test-case = "1"
 paste = ">= 0.1"
 reqwest = { version = ">= 0.10", features = ["blocking", "json"] }
 
+# Benchmarks for `jsonschema`
 [[bench]]
 name = "jsonschema"
+harness = false
+
+# Benchmarks for `valico`
+[[bench]]
+name = "valico"
+harness = false
+
+# Benchmarks for `jsonschema_valid`
+[[bench]]
+name = "jsonschema_valid"
 harness = false
 
 [profile.release]

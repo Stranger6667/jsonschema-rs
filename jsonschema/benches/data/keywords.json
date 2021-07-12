@@ -1,0 +1,932 @@
+[
+    {
+        "name": "additional_items_boolean",
+        "schema": {
+            "items": [
+                {},
+                {},
+                {}
+            ],
+            "additionalItems": false
+        },
+        "valid": [
+            [
+                1,
+                2,
+                3
+            ]
+        ],
+        "invalid": [
+            [
+                1,
+                2,
+                3,
+                4
+            ]
+        ]
+    },
+    {
+        "name": "additional_items_object",
+        "schema": {
+            "items": [
+                {},
+                {},
+                {}
+            ],
+            "additionalItems": {
+                "type": "string"
+            }
+        },
+        "valid": [
+            [
+                1,
+                2,
+                3,
+                "foo"
+            ]
+        ],
+        "invalid": [
+            [
+                1,
+                2,
+                3,
+                4
+            ]
+        ]
+    },
+    {
+        "name": "additional_properties_single",
+        "schema": {
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "valid": [
+            {
+                "foo": "bar"
+            }
+        ],
+        "invalid": [
+            {
+                "foo": 1
+            }
+        ]
+    },
+    {
+        "name": "additional_properties_and_properties",
+        "schema": {
+            "additionalProperties": {
+                "type": "string"
+            },
+            "properties": {
+                "foo": {}
+            }
+        },
+        "valid": [
+            {
+                "foo": 1
+            }
+        ],
+        "invalid": [
+            {
+                "foo": 1,
+                "bar": true
+            }
+        ]
+    },
+    {
+        "name": "additional_properties_and_pattern_properties",
+        "schema": {
+            "additionalProperties": {
+                "type": "string"
+            },
+            "patternProperties": {
+                "f.*o": {
+                    "type": "integer"
+                }
+            }
+        },
+        "valid": [
+            {
+                "foo": 1
+            }
+        ],
+        "invalid": [
+            {
+                "foo": 1,
+                "bar": true
+            }
+        ]
+    },
+    {
+        "name": "additional_properties_and_properties_and_pattern_properties",
+        "schema": {
+            "additionalProperties": {
+                "type": "string"
+            },
+            "properties": {
+                "foo": {}
+            },
+            "patternProperties": {
+                "f.*a": {
+                    "type": "integer"
+                }
+            }
+        },
+        "valid": [
+            {
+                "foo": null,
+                "fza": 2
+            }
+        ],
+        "invalid": [
+            {
+                "foo": null,
+                "fzo": 2,
+                "bar": true
+            }
+        ]
+    },
+    {
+        "name": "additional_properties_false",
+        "schema": {
+            "additionalProperties": false
+        },
+        "valid": [
+            {}
+        ],
+        "invalid": [
+            {
+                "foo": 1
+            }
+        ]
+    },
+    {
+        "name": "additional_properties_false_and_properties",
+        "schema": {
+            "additionalProperties": false,
+            "properties": {
+                "foo": {}
+            }
+        },
+        "valid": [
+            {
+                "foo": 1
+            }
+        ],
+        "invalid": [
+            {
+                "foo": 1,
+                "bar": 2
+            }
+        ]
+    },
+    {
+        "name": "additional_properties_false_and_pattern_properties",
+        "schema": {
+            "additionalProperties": false,
+            "patternProperties": {
+                "f.*o": {
+                    "type": "integer"
+                }
+            }
+        },
+        "valid": [
+            {
+                "foo": 1
+            }
+        ],
+        "invalid": [
+            {
+                "foo": 1,
+               "bar": 2
+            }
+        ]
+    },
+    {
+        "name": "additional_properties_false_and_properties_and_pattern_properties",
+        "schema": {
+            "additionalProperties": false,
+            "properties": {
+                "foo": {}
+            },
+            "patternProperties": {
+                "f.*o": {
+                    "type": "integer"
+                }
+            }
+        },
+        "valid": [
+            {
+                "foo": 1
+            }
+        ],
+        "invalid": [
+            {
+                "foo": 1,
+                "fz0": 2,
+                "bar": 2
+            }
+        ]
+    },
+    {
+        "name": "all_of",
+        "schema": {
+            "allOf": [
+                {
+                    "type": "integer"
+                },
+                {
+                    "minimum": 2
+                }
+            ]
+        },
+        "valid": [
+            4
+        ],
+        "invalid": [
+            1
+        ]
+    },
+    {
+        "name": "any_of",
+        "schema": {
+            "anyOf": [
+                {
+                    "type": "integer"
+                },
+                {
+                    "minimum": 2
+                }
+            ]
+        },
+        "valid": [
+            1
+        ],
+        "invalid": [
+            1.5
+        ]
+    },
+    {
+        "name": "any_of_multiple_types",
+        "schema": {
+            "anyOf": [
+                {
+                    "type": "integer"
+                },
+                {
+                    "type": "string"
+                }
+            ]
+        },
+        "valid": [
+            "foo"
+        ],
+        "invalid": [
+            null
+        ]
+    },
+    {
+        "name": "boolean_false",
+        "schema": false,
+        "invalid": [
+            1
+        ]
+    },
+    {
+        "name": "const",
+        "schema": {
+            "const": 1
+        },
+        "valid": [
+            1
+        ],
+        "invalid": [
+            "foo"
+        ]
+    },
+    {
+        "name": "contains",
+        "schema": {
+            "contains": {
+                "minimum": 5
+            }
+        },
+        "valid": [
+            [
+                5
+            ]
+        ],
+        "invalid": [
+            [
+                1
+            ]
+        ]
+    },
+    {
+        "name": "enum",
+        "schema": {
+            "enum": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "valid": [
+            4
+        ],
+        "invalid": [
+            5,
+            "6"
+        ]
+    },
+    {
+        "name": "exclusive_maximum",
+        "schema": {
+            "exclusiveMaximum": 3
+        },
+        "valid": [
+            2
+        ],
+        "invalid": [
+            3
+        ]
+    },
+    {
+        "name": "exclusive_minimum",
+        "schema": {
+            "exclusiveMinimum": 3
+        },
+        "valid": [
+            4
+        ],
+        "invalid": [
+            3
+        ]
+    },
+    {
+        "name": "format_date",
+        "schema": {
+            "format": "date"
+        },
+        "valid": [
+            "1963-06-19"
+        ],
+        "invalid": [
+            "06/19/1963"
+        ]
+    },
+    {
+        "name": "format_datetime",
+        "schema": {
+            "format": "date-time"
+        },
+        "valid": [
+            "1963-06-19T08:30:06.283185Z"
+        ],
+        "invalid": [
+            "1990-02-31T15:59:60.123-08:00"
+        ]
+    },
+    {
+        "name": "format_email",
+        "schema": {
+            "format": "email"
+        },
+        "valid": [
+            "test@test.com"
+        ],
+        "invalid": [
+            "foo"
+        ]
+    },
+    {
+        "name": "format_hostname",
+        "schema": {
+            "format": "hostname"
+        },
+        "valid": [
+            "www.example.com"
+        ],
+        "invalid": [
+            "not_a_valid_host_name"
+        ]
+    },
+    {
+        "name": "format_ipv4",
+        "schema": {
+            "format": "ipv4"
+        },
+        "valid": [
+            "127.0.0.1"
+        ],
+        "invalid": [
+            "127.0.0.999",
+            "foobar",
+            "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+        ]
+    },
+    {
+        "name": "format_ipv6",
+        "schema": {
+            "format": "ipv6"
+        },
+        "valid": [
+            "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+        ],
+        "invalid": [
+            "127.0.0.1",
+            "foobar"
+        ]
+    },
+    {
+        "name": "format_iri",
+        "schema": {
+            "format": "iri"
+        },
+        "valid": [
+            "http://\u0192\u00f8\u00f8.\u00df\u00e5r/?\u2202\u00e9\u0153=\u03c0\u00eex#\u03c0\u00ee\u00fcx"
+        ],
+        "invalid": [
+            "/abc"
+        ]
+    },
+    {
+        "name": "format_iri_reference",
+        "schema": {
+            "format": "iri-reference"
+        },
+        "valid": [
+            "http://\u0192\u00f8\u00f8.\u00df\u00e5r/?\u2202\u00e9\u0153=\u03c0\u00eex#\u03c0\u00ee\u00fcx"
+        ],
+        "invalid": [
+            "#\u0192r\u00e4g\\m\u00eant"
+        ]
+    },
+    {
+        "name": "format_json_pointer",
+        "schema": {
+            "format": "json-pointer"
+        },
+        "valid": [
+            "/foo/bar~0/baz~1/%a"
+        ],
+        "invalid": [
+            "/foo/bar~"
+        ]
+    },
+    {
+        "name": "format_regex",
+        "schema": {
+            "format": "regex"
+        },
+        "valid": [
+            "([abc])+\\s+$"
+        ],
+        "invalid": [
+            "^(abc]"
+        ]
+    },
+    {
+        "name": "format_relative_json_pointer",
+        "schema": {
+            "format": "relative-json-pointer"
+        },
+        "valid": [
+            "1"
+        ],
+        "invalid": [
+            "/foo/bar"
+        ]
+    },
+    {
+        "name": "format_time",
+        "schema": {
+            "format": "time"
+        },
+        "valid": [
+            "08:30:06.283185Z"
+        ],
+        "invalid": [
+            "01:01:01,1111"
+        ]
+    },
+    {
+        "name": "format_uri_reference",
+        "schema": {
+            "format": "uri-reference"
+        },
+        "valid": [
+            "http://foo.bar/?baz=qux#quux"
+        ],
+        "invalid": [
+            "#frag\\ment"
+        ]
+    },
+    {
+        "name": "format_uri_template",
+        "schema": {
+            "format": "uri-template"
+        },
+        "valid": [
+            "http://example.com/dictionary/{term:1}/{term}"
+        ],
+        "invalid": [
+            "http://example.com/dictionary/{term:1}/{term"
+        ]
+    },
+    {
+        "name": "items",
+        "schema": {
+            "items": {
+                "type": "integer"
+            }
+        },
+        "valid": [
+            [
+                1,
+                2,
+                3
+            ]
+        ],
+        "invalid": [
+            [
+                1,
+                2,
+                "x"
+            ]
+        ]
+    },
+    {
+        "name": "maximum",
+        "schema": {
+            "maximum": 3
+        },
+        "valid": [
+            3
+        ],
+        "invalid": [
+            5
+        ]
+    },
+    {
+        "name": "max_items",
+        "schema": {
+            "maxItems": 1
+        },
+        "valid": [
+            [
+                1
+            ]
+        ],
+        "invalid": [
+            [
+                1,
+                2
+            ]
+        ]
+    },
+    {
+        "name": "max_length",
+        "schema": {
+            "maxLength": 3
+        },
+        "valid": [
+            "foo"
+        ],
+        "invalid": [
+            "foob"
+        ]
+    },
+    {
+        "name": "max_properties",
+        "schema": {
+            "maxProperties": 1
+        },
+        "valid": [
+            {
+                "a": 1
+            }
+        ],
+        "invalid": [
+            {
+                "a": 1,
+                "b": 1
+            }
+        ]
+    },
+    {
+        "name": "minimum",
+        "schema": {
+            "minimum": 3
+        },
+        "valid": [
+            5
+        ],
+        "invalid": [
+            1
+        ]
+    },
+    {
+        "name": "min_items",
+        "schema": {
+            "minItems": 2
+        },
+        "valid": [
+            [
+                1,
+                2
+            ]
+        ],
+        "invalid": [
+            [
+                1
+            ]
+        ]
+    },
+    {
+        "name": "min_length",
+        "schema": {
+            "minLength": 3
+        },
+        "valid": [
+            "123"
+        ],
+        "invalid": [
+            "12"
+        ]
+    },
+    {
+        "name": "min_properties",
+        "schema": {
+            "minProperties": 2
+        },
+        "valid": [
+            {
+                "a": 1,
+                "b": 2
+            }
+        ],
+        "invalid": [
+            {
+                "a": 1
+            }
+        ]
+    },
+    {
+        "name": "multiple_of_integer",
+        "schema": {
+            "multipleOf": 5
+        },
+        "valid": [
+            125
+        ],
+        "invalid": [
+            212,
+            212.4
+        ]
+    },
+    {
+        "name": "multiple_of_number",
+        "schema": {
+            "multipleOf": 2.5
+        },
+        "valid": [
+            127.5
+        ],
+        "invalid": [
+            112.2
+        ]
+    },
+    {
+        "name": "not",
+        "schema": {
+            "not": {
+                "type": "null"
+            }
+        },
+        "valid": [
+            1
+        ],
+        "invalid": [
+            null
+        ]
+    },
+    {
+        "name": "one_of",
+        "schema": {
+            "oneOf": [
+                {
+                    "type": "integer"
+                },
+                {
+                    "minimum": 2
+                }
+            ]
+        },
+        "valid": [
+            1
+        ],
+        "invalid": [
+            3
+        ]
+    },
+    {
+        "name": "pattern",
+        "schema": {
+            "pattern": "A[0-9]{2}Z"
+        },
+        "valid": [
+            "A11Z"
+        ],
+        "invalid": [
+            "A119"
+        ]
+    },
+    {
+        "name": "pattern_properties",
+        "schema": {
+            "patternProperties": {
+                "f.*o": {
+                    "type": "integer"
+                }
+            }
+        },
+        "valid": [
+            {
+                "foo": 1
+            }
+        ],
+        "invalid": [
+            {
+                "foo": "bar",
+                "fooooo": 2
+            }
+        ]
+    },
+    {
+        "name": "properties",
+        "schema": {
+            "properties": {
+                "foo": {
+                    "type": "string"
+                }
+            }
+        },
+        "valid": [
+            {
+                "foo": "bar"
+            }
+        ],
+        "invalid": [
+            {
+                "foo": 1
+            }
+        ]
+    },
+    {
+        "name": "property_names",
+        "schema": {
+            "propertyNames": {
+                "maxLength": 3
+            }
+        },
+        "valid": [
+            {
+                "ABC": 1
+            }
+        ],
+        "invalid": [
+            {
+                "ABCD": 1
+            }
+        ]
+    },
+    {
+        "name": "ref",
+        "schema": {
+            "items": [
+                {
+                    "type": "integer"
+                },
+                {
+                    "$ref": "#/items/0"
+                }
+            ]
+        },
+        "valid": [
+            [
+                1,
+                2
+            ]
+        ],
+        "invalid": [
+            [
+                1,
+                "b"
+            ]
+        ]
+    },
+    {
+        "name": "required",
+        "schema": {
+            "required": [
+                "a"
+            ]
+        },
+        "valid": [
+            {
+                "a": 1
+            }
+        ],
+        "invalid": [
+            {}
+        ]
+    },
+    {
+        "name": "type_integer",
+        "schema": {
+            "type": "integer"
+        },
+        "valid": [
+            1,
+            1.0
+        ],
+        "invalid": [
+            1.4,
+            "foo"
+        ]
+    },
+    {
+        "name": "type_string",
+        "schema": {
+            "type": "string"
+        },
+        "valid": [
+            "foo"
+        ],
+        "invalid": [
+            1
+        ]
+    },
+    {
+        "name": "type_multiple",
+        "schema": {
+            "type": [
+                "integer",
+                "string"
+            ]
+        },
+        "valid": [
+            "foo"
+        ],
+        "invalid": [
+            []
+        ]
+    },
+    {
+        "name": "unique_items",
+        "schema": {
+            "uniqueItems": true
+        },
+        "valid": [
+            [
+                1,
+                "2",
+                [
+                    3
+                ],
+                {
+                    "4": 4
+                },
+                5,
+                "6",
+                [
+                    7
+                ],
+                {
+                    "8": 8
+                },
+                9,
+                "10",
+                [
+                    11
+                ],
+                {
+                    "12": 12
+                }
+            ]
+        ],
+        "invalid": [
+            [
+                1,
+                2,
+                3,
+                4,
+                5,
+                1
+            ]
+        ]
+    }
+]
