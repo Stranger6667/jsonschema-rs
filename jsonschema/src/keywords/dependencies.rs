@@ -1,9 +1,9 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator, ValidationError},
-    keywords::{format_key_value_validators, required, CompilationResult, Validators},
+    keywords::{required, CompilationResult},
     paths::InstancePath,
-    validator::Validate,
+    validator::{format_key_value_validators, Validate, Validators},
 };
 use serde_json::{Map, Value};
 

@@ -9,9 +9,9 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{format_validators, CompilationResult, Validators},
+    keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
-    validator::Validate,
+    validator::{format_validators, Validate, Validators},
 };
 use ahash::AHashMap;
 use fancy_regex::Regex;
