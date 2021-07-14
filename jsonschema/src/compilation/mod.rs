@@ -58,10 +58,11 @@ impl<'a> JSONSchema<'a> {
     /// Run validation against `instance` and return an iterator over `ValidationError` in the error case.
     #[inline]
     pub fn validate(&'a self, instance: &'a Value) -> Result<(), ErrorIterator<'a>> {
+        let instance_path = InstancePath::new();
         let mut errors = self
             .validators
             .iter()
-            .flat_map(move |validator| validator.validate(self, instance, &InstancePath::new()))
+            .flat_map(move |validator| validator.validate(self, instance, &instance_path))
             .peekable();
         if errors.peek().is_none() {
             Ok(())
