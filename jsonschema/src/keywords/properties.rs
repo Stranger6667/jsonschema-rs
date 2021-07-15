@@ -19,7 +19,7 @@ impl PropertiesValidator {
     ) -> CompilationResult<'a> {
         match schema {
             Value::Object(map) => {
-                let context = context.with_path("properties".to_string());
+                let context = context.with_path("properties");
                 let mut properties = Vec::with_capacity(map.len());
                 for (key, subschema) in map {
                     let property_context = context.with_path(key.clone());

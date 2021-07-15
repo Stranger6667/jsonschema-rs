@@ -88,7 +88,9 @@ fn into_path(py: Python, pointer: JSONPointer) -> PyResult<Py<PyList>> {
     let path = PyList::empty(py);
     for chunk in pointer {
         match chunk {
-            jsonschema::paths::PathChunk::Property(property) => path.append(property)?,
+            jsonschema::paths::PathChunk::Property(property) => {
+                path.append(property.into_string())?
+            }
             jsonschema::paths::PathChunk::Index(index) => path.append(index)?,
             jsonschema::paths::PathChunk::Keyword(keyword) => path.append(keyword)?,
         };

@@ -12,7 +12,7 @@ impl JSONPointer {
         self.0
             .into_iter()
             .map(|item| match item {
-                PathChunk::Property(value) => value,
+                PathChunk::Property(value) => value.into_string(),
                 PathChunk::Index(idx) => idx.to_string(),
                 PathChunk::Keyword(keyword) => keyword.to_string(),
             })
@@ -94,7 +94,7 @@ impl fmt::Display for JSONPointer {
 /// The primary purpose of this enum is to avoid converting indexes to strings during validation.
 pub enum PathChunk {
     /// Property name within a JSON object.
-    Property(String),
+    Property(Box<str>),
     /// Index within a JSON array.
     Index(usize),
     /// JSON Schema keyword.
@@ -115,6 +115,7 @@ impl<'a> InstancePath<'a> {
         }
     }
 
+    #[inline]
     pub(crate) fn push(&'a self, chunk: impl Into<PathChunk>) -> Self {
         InstancePath {
             chunk: Some(chunk.into()),
@@ -161,7 +162,7 @@ impl<'a> IntoIterator for &'a JSONPointer {
 impl From<String> for PathChunk {
     #[inline]
     fn from(value: String) -> Self {
-        PathChunk::Property(value)
+        PathChunk::Property(value.into_boxed_str())
     }
 }
 impl From<&'static str> for PathChunk {
@@ -196,7 +197,7 @@ impl From<&[&str]> for JSONPointer {
     fn from(path: &[&str]) -> Self {
         JSONPointer(
             path.iter()
-                .map(|item| PathChunk::Property((*item).to_string()))
+                .map(|item| PathChunk::Property((*item).into()))
                 .collect(),
         )
     }
