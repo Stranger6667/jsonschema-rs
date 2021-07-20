@@ -9,7 +9,7 @@ use crate::{
     schemas, ValidationError,
 };
 use ahash::AHashMap;
-use std::{borrow::Cow, fmt};
+use std::{fmt, sync::Arc};
 
 const EXPECT_MESSAGE: &str = "Valid meta-schema!";
 
@@ -18,24 +18,24 @@ lazy_static::lazy_static! {
     static ref DRAFT6:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft6.json")).expect("Valid schema!");
     static ref DRAFT7:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft7.json")).expect("Valid schema!");
 
-    static ref META_SCHEMAS: AHashMap<String, serde_json::Value> = {
+    static ref META_SCHEMAS: AHashMap<String, Arc<serde_json::Value>> = {
         let mut store = AHashMap::with_capacity(3);
         store.insert(
             "http://json-schema.org/draft-04/schema".to_string(),
-            DRAFT4.clone()
+            Arc::new(DRAFT4.clone())
         );
         store.insert(
             "http://json-schema.org/draft-06/schema".to_string(),
-            DRAFT6.clone()
+            Arc::new(DRAFT6.clone())
         );
         store.insert(
             "http://json-schema.org/draft-07/schema".to_string(),
-            DRAFT7.clone()
+            Arc::new(DRAFT7.clone())
         );
         store
     };
 
-    static ref META_SCHEMA_VALIDATORS: AHashMap<schemas::Draft, JSONSchema<'static>> = {
+    static ref META_SCHEMA_VALIDATORS: AHashMap<schemas::Draft, JSONSchema> = {
         let mut store = AHashMap::with_capacity(3);
         store.insert(
             schemas::Draft::Draft4,
@@ -63,7 +63,7 @@ pub struct CompilationOptions {
     content_media_type_checks: AHashMap<&'static str, Option<ContentMediaTypeCheckType>>,
     content_encoding_checks_and_converters:
         AHashMap<&'static str, Option<(ContentEncodingCheckType, ContentEncodingConverterType)>>,
-    store: AHashMap<String, serde_json::Value>,
+    store: AHashMap<String, Arc<serde_json::Value>>,
     formats: AHashMap<&'static str, fn(&str) -> bool>,
     validate_schema: bool,
 }
@@ -90,7 +90,7 @@ impl CompilationOptions {
     pub fn compile<'a>(
         &self,
         schema: &'a serde_json::Value,
-    ) -> Result<JSONSchema<'a>, ValidationError<'a>> {
+    ) -> Result<JSONSchema, ValidationError<'a>> {
         // Draft is detected in the following precedence order:
         //   - Explicitly specified;
         //   - $schema field in the document;
@@ -108,15 +108,15 @@ impl CompilationOptions {
                 config.with_draft(draft);
             }
         }
-        let processed_config: Cow<'_, CompilationOptions> = Cow::Owned(config);
-        let draft = processed_config.draft();
+        let draft = config.draft();
 
         let scope = match schemas::id_of(draft, schema) {
             Some(url) => url::Url::parse(url)?,
             None => DEFAULT_SCOPE.clone(),
         };
-        let resolver = Resolver::new(draft, &scope, schema, self.store.clone())?;
-        let context = CompilationContext::new(scope, processed_config);
+        let schema_json = Arc::new(schema.clone());
+        let resolver = Resolver::new(draft, &scope, schema_json.clone(), self.store.clone())?;
+        let context = CompilationContext::new(scope, &config);
 
         if self.validate_schema {
             if let Some(mut errors) = META_SCHEMA_VALIDATORS
@@ -133,10 +133,10 @@ impl CompilationOptions {
         validators.shrink_to_fit();
 
         Ok(JSONSchema {
-            schema,
+            schema: schema_json,
             validators,
             resolver,
-            context,
+            config,
         })
     }
 
@@ -346,7 +346,7 @@ impl CompilationOptions {
     /// calls to remote schemas via the `$ref` keyword.
     #[inline]
     pub fn with_document(&mut self, id: String, document: serde_json::Value) -> &mut Self {
-        self.store.insert(id, document);
+        self.store.insert(id, Arc::new(document));
         self
     }
     /// Register a custom "format" validator.
@@ -427,7 +427,7 @@ mod tests {
             options.with_draft(draft_version);
         }
         let compiled = options.compile(schema).unwrap();
-        compiled.context.config.draft()
+        compiled.draft()
     }
 
     #[test]

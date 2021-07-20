@@ -8,32 +8,34 @@ use crate::{
 use ahash::AHashMap;
 use parking_lot::RwLock;
 use serde_json::Value;
-use std::borrow::Cow;
+use std::sync::Arc;
 use url::Url;
 
 #[derive(Debug)]
-pub(crate) struct Resolver<'a> {
+pub(crate) struct Resolver {
+    root_schema: Arc<Value>,
     // canonical_id: sub-schema mapping to resolve documents by their ID
     // canonical_id is composed with the root document id
     // (if not specified, then `DEFAULT_ROOT_URL` is used for this purpose)
-    schemas: AHashMap<String, &'a Value>,
-    store: RwLock<AHashMap<String, Value>>,
+    schemas: AHashMap<String, Arc<Value>>,
+    store: RwLock<AHashMap<String, Arc<Value>>>,
 }
 
-impl<'a> Resolver<'a> {
-    pub(crate) fn new(
+impl Resolver {
+    pub(crate) fn new<'a>(
         draft: Draft,
         scope: &Url,
-        schema: &'a Value,
-        store: AHashMap<String, Value>,
-    ) -> Result<Resolver<'a>, ValidationError<'a>> {
-        let mut schemas = AHashMap::new();
+        schema: Arc<Value>,
+        store: AHashMap<String, Arc<Value>>,
+    ) -> Result<Resolver, ValidationError<'a>> {
+        let mut schemas: AHashMap<String, Arc<Value>> = AHashMap::new();
         // traverse the schema and store all named ones under their canonical ids
-        find_schemas(draft, schema, scope, &mut |id, schema| {
-            schemas.insert(id, schema);
+        find_schemas(draft, &schema, scope, &mut |id, schema| {
+            schemas.insert(id, Arc::new(schema.clone()));
             None
         })?;
         Ok(Resolver {
+            root_schema: schema,
             schemas,
             store: RwLock::new(store),
         })
@@ -44,25 +46,26 @@ impl<'a> Resolver<'a> {
     ///   - the root document (`DEFAULT_ROOT_URL`) case;
     ///   - named subschema that is stored in `self.schemas`;
     ///   - document from a remote location;
-    fn resolve_url(&self, url: &Url, schema: &'a Value) -> Result<Cow<'a, Value>, ValidationError> {
+    fn resolve_url<'a>(&'a self, url: &Url) -> Result<Arc<Value>, ValidationError> {
         match url.as_str() {
-            DEFAULT_ROOT_URL => Ok(Cow::Borrowed(schema)),
+            DEFAULT_ROOT_URL => Ok(self.root_schema.clone()),
             url_str => {
                 if let Some(cached) = self.store.read().get(url_str) {
-                    return Ok(Cow::Owned(cached.clone()));
+                    return Ok(cached.clone());
                 }
                 match self.schemas.get(url_str) {
-                    Some(value) => Ok(Cow::Borrowed(value)),
+                    Some(value) => Ok(value.clone()),
                     None => match url.scheme() {
                         "http" | "https" => {
                             #[cfg(any(feature = "reqwest", test))]
                             {
                                 let response = reqwest::blocking::get(url.as_str())?;
                                 let document: Value = response.json()?;
+                                let arcdoc = Arc::new(document);
                                 self.store
                                     .write()
-                                    .insert(url_str.to_string(), document.clone());
-                                Ok(Cow::Owned(document))
+                                    .insert(url_str.to_string(), arcdoc.clone());
+                                Ok(arcdoc)
                             }
                             #[cfg(not(any(feature = "reqwest", test)))]
                             panic!("trying to resolve an http(s), but reqwest support has not been included");
@@ -75,12 +78,17 @@ impl<'a> Resolver<'a> {
             }
         }
     }
+
+    /// Resolve a URL possibly containing a fragment to a `serde_json::Value`.
+    ///
+    /// Note that this copies the fragment from the underlying schema, so if
+    /// you are memory constrained you may want to cache the result of this
+    /// call.
     pub(crate) fn resolve_fragment(
         &self,
         draft: Draft,
         url: &Url,
-        schema: &'a Value,
-    ) -> Result<(Url, Cow<'a, Value>), ValidationError> {
+    ) -> Result<(Url, Arc<Value>), ValidationError> {
         let mut resource = url.clone();
         resource.set_fragment(None);
         let fragment =
@@ -88,31 +96,25 @@ impl<'a> Resolver<'a> {
 
         // Location-independent identifiers are searched before trying to resolve by
         // fragment-less url
-        if let Some(x) = find_schemas(draft, schema, &DEFAULT_SCOPE, &mut |id, x| {
+        if let Some(x) = find_schemas(draft, &self.root_schema, &DEFAULT_SCOPE, &mut |id, x| {
             if id == url.as_str() {
                 Some(x)
             } else {
                 None
             }
         })? {
-            return Ok((resource, Cow::Borrowed(x)));
+            return Ok((resource, Arc::new(x.clone())));
         }
 
         // Each resolved document may be in a changed subfolder
         // They are tracked when JSON pointer is resolved and added to the resource
-        match self.resolve_url(&resource, schema)? {
-            Cow::Borrowed(document) => match pointer(draft, document, fragment.as_ref()) {
-                Some((folders, resolved)) => {
-                    Ok((join_folders(resource, &folders)?, Cow::Borrowed(resolved)))
-                }
-                None => Err(ValidationError::invalid_reference(url.as_str().to_string())),
-            },
-            Cow::Owned(document) => match pointer(draft, &document, fragment.as_ref()) {
-                Some((folders, x)) => {
-                    Ok((join_folders(resource, &folders)?, Cow::Owned(x.clone())))
-                }
-                None => Err(ValidationError::invalid_reference(url.as_str().to_string())),
-            },
+        let document = self.resolve_url(&resource)?;
+        match pointer(draft, &document, fragment.as_ref()) {
+            Some((folders, resolved)) => {
+                let joined_folders = join_folders(resource, &folders)?;
+                Ok((joined_folders, Arc::new(resolved.clone())))
+            }
+            None => Err(ValidationError::invalid_reference(url.as_str().to_string())),
         }
     }
 }
@@ -183,10 +185,10 @@ where
 }
 
 /// Based on `serde_json`, but tracks folders in the traversed documents.
-pub(crate) fn pointer<'a>(
+pub(crate) fn pointer<'a, 'b>(
     draft: Draft,
     document: &'a Value,
-    pointer: &str,
+    pointer: &'b str,
 ) -> Option<(Vec<&'a str>, &'a Value)> {
     if pointer.is_empty() {
         return Some((vec![], document));
@@ -234,14 +236,14 @@ mod tests {
     use super::*;
     use crate::JSONSchema;
     use serde_json::json;
-    use std::borrow::Cow;
+    use std::sync::Arc;
     use url::Url;
 
     fn make_resolver(schema: &Value) -> Resolver {
         Resolver::new(
             Draft::Draft7,
             &Url::parse("json-schema:///").unwrap(),
-            schema,
+            Arc::new(schema.clone()),
             AHashMap::new(),
         )
         .unwrap()
@@ -269,8 +271,11 @@ mod tests {
         // Then in the resolver schema there should be only this schema
         assert_eq!(resolver.schemas.len(), 1);
         assert_eq!(
-            resolver.schemas.get("json-schema:///#foo"),
-            schema.pointer("/definitions/A").as_ref()
+            resolver
+                .schemas
+                .get("json-schema:///#foo")
+                .map(|s| s.as_ref()),
+            schema.pointer("/definitions/A")
         );
     }
 
@@ -289,12 +294,18 @@ mod tests {
         // Then in the resolver schema there should be only these schemas
         assert_eq!(resolver.schemas.len(), 2);
         assert_eq!(
-            resolver.schemas.get("json-schema:///#foo"),
-            schema.pointer("/definitions/A/0").as_ref()
+            resolver
+                .schemas
+                .get("json-schema:///#foo")
+                .map(|s| s.as_ref()),
+            schema.pointer("/definitions/A/0")
         );
         assert_eq!(
-            resolver.schemas.get("json-schema:///#bar"),
-            schema.pointer("/definitions/A/1").as_ref()
+            resolver
+                .schemas
+                .get("json-schema:///#bar")
+                .map(|s| s.as_ref()),
+            schema.pointer("/definitions/A/1")
         );
     }
 
@@ -330,12 +341,18 @@ mod tests {
         // Then in the resolver schema there should be root & sub-schema
         assert_eq!(resolver.schemas.len(), 2);
         assert_eq!(
-            resolver.schemas.get("http://localhost:1234/tree"),
-            schema.pointer("").as_ref()
+            resolver
+                .schemas
+                .get("http://localhost:1234/tree")
+                .map(|s| s.as_ref()),
+            schema.pointer("")
         );
         assert_eq!(
-            resolver.schemas.get("http://localhost:1234/node"),
-            schema.pointer("/definitions/node").as_ref()
+            resolver
+                .schemas
+                .get("http://localhost:1234/node")
+                .map(|s| s.as_ref()),
+            schema.pointer("/definitions/node")
         );
     }
 
@@ -350,8 +367,11 @@ mod tests {
         let resolver = make_resolver(&schema);
         assert_eq!(resolver.schemas.len(), 1);
         assert_eq!(
-            resolver.schemas.get("http://localhost:1234/bar#foo"),
-            schema.pointer("/definitions/A").as_ref()
+            resolver
+                .schemas
+                .get("http://localhost:1234/bar#foo")
+                .map(|s| s.as_ref()),
+            schema.pointer("/definitions/A")
         );
     }
 
@@ -375,18 +395,25 @@ mod tests {
         let resolver = make_resolver(&schema);
         assert_eq!(resolver.schemas.len(), 3);
         assert_eq!(
-            resolver.schemas.get("http://localhost:1234/root"),
-            schema.pointer("").as_ref()
-        );
-        assert_eq!(
-            resolver.schemas.get("http://localhost:1234/nested.json"),
-            schema.pointer("/definitions/A").as_ref()
+            resolver
+                .schemas
+                .get("http://localhost:1234/root")
+                .map(|s| s.as_ref()),
+            schema.pointer("")
         );
         assert_eq!(
             resolver
                 .schemas
-                .get("http://localhost:1234/nested.json#foo"),
-            schema.pointer("/definitions/A/definitions/B").as_ref()
+                .get("http://localhost:1234/nested.json")
+                .map(|s| s.as_ref()),
+            schema.pointer("/definitions/A")
+        );
+        assert_eq!(
+            resolver
+                .schemas
+                .get("http://localhost:1234/nested.json#foo")
+                .map(|s| s.as_ref()),
+            schema.pointer("/definitions/A/definitions/B")
         );
     }
 
@@ -402,12 +429,18 @@ mod tests {
         let resolver = make_resolver(&schema);
         assert_eq!(resolver.schemas.len(), 2);
         assert_eq!(
-            resolver.schemas.get("http://localhost:1234/"),
-            schema.pointer("").as_ref()
+            resolver
+                .schemas
+                .get("http://localhost:1234/")
+                .map(|s| s.as_ref()),
+            schema.pointer("")
         );
         assert_eq!(
-            resolver.schemas.get("http://localhost:1234/folder/"),
-            schema.pointer("/items").as_ref()
+            resolver
+                .schemas
+                .get("http://localhost:1234/folder/")
+                .map(|s| s.as_ref()),
+            schema.pointer("/items")
         );
     }
 
@@ -432,12 +465,16 @@ mod tests {
         assert_eq!(
             resolver
                 .schemas
-                .get("http://localhost:1234/scope_change_defs1.json"),
-            schema.pointer("").as_ref()
+                .get("http://localhost:1234/scope_change_defs1.json")
+                .map(|s| s.as_ref()),
+            schema.pointer("")
         );
         assert_eq!(
-            resolver.schemas.get("http://localhost:1234/folder/"),
-            schema.pointer("/definitions/baz").as_ref()
+            resolver
+                .schemas
+                .get("http://localhost:1234/folder/")
+                .map(|s| s.as_ref()),
+            schema.pointer("/definitions/baz")
         );
     }
 
@@ -453,13 +490,9 @@ mod tests {
         });
         let resolver = make_resolver(&schema);
         let url = Url::parse("json-schema:///#/definitions/a").unwrap();
-        if let (resource, Cow::Borrowed(resolved)) = resolver
-            .resolve_fragment(Draft::Draft7, &url, &schema)
-            .unwrap()
-        {
-            assert_eq!(resource, Url::parse("json-schema:///").unwrap());
-            assert_eq!(resolved, schema.pointer("/definitions/a").unwrap());
-        }
+        let (resource, resolved) = resolver.resolve_fragment(Draft::Draft7, &url).unwrap();
+        assert_eq!(resource, Url::parse("json-schema:///").unwrap());
+        assert_eq!(resolved.as_ref(), schema.pointer("/definitions/a").unwrap());
     }
 
     #[test]

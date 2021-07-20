@@ -6,29 +6,30 @@ pub(crate) mod options;
 
 use crate::{
     error::ErrorIterator, keywords, paths::InstancePath, resolver::Resolver, validator::Validators,
-    ValidationError,
+    Draft, ValidationError,
 };
 use context::CompilationContext;
 use options::CompilationOptions;
 use serde_json::Value;
+use std::sync::Arc;
 use url::Url;
 
 pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
 
 /// The structure that holds a JSON Schema compiled into a validation tree
 #[derive(Debug)]
-pub struct JSONSchema<'a> {
-    pub(crate) schema: &'a Value,
+pub struct JSONSchema {
+    pub(crate) schema: Arc<Value>,
     pub(crate) validators: Validators,
-    pub(crate) resolver: Resolver<'a>,
-    pub(crate) context: CompilationContext<'a>,
+    pub(crate) resolver: Resolver,
+    config: CompilationOptions,
 }
 
 lazy_static::lazy_static! {
     pub static ref DEFAULT_SCOPE: Url = url::Url::parse(DEFAULT_ROOT_URL).expect("Is a valid URL");
 }
 
-impl<'a> JSONSchema<'a> {
+impl JSONSchema {
     /// Return a default `CompilationOptions` that can configure
     /// `JSONSchema` compilaton flow.
     ///
@@ -51,13 +52,13 @@ impl<'a> JSONSchema<'a> {
     /// Compile the input schema into a validation tree.
     ///
     /// The method is equivalent to `JSONSchema::options().compile(schema)`
-    pub fn compile(schema: &'a Value) -> Result<JSONSchema<'a>, ValidationError<'a>> {
+    pub fn compile(schema: &Value) -> Result<JSONSchema, ValidationError> {
         Self::options().compile(schema)
     }
 
     /// Run validation against `instance` and return an iterator over `ValidationError` in the error case.
     #[inline]
-    pub fn validate(&'a self, instance: &'a Value) -> Result<(), ErrorIterator<'a>> {
+    pub fn validate<'a>(&'a self, instance: &'a Value) -> Result<(), ErrorIterator<'a>> {
         let instance_path = InstancePath::new();
         let mut errors = self
             .validators
@@ -80,6 +81,16 @@ impl<'a> JSONSchema<'a> {
         self.validators
             .iter()
             .all(|validator| validator.is_valid(self, instance))
+    }
+
+    /// The [`Draft`] which this schema was compiled against
+    pub fn draft(&self) -> Draft {
+        self.config.draft()
+    }
+
+    /// The [`CompilationOptions`] that were used to compile this schema
+    pub const fn config(&self) -> &CompilationOptions {
+        &self.config
     }
 }
 
@@ -127,7 +138,7 @@ mod tests {
     use super::JSONSchema;
     use crate::{error::ValidationError, schemas};
     use serde_json::{from_str, json, Value};
-    use std::{borrow::Cow, fs::File, io::Read, path::Path};
+    use std::{fs::File, io::Read, path::Path};
     use url::Url;
 
     fn load(path: &str, idx: usize) -> Value {
@@ -158,14 +169,12 @@ mod tests {
         let schema = load("tests/suite/tests/draft7/ref.json", 4);
         let compiled = JSONSchema::compile(&schema).unwrap();
         let url = Url::parse("json-schema:///#/definitions/a").unwrap();
-        if let (resource, Cow::Borrowed(resolved)) = compiled
+        let (resource, resolved) = compiled
             .resolver
-            .resolve_fragment(schemas::Draft::Draft7, &url, &schema)
-            .unwrap()
-        {
-            assert_eq!(resource, Url::parse("json-schema:///").unwrap());
-            assert_eq!(resolved, schema.pointer("/definitions/a").unwrap());
-        }
+            .resolve_fragment(schemas::Draft::Draft7, &url)
+            .unwrap();
+        assert_eq!(resource, Url::parse("json-schema:///").unwrap());
+        assert_eq!(resolved.as_ref(), schema.pointer("/definitions/a").unwrap());
     }
 
     #[test]
