@@ -7,7 +7,6 @@ use crate::{
 };
 use parking_lot::RwLock;
 use serde_json::Value;
-use std::borrow::Cow;
 use url::Url;
 
 pub(crate) struct RefValidator {
@@ -43,12 +42,11 @@ impl Validate for RefValidator {
                 .iter()
                 .all(move |validator| validator.is_valid(schema, instance));
         }
-        if let Ok((scope, resolved)) = schema.resolver.resolve_fragment(
-            schema.context.config.draft(),
-            &self.reference,
-            schema.schema,
-        ) {
-            let context = CompilationContext::new(scope, Cow::Borrowed(&schema.context.config));
+        if let Ok((scope, resolved)) = schema
+            .resolver
+            .resolve_fragment(schema.draft(), &self.reference)
+        {
+            let context = CompilationContext::new(scope, schema.config());
             if let Ok(validators) = compile_validators(&resolved, &context) {
                 let result = validators
                     .iter()
@@ -75,13 +73,12 @@ impl Validate for RefValidator {
                     .into_iter(),
             );
         }
-        match schema.resolver.resolve_fragment(
-            schema.context.config.draft(),
-            &self.reference,
-            schema.schema,
-        ) {
+        match schema
+            .resolver
+            .resolve_fragment(schema.draft(), &self.reference)
+        {
             Ok((scope, resolved)) => {
-                let context = CompilationContext::new(scope, Cow::Borrowed(&schema.context.config));
+                let context = CompilationContext::new(scope, schema.config());
                 match compile_validators(&resolved, &context) {
                     Ok(validators) => {
                         let result = Box::new(

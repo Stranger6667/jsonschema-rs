@@ -188,7 +188,7 @@ mod tests {
         let text = Value::String(text.into());
         let schema = json!({});
         let schema = JSONSchema::compile(&schema).unwrap();
-        let context = CompilationContext::new(DEFAULT_SCOPE.clone(), schema.context.config.clone());
+        let context = CompilationContext::new(DEFAULT_SCOPE.clone(), schema.config());
         let compiled = PatternValidator::compile(&pattern, &context).unwrap();
         assert_eq!(compiled.is_valid(&schema, &text), is_matching,)
     }
