@@ -24,12 +24,12 @@ impl ConstArrayValidator {
 }
 impl Validate for ConstArrayValidator {
     #[inline]
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
@@ -77,12 +77,12 @@ impl ConstBooleanValidator {
 }
 impl Validate for ConstBooleanValidator {
     #[inline]
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
@@ -121,12 +121,12 @@ impl ConstNullValidator {
 }
 impl Validate for ConstNullValidator {
     #[inline]
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
@@ -170,12 +170,12 @@ impl ConstNumberValidator {
 }
 
 impl Validate for ConstNumberValidator {
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
@@ -222,12 +222,12 @@ impl ConstObjectValidator {
 }
 
 impl Validate for ConstObjectValidator {
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
@@ -279,12 +279,12 @@ impl ConstStringValidator {
 }
 
 impl Validate for ConstStringValidator {
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {

@@ -38,12 +38,12 @@ impl Validate for PropertyNamesObjectValidator {
         }
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if let Value::Object(item) = &instance {
             let errors: Vec<_> = self
                 .validators
@@ -100,12 +100,12 @@ impl Validate for PropertyNamesBooleanValidator {
         true
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {

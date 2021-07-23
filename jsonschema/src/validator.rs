@@ -5,12 +5,12 @@ use serde_json::Value;
 use std::fmt;
 
 pub(crate) trait Validate: Send + Sync + core::fmt::Display {
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a>;
+    ) -> ErrorIterator<'b>;
     // The same as above, but does not construct ErrorIterator.
     // It is faster for cases when the result is not needed (like anyOf), since errors are
     // not constructed

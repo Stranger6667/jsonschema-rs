@@ -48,12 +48,12 @@ impl Validate for MultipleTypesValidator {
             Value::String(_) => self.types.contains_type(PrimitiveType::String),
         }
     }
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {
@@ -101,12 +101,12 @@ impl Validate for IntegerTypeValidator {
         }
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {

@@ -44,12 +44,12 @@ impl Validate for ContainsValidator {
         }
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if let Value::Array(items) = instance {
             for item in items {
                 if self

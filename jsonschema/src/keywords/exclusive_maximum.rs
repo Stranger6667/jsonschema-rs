@@ -24,12 +24,12 @@ pub(crate) struct ExclusiveMaximumF64Validator {
 macro_rules! validate {
     ($validator: ty) => {
         impl Validate for $validator {
-            fn validate<'a>(
+            fn validate<'a, 'b>(
                 &self,
                 schema: &'a JSONSchema,
-                instance: &'a Value,
+                instance: &'b Value,
                 instance_path: &InstancePath,
-            ) -> ErrorIterator<'a> {
+            ) -> ErrorIterator<'b> {
                 if self.is_valid(schema, instance) {
                     no_error()
                 } else {
@@ -84,12 +84,12 @@ impl Validate for ExclusiveMaximumF64Validator {
         }
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if self.is_valid(schema, instance) {
             no_error()
         } else {

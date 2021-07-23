@@ -199,12 +199,12 @@ impl Validate for AdditionalPropertiesValidator {
         true
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = item
                 .iter()
@@ -260,12 +260,12 @@ impl Validate for AdditionalPropertiesFalseValidator {
         }
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         _: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if let Value::Object(item) = instance {
             if let Some((_, value)) = item.iter().next() {
                 return error(ValidationError::false_schema(
@@ -344,12 +344,12 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
         true
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             let mut unexpected = vec![];
@@ -453,12 +453,12 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValida
         true
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if let Value::Object(map) = instance {
             let mut errors = vec![];
             for (property, value) in map {
@@ -556,12 +556,12 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
         true
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for (property, value) in item.iter() {
@@ -650,12 +650,12 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
         true
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             let mut unexpected = vec![];
@@ -799,12 +799,12 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
         }
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for (property, value) in item.iter() {
@@ -950,12 +950,12 @@ impl<M: PropertiesValidatorsMap> Validate
         true
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             let mut unexpected = vec![];

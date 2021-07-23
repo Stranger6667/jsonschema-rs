@@ -42,12 +42,12 @@ impl Validate for ContentMediaTypeValidator {
         }
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         _: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if let Value::String(item) = instance {
             if (self.func)(item) {
                 no_error()
@@ -102,12 +102,12 @@ impl Validate for ContentEncodingValidator {
         }
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         _: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if let Value::String(item) = instance {
             if (self.func)(item) {
                 no_error()
@@ -172,12 +172,12 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
         }
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         _: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if let Value::String(item) = instance {
             match (self.converter)(item) {
                 Ok(None) => error(ValidationError::content_encoding(
