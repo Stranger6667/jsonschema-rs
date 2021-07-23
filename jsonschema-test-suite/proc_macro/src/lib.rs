@@ -113,7 +113,7 @@ pub fn json_schema_test_suite(attr: TokenStream, item: TokenStream) -> TokenStre
     let mod_name = format_ident!(
         "{}_{}",
         original_function_ident,
-        proc_macro_attributes.draft_folder
+        proc_macro_attributes.draft_folder.replace("-", "_")
     );
 
     let output = quote! {

@@ -6,6 +6,7 @@
 .hypothesis
 .benchmarks
 /jsonschema/Cargo.lock
+/jsonschema-test-suite/Cargo.lock
 
 # IDEs
 /.idea
