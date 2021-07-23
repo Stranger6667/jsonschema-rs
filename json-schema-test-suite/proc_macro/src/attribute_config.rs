@@ -23,7 +23,8 @@ impl Parse for AttrConfig {
                 let braced_content;
                 braced!(braced_content in input);
                 #[allow(clippy::redundant_closure_for_method_calls)]
-                let res: syn::punctuated::Punctuated<LitStr, Token![,]> = braced_content.parse_terminated(|v| v.parse())?;
+                let res: syn::punctuated::Punctuated<LitStr, Token![,]> =
+                    braced_content.parse_terminated(|v| v.parse())?;
                 res
             };
             tests_to_exclude_tokens
@@ -35,7 +36,8 @@ impl Parse for AttrConfig {
         };
 
         let json_schema_test_suite_path =
-            Path::new(&json_schema_test_suite_path_str.replace("/", &MAIN_SEPARATOR.to_string())).to_path_buf();
+            Path::new(&json_schema_test_suite_path_str.replace("/", &MAIN_SEPARATOR.to_string()))
+                .to_path_buf();
 
         Ok(Self {
             json_schema_test_suite_path,

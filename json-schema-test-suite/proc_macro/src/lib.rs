@@ -40,10 +40,17 @@ use quote::{format_ident, quote};
 use regex::Regex;
 use syn::{parse_macro_input, Ident, ItemFn};
 
-fn test_token_stream(tests_to_ignore_regex: &[Regex], wrapped_test_ident: &Ident, test: &TestCase) -> TokenStream2 {
+fn test_token_stream(
+    tests_to_ignore_regex: &[Regex],
+    wrapped_test_ident: &Ident,
+    test: &TestCase,
+) -> TokenStream2 {
     let name = Ident::new(&test.name, Span::call_site());
 
-    let maybe_ignore = if tests_to_ignore_regex.iter().any(|regex| regex.is_match(&test.name)) {
+    let maybe_ignore = if tests_to_ignore_regex
+        .iter()
+        .any(|regex| regex.is_match(&test.name))
+    {
         quote! { #[ignore] }
     } else {
         quote! {}
@@ -91,12 +98,23 @@ pub fn json_schema_test_suite(attr: TokenStream, item: TokenStream) -> TokenStre
         &proc_macro_attributes.draft_folder,
     )
     .iter()
-    .map(|test| test_token_stream(&proc_macro_attributes.tests_to_exclude_regex, original_function_ident, test))
+    .map(|test| {
+        test_token_stream(
+            &proc_macro_attributes.tests_to_exclude_regex,
+            original_function_ident,
+            test,
+        )
+    })
     .collect();
 
-    let setup_mockito_mocks_token_stream = mockito_mocks::setup(&proc_macro_attributes.json_schema_test_suite_path);
+    let setup_mockito_mocks_token_stream =
+        mockito_mocks::setup(&proc_macro_attributes.json_schema_test_suite_path);
 
-    let mod_name = format_ident!("{}_{}", original_function_ident, proc_macro_attributes.draft_folder);
+    let mod_name = format_ident!(
+        "{}_{}",
+        original_function_ident,
+        proc_macro_attributes.draft_folder
+    );
 
     let output = quote! {
         #item_fn

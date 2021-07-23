@@ -39,7 +39,9 @@ fn draft_version(json_schema_test_suite_path: &Path, file_path: &Path) -> String
 
 fn load_inner(json_schema_test_suite_path: &Path, dir: &Path, prefix: &str) -> Vec<TestCase> {
     let mut tests = vec![];
-    for result_entry in fs::read_dir(dir).unwrap_or_else(|_| panic!("Tests directory not found: {}", dir.display())) {
+    for result_entry in
+        fs::read_dir(dir).unwrap_or_else(|_| panic!("Tests directory not found: {}", dir.display()))
+    {
         if let Ok(entry) = result_entry {
             let path = entry.path();
             if entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
@@ -50,7 +52,10 @@ fn load_inner(json_schema_test_suite_path: &Path, dir: &Path, prefix: &str) -> V
                         "{}{}_",
                         prefix,
                         path.file_name().and_then(OsStr::to_str).unwrap_or_else(|| {
-                            panic!("No issues are expected while extracting the filename from path={}", path.display())
+                            panic!(
+                                "No issues are expected while extracting the filename from path={}",
+                                path.display()
+                            )
                         })
                     ),
                 ));
