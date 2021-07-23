@@ -22,12 +22,12 @@ impl Validate for FalseValidator {
         false
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         _: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         error(ValidationError::false_schema(
             self.schema_path.clone(),
             instance_path.into(),

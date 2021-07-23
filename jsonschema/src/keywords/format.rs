@@ -56,12 +56,12 @@ macro_rules! format_validator {
 
 macro_rules! validate {
     ($format:expr) => {
-        fn validate<'a>(
+        fn validate<'a, 'b>(
             &self,
             schema: &'a JSONSchema,
-            instance: &'a Value,
+            instance: &'b Value,
             instance_path: &InstancePath,
-        ) -> ErrorIterator<'a> {
+        ) -> ErrorIterator<'b> {
             if let Value::String(_item) = instance {
                 if !self.is_valid(schema, instance) {
                     return error(ValidationError::format(
@@ -354,12 +354,12 @@ impl core::fmt::Display for CustomFormatValidator {
 }
 
 impl Validate for CustomFormatValidator {
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if let Value::String(_item) = instance {
             if !self.is_valid(schema, instance) {
                 return error(ValidationError::format(

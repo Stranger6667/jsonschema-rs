@@ -33,12 +33,12 @@ impl Validate for MaxItemsValidator {
         true
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         _: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if let Value::Array(items) = instance {
             if (items.len() as u64) > self.limit {
                 return error(ValidationError::max_items(

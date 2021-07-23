@@ -38,12 +38,12 @@ impl Validate for AllOfValidator {
         })
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         let errors: Vec<_> = self
             .schemas
             .iter()
@@ -86,12 +86,12 @@ impl Validate for SingleValueAllOfValidator {
             .all(move |validator| validator.is_valid(schema, instance))
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         let errors: Vec<_> = self
             .validators
             .iter()

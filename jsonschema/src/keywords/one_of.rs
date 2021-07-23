@@ -69,12 +69,12 @@ impl Validate for OneOfValidator {
         let first_valid_idx = self.get_first_valid(schema, instance);
         first_valid_idx.map_or(false, |idx| !self.are_others_valid(schema, instance, idx))
     }
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         let first_valid_idx = self.get_first_valid(schema, instance);
         if let Some(idx) = first_valid_idx {
             if self.are_others_valid(schema, instance, idx) {

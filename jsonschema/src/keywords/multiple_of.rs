@@ -42,12 +42,12 @@ impl Validate for MultipleOfFloatValidator {
         true
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if !self.is_valid(schema, instance) {
             return error(ValidationError::multiple_of(
                 self.schema_path.clone(),
@@ -98,12 +98,12 @@ impl Validate for MultipleOfIntegerValidator {
         true
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if !self.is_valid(schema, instance) {
             return error(ValidationError::multiple_of(
                 self.schema_path.clone(),

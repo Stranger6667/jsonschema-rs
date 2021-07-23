@@ -58,12 +58,12 @@ impl Validate for RefValidator {
         false
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if let Some(validators) = self.validators.read().as_ref() {
             return Box::new(
                 validators
@@ -104,7 +104,7 @@ impl Validate for RefValidator {
                     Err(err) => error(err.into_owned()),
                 }
             }
-            Err(err) => error(err),
+            Err(err) => error(err.into_owned()),
         }
     }
 }

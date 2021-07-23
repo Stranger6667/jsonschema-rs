@@ -40,12 +40,12 @@ impl Validate for RequiredValidator {
         }
     }
 
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         _: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for property_name in &self.required {
@@ -89,12 +89,12 @@ impl SingleItemRequiredValidator {
 }
 
 impl Validate for SingleItemRequiredValidator {
-    fn validate<'a>(
+    fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
-        instance: &'a Value,
+        instance: &'b Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'a> {
+    ) -> ErrorIterator<'b> {
         if !self.is_valid(schema, instance) {
             return error(ValidationError::required(
                 self.schema_path.clone(),
