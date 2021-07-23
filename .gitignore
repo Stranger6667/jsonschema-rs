@@ -2,6 +2,7 @@
 /jsonschema/target
 /bindings/*/target
 /bench_helpers/target
+/jsonschema-test-suite/target
 .hypothesis
 .benchmarks
 /jsonschema/Cargo.lock
