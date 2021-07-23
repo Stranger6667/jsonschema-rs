@@ -39,7 +39,7 @@ fraction = { version = "0.8", default-features = false, features = ["with-bigint
 [dev-dependencies]
 criterion = ">= 0.1"
 mockito = ">= 0"
-json_schema_test_suite = ">= 0.3"
+json_schema_test_suite = { version = ">= 0.3", path = "../jsonschema-test-suite"}
 jsonschema-valid = "0.4.0"
 bench_helpers = { path = "../bench_helpers" }
 valico = "3.6.0"
