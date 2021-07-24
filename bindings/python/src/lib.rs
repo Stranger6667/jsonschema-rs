@@ -21,7 +21,6 @@ use pyo3::{
     types::{PyAny, PyList, PyType},
     wrap_pyfunction, PyObjectProtocol,
 };
-use serde_json::Value;
 
 mod ser;
 mod string;
@@ -252,7 +251,17 @@ fn validate(
 #[pyo3(text_signature = "(schema, draft=None, with_meta_schemas=False)")]
 struct JSONSchema {
     schema: jsonschema::JSONSchema,
-    raw_schema: &'static Value,
+    repr: String,
+}
+
+fn get_schema_repr(schema: &serde_json::Value) -> String {
+    // It could be more efficient, without converting the whole Value to a string
+    let mut repr = schema.to_string();
+    if repr.len() > SCHEMA_LENGTH_LIMIT {
+        repr.truncate(SCHEMA_LENGTH_LIMIT);
+        repr.push_str("...}");
+    }
+    repr
 }
 
 #[pymethods]
@@ -265,14 +274,11 @@ impl JSONSchema {
         with_meta_schemas: Option<bool>,
     ) -> PyResult<Self> {
         let options = make_options(draft, with_meta_schemas)?;
-        // Currently, it is the simplest way to pass a reference to `JSONSchema`
-        // It is cleaned up in the `Drop` implementation
         let raw_schema = ser::to_value(pyschema)?;
-        let schema: &'static Value = Box::leak(Box::new(raw_schema));
-        match options.compile(schema) {
-            Ok(compiled) => Ok(JSONSchema {
-                schema: compiled,
-                raw_schema: schema,
+        match options.compile(&raw_schema) {
+            Ok(schema) => Ok(JSONSchema {
+                schema,
+                repr: get_schema_repr(&raw_schema),
             }),
             Err(error) => Err(into_py_err(py, error)?),
         }
@@ -314,19 +320,7 @@ const SCHEMA_LENGTH_LIMIT: usize = 32;
 #[pyproto]
 impl<'p> PyObjectProtocol<'p> for JSONSchema {
     fn __repr__(&self) -> PyResult<String> {
-        let mut schema = self.raw_schema.to_string();
-        if schema.len() > SCHEMA_LENGTH_LIMIT {
-            schema.truncate(SCHEMA_LENGTH_LIMIT);
-            schema = format!("{}...}}", schema);
-        }
-        Ok(format!("<JSONSchema: {}>", schema))
-    }
-}
-
-impl Drop for JSONSchema {
-    fn drop(&mut self) {
-        // Since `self.raw_schema` is not used anywhere else, there should be no double-free
-        unsafe { Box::from_raw(self.raw_schema as *const _ as *mut Value) };
+        Ok(format!("<JSONSchema: {}>", self.repr))
     }
 }
 
