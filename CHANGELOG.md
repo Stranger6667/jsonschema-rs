@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.12.0] - 2021-07-24
+
 ### Added
 
 - Support for custom `format` validators. [#158](https://github.com/Stranger6667/jsonschema-rs/issues/158)
@@ -264,7 +266,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.11.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.12.0...HEAD
+[0.12.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.11.0...rust-v0.12.0
 [0.11.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.10.0...rust-v0.11.0
 [0.10.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.9.1...rust-v0.10.0
 [0.9.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.9.0...rust-v0.9.1
