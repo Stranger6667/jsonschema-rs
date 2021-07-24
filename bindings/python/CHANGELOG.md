@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.12.0] - 2021-07-24
+
 ### Changed
 
 - Pre-compute `JSONSchema` representation.
@@ -199,7 +201,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.11.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.12.0...HEAD
+[0.12.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.11.1...python-v0.12.0
 [0.11.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.11.0...python-v0.11.1
 [0.11.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.10.0...python-v0.11.0
 [0.10.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.9.1...python-v0.10.0
