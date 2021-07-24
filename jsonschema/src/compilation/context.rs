@@ -11,7 +11,7 @@ use url::{ParseError, Url};
 #[derive(Debug)]
 pub(crate) struct CompilationContext<'a> {
     pub(crate) scope: Cow<'a, Url>,
-    pub(crate) config: Cow<'a, CompilationOptions>,
+    pub(crate) config: &'a CompilationOptions,
     pub(crate) schema_path: InstancePath<'a>,
 }
 
@@ -19,7 +19,7 @@ impl<'a> CompilationContext<'a> {
     pub(crate) const fn new(scope: Url, config: &'a CompilationOptions) -> Self {
         CompilationContext {
             scope: Cow::Owned(scope),
-            config: Cow::Borrowed(config),
+            config,
             schema_path: InstancePath::new(),
         }
     }
@@ -40,13 +40,13 @@ impl<'a> CompilationContext<'a> {
             let scope = Url::options().base_url(Some(&self.scope)).parse(id)?;
             Ok(CompilationContext {
                 scope: Cow::Owned(scope),
-                config: Cow::Borrowed(&self.config),
+                config: self.config,
                 schema_path: self.schema_path.clone(),
             })
         } else {
             Ok(CompilationContext {
                 scope: Cow::Borrowed(self.scope.as_ref()),
-                config: Cow::Borrowed(&self.config),
+                config: self.config,
                 schema_path: self.schema_path.clone(),
             })
         }
@@ -57,7 +57,7 @@ impl<'a> CompilationContext<'a> {
         let schema_path = self.schema_path.push(chunk);
         CompilationContext {
             scope: Cow::Borrowed(self.scope.as_ref()),
-            config: Cow::Borrowed(&self.config),
+            config: self.config,
             schema_path,
         }
     }
