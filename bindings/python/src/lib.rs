@@ -251,7 +251,7 @@ fn validate(
 #[pyclass]
 #[pyo3(text_signature = "(schema, draft=None, with_meta_schemas=False)")]
 struct JSONSchema {
-    schema: jsonschema::JSONSchema<'static>,
+    schema: jsonschema::JSONSchema,
     raw_schema: &'static Value,
 }
 
