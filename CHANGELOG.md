@@ -9,6 +9,7 @@
 ### Changed
 
 - Validators now implement `Display` instead of `ToString`.
+- `JSONSchema` now owns its data. [#145](https://github.com/Stranger6667/jsonschema-rs/issues/145)
 
 ## [0.11.0] - 2021-06-19
 
