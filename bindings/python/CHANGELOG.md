@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Pre-compute `JSONSchema` representation.
+
 ## [0.11.1] - 2021-07-06
 
 ### Added
