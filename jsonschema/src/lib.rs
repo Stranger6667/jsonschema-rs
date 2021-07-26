@@ -185,8 +185,9 @@ pub(crate) mod tests_util {
 
 #[cfg(test)]
 mod tests {
-    use super::is_valid;
+    use super::{is_valid, Draft, JSONSchema};
     use serde_json::json;
+    use test_case::test_case;
 
     #[test]
     fn test_is_valid() {
@@ -195,5 +196,18 @@ mod tests {
         let invalid = json!("foo");
         assert!(is_valid(&schema, &valid));
         assert!(!is_valid(&schema, &invalid));
+    }
+
+    #[test_case(Draft::Draft4)]
+    #[test_case(Draft::Draft6)]
+    #[test_case(Draft::Draft7)]
+    fn meta_schemas(draft: Draft) {
+        // See GH-258
+        for schema in [json!({"enum": [0, 0.0]}), json!({"enum": []})] {
+            assert!(JSONSchema::options()
+                .with_draft(draft)
+                .compile(&schema)
+                .is_ok())
+        }
     }
 }
