@@ -157,7 +157,12 @@ fn to_error_message(error: &jsonschema::ValidationError) -> String {
         push_chunk(&mut message, last)
     }
     message.push_str(" in schema");
-    for chunk in &error.schema_path {
+    let mut chunks = error.schema_path.iter().peekable();
+    while let Some(chunk) = chunks.next() {
+        // Skip the last element as it is already mentioned in the message
+        if chunks.peek().is_none() {
+            break;
+        }
         message.push('[');
         push_chunk(&mut message, chunk);
         message.push(']');
