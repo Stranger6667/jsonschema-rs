@@ -5,9 +5,10 @@ pub(crate) mod context;
 pub(crate) mod options;
 
 use crate::{
-    error::ErrorIterator, keywords, paths::InstancePath, resolver::Resolver, validator::Validators,
-    Draft, ValidationError,
+    error::ErrorIterator, keywords, paths::InstancePath, resolver::Resolver,
+    schema_node::SchemaNode, validator::Validate, Draft, Output, ValidationError,
 };
+use ahash::AHashMap;
 use context::CompilationContext;
 use options::CompilationOptions;
 use serde_json::Value;
@@ -20,7 +21,7 @@ pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
 #[derive(Debug)]
 pub struct JSONSchema {
     pub(crate) schema: Arc<Value>,
-    pub(crate) validators: Validators,
+    pub(crate) node: SchemaNode,
     pub(crate) resolver: Resolver,
     config: CompilationOptions,
 }
@@ -61,9 +62,8 @@ impl JSONSchema {
     pub fn validate<'a>(&'a self, instance: &'a Value) -> Result<(), ErrorIterator<'a>> {
         let instance_path = InstancePath::new();
         let mut errors = self
-            .validators
-            .iter()
-            .flat_map(move |validator| validator.validate(self, instance, &instance_path))
+            .node
+            .validate(self, instance, &instance_path)
             .peekable();
         if errors.peek().is_none() {
             Ok(())
@@ -78,9 +78,42 @@ impl JSONSchema {
     #[must_use]
     #[inline]
     pub fn is_valid(&self, instance: &Value) -> bool {
-        self.validators
-            .iter()
-            .all(|validator| validator.is_valid(self, instance))
+        self.node.is_valid(self, instance)
+    }
+
+    /// Apply the schema and return an `Output`. No actual work is done at this point, the
+    /// evaluation of the schema is deferred until a method is called on the `Output`. This is
+    /// because different output formats will have different performance characteristics.
+    ///
+    /// # Examples
+    ///
+    /// "basic" output format
+    ///
+    /// ```rust
+    /// # use crate::jsonschema::{Draft, Output, BasicOutput, JSONSchema};
+    /// let schema_json = serde_json::json!({
+    ///     "title": "string value",
+    ///     "type": "string"
+    /// });
+    /// let instance = serde_json::json!{"some string"};
+    /// let schema = JSONSchema::options().compile(&schema_json).unwrap();
+    /// let output: BasicOutput = schema.apply(&instance).basic();
+    /// let output_json = serde_json::to_value(output).unwrap();
+    /// assert_eq!(output_json, serde_json::json!({
+    ///     "valid": true,
+    ///     "annotations": [
+    ///         {
+    ///             "keywordLocation": "",
+    ///             "instanceLocation": "",
+    ///             "annotations": {
+    ///                 "title": "string value"
+    ///             }
+    ///         }
+    ///     ]
+    /// }));
+    /// ```
+    pub const fn apply<'a, 'b>(&'a self, instance: &'b Value) -> Output<'a, 'b> {
+        Output::new(self, &self.node, instance)
     }
 
     /// The [`Draft`] which this schema was compiled against
@@ -99,34 +132,90 @@ impl JSONSchema {
 pub(crate) fn compile_validators<'a, 'c>(
     schema: &'a Value,
     context: &'c CompilationContext,
-) -> Result<Validators, ValidationError<'a>> {
+) -> Result<SchemaNode, ValidationError<'a>> {
     let context = context.push(schema)?;
+    let relative_path = context.clone().into_pointer();
     match schema {
         Value::Bool(value) => match value {
-            true => Ok(vec![]),
-            false => Ok(vec![keywords::boolean::FalseValidator::compile(
-                context.into_pointer(),
-            )
-            .expect("Should always compile")]),
+            true => Ok(SchemaNode::new_from_boolean(&context, None)),
+            false => Ok(SchemaNode::new_from_boolean(
+                &context,
+                Some(
+                    keywords::boolean::FalseValidator::compile(relative_path)
+                        .expect("Should always compile"),
+                ),
+            )),
         },
         Value::Object(object) => {
             if let Some(reference) = object.get("$ref") {
+                let unmatched_keywords = object
+                    .iter()
+                    .filter_map(|(k, v)| {
+                        if k.as_str() != "$ref" {
+                            Some((k.clone(), v.clone()))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                let mut validators = Vec::new();
                 if let Value::String(reference) = reference {
-                    Ok(vec![keywords::ref_::compile(schema, reference, &context)
-                        .expect("Should always return Some")?])
+                    let validator = keywords::ref_::compile(schema, reference, &context)
+                        .expect("Should always return Some")?;
+                    validators.push(("$ref".to_string(), validator));
+                    Ok(SchemaNode::new_from_keywords(
+                        &context,
+                        validators,
+                        Some(unmatched_keywords),
+                    ))
                 } else {
                     Err(ValidationError::schema(schema))
                 }
             } else {
                 let mut validators = Vec::with_capacity(object.len());
+                let mut unmatched_keywords = AHashMap::new();
+                let mut is_if = false;
+                let mut is_props = false;
                 for (keyword, subschema) in object {
-                    if let Some(compilation_func) = context.config.draft().get_validator(keyword) {
-                        if let Some(validator) = compilation_func(object, subschema, &context) {
-                            validators.push(validator?)
-                        }
+                    if keyword == "if" {
+                        is_if = true;
+                    }
+                    if keyword == "properties"
+                        || keyword == "additionalProperties"
+                        || keyword == "patternProperties"
+                    {
+                        is_props = true;
+                    }
+                    if let Some(validator) = context
+                        .config
+                        .draft()
+                        .get_validator(keyword)
+                        .and_then(|f| f(object, subschema, &context))
+                    {
+                        validators.push((keyword.clone(), validator?));
+                    } else {
+                        unmatched_keywords.insert(keyword.to_string(), subschema.clone());
                     }
                 }
-                Ok(validators)
+                if is_if {
+                    unmatched_keywords.remove("then");
+                    unmatched_keywords.remove("else");
+                }
+                if is_props {
+                    unmatched_keywords.remove("additionalProperties");
+                    unmatched_keywords.remove("patternProperties");
+                    unmatched_keywords.remove("properties");
+                }
+                let unmatched_keywords = if unmatched_keywords.is_empty() {
+                    None
+                } else {
+                    Some(unmatched_keywords)
+                };
+                Ok(SchemaNode::new_from_keywords(
+                    &context,
+                    validators,
+                    unmatched_keywords,
+                ))
             }
         }
         _ => Err(ValidationError::schema(schema)),
@@ -159,7 +248,7 @@ mod tests {
         let value1 = json!("AB");
         let value2 = json!(1);
         // And only this validator
-        assert_eq!(compiled.validators.len(), 1);
+        assert_eq!(compiled.node.validators().len(), 1);
         assert!(compiled.validate(&value1).is_ok());
         assert!(compiled.validate(&value2).is_err());
     }

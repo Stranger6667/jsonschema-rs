@@ -1,15 +1,17 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{ErrorIterator, ValidationError},
+    output::BasicOutput,
     paths::InstancePath,
-    validator::{format_validators, format_vec_of_validators, Validate, Validators},
+    schema_node::SchemaNode,
+    validator::{format_iter_of_validators, format_validators, PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
 
 use super::CompilationResult;
 
 pub(crate) struct AllOfValidator {
-    schemas: Vec<Validators>,
+    schemas: Vec<SchemaNode>,
 }
 
 impl AllOfValidator {
@@ -31,13 +33,10 @@ impl AllOfValidator {
 
 impl Validate for AllOfValidator {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        self.schemas.iter().all(move |validators| {
-            validators
-                .iter()
-                .all(move |validator| validator.is_valid(schema, instance))
-        })
+        self.schemas.iter().all(|n| n.is_valid(schema, instance))
     }
 
+    #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
@@ -47,23 +46,36 @@ impl Validate for AllOfValidator {
         let errors: Vec<_> = self
             .schemas
             .iter()
-            .flat_map(move |validators| {
-                validators
-                    .iter()
-                    .flat_map(move |validator| validator.validate(schema, instance, instance_path))
-            })
+            .flat_map(move |node| node.validate(schema, instance, instance_path))
             .collect();
         Box::new(errors.into_iter())
+    }
+
+    fn apply<'a>(
+        &'a self,
+        schema: &JSONSchema,
+        instance: &Value,
+        instance_path: &InstancePath,
+    ) -> PartialApplication<'a> {
+        self.schemas
+            .iter()
+            .map(move |node| node.apply_rooted(schema, instance, instance_path))
+            .sum::<BasicOutput<'_>>()
+            .into()
     }
 }
 
 impl core::fmt::Display for AllOfValidator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "allOf: [{}]", format_vec_of_validators(&self.schemas))
+        write!(
+            f,
+            "allOf: [{}]",
+            format_iter_of_validators(self.schemas.iter().map(|s| s.validators()))
+        )
     }
 }
 pub(crate) struct SingleValueAllOfValidator {
-    validators: Validators,
+    node: SchemaNode,
 }
 
 impl SingleValueAllOfValidator {
@@ -74,16 +86,14 @@ impl SingleValueAllOfValidator {
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("allOf");
         let item_context = keyword_context.with_path(0);
-        let validators = compile_validators(schema, &item_context)?;
-        Ok(Box::new(SingleValueAllOfValidator { validators }))
+        let node = compile_validators(schema, &item_context)?;
+        Ok(Box::new(SingleValueAllOfValidator { node }))
     }
 }
 
 impl Validate for SingleValueAllOfValidator {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        self.validators
-            .iter()
-            .all(move |validator| validator.is_valid(schema, instance))
+        self.node.is_valid(schema, instance)
     }
 
     fn validate<'a, 'b>(
@@ -92,18 +102,24 @@ impl Validate for SingleValueAllOfValidator {
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        let errors: Vec<_> = self
-            .validators
-            .iter()
-            .flat_map(move |validator| validator.validate(schema, instance, instance_path))
-            .collect();
-        Box::new(errors.into_iter())
+        self.node.validate(schema, instance, instance_path)
+    }
+
+    fn apply<'a>(
+        &'a self,
+        schema: &JSONSchema,
+        instance: &Value,
+        instance_path: &InstancePath,
+    ) -> PartialApplication<'a> {
+        self.node
+            .apply_rooted(schema, instance, instance_path)
+            .into()
     }
 }
 
 impl core::fmt::Display for SingleValueAllOfValidator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "allOf: [{}]", format_validators(&self.validators))
+        write!(f, "allOf: [{}]", format_validators(self.node.validators()))
     }
 }
 #[inline]

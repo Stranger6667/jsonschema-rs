@@ -3,12 +3,13 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
-    validator::{format_validators, Validate, Validators},
+    schema_node::SchemaNode,
+    validator::{format_validators, PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
 
 pub(crate) struct PropertyNamesObjectValidator {
-    validators: Validators,
+    node: SchemaNode,
 }
 
 impl PropertyNamesObjectValidator {
@@ -19,7 +20,7 @@ impl PropertyNamesObjectValidator {
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("propertyNames");
         Ok(Box::new(PropertyNamesObjectValidator {
-            validators: compile_validators(schema, &keyword_context)?,
+            node: compile_validators(schema, &keyword_context)?,
         }))
     }
 }
@@ -27,17 +28,16 @@ impl PropertyNamesObjectValidator {
 impl Validate for PropertyNamesObjectValidator {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
         if let Value::Object(item) = &instance {
-            self.validators.iter().all(|validator| {
-                item.keys().all(move |key| {
-                    let wrapper = Value::String(key.to_string());
-                    validator.is_valid(schema, &wrapper)
-                })
+            item.keys().all(move |key| {
+                let wrapper = Value::String(key.to_string());
+                self.node.is_valid(schema, &wrapper)
             })
         } else {
             true
         }
     }
 
+    #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
@@ -45,25 +45,23 @@ impl Validate for PropertyNamesObjectValidator {
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
         if let Value::Object(item) = &instance {
-            let errors: Vec<_> = self
-                .validators
-                .iter()
-                .flat_map(|validator| {
-                    item.keys().flat_map(move |key| {
-                        let wrapper = Value::String(key.to_string());
-                        let errors: Vec<_> = validator
-                            .validate(schema, &wrapper, instance_path)
-                            .map(|error| {
-                                ValidationError::property_names(
-                                    error.schema_path.clone(),
-                                    instance_path.into(),
-                                    instance,
-                                    error.into_owned(),
-                                )
-                            })
-                            .collect();
-                        errors.into_iter()
-                    })
+            let errors: Vec<_> = item
+                .keys()
+                .flat_map(move |key| {
+                    let wrapper = Value::String(key.to_string());
+                    let errors: Vec<_> = self
+                        .node
+                        .validate(schema, &wrapper, instance_path)
+                        .map(|error| {
+                            ValidationError::property_names(
+                                error.schema_path.clone(),
+                                instance_path.into(),
+                                instance,
+                                error.into_owned(),
+                            )
+                        })
+                        .collect();
+                    errors.into_iter()
                 })
                 .collect();
             Box::new(errors.into_iter())
@@ -71,10 +69,32 @@ impl Validate for PropertyNamesObjectValidator {
             no_error()
         }
     }
+
+    fn apply<'a>(
+        &'a self,
+        schema: &JSONSchema,
+        instance: &Value,
+        instance_path: &InstancePath,
+    ) -> PartialApplication<'a> {
+        if let Value::Object(item) = instance {
+            item.keys()
+                .map(|key| {
+                    let wrapper = Value::String(key.to_string());
+                    self.node.apply_rooted(schema, &wrapper, instance_path)
+                })
+                .collect()
+        } else {
+            PartialApplication::valid_empty()
+        }
+    }
 }
 impl core::fmt::Display for PropertyNamesObjectValidator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "propertyNames: {}", format_validators(&self.validators))
+        write!(
+            f,
+            "propertyNames: {}",
+            format_validators(self.node.validators())
+        )
     }
 }
 

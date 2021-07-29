@@ -3,13 +3,14 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
-    validator::{format_validators, Validate, Validators},
+    schema_node::SchemaNode,
+    validator::{format_validators, PartialApplication, Validate},
     Draft,
 };
 use serde_json::{Map, Value};
 
 pub(crate) struct ContainsValidator {
-    validators: Validators,
+    node: SchemaNode,
     schema_path: JSONPointer,
 }
 
@@ -21,7 +22,7 @@ impl ContainsValidator {
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("contains");
         Ok(Box::new(ContainsValidator {
-            validators: compile_validators(schema, &keyword_context)?,
+            node: compile_validators(schema, &keyword_context)?,
             schema_path: keyword_context.into_pointer(),
         }))
     }
@@ -30,16 +31,7 @@ impl ContainsValidator {
 impl Validate for ContainsValidator {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
         if let Value::Array(items) = instance {
-            for item in items {
-                if self
-                    .validators
-                    .iter()
-                    .all(|validator| validator.is_valid(schema, item))
-                {
-                    return true;
-                }
-            }
-            false
+            items.iter().any(|i| self.node.is_valid(schema, i))
         } else {
             true
         }
@@ -52,14 +44,8 @@ impl Validate for ContainsValidator {
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
         if let Value::Array(items) = instance {
-            for item in items {
-                if self
-                    .validators
-                    .iter()
-                    .all(|validator| validator.is_valid(schema, item))
-                {
-                    return no_error();
-                }
+            if items.iter().any(|i| self.node.is_valid(schema, i)) {
+                return no_error();
             }
             error(ValidationError::contains(
                 self.schema_path.clone(),
@@ -70,11 +56,49 @@ impl Validate for ContainsValidator {
             no_error()
         }
     }
+
+    fn apply<'a>(
+        &'a self,
+        schema: &JSONSchema,
+        instance: &Value,
+        instance_path: &InstancePath,
+    ) -> PartialApplication<'a> {
+        if let Value::Array(items) = instance {
+            let mut results = Vec::with_capacity(items.len());
+            let mut indices = Vec::new();
+            for (idx, item) in items.iter().enumerate() {
+                let path = instance_path.push(idx);
+                let result = self.node.apply_rooted(schema, item, &path);
+                if result.is_valid() {
+                    indices.push(idx);
+                    results.push(result);
+                }
+            }
+            let mut result: PartialApplication = results.into_iter().collect();
+            if indices.is_empty() {
+                result.mark_errored(
+                    ValidationError::contains(
+                        self.schema_path.clone(),
+                        instance_path.into(),
+                        instance,
+                    )
+                    .into(),
+                );
+            } else {
+                result.annotate(serde_json::Value::from(indices).into());
+            }
+            result
+        } else {
+            let mut result = PartialApplication::valid_empty();
+            result.annotate(serde_json::Value::Array(Vec::new()).into());
+            result
+        }
+    }
 }
 
 impl core::fmt::Display for ContainsValidator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "contains: {}", format_validators(&self.validators))
+        write!(f, "contains: {}", format_validators(self.node.validators()))
     }
 }
 
@@ -82,7 +106,7 @@ impl core::fmt::Display for ContainsValidator {
 ///
 /// Docs: <https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.6.4.5>
 pub(crate) struct MinContainsValidator {
-    validators: Validators,
+    node: SchemaNode,
     min_contains: u64,
     schema_path: JSONPointer,
 }
@@ -96,7 +120,7 @@ impl MinContainsValidator {
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("minContains");
         Ok(Box::new(MinContainsValidator {
-            validators: compile_validators(schema, context)?,
+            node: compile_validators(schema, context)?,
             min_contains,
             schema_path: keyword_context.into_pointer(),
         }))
@@ -118,8 +142,8 @@ impl Validate for MinContainsValidator {
             let mut matches = 0;
             for item in items {
                 if self
-                    .validators
-                    .iter()
+                    .node
+                    .validators()
                     .all(|validator| validator.is_valid(schema, item))
                 {
                     matches += 1;
@@ -149,8 +173,8 @@ impl Validate for MinContainsValidator {
             let mut matches = 0;
             for item in items {
                 if self
-                    .validators
-                    .iter()
+                    .node
+                    .validators()
                     .all(|validator| validator.is_valid(schema, item))
                 {
                     matches += 1;
@@ -172,7 +196,7 @@ impl core::fmt::Display for MinContainsValidator {
             f,
             "minContains: {}, contains: {}",
             self.min_contains,
-            format_validators(&self.validators)
+            format_validators(self.node.validators())
         )
     }
 }
@@ -181,7 +205,7 @@ impl core::fmt::Display for MinContainsValidator {
 ///
 /// Docs: <https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.6.4.4>
 pub(crate) struct MaxContainsValidator {
-    validators: Validators,
+    node: SchemaNode,
     max_contains: u64,
     schema_path: JSONPointer,
 }
@@ -195,7 +219,7 @@ impl MaxContainsValidator {
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("maxContains");
         Ok(Box::new(MaxContainsValidator {
-            validators: compile_validators(schema, context)?,
+            node: compile_validators(schema, context)?,
             max_contains,
             schema_path: keyword_context.into_pointer(),
         }))
@@ -217,8 +241,8 @@ impl Validate for MaxContainsValidator {
             let mut matches = 0;
             for item in items {
                 if self
-                    .validators
-                    .iter()
+                    .node
+                    .validators()
                     .all(|validator| validator.is_valid(schema, item))
                 {
                     matches += 1;
@@ -254,8 +278,8 @@ impl Validate for MaxContainsValidator {
             let mut matches = 0;
             for item in items {
                 if self
-                    .validators
-                    .iter()
+                    .node
+                    .validators()
                     .all(|validator| validator.is_valid(schema, item))
                 {
                     matches += 1;
@@ -277,7 +301,7 @@ impl core::fmt::Display for MaxContainsValidator {
             f,
             "maxContains: {}, contains: {}",
             self.max_contains,
-            format_validators(&self.validators)
+            format_validators(self.node.validators())
         )
     }
 }
@@ -288,7 +312,7 @@ impl core::fmt::Display for MaxContainsValidator {
 ///   `maxContains` - <https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.6.4.4>
 ///   `minContains` - <https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.6.4.5>
 pub(crate) struct MinMaxContainsValidator {
-    validators: Validators,
+    node: SchemaNode,
     min_contains: u64,
     max_contains: u64,
     schema_path: JSONPointer,
@@ -303,7 +327,7 @@ impl MinMaxContainsValidator {
         max_contains: u64,
     ) -> CompilationResult<'a> {
         Ok(Box::new(MinMaxContainsValidator {
-            validators: compile_validators(schema, context)?,
+            node: compile_validators(schema, context)?,
             min_contains,
             max_contains,
             schema_path: context.schema_path.clone().into(),
@@ -322,8 +346,8 @@ impl Validate for MinMaxContainsValidator {
             let mut matches = 0;
             for item in items {
                 if self
-                    .validators
-                    .iter()
+                    .node
+                    .validators()
                     .all(|validator| validator.is_valid(schema, item))
                 {
                     matches += 1;
@@ -357,8 +381,8 @@ impl Validate for MinMaxContainsValidator {
             let mut matches = 0;
             for item in items {
                 if self
-                    .validators
-                    .iter()
+                    .node
+                    .validators()
                     .all(|validator| validator.is_valid(schema, item))
                 {
                     matches += 1;
@@ -381,7 +405,7 @@ impl core::fmt::Display for MinMaxContainsValidator {
             "minContains: {}, maxContains: {}, contains: {}",
             self.min_contains,
             self.max_contains,
-            format_validators(&self.validators)
+            format_validators(self.node.validators())
         )
     }
 }

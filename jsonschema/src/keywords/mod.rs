@@ -122,7 +122,10 @@ mod tests {
     #[test_case(&json!({"uniqueItems": true}), "uniqueItems: true")]
     fn debug_representation(schema: &Value, expected: &str) {
         let compiled = JSONSchema::compile(schema).unwrap();
-        assert_eq!(format!("{:?}", compiled.validators[0]), expected);
+        assert_eq!(
+            format!("{:?}", compiled.node.validators().next().unwrap()),
+            expected
+        );
     }
 
     #[test_case(&json!({"items": [{}], "additionalItems": {"type": "integer"}}), &json!([ null, 2, 3, "foo" ]), r#""foo" is not of type "integer""#)]

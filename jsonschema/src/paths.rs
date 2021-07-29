@@ -1,5 +1,5 @@
 //! Facilities for working with paths within schemas or validated instances.
-use std::{fmt, fmt::Write, slice::Iter};
+use std::{fmt, fmt::Write, slice::Iter, str::FromStr};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// JSON Pointer as a wrapper around individual path components.
@@ -41,8 +41,18 @@ impl JSONPointer {
         new.0.extend_from_slice(chunks);
         new
     }
+
     pub(crate) fn as_slice(&self) -> &[PathChunk] {
         &self.0
+    }
+}
+
+impl serde::Serialize for JSONPointer {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_str(self)
     }
 }
 
@@ -206,6 +216,53 @@ impl From<&[PathChunk]> for JSONPointer {
     #[inline]
     fn from(path: &[PathChunk]) -> Self {
         JSONPointer(path.to_vec())
+    }
+}
+
+/// An absolute reference
+#[derive(Debug, Clone, PartialEq)]
+pub struct AbsolutePath(url::Url);
+
+impl AbsolutePath {
+    pub(crate) fn with_path(&self, path: &str) -> Self {
+        let mut result = self.0.clone();
+        result.set_path(path);
+        AbsolutePath(result)
+    }
+}
+
+impl serde::Serialize for AbsolutePath {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.0.to_string().as_str())
+    }
+}
+
+impl FromStr for AbsolutePath {
+    type Err = url::ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        url::Url::parse(s).map(AbsolutePath::from)
+    }
+}
+
+impl fmt::Display for AbsolutePath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl From<AbsolutePath> for url::Url {
+    fn from(p: AbsolutePath) -> Self {
+        p.0
+    }
+}
+
+impl From<url::Url> for AbsolutePath {
+    fn from(u: url::Url) -> Self {
+        AbsolutePath(u)
     }
 }
 

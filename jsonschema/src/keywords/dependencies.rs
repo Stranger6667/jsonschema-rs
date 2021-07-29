@@ -3,12 +3,13 @@ use crate::{
     error::{no_error, ErrorIterator, ValidationError},
     keywords::{required, CompilationResult},
     paths::InstancePath,
-    validator::{format_key_value_validators, Validate, Validators},
+    schema_node::SchemaNode,
+    validator::{format_key_value_validators, Validate},
 };
 use serde_json::{Map, Value};
 
 pub(crate) struct DependenciesValidator {
-    dependencies: Vec<(String, Validators)>,
+    dependencies: Vec<(String, SchemaNode)>,
 }
 
 impl DependenciesValidator {
@@ -24,11 +25,12 @@ impl DependenciesValidator {
                 let item_context = keyword_context.with_path(key.to_string());
                 let s = match subschema {
                     Value::Array(_) => {
-                        vec![required::compile_with_path(
+                        let validators = vec![required::compile_with_path(
                             subschema,
                             (&keyword_context.schema_path).into(),
                         )
-                        .expect("The required validator compilation does not return None")?]
+                        .expect("The required validator compilation does not return None")?];
+                        SchemaNode::new_from_array(&keyword_context, validators)
                     }
                     _ => compile_validators(subschema, &item_context)?,
                 };
@@ -47,16 +49,13 @@ impl Validate for DependenciesValidator {
             self.dependencies
                 .iter()
                 .filter(|(property, _)| item.contains_key(property))
-                .all(move |(_, validators)| {
-                    validators
-                        .iter()
-                        .all(move |validator| validator.is_valid(schema, instance))
-                })
+                .all(move |(_, node)| node.is_valid(schema, instance))
         } else {
             true
         }
     }
 
+    #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
@@ -68,11 +67,7 @@ impl Validate for DependenciesValidator {
                 .dependencies
                 .iter()
                 .filter(|(property, _)| item.contains_key(property))
-                .flat_map(move |(_, validators)| {
-                    validators.iter().flat_map(move |validator| {
-                        validator.validate(schema, instance, instance_path)
-                    })
-                })
+                .flat_map(move |(_, node)| node.validate(schema, instance, instance_path))
                 .collect();
             // TODO. custom error message for "required" case
             Box::new(errors.into_iter())

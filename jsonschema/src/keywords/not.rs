@@ -3,14 +3,15 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
-    validator::{format_validators, Validate, Validators},
+    schema_node::SchemaNode,
+    validator::{format_validators, Validate},
 };
 use serde_json::{Map, Value};
 
 pub(crate) struct NotValidator {
     // needed only for error representation
     original: Value,
-    validators: Validators,
+    node: SchemaNode,
     schema_path: JSONPointer,
 }
 
@@ -23,7 +24,7 @@ impl NotValidator {
         let keyword_context = context.with_path("not");
         Ok(Box::new(NotValidator {
             original: schema.clone(),
-            validators: compile_validators(schema, &keyword_context)?,
+            node: compile_validators(schema, &keyword_context)?,
             schema_path: keyword_context.into_pointer(),
         }))
     }
@@ -31,10 +32,7 @@ impl NotValidator {
 
 impl Validate for NotValidator {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        !self
-            .validators
-            .iter()
-            .all(|validator| validator.is_valid(schema, instance))
+        !self.node.is_valid(schema, instance)
     }
 
     fn validate<'a, 'b>(
@@ -58,7 +56,7 @@ impl Validate for NotValidator {
 
 impl core::fmt::Display for NotValidator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "not: {}", format_validators(&self.validators))
+        write!(f, "not: {}", format_validators(self.node.validators()))
     }
 }
 

@@ -2,13 +2,15 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
+    output::BasicOutput,
     paths::{InstancePath, JSONPointer},
-    validator::{format_vec_of_validators, Validate, Validators},
+    schema_node::SchemaNode,
+    validator::{format_iter_of_validators, PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
 
 pub(crate) struct OneOfValidator {
-    schemas: Vec<Validators>,
+    schemas: Vec<SchemaNode>,
     schema_path: JSONPointer,
 }
 
@@ -21,8 +23,10 @@ impl OneOfValidator {
         if let Value::Array(items) = schema {
             let keyword_context = context.with_path("oneOf");
             let mut schemas = Vec::with_capacity(items.len());
-            for item in items {
-                schemas.push(compile_validators(item, &keyword_context)?)
+            for (idx, item) in items.iter().enumerate() {
+                let item_context = keyword_context.with_path(idx);
+                let node = compile_validators(item, &item_context)?;
+                schemas.push(node)
             }
             Ok(Box::new(OneOfValidator {
                 schemas,
@@ -35,11 +39,8 @@ impl OneOfValidator {
 
     fn get_first_valid(&self, schema: &JSONSchema, instance: &Value) -> Option<usize> {
         let mut first_valid_idx = None;
-        for (idx, validators) in self.schemas.iter().enumerate() {
-            if validators
-                .iter()
-                .all(|validator| validator.is_valid(schema, instance))
-            {
+        for (idx, node) in self.schemas.iter().enumerate() {
+            if node.is_valid(schema, instance) {
                 first_valid_idx = Some(idx);
                 break;
             }
@@ -52,15 +53,10 @@ impl OneOfValidator {
         // `idx + 1` will not overflow, because the maximum possible value there is `usize::MAX - 1`
         // For example we have `usize::MAX` schemas and only the last one is valid, then
         // in `get_first_valid` we enumerate from `0`, and on the last index will be `usize::MAX - 1`
-        for validators in self.schemas.iter().skip(idx + 1) {
-            if validators
-                .iter()
-                .all(|validator| validator.is_valid(schema, instance))
-            {
-                return true;
-            }
-        }
-        false
+        self.schemas
+            .iter()
+            .skip(idx + 1)
+            .any(|n| n.is_valid(schema, instance))
     }
 }
 
@@ -93,11 +89,40 @@ impl Validate for OneOfValidator {
             ))
         }
     }
+    fn apply<'a>(
+        &'a self,
+        schema: &JSONSchema,
+        instance: &Value,
+        instance_path: &InstancePath,
+    ) -> PartialApplication<'a> {
+        let mut failures = Vec::new();
+        let mut successes = Vec::new();
+        for node in &self.schemas {
+            match node.apply_rooted(schema, instance, instance_path) {
+                output @ BasicOutput::Valid(..) => successes.push(output),
+                output @ BasicOutput::Invalid(..) => failures.push(output),
+            };
+        }
+        if successes.len() == 1 {
+            let success = successes.remove(0);
+            success.into()
+        } else if successes.len() > 1 {
+            PartialApplication::invalid_empty(vec!["more than one subschema succeeded".into()])
+        } else if !failures.is_empty() {
+            failures.into_iter().sum::<BasicOutput<'_>>().into()
+        } else {
+            unreachable!("compilation should fail for oneOf with no subschemas")
+        }
+    }
 }
 
 impl core::fmt::Display for OneOfValidator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "oneOf: [{}]", format_vec_of_validators(&self.schemas))
+        write!(
+            f,
+            "oneOf: [{}]",
+            format_iter_of_validators(self.schemas.iter().map(|s| s.validators()))
+        )
     }
 }
 

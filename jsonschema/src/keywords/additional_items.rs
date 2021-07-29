@@ -3,12 +3,13 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{boolean::FalseValidator, CompilationResult},
     paths::{InstancePath, JSONPointer},
-    validator::{format_validators, Validate, Validators},
+    schema_node::SchemaNode,
+    validator::{format_validators, Validate},
 };
 use serde_json::{Map, Value};
 
 pub(crate) struct AdditionalItemsObjectValidator {
-    validators: Validators,
+    node: SchemaNode,
     items_count: usize,
 }
 impl AdditionalItemsObjectValidator {
@@ -18,9 +19,9 @@ impl AdditionalItemsObjectValidator {
         items_count: usize,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        let validators = compile_validators(schema, context)?;
+        let node = compile_validators(schema, context)?;
         Ok(Box::new(AdditionalItemsObjectValidator {
-            validators,
+            node,
             items_count,
         }))
     }
@@ -28,16 +29,16 @@ impl AdditionalItemsObjectValidator {
 impl Validate for AdditionalItemsObjectValidator {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
         if let Value::Array(items) = instance {
-            items.iter().skip(self.items_count).all(|item| {
-                self.validators
-                    .iter()
-                    .all(move |validator| validator.is_valid(schema, item))
-            })
+            items
+                .iter()
+                .skip(self.items_count)
+                .all(|item| self.node.is_valid(schema, item))
         } else {
             true
         }
     }
 
+    #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
@@ -49,11 +50,7 @@ impl Validate for AdditionalItemsObjectValidator {
                 .iter()
                 .enumerate()
                 .skip(self.items_count)
-                .flat_map(|(idx, item)| {
-                    self.validators.iter().flat_map(move |validator| {
-                        validator.validate(schema, item, &instance_path.push(idx))
-                    })
-                })
+                .flat_map(|(idx, item)| self.node.validate(schema, item, &instance_path.push(idx)))
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -67,7 +64,7 @@ impl core::fmt::Display for AdditionalItemsObjectValidator {
         write!(
             f,
             "additionalItems: {}",
-            format_validators(&self.validators)
+            format_validators(self.node.validators())
         )
     }
 }
