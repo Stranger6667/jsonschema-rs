@@ -3,12 +3,13 @@ use crate::{
     error::{no_error, ErrorIterator},
     keywords::CompilationResult,
     paths::InstancePath,
-    validator::{format_validators, format_vec_of_validators, Validate, Validators},
+    schema_node::SchemaNode,
+    validator::{format_iter_of_validators, format_validators, PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
 
 pub(crate) struct ItemsArrayValidator {
-    items: Vec<Validators>,
+    items: Vec<SchemaNode>,
 }
 impl ItemsArrayValidator {
     #[inline]
@@ -32,16 +33,13 @@ impl Validate for ItemsArrayValidator {
             items
                 .iter()
                 .zip(self.items.iter())
-                .all(move |(item, validators)| {
-                    validators
-                        .iter()
-                        .all(move |validator| validator.is_valid(schema, item))
-                })
+                .all(move |(item, node)| node.is_valid(schema, item))
         } else {
             true
         }
     }
 
+    #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
@@ -53,10 +51,8 @@ impl Validate for ItemsArrayValidator {
                 .iter()
                 .zip(self.items.iter())
                 .enumerate()
-                .flat_map(move |(idx, (item, validators))| {
-                    validators.iter().flat_map(move |validator| {
-                        validator.validate(schema, item, &instance_path.push(idx))
-                    })
+                .flat_map(move |(idx, (item, node))| {
+                    node.validate(schema, item, &instance_path.push(idx))
                 })
                 .collect();
             Box::new(errors.into_iter())
@@ -68,12 +64,16 @@ impl Validate for ItemsArrayValidator {
 
 impl core::fmt::Display for ItemsArrayValidator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "items: [{}]", format_vec_of_validators(&self.items))
+        write!(
+            f,
+            "items: [{}]",
+            format_iter_of_validators(self.items.iter().map(|i| i.validators()))
+        )
     }
 }
 
 pub(crate) struct ItemsObjectValidator {
-    validators: Validators,
+    node: SchemaNode,
 }
 impl ItemsObjectValidator {
     #[inline]
@@ -82,23 +82,20 @@ impl ItemsObjectValidator {
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("items");
-        let validators = compile_validators(schema, &keyword_context)?;
-        Ok(Box::new(ItemsObjectValidator { validators }))
+        let node = compile_validators(schema, &keyword_context)?;
+        Ok(Box::new(ItemsObjectValidator { node }))
     }
 }
 impl Validate for ItemsObjectValidator {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
         if let Value::Array(items) = instance {
-            self.validators.iter().all(move |validator| {
-                items
-                    .iter()
-                    .all(move |item| validator.is_valid(schema, item))
-            })
+            items.iter().all(|i| self.node.is_valid(schema, i))
         } else {
             true
         }
     }
 
+    #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
@@ -106,13 +103,11 @@ impl Validate for ItemsObjectValidator {
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
         if let Value::Array(items) = instance {
-            let errors: Vec<_> = self
-                .validators
+            let errors: Vec<_> = items
                 .iter()
-                .flat_map(move |validator| {
-                    items.iter().enumerate().flat_map(move |(idx, item)| {
-                        validator.validate(schema, item, &instance_path.push(idx))
-                    })
+                .enumerate()
+                .flat_map(move |(idx, item)| {
+                    self.node.validate(schema, item, &instance_path.push(idx))
                 })
                 .collect();
             Box::new(errors.into_iter())
@@ -120,11 +115,36 @@ impl Validate for ItemsObjectValidator {
             no_error()
         }
     }
+
+    fn apply<'a>(
+        &'a self,
+        schema: &JSONSchema,
+        instance: &Value,
+        instance_path: &InstancePath,
+    ) -> PartialApplication<'a> {
+        if let Value::Array(items) = instance {
+            let mut results = Vec::with_capacity(items.len());
+            for (idx, item) in items.iter().enumerate() {
+                let path = instance_path.push(idx);
+                results.push(self.node.apply_rooted(schema, item, &path));
+            }
+            let mut output: PartialApplication = results.into_iter().collect();
+            // Per draft 2020-12 section https://json-schema.org/draft/2020-12/json-schema-core.html#rfc.section.10.3.1.2
+            // we must produce an annotation with a boolean value indicating whether the subschema
+            // was applied to any positions in the underlying array. As we have not yet implemented
+            // prefixItems this is true if there are any items in the instance.
+            let schema_was_applied = !items.is_empty();
+            output.annotate(serde_json::json! {schema_was_applied}.into());
+            output
+        } else {
+            PartialApplication::valid_empty()
+        }
+    }
 }
 
 impl core::fmt::Display for ItemsObjectValidator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "items: {}", format_validators(&self.validators))
+        write!(f, "items: {}", format_validators(self.node.validators()))
     }
 }
 

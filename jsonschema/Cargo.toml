@@ -22,6 +22,7 @@ draft201909 = []
 
 [dependencies]
 serde_json = "1"
+serde = "1"
 url = "2"
 lazy_static = "1"
 percent-encoding = "2"
@@ -32,7 +33,7 @@ chrono = ">= 0.2"
 reqwest = { version = ">= 0.10", features = ["blocking", "json"], optional = true}
 parking_lot = ">= 0.1"
 num-cmp = ">= 0.1"
-ahash = "0.7"
+ahash = { version = "0.7", features = ["serde"] }
 structopt = { version = ">= 0.3", optional = true }
 itoa = "0.4"
 fraction = { version = "0.8", default-features = false, features = ["with-bigint"] }

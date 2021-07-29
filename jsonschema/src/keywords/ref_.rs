@@ -3,7 +3,8 @@ use crate::{
     error::{error, ErrorIterator},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
-    validator::{Validate, Validators},
+    schema_node::SchemaNode,
+    validator::Validate,
 };
 use parking_lot::RwLock;
 use serde_json::Value;
@@ -16,7 +17,7 @@ pub(crate) struct RefValidator {
     /// at compile time without risking infinite loops of references
     /// and at the same time during validation we iterate over shared
     /// references (&self) and not owned references (&mut self).
-    validators: RwLock<Option<Validators>>,
+    sub_nodes: RwLock<Option<SchemaNode>>,
     schema_path: JSONPointer,
 }
 
@@ -29,7 +30,7 @@ impl RefValidator {
         let reference = context.build_url(reference)?;
         Ok(Box::new(RefValidator {
             reference,
-            validators: RwLock::new(None),
+            sub_nodes: RwLock::new(None),
             schema_path: context.schema_path.clone().into(),
         }))
     }
@@ -37,21 +38,17 @@ impl RefValidator {
 
 impl Validate for RefValidator {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if let Some(validators) = self.validators.read().as_ref() {
-            return validators
-                .iter()
-                .all(move |validator| validator.is_valid(schema, instance));
+        if let Some(sub_nodes) = self.sub_nodes.read().as_ref() {
+            return sub_nodes.is_valid(schema, instance);
         }
         if let Ok((scope, resolved)) = schema
             .resolver
             .resolve_fragment(schema.draft(), &self.reference)
         {
-            let context = CompilationContext::new(scope, schema.config());
-            if let Ok(validators) = compile_validators(&resolved, &context) {
-                let result = validators
-                    .iter()
-                    .all(move |validator| validator.is_valid(schema, instance));
-                *self.validators.write() = Some(validators);
+            let context = CompilationContext::new(scope.into(), schema.config());
+            if let Ok(node) = compile_validators(&resolved, &context) {
+                let result = node.is_valid(schema, instance);
+                *self.sub_nodes.write() = Some(node);
                 return result;
             }
         };
@@ -64,11 +61,9 @@ impl Validate for RefValidator {
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if let Some(validators) = self.validators.read().as_ref() {
+        if let Some(node) = self.sub_nodes.read().as_ref() {
             return Box::new(
-                validators
-                    .iter()
-                    .flat_map(move |validator| validator.validate(schema, instance, instance_path))
+                node.validate(schema, instance, instance_path)
                     .collect::<Vec<_>>()
                     .into_iter(),
             );
@@ -78,27 +73,21 @@ impl Validate for RefValidator {
             .resolve_fragment(schema.draft(), &self.reference)
         {
             Ok((scope, resolved)) => {
-                let context = CompilationContext::new(scope, schema.config());
+                let context = CompilationContext::new(scope.into(), schema.config());
                 match compile_validators(&resolved, &context) {
-                    Ok(validators) => {
+                    Ok(node) => {
                         let result = Box::new(
-                            validators
-                                .iter()
-                                .flat_map(move |validator| {
+                            node.err_iter(schema, instance, instance_path)
+                                .map(move |mut error| {
                                     let schema_path = self.schema_path.clone();
-                                    validator.validate(schema, instance, instance_path).map(
-                                        move |mut error| {
-                                            // Prepend $ref path to the actual error
-                                            error.schema_path = schema_path
-                                                .extend_with(error.schema_path.as_slice());
-                                            error
-                                        },
-                                    )
+                                    error.schema_path =
+                                        schema_path.extend_with(error.schema_path.as_slice());
+                                    error
                                 })
                                 .collect::<Vec<_>>()
                                 .into_iter(),
                         );
-                        *self.validators.write() = Some(validators);
+                        *self.sub_nodes.write() = Some(node);
                         result
                     }
                     Err(err) => error(err.into_owned()),

@@ -186,7 +186,7 @@ impl CompilationOptions {
         };
         let schema_json = Arc::new(schema.clone());
         let resolver = Resolver::new(draft, &scope, schema_json.clone(), self.store.clone())?;
-        let context = CompilationContext::new(scope, &config);
+        let context = CompilationContext::new(scope.into(), &config);
 
         if self.validate_schema {
             if let Some(mut errors) = META_SCHEMA_VALIDATORS
@@ -199,12 +199,11 @@ impl CompilationOptions {
             }
         }
 
-        let mut validators = compile_validators(schema, &context)?;
-        validators.shrink_to_fit();
+        let node = compile_validators(schema, &context)?;
 
         Ok(JSONSchema {
             schema: schema_json,
-            validators,
+            node,
             resolver,
             config,
         })

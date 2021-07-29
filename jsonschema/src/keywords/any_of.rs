@@ -2,7 +2,8 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
     paths::InstancePath,
-    validator::{format_vec_of_validators, Validate, Validators},
+    schema_node::SchemaNode,
+    validator::{format_iter_of_validators, PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
 
@@ -10,7 +11,7 @@ use super::CompilationResult;
 use crate::paths::JSONPointer;
 
 pub(crate) struct AnyOfValidator {
-    schemas: Vec<Validators>,
+    schemas: Vec<SchemaNode>,
     schema_path: JSONPointer,
 }
 
@@ -25,8 +26,8 @@ impl AnyOfValidator {
             let mut schemas = Vec::with_capacity(items.len());
             for (idx, item) in items.iter().enumerate() {
                 let item_context = keyword_context.with_path(idx);
-                let validators = compile_validators(item, &item_context)?;
-                schemas.push(validators)
+                let node = compile_validators(item, &item_context)?;
+                schemas.push(node)
             }
             Ok(Box::new(AnyOfValidator {
                 schemas,
@@ -40,15 +41,7 @@ impl AnyOfValidator {
 
 impl Validate for AnyOfValidator {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        for validators in &self.schemas {
-            if validators
-                .iter()
-                .all(|validator| validator.is_valid(schema, instance))
-            {
-                return true;
-            }
-        }
-        false
+        self.schemas.iter().any(|s| s.is_valid(schema, instance))
     }
 
     fn validate<'a, 'b>(
@@ -67,11 +60,38 @@ impl Validate for AnyOfValidator {
             ))
         }
     }
+
+    fn apply<'a>(
+        &'a self,
+        schema: &JSONSchema,
+        instance: &Value,
+        instance_path: &InstancePath,
+    ) -> PartialApplication<'a> {
+        let mut successes = Vec::new();
+        let mut failures = Vec::new();
+        for node in &self.schemas {
+            let result = node.apply_rooted(schema, instance, instance_path);
+            if result.is_valid() {
+                successes.push(result);
+            } else {
+                failures.push(result);
+            }
+        }
+        if successes.is_empty() {
+            failures.into_iter().collect()
+        } else {
+            successes.into_iter().collect()
+        }
+    }
 }
 
 impl core::fmt::Display for AnyOfValidator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "anyOf: [{}]", format_vec_of_validators(&self.schemas))
+        write!(
+            f,
+            "anyOf: [{}]",
+            format_iter_of_validators(self.schemas.iter().map(|s| s.validators()))
+        )
     }
 }
 #[inline]

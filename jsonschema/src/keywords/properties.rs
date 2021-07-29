@@ -2,13 +2,15 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
+    output::BasicOutput,
     paths::InstancePath,
-    validator::{format_key_value_validators, Validate, Validators},
+    schema_node::SchemaNode,
+    validator::{format_key_value_validators, PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
 
 pub(crate) struct PropertiesValidator {
-    properties: Vec<(String, Validators)>,
+    properties: Vec<(String, SchemaNode)>,
 }
 
 impl PropertiesValidator {
@@ -38,19 +40,18 @@ impl PropertiesValidator {
 impl Validate for PropertiesValidator {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
-            self.properties.iter().all(move |(name, validators)| {
+            self.properties.iter().all(move |(name, node)| {
                 let option = item.get(name);
-                option.into_iter().all(move |item| {
-                    validators
-                        .iter()
-                        .all(move |validator| validator.is_valid(schema, item))
-                })
+                option
+                    .into_iter()
+                    .all(move |item| node.is_valid(schema, item))
             })
         } else {
             true
         }
     }
 
+    #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
@@ -61,19 +62,41 @@ impl Validate for PropertiesValidator {
             let errors: Vec<_> = self
                 .properties
                 .iter()
-                .flat_map(move |(name, validators)| {
+                .flat_map(move |(name, node)| {
                     let option = item.get(name);
                     option.into_iter().flat_map(move |item| {
                         let instance_path = instance_path.push(name.clone());
-                        validators.iter().flat_map(move |validator| {
-                            validator.validate(schema, item, &instance_path)
-                        })
+                        node.validate(schema, item, &instance_path)
                     })
                 })
                 .collect();
             Box::new(errors.into_iter())
         } else {
             no_error()
+        }
+    }
+
+    fn apply<'a>(
+        &'a self,
+        schema: &JSONSchema,
+        instance: &Value,
+        instance_path: &InstancePath,
+    ) -> PartialApplication<'a> {
+        if let Value::Object(props) = instance {
+            let mut result = BasicOutput::default();
+            let mut matched_props = Vec::with_capacity(props.len());
+            for (prop_name, node) in &self.properties {
+                if let Some(prop) = props.get(prop_name) {
+                    let path = instance_path.push(prop_name.clone());
+                    matched_props.push(prop_name.clone());
+                    result += node.apply_rooted(schema, prop, &path);
+                }
+            }
+            let mut application: PartialApplication = result.into();
+            application.annotate(serde_json::Value::from(matched_props).into());
+            application
+        } else {
+            PartialApplication::valid_empty()
         }
     }
 }

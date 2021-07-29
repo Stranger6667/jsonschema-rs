@@ -3,13 +3,14 @@ use crate::{
     error::{no_error, ErrorIterator},
     keywords::CompilationResult,
     paths::InstancePath,
-    validator::{format_validators, Validate, Validators},
+    schema_node::SchemaNode,
+    validator::{format_validators, PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
 
 pub(crate) struct IfThenValidator {
-    schema: Validators,
-    then_schema: Validators,
+    schema: SchemaNode,
+    then_schema: SchemaNode,
 }
 
 impl IfThenValidator {
@@ -34,39 +35,45 @@ impl IfThenValidator {
 
 impl Validate for IfThenValidator {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if self
-            .schema
-            .iter()
-            .all(|validator| validator.is_valid(schema, instance))
-        {
-            self.then_schema
-                .iter()
-                .all(move |validator| validator.is_valid(schema, instance))
+        if self.schema.is_valid(schema, instance) {
+            self.then_schema.is_valid(schema, instance)
         } else {
             true
         }
     }
 
+    #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self
-            .schema
-            .iter()
-            .all(|validator| validator.is_valid(schema, instance))
-        {
+        if self.schema.is_valid(schema, instance) {
             let errors: Vec<_> = self
                 .then_schema
-                .iter()
-                .flat_map(move |validator| validator.validate(schema, instance, instance_path))
+                .validate(schema, instance, instance_path)
                 .collect();
             Box::new(errors.into_iter())
         } else {
             no_error()
         }
+    }
+
+    fn apply<'a>(
+        &'a self,
+        schema: &JSONSchema,
+        instance: &Value,
+        instance_path: &InstancePath,
+    ) -> PartialApplication<'a> {
+        let mut if_result = self.schema.apply_rooted(schema, instance, instance_path);
+        if if_result.is_valid() {
+            let then_result = self
+                .then_schema
+                .apply_rooted(schema, instance, instance_path);
+            if_result += then_result;
+        }
+        if_result.into()
     }
 }
 
@@ -75,15 +82,15 @@ impl core::fmt::Display for IfThenValidator {
         write!(
             f,
             "if: {}, then: {}",
-            format_validators(&self.schema),
-            format_validators(&self.then_schema)
+            format_validators(self.schema.validators()),
+            format_validators(self.then_schema.validators())
         )
     }
 }
 
 pub(crate) struct IfElseValidator {
-    schema: Validators,
-    else_schema: Validators,
+    schema: SchemaNode,
+    else_schema: SchemaNode,
 }
 
 impl IfElseValidator {
@@ -108,38 +115,44 @@ impl IfElseValidator {
 
 impl Validate for IfElseValidator {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if self
-            .schema
-            .iter()
-            .any(|validator| !validator.is_valid(schema, instance))
-        {
-            self.else_schema
-                .iter()
-                .all(move |validator| validator.is_valid(schema, instance))
+        if !self.schema.is_valid(schema, instance) {
+            self.else_schema.is_valid(schema, instance)
         } else {
             true
         }
     }
 
+    #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self
-            .schema
-            .iter()
-            .any(|validator| !validator.is_valid(schema, instance))
-        {
+        if !self.schema.is_valid(schema, instance) {
             let errors: Vec<_> = self
                 .else_schema
-                .iter()
-                .flat_map(move |validator| validator.validate(schema, instance, instance_path))
+                .validate(schema, instance, instance_path)
                 .collect();
             Box::new(errors.into_iter())
         } else {
             no_error()
+        }
+    }
+
+    fn apply<'a>(
+        &'a self,
+        schema: &JSONSchema,
+        instance: &Value,
+        instance_path: &InstancePath,
+    ) -> PartialApplication<'a> {
+        let if_result = self.schema.apply_rooted(schema, instance, instance_path);
+        if if_result.is_valid() {
+            if_result.into()
+        } else {
+            self.else_schema
+                .apply_rooted(schema, instance, instance_path)
+                .into()
         }
     }
 }
@@ -149,16 +162,16 @@ impl core::fmt::Display for IfElseValidator {
         write!(
             f,
             "if: {}, else: {}",
-            format_validators(&self.schema),
-            format_validators(&self.else_schema)
+            format_validators(self.schema.validators()),
+            format_validators(self.else_schema.validators())
         )
     }
 }
 
 pub(crate) struct IfThenElseValidator {
-    schema: Validators,
-    then_schema: Validators,
-    else_schema: Validators,
+    schema: SchemaNode,
+    then_schema: SchemaNode,
+    else_schema: SchemaNode,
 }
 
 impl IfThenElseValidator {
@@ -188,45 +201,51 @@ impl IfThenElseValidator {
 
 impl Validate for IfThenElseValidator {
     fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if self
-            .schema
-            .iter()
-            .all(|validator| validator.is_valid(schema, instance))
-        {
-            self.then_schema
-                .iter()
-                .all(move |validator| validator.is_valid(schema, instance))
+        if self.schema.is_valid(schema, instance) {
+            self.then_schema.is_valid(schema, instance)
         } else {
-            self.else_schema
-                .iter()
-                .all(move |validator| validator.is_valid(schema, instance))
+            self.else_schema.is_valid(schema, instance)
         }
     }
 
+    #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
         schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self
-            .schema
-            .iter()
-            .all(|validator| validator.is_valid(schema, instance))
-        {
+        if self.schema.is_valid(schema, instance) {
             let errors: Vec<_> = self
                 .then_schema
-                .iter()
-                .flat_map(move |validator| validator.validate(schema, instance, instance_path))
+                .validate(schema, instance, instance_path)
                 .collect();
             Box::new(errors.into_iter())
         } else {
             let errors: Vec<_> = self
                 .else_schema
-                .iter()
-                .flat_map(move |validator| validator.validate(schema, instance, instance_path))
+                .validate(schema, instance, instance_path)
                 .collect();
             Box::new(errors.into_iter())
+        }
+    }
+
+    fn apply<'a>(
+        &'a self,
+        schema: &JSONSchema,
+        instance: &Value,
+        instance_path: &InstancePath,
+    ) -> PartialApplication<'a> {
+        let mut if_result = self.schema.apply_rooted(schema, instance, instance_path);
+        if if_result.is_valid() {
+            if_result += self
+                .then_schema
+                .apply_rooted(schema, instance, instance_path);
+            if_result.into()
+        } else {
+            self.else_schema
+                .apply_rooted(schema, instance, instance_path)
+                .into()
         }
     }
 }
@@ -236,9 +255,9 @@ impl core::fmt::Display for IfThenElseValidator {
         write!(
             f,
             "if: {}, then: {}, else: {}",
-            format_validators(&self.schema),
-            format_validators(&self.then_schema),
-            format_validators(&self.else_schema)
+            format_validators(self.schema.validators()),
+            format_validators(self.then_schema.validators()),
+            format_validators(self.else_schema.validators())
         )
     }
 }

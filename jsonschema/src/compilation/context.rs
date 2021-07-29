@@ -1,5 +1,6 @@
 use super::options::CompilationOptions;
 use crate::{
+    compilation::DEFAULT_SCOPE,
     paths::{InstancePath, JSONPointer, PathChunk},
     schemas,
 };
@@ -7,18 +8,74 @@ use serde_json::Value;
 use std::borrow::Cow;
 use url::{ParseError, Url};
 
+static DEFAULT_SCHEME: &str = "json-schema";
+
 /// Context holds information about used draft and current scope.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct CompilationContext<'a> {
-    pub(crate) scope: Cow<'a, Url>,
+    base_uri: BaseUri<'a>,
     pub(crate) config: &'a CompilationOptions,
     pub(crate) schema_path: InstancePath<'a>,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) enum BaseUri<'a> {
+    /// A base URL was specified, either because we know a reasonable base URI where we retrieved the
+    /// schema or because a URI was specified via $id
+    Known(Cow<'a, Url>),
+    /// We don't know a base URI for this schema
+    Unknown,
+}
+
+impl<'a> BaseUri<'a> {
+    pub(crate) fn with_new_scope(&self, new_scope: &str) -> Result<Self, ParseError> {
+        let options = match self {
+            BaseUri::Known(u) => Url::options().base_url(Some(u)),
+            BaseUri::Unknown => Url::options().base_url(Some(&DEFAULT_SCOPE)),
+        };
+        Ok(options.parse(new_scope)?.into())
+    }
+}
+
+impl<'a> From<Option<Url>> for BaseUri<'a> {
+    fn from(u: Option<Url>) -> Self {
+        u.map_or(BaseUri::Unknown, |u| u.into())
+    }
+}
+
+impl<'a> From<&'a Url> for BaseUri<'a> {
+    fn from(u: &'a Url) -> Self {
+        if u.scheme() == DEFAULT_SCHEME {
+            BaseUri::Unknown
+        } else {
+            BaseUri::Known(Cow::Borrowed(u))
+        }
+    }
+}
+
+impl<'a> From<Url> for BaseUri<'a> {
+    fn from(u: Url) -> Self {
+        if u.scheme() == DEFAULT_SCHEME {
+            BaseUri::Unknown
+        } else {
+            BaseUri::Known(Cow::Owned(u))
+        }
+    }
+}
+
+impl<'a> From<&'a BaseUri<'a>> for Cow<'a, Url> {
+    fn from(uri: &BaseUri<'a>) -> Self {
+        match uri {
+            BaseUri::Unknown => Cow::Borrowed(&DEFAULT_SCOPE),
+            BaseUri::Known(u) => u.clone(),
+        }
+    }
+}
+
 impl<'a> CompilationContext<'a> {
-    pub(crate) const fn new(scope: Url, config: &'a CompilationOptions) -> Self {
+    pub(crate) const fn new(scope: BaseUri<'a>, config: &'a CompilationOptions) -> Self {
         CompilationContext {
-            scope: Cow::Owned(scope),
+            base_uri: scope,
             config,
             schema_path: InstancePath::new(),
         }
@@ -37,15 +94,14 @@ impl<'a> CompilationContext<'a> {
     #[inline]
     pub(crate) fn push(&'a self, schema: &Value) -> Result<Self, ParseError> {
         if let Some(id) = schemas::id_of(self.config.draft(), schema) {
-            let scope = Url::options().base_url(Some(&self.scope)).parse(id)?;
             Ok(CompilationContext {
-                scope: Cow::Owned(scope),
+                base_uri: self.base_uri.with_new_scope(id)?,
                 config: self.config,
                 schema_path: self.schema_path.clone(),
             })
         } else {
             Ok(CompilationContext {
-                scope: Cow::Borrowed(self.scope.as_ref()),
+                base_uri: self.base_uri.clone(),
                 config: self.config,
                 schema_path: self.schema_path.clone(),
             })
@@ -56,7 +112,7 @@ impl<'a> CompilationContext<'a> {
     pub(crate) fn with_path(&'a self, chunk: impl Into<PathChunk>) -> Self {
         let schema_path = self.schema_path.push(chunk);
         CompilationContext {
-            scope: Cow::Borrowed(self.scope.as_ref()),
+            base_uri: self.base_uri.clone(),
             config: self.config,
             schema_path,
         }
@@ -76,6 +132,16 @@ impl<'a> CompilationContext<'a> {
 
     /// Build a new URL. Used for `ref` compilation to keep their full paths.
     pub(crate) fn build_url(&self, reference: &str) -> Result<Url, ParseError> {
-        Url::options().base_url(Some(&self.scope)).parse(reference)
+        let cowbase: Cow<Url> = (&self.base_uri).into();
+        Url::options()
+            .base_url(Some(cowbase.as_ref()))
+            .parse(reference)
+    }
+
+    pub(crate) fn base_uri(&self) -> Option<Url> {
+        match &self.base_uri {
+            BaseUri::Known(u) => Some(u.as_ref().clone()),
+            BaseUri::Unknown => None,
+        }
     }
 }
