@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.12.1] - 2021-07-29
+
 ### Fixed
 
 - Allow using empty arrays or arrays with non-unique elements for the `enum` keyword in schemas. [#258](https://github.com/Stranger6667/jsonschema-rs/issues/258)
@@ -207,7 +209,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.12.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.12.1...HEAD
+[0.12.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.12.0...python-v0.12.1
 [0.12.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.11.1...python-v0.12.0
 [0.11.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.11.0...python-v0.11.1
 [0.11.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.10.0...python-v0.11.0
