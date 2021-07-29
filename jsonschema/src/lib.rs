@@ -210,4 +210,11 @@ mod tests {
                 .is_ok())
         }
     }
+
+    #[test]
+    fn incomplete_escape_in_pattern() {
+        // See GH-253
+        let schema = json!({"pattern": "\\u"});
+        assert!(JSONSchema::compile(&schema).is_err())
+    }
 }

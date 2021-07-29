@@ -6,6 +6,7 @@
 
 - Allow using empty arrays or arrays with non-unique elements for the `enum` keyword in schemas. [#258](https://github.com/Stranger6667/jsonschema-rs/issues/258)
 - Inaccurate schema path in validation error messages. [#257](https://github.com/Stranger6667/jsonschema-rs/issues/257)
+- Panic on incomplete escape sequences in regex patterns. [#253](https://github.com/Stranger6667/jsonschema-rs/issues/253)
 
 ## [0.12.0] - 2021-07-24
 
