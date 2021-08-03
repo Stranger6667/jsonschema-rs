@@ -402,24 +402,50 @@ pub(crate) fn compile<'a>(
             "idn-hostname" if draft_version == Draft::Draft7 => {
                 Some(IDNHostnameValidator::compile(context))
             }
+            #[cfg(feature = "draft201909")]
+            "idn-hostname" if draft_version == Draft::Draft201909 => {
+                Some(IDNHostnameValidator::compile(context))
+            }
             "ipv4" => Some(IpV4Validator::compile(context)),
             "ipv6" => Some(IpV6Validator::compile(context)),
             "iri-reference" if draft_version == Draft::Draft7 => {
                 Some(IRIReferenceValidator::compile(context))
             }
+            #[cfg(feature = "draft201909")]
+            "iri-reference" if draft_version == Draft::Draft201909 => {
+                Some(IRIReferenceValidator::compile(context))
+            }
             "iri" if draft_version == Draft::Draft7 => Some(IRIValidator::compile(context)),
+            #[cfg(feature = "draft201909")]
+            "iri" if draft_version == Draft::Draft201909 => Some(IRIValidator::compile(context)),
             "json-pointer" if draft_version == Draft::Draft6 || draft_version == Draft::Draft7 => {
+                Some(JSONPointerValidator::compile(context))
+            }
+            #[cfg(feature = "draft201909")]
+            "json-pointer" if draft_version == Draft::Draft201909 => {
                 Some(JSONPointerValidator::compile(context))
             }
             "regex" => Some(RegexValidator::compile(context)),
             "relative-json-pointer" if draft_version == Draft::Draft7 => {
                 Some(RelativeJSONPointerValidator::compile(context))
             }
+            #[cfg(feature = "draft201909")]
+            "relative-json-pointer" if draft_version == Draft::Draft201909 => {
+                Some(RelativeJSONPointerValidator::compile(context))
+            }
             "time" => Some(TimeValidator::compile(context)),
             "uri-reference" if draft_version == Draft::Draft6 || draft_version == Draft::Draft7 => {
                 Some(URIReferenceValidator::compile(context))
             }
+            #[cfg(feature = "draft201909")]
+            "uri-reference" if draft_version == Draft::Draft201909 => {
+                Some(URIReferenceValidator::compile(context))
+            }
             "uri-template" if draft_version == Draft::Draft6 || draft_version == Draft::Draft7 => {
+                Some(URITemplateValidator::compile(context))
+            }
+            #[cfg(feature = "draft201909")]
+            "uri-template" if draft_version == Draft::Draft201909 => {
                 Some(URITemplateValidator::compile(context))
             }
             "uri" => Some(URIValidator::compile(context)),

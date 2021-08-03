@@ -18,6 +18,7 @@ name = "jsonschema"
 [features]
 default = ["reqwest", "cli"]
 cli = ["structopt"]
+draft201909 = []
 
 [dependencies]
 serde_json = "1"

@@ -90,7 +90,7 @@ fn keywords(c: &mut Criterion) {
 }
 
 fn validate_valid(c: &mut Criterion, name: &str, schema: &Value, instance: &Value) {
-    let compiled = JSONSchema::compile(&schema).expect("Valid schema");
+    let compiled = JSONSchema::compile(schema).expect("Valid schema");
     c.bench_with_input(
         BenchmarkId::new(name, "jsonschema_rs/is_valid"),
         instance,
@@ -112,7 +112,7 @@ fn validate_valid(c: &mut Criterion, name: &str, schema: &Value, instance: &Valu
 }
 
 fn validate_invalid(c: &mut Criterion, name: &str, schema: &Value, instance: &Value) {
-    let compiled = JSONSchema::compile(&schema).expect("Valid schema");
+    let compiled = JSONSchema::compile(schema).expect("Valid schema");
     c.bench_with_input(
         BenchmarkId::new(name, "jsonschema_rs/is_valid"),
         instance,
@@ -128,7 +128,7 @@ fn validate_invalid(c: &mut Criterion, name: &str, schema: &Value, instance: &Va
         |b, instance| {
             b.iter(|| {
                 let _: Vec<_> = compiled
-                    .validate(&instance)
+                    .validate(instance)
                     .expect_err("There should be errors")
                     .collect();
             })

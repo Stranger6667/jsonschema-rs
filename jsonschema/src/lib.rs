@@ -75,7 +75,11 @@
     unreachable_pub,
     variant_size_differences
 )]
-#![allow(clippy::unnecessary_wraps, clippy::upper_case_acronyms)]
+#![allow(
+    clippy::unnecessary_wraps,
+    clippy::upper_case_acronyms,
+    clippy::needless_collect
+)]
 #![cfg_attr(not(test), allow(clippy::integer_arithmetic, clippy::unwrap_used))]
 mod compilation;
 mod content_encoding;

@@ -7,16 +7,52 @@ use std::fs;
 #[json_schema_test_suite("tests/suite", "draft7", {
     r"optional_format_idn_hostname_0_\d+",  // https://github.com/Stranger6667/jsonschema-rs/issues/101
 })]
+#[json_schema_test_suite("tests/suite", "draft2019-09", {
+    r"optional_format_idn_hostname_0_\d+",  // https://github.com/Stranger6667/jsonschema-rs/issues/101
+    r"format_\d+_6",  // https://github.com/Stranger6667/jsonschema-rs/issues/261
+    // These depend on the new `$defs` keyword (which is renamed from `definitions`)
+    r"id_0_[0-6]",
+    // Various types of new behavior used in the `$ref` context
+    "ref_5_1",
+    "ref_13_0",
+    "refRemote_4_0",
+    "refRemote_4_1",
+    "recursiveRef_0_3",
+    "recursiveRef_1_2",
+    "recursiveRef_1_4",
+    "recursiveRef_3_2",
+    "recursiveRef_3_4",
+    "recursiveRef_4_2",
+    "recursiveRef_4_4",
+    "recursiveRef_5_2",
+    "recursiveRef_6_2",
+    "recursiveRef_7_0",
+    "recursiveRef_7_1",
+    // New keywords & formats.
+    // https://github.com/Stranger6667/jsonschema-rs/issues/100
+    r"anchor_.+",
+    r"defs_.+",
+    r"dependentRequired_.+",
+    r"dependentSchemas_.+",
+    r"maxContains_.+",
+    r"minContains_.+",
+    r"optional_format_duration_.+",  // https://github.com/Stranger6667/jsonschema-rs/issues/265
+    r"optional_format_uuid_.+",  // https://github.com/Stranger6667/jsonschema-rs/issues/266
+    r"unevaluatedItems_.+",
+    r"unevaluatedProperties_.+",
+})]
 fn test_draft(_server_address: &str, test_case: TestCase) {
     let draft_version = match test_case.draft_version.as_ref() {
         "draft4" => Draft::Draft4,
         "draft6" => Draft::Draft6,
         "draft7" => Draft::Draft7,
+        "draft2019-09" => Draft::Draft201909,
         _ => panic!("Unsupported draft"),
     };
 
     let compiled = JSONSchema::options()
         .with_draft(draft_version)
+        .with_meta_schemas()
         .compile(&test_case.schema)
         .unwrap();
 
@@ -62,12 +98,15 @@ fn test_instance_path() {
         for item in expected.as_array().expect("Is array") {
             let suite_id = item["suite_id"].as_u64().expect("Is integer") as usize;
             let raw_schema = &data[suite_id]["schema"];
-            let schema = JSONSchema::compile(raw_schema).unwrap_or_else(|_| {
-                panic!(
-                    "Valid schema. File: {}; Suite ID: {}; Schema: {}",
-                    filename, suite_id, raw_schema
-                )
-            });
+            let schema = JSONSchema::options()
+                .with_meta_schemas()
+                .compile(raw_schema)
+                .unwrap_or_else(|_| {
+                    panic!(
+                        "Valid schema. File: {}; Suite ID: {}; Schema: {}",
+                        filename, suite_id, raw_schema
+                    )
+                });
             for test_data in item["tests"].as_array().expect("Valid array") {
                 let test_id = test_data["id"].as_u64().expect("Is integer") as usize;
                 let instance_path: Vec<&str> = test_data["instance_path"]

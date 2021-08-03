@@ -51,7 +51,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - run: cargo test --no-fail-fast
+      - run: cargo test --no-fail-fast --features draft201909
         working-directory: ./jsonschema
 
   coverage:

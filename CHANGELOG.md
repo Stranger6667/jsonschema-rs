@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **INTERNAL**. A new `Draft201909` variant for the `Draft` enum that is available only under the `draft201909` feature. This feature is considered private and should not be used outside of the testing context.
+  It allows us to add features from the 2019-09 Draft without exposing them in the public API. Therefore, support for this draft can be added incrementally.
+- The `Draft` enum is now marked as `non_exhaustive`.
+
 ## [0.12.1] - 2021-07-29
 
 ### Fixed
