@@ -131,6 +131,8 @@ impl Draft {
 #[inline]
 pub(crate) fn draft_from_url(url: &str) -> Option<Draft> {
     match url {
+        #[cfg(feature = "draft201909")]
+        "https://json-schema.org/draft/2019-09/schema#" => Some(Draft::Draft201909),
         "http://json-schema.org/draft-07/schema#" => Some(Draft::Draft7),
         "http://json-schema.org/draft-06/schema#" => Some(Draft::Draft6),
         "http://json-schema.org/draft-04/schema#" => Some(Draft::Draft4),
@@ -167,6 +169,7 @@ mod tests {
     use serde_json::{json, Value};
     use test_case::test_case;
 
+    #[test_case(&json!({"$schema": "https://json-schema.org/draft/2019-09/schema#"}), Some(Draft::Draft201909))]
     #[test_case(&json!({"$schema": "http://json-schema.org/draft-07/schema#"}), Some(Draft::Draft7))]
     #[test_case(&json!({"$schema": "http://json-schema.org/draft-06/schema#"}), Some(Draft::Draft6))]
     #[test_case(&json!({"$schema": "http://json-schema.org/draft-04/schema#"}), Some(Draft::Draft4))]
