@@ -17,6 +17,13 @@ lazy_static::lazy_static! {
     static ref DRAFT4:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft4.json")).expect("Valid schema!");
     static ref DRAFT6:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft6.json")).expect("Valid schema!");
     static ref DRAFT7:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft7.json")).expect("Valid schema!");
+    static ref DRAFT201909:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2019-09/schema.json")).expect("Valid schema!");
+    static ref DRAFT201909_APPLICATOR:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2019-09/meta/applicator.json")).expect("Valid schema!");
+    static ref DRAFT201909_CONTENT:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2019-09/meta/content.json")).expect("Valid schema!");
+    static ref DRAFT201909_CORE:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2019-09/meta/core.json")).expect("Valid schema!");
+    static ref DRAFT201909_FORMAT:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2019-09/meta/format.json")).expect("Valid schema!");
+    static ref DRAFT201909_META_DATA:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2019-09/meta/meta-data.json")).expect("Valid schema!");
+    static ref DRAFT201909_VALIDATION:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2019-09/meta/validation.json")).expect("Valid schema!");
 
     static ref META_SCHEMAS: AHashMap<String, Arc<serde_json::Value>> = {
         let mut store = AHashMap::with_capacity(3);
@@ -32,6 +39,37 @@ lazy_static::lazy_static! {
             "http://json-schema.org/draft-07/schema".to_string(),
             Arc::new(DRAFT7.clone())
         );
+        #[cfg(feature = "draft201909")]
+        {
+            store.insert(
+                "https://json-schema.org/draft/2019-09/schema".to_string(),
+                Arc::new(DRAFT201909.clone())
+            );
+            store.insert(
+                "https://json-schema.org/draft/2019-09/meta/applicator".to_string(),
+                Arc::new(DRAFT201909_APPLICATOR.clone())
+            );
+            store.insert(
+                "https://json-schema.org/draft/2019-09/meta/content".to_string(),
+                Arc::new(DRAFT201909_CONTENT.clone())
+            );
+            store.insert(
+                "https://json-schema.org/draft/2019-09/meta/core".to_string(),
+                Arc::new(DRAFT201909_CORE.clone())
+            );
+            store.insert(
+                "https://json-schema.org/draft/2019-09/meta/format".to_string(),
+                Arc::new(DRAFT201909_FORMAT.clone())
+            );
+            store.insert(
+                "https://json-schema.org/draft/2019-09/meta/meta-data".to_string(),
+                Arc::new(DRAFT201909_META_DATA.clone())
+            );
+            store.insert(
+                "https://json-schema.org/draft/2019-09/meta/validation".to_string(),
+                Arc::new(DRAFT201909_VALIDATION.clone())
+            );
+        }
         store
     };
 
@@ -48,6 +86,38 @@ lazy_static::lazy_static! {
         store.insert(
             schemas::Draft::Draft7,
             JSONSchema::options().without_schema_validation().compile(&DRAFT7).expect(EXPECT_MESSAGE)
+        );
+        #[cfg(feature = "draft201909")]
+        store.insert(
+            schemas::Draft::Draft201909,
+            JSONSchema::options()
+                .without_schema_validation()
+                .with_document(
+                    "https://json-schema.org/draft/2019-09/meta/applicator".to_string(),
+                    DRAFT201909_APPLICATOR.clone()
+                )
+                .with_document(
+                    "https://json-schema.org/draft/2019-09/meta/content".to_string(),
+                    DRAFT201909_CONTENT.clone()
+                )
+                .with_document(
+                    "https://json-schema.org/draft/2019-09/meta/core".to_string(),
+                    DRAFT201909_CORE.clone()
+                )
+                .with_document(
+                    "https://json-schema.org/draft/2019-09/meta/format".to_string(),
+                    DRAFT201909_FORMAT.clone()
+                )
+                .with_document(
+                    "https://json-schema.org/draft/2019-09/meta/meta-data".to_string(),
+                    DRAFT201909_META_DATA.clone()
+                )
+                .with_document(
+                    "https://json-schema.org/draft/2019-09/meta/validation".to_string(),
+                    DRAFT201909_VALIDATION.clone()
+                )
+                .compile(&DRAFT201909)
+                .expect(EXPECT_MESSAGE)
         );
         store
     };

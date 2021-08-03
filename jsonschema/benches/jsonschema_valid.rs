@@ -71,7 +71,7 @@ fn keywords(c: &mut Criterion) {
                 schema,
                 |b, schema| {
                     b.iter(|| {
-                        jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7))
+                        jsonschema_valid::Config::from_schema(schema, Some(schemas::Draft::Draft7))
                             .expect("Valid schema")
                     })
                 },
@@ -83,7 +83,7 @@ fn keywords(c: &mut Criterion) {
 }
 
 fn validate(c: &mut Criterion, name: &str, schema: &Value, instance: &Value) {
-    let compiled = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7))
+    let compiled = jsonschema_valid::Config::from_schema(schema, Some(schemas::Draft::Draft7))
         .expect("Valid schema");
     c.bench_with_input(
         BenchmarkId::new(name, "jsonschema_valid"),
