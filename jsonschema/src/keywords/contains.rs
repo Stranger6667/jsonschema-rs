@@ -4,6 +4,7 @@ use crate::{
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
     validator::{format_validators, Validate, Validators},
+    Draft,
 };
 use serde_json::{Map, Value};
 
@@ -77,13 +78,356 @@ impl core::fmt::Display for ContainsValidator {
     }
 }
 
+/// `minContains` validation. Used only if there is no `maxContains` present.
+///
+/// Docs: <https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.6.4.5>
+pub(crate) struct MinContainsValidator {
+    validators: Validators,
+    min_contains: u64,
+    schema_path: JSONPointer,
+}
+
+impl MinContainsValidator {
+    #[inline]
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        context: &CompilationContext,
+        min_contains: u64,
+    ) -> CompilationResult<'a> {
+        let keyword_context = context.with_path("minContains");
+        Ok(Box::new(MinContainsValidator {
+            validators: compile_validators(schema, context)?,
+            min_contains,
+            schema_path: keyword_context.into_pointer(),
+        }))
+    }
+}
+
+impl Validate for MinContainsValidator {
+    fn validate<'a, 'b>(
+        &self,
+        schema: &'a JSONSchema,
+        instance: &'b Value,
+        instance_path: &InstancePath,
+    ) -> ErrorIterator<'b> {
+        if let Value::Array(items) = instance {
+            // From docs:
+            //   An array instance is valid against "minContains" if the number of elements
+            //   that are valid against the schema for "contains" is greater than, or equal to,
+            //   the value of this keyword.
+            let mut matches = 0;
+            for item in items {
+                if self
+                    .validators
+                    .iter()
+                    .all(|validator| validator.is_valid(schema, item))
+                {
+                    matches += 1;
+                    // Shortcircuit - there is enough matches to satisfy `minContains`
+                    if matches >= self.min_contains {
+                        return no_error();
+                    }
+                }
+            }
+            if self.min_contains > 0 {
+                error(ValidationError::contains(
+                    self.schema_path.clone(),
+                    instance_path.into(),
+                    instance,
+                ))
+            } else {
+                // No matches needed
+                no_error()
+            }
+        } else {
+            no_error()
+        }
+    }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(items) = instance {
+            let mut matches = 0;
+            for item in items {
+                if self
+                    .validators
+                    .iter()
+                    .all(|validator| validator.is_valid(schema, item))
+                {
+                    matches += 1;
+                    if matches >= self.min_contains {
+                        return true;
+                    }
+                }
+            }
+            self.min_contains == 0
+        } else {
+            true
+        }
+    }
+}
+
+impl core::fmt::Display for MinContainsValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "minContains: {}, contains: {}",
+            self.min_contains,
+            format_validators(&self.validators)
+        )
+    }
+}
+
+/// `maxContains` validation. Used only if there is no `minContains` present.
+///
+/// Docs: <https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.6.4.4>
+pub(crate) struct MaxContainsValidator {
+    validators: Validators,
+    max_contains: u64,
+    schema_path: JSONPointer,
+}
+
+impl MaxContainsValidator {
+    #[inline]
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        context: &CompilationContext,
+        max_contains: u64,
+    ) -> CompilationResult<'a> {
+        let keyword_context = context.with_path("maxContains");
+        Ok(Box::new(MaxContainsValidator {
+            validators: compile_validators(schema, context)?,
+            max_contains,
+            schema_path: keyword_context.into_pointer(),
+        }))
+    }
+}
+
+impl Validate for MaxContainsValidator {
+    fn validate<'a, 'b>(
+        &self,
+        schema: &'a JSONSchema,
+        instance: &'b Value,
+        instance_path: &InstancePath,
+    ) -> ErrorIterator<'b> {
+        if let Value::Array(items) = instance {
+            // From docs:
+            //   An array instance is valid against "maxContains" if the number of elements
+            //   that are valid against the schema for "contains" is less than, or equal to,
+            //   the value of this keyword.
+            let mut matches = 0;
+            for item in items {
+                if self
+                    .validators
+                    .iter()
+                    .all(|validator| validator.is_valid(schema, item))
+                {
+                    matches += 1;
+                    // Shortcircuit - there should be no more than `self.max_contains` matches
+                    if matches > self.max_contains {
+                        return error(ValidationError::contains(
+                            self.schema_path.clone(),
+                            instance_path.into(),
+                            instance,
+                        ));
+                    }
+                }
+            }
+            if matches > 0 {
+                // It is also less or equal to `self.max_contains`
+                // otherwise the loop above would exit early
+                no_error()
+            } else {
+                // No matches - it should be at least one match to satisfy `contains`
+                return error(ValidationError::contains(
+                    self.schema_path.clone(),
+                    instance_path.into(),
+                    instance,
+                ));
+            }
+        } else {
+            no_error()
+        }
+    }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(items) = instance {
+            let mut matches = 0;
+            for item in items {
+                if self
+                    .validators
+                    .iter()
+                    .all(|validator| validator.is_valid(schema, item))
+                {
+                    matches += 1;
+                    if matches > self.max_contains {
+                        return false;
+                    }
+                }
+            }
+            matches != 0
+        } else {
+            true
+        }
+    }
+}
+
+impl core::fmt::Display for MaxContainsValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "maxContains: {}, contains: {}",
+            self.max_contains,
+            format_validators(&self.validators)
+        )
+    }
+}
+
+/// `maxContains` & `minContains` validation combined.
+///
+/// Docs:
+///   `maxContains` - <https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.6.4.4>
+///   `minContains` - <https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.6.4.5>
+pub(crate) struct MinMaxContainsValidator {
+    validators: Validators,
+    min_contains: u64,
+    max_contains: u64,
+    schema_path: JSONPointer,
+}
+
+impl MinMaxContainsValidator {
+    #[inline]
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        context: &CompilationContext,
+        min_contains: u64,
+        max_contains: u64,
+    ) -> CompilationResult<'a> {
+        Ok(Box::new(MinMaxContainsValidator {
+            validators: compile_validators(schema, context)?,
+            min_contains,
+            max_contains,
+            schema_path: context.schema_path.clone().into(),
+        }))
+    }
+}
+
+impl Validate for MinMaxContainsValidator {
+    fn validate<'a, 'b>(
+        &self,
+        schema: &'a JSONSchema,
+        instance: &'b Value,
+        instance_path: &InstancePath,
+    ) -> ErrorIterator<'b> {
+        if let Value::Array(items) = instance {
+            let mut matches = 0;
+            for item in items {
+                if self
+                    .validators
+                    .iter()
+                    .all(|validator| validator.is_valid(schema, item))
+                {
+                    matches += 1;
+                    // Shortcircuit - there should be no more than `self.max_contains` matches
+                    if matches > self.max_contains {
+                        return error(ValidationError::contains(
+                            self.schema_path.clone_with("maxContains"),
+                            instance_path.into(),
+                            instance,
+                        ));
+                    }
+                }
+            }
+            if matches < self.min_contains {
+                // Not enough matches
+                error(ValidationError::contains(
+                    self.schema_path.clone_with("minContains"),
+                    instance_path.into(),
+                    instance,
+                ))
+            } else {
+                no_error()
+            }
+        } else {
+            no_error()
+        }
+    }
+
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(items) = instance {
+            let mut matches = 0;
+            for item in items {
+                if self
+                    .validators
+                    .iter()
+                    .all(|validator| validator.is_valid(schema, item))
+                {
+                    matches += 1;
+                    if matches > self.max_contains {
+                        return false;
+                    }
+                }
+            }
+            matches <= self.max_contains && matches >= self.min_contains
+        } else {
+            true
+        }
+    }
+}
+
+impl core::fmt::Display for MinMaxContainsValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "minContains: {}, maxContains: {}, contains: {}",
+            self.min_contains,
+            self.max_contains,
+            format_validators(&self.validators)
+        )
+    }
+}
+
 #[inline]
 pub(crate) fn compile<'a>(
-    _: &'a Map<String, Value>,
+    parent: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
-    Some(ContainsValidator::compile(schema, context))
+    match context.config.draft() {
+        Draft::Draft4 | Draft::Draft6 | Draft::Draft7 => {
+            Some(ContainsValidator::compile(schema, context))
+        }
+        #[cfg(feature = "draft201909")]
+        Draft::Draft201909 => {
+            if let Some(min_contains) = parent.get("minContains") {
+                if let Some(min_contains) = min_contains.as_u64() {
+                    if let Some(max_contains) = parent.get("maxContains") {
+                        if let Some(max_contains) = max_contains.as_u64() {
+                            Some(MinMaxContainsValidator::compile(
+                                schema,
+                                context,
+                                min_contains,
+                                max_contains,
+                            ))
+                        } else {
+                            Some(Err(ValidationError::schema(schema)))
+                        }
+                    } else {
+                        Some(MinContainsValidator::compile(schema, context, min_contains))
+                    }
+                } else {
+                    Some(Err(ValidationError::schema(schema)))
+                }
+            } else if let Some(max_contains) = parent.get("maxContains") {
+                if let Some(max_contains) = max_contains.as_u64() {
+                    Some(MaxContainsValidator::compile(schema, context, max_contains))
+                } else {
+                    Some(Err(ValidationError::schema(schema)))
+                }
+            } else {
+                Some(ContainsValidator::compile(schema, context))
+            }
+        }
+    }
 }
 
 #[cfg(test)]
