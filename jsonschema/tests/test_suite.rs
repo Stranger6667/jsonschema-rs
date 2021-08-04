@@ -34,8 +34,6 @@ use std::fs;
     r"defs_.+",
     r"dependentRequired_.+",
     r"dependentSchemas_.+",
-    r"maxContains_.+",
-    r"minContains_.+",
     r"optional_format_duration_.+",  // https://github.com/Stranger6667/jsonschema-rs/issues/265
     r"optional_format_uuid_.+",  // https://github.com/Stranger6667/jsonschema-rs/issues/266
     r"unevaluatedItems_.+",
