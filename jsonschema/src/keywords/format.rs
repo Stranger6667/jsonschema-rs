@@ -1,4 +1,12 @@
 //! Validator for `format` keyword.
+use std::{net::IpAddr, str::FromStr};
+
+use chrono::{DateTime, NaiveDate};
+use fancy_regex::Regex;
+use serde_json::{Map, Value};
+use url::Url;
+use uuid::Uuid;
+
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
@@ -7,12 +15,6 @@ use crate::{
     validator::Validate,
     Draft,
 };
-use chrono::{DateTime, NaiveDate};
-use fancy_regex::Regex;
-use serde_json::{Map, Value};
-
-use std::{net::IpAddr, str::FromStr};
-use url::Url;
 
 lazy_static::lazy_static! {
     static ref DATE_RE: Regex =
@@ -328,6 +330,18 @@ impl Validate for URITemplateValidator {
     }
 }
 
+format_validator!(UUIDValidator, "uuid");
+impl Validate for UUIDValidator {
+    validate!("uuid");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            Uuid::from_str(item.as_str()).is_ok()
+        } else {
+            true
+        }
+    }
+}
+
 struct CustomFormatValidator {
     schema_path: JSONPointer,
     format_name: &'static str,
@@ -448,6 +462,8 @@ pub(crate) fn compile<'a>(
             "uri-template" if draft_version == Draft::Draft201909 => {
                 Some(URITemplateValidator::compile(context))
             }
+            #[cfg(feature = "draft201909")]
+            "uuid" if draft_version == Draft::Draft201909 => Some(UUIDValidator::compile(context)),
             "uri" => Some(URIValidator::compile(context)),
             _ => None,
         }
@@ -458,8 +474,10 @@ pub(crate) fn compile<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::{compilation::JSONSchema, tests_util};
     use serde_json::json;
+
+    use crate::schemas::Draft::Draft201909;
+    use crate::{compilation::JSONSchema, tests_util};
 
     #[test]
     fn ignored_format() {
@@ -481,5 +499,32 @@ mod tests {
     #[test]
     fn schema_path() {
         tests_util::assert_schema_path(&json!({"format": "date"}), &json!("bla"), "/format")
+    }
+
+    #[test]
+    fn uuid() {
+        let schema = json!({"format": "uuid", "type": "string"});
+
+        let passing_instance = json!("f308a72c-fa84-11eb-9a03-0242ac130003");
+        let failing_instance = json!("1");
+
+        let compiled = JSONSchema::options()
+            .with_draft(Draft201909)
+            .compile(&schema)
+            .unwrap();
+
+        assert!(compiled.is_valid(&passing_instance));
+        assert!(!compiled.is_valid(&failing_instance))
+    }
+
+    #[test]
+    fn uri() {
+        let schema = json!({"format": "uri", "type": "string"});
+
+        let passing_instance = json!("https://phillip.com");
+        let failing_instance = json!("redis");
+
+        tests_util::is_valid(&schema, &passing_instance);
+        tests_util::is_not_valid(&schema, &failing_instance);
     }
 }
