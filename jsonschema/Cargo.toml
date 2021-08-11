@@ -36,6 +36,7 @@ ahash = "0.7"
 structopt = { version = ">= 0.3", optional = true }
 itoa = "0.4"
 fraction = { version = "0.8", default-features = false, features = ["with-bigint"] }
+uuid = "0.8"
 
 [dev-dependencies]
 criterion = ">= 0.1"
