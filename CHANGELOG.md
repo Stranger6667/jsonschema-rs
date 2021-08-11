@@ -1,6 +1,11 @@
 # Changelog
 
+
 ## [Unreleased]
+
+### Added
+
+- UUID format validator
 
 ### Changed
 

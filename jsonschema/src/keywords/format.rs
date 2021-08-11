@@ -13,6 +13,7 @@ use serde_json::{Map, Value};
 
 use std::{net::IpAddr, str::FromStr};
 use url::Url;
+use uuid::Uuid;
 
 lazy_static::lazy_static! {
     static ref DATE_RE: Regex =
@@ -328,6 +329,18 @@ impl Validate for URITemplateValidator {
     }
 }
 
+format_validator!(UUIDValidator, "uuid");
+impl Validate for UUIDValidator {
+    validate!("uuid");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            Uuid::from_str(item.as_str()).is_ok()
+        } else {
+            true
+        }
+    }
+}
+
 struct CustomFormatValidator {
     schema_path: JSONPointer,
     format_name: &'static str,
@@ -401,7 +414,8 @@ pub(crate) fn compile<'a>(
             "idn-email" => Some(IDNEmailValidator::compile(context)),
             "idn-hostname" if draft_version == Draft::Draft7 => {
                 Some(IDNHostnameValidator::compile(context))
-            }
+            },
+            "uuid" => Some(UUIDValidator::compile(context)),
             #[cfg(feature = "draft201909")]
             "idn-hostname" if draft_version == Draft::Draft201909 => {
                 Some(IDNHostnameValidator::compile(context))
@@ -481,5 +495,16 @@ mod tests {
     #[test]
     fn schema_path() {
         tests_util::assert_schema_path(&json!({"format": "date"}), &json!("bla"), "/format")
+    }
+
+    #[test]
+    fn test_uuid(){
+        let schema = json!({"format": "uuid", "type": "string"});
+        let passing_instance = json!("f308a72c-fa84-11eb-9a03-0242ac130003");
+        let compiled = JSONSchema::compile(&schema).unwrap();
+        assert!(compiled.is_valid(&passing_instance));
+
+        let failing_instance = json!("INVALID");
+        assert_eq!(compiled.is_valid(&failing_instance), false)
     }
 }
