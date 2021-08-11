@@ -1,11 +1,10 @@
 # Changelog
 
-
 ## [Unreleased]
 
 ### Added
 
-- UUID format validator
+- UUID format validator. [#266](https://github.com/Stranger6667/jsonschema-rs/issues/266)
 
 ### Changed
 
