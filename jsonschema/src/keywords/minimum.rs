@@ -10,14 +10,17 @@ use serde_json::{Map, Value};
 
 pub(crate) struct MinimumU64Validator {
     limit: u64,
+    limit_val: Value,
     schema_path: JSONPointer,
 }
 pub(crate) struct MinimumI64Validator {
     limit: i64,
+    limit_val: Value,
     schema_path: JSONPointer,
 }
 pub(crate) struct MinimumF64Validator {
     limit: f64,
+    limit_val: Value,
     schema_path: JSONPointer,
 }
 
@@ -37,7 +40,7 @@ macro_rules! validate {
                         self.schema_path.clone(),
                         instance_path.into(),
                         instance,
-                        self.limit as f64,
+                        self.limit_val.clone(),
                     )) // do not cast
                 }
             }
@@ -95,7 +98,7 @@ impl Validate for MinimumF64Validator {
                 self.schema_path.clone(),
                 instance_path.into(),
                 instance,
-                self.limit,
+                self.limit_val.clone(),
             ))
         }
     }
@@ -115,12 +118,24 @@ pub(crate) fn compile<'a>(
     if let Value::Number(limit) = schema {
         let schema_path = context.as_pointer_with("minimum");
         if let Some(limit) = limit.as_u64() {
-            Some(Ok(Box::new(MinimumU64Validator { limit, schema_path })))
+            Some(Ok(Box::new(MinimumU64Validator {
+                limit,
+                limit_val: schema.clone(),
+                schema_path,
+            })))
         } else if let Some(limit) = limit.as_i64() {
-            Some(Ok(Box::new(MinimumI64Validator { limit, schema_path })))
+            Some(Ok(Box::new(MinimumI64Validator {
+                limit,
+                limit_val: schema.clone(),
+                schema_path,
+            })))
         } else {
             let limit = limit.as_f64().expect("Always valid");
-            Some(Ok(Box::new(MinimumF64Validator { limit, schema_path })))
+            Some(Ok(Box::new(MinimumF64Validator {
+                limit,
+                limit_val: schema.clone(),
+                schema_path,
+            })))
         }
     } else {
         Some(Err(ValidationError::schema(schema)))

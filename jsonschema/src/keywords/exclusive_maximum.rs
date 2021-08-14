@@ -10,14 +10,17 @@ use serde_json::{Map, Value};
 
 pub(crate) struct ExclusiveMaximumU64Validator {
     limit: u64,
+    limit_val: Value,
     schema_path: JSONPointer,
 }
 pub(crate) struct ExclusiveMaximumI64Validator {
     limit: i64,
+    limit_val: Value,
     schema_path: JSONPointer,
 }
 pub(crate) struct ExclusiveMaximumF64Validator {
     limit: f64,
+    limit_val: Value,
     schema_path: JSONPointer,
 }
 
@@ -37,7 +40,7 @@ macro_rules! validate {
                         self.schema_path.clone(),
                         instance_path.into(),
                         instance,
-                        self.limit as f64,
+                        self.limit_val.clone(),
                     ))
                 }
             }
@@ -97,7 +100,7 @@ impl Validate for ExclusiveMaximumF64Validator {
                 self.schema_path.clone(),
                 instance_path.into(),
                 instance,
-                self.limit,
+                self.limit_val.clone(),
             ))
         }
     }
@@ -119,17 +122,20 @@ pub(crate) fn compile<'a>(
         if let Some(limit) = limit.as_u64() {
             Some(Ok(Box::new(ExclusiveMaximumU64Validator {
                 limit,
+                limit_val: (*schema).clone(),
                 schema_path,
             })))
         } else if let Some(limit) = limit.as_i64() {
             Some(Ok(Box::new(ExclusiveMaximumI64Validator {
                 limit,
+                limit_val: (*schema).clone(),
                 schema_path,
             })))
         } else {
             let limit = limit.as_f64().expect("Always valid");
             Some(Ok(Box::new(ExclusiveMaximumF64Validator {
                 limit,
+                limit_val: (*schema).clone(),
                 schema_path,
             })))
         }
