@@ -81,9 +81,9 @@ pub enum ValidationErrorKind {
     /// The input value doesn't match any of specified options.
     Enum { options: Value },
     /// Value is too large.
-    ExclusiveMaximum { limit: f64 },
+    ExclusiveMaximum { limit: Value },
     /// Value is too small.
-    ExclusiveMinimum { limit: f64 },
+    ExclusiveMinimum { limit: Value },
     /// Everything is invalid for `false` schema.
     FalseSchema,
     /// If the referenced file is not found during ref resolution.
@@ -103,7 +103,7 @@ pub enum ValidationErrorKind {
     /// Too many items in an array.
     MaxItems { limit: u64 },
     /// Value is too large.
-    Maximum { limit: f64 },
+    Maximum { limit: Value },
     /// String is too long.
     MaxLength { limit: u64 },
     /// Too many properties in an object.
@@ -111,7 +111,7 @@ pub enum ValidationErrorKind {
     /// Too few items in an array.
     MinItems { limit: u64 },
     /// Value is too small.
-    Minimum { limit: f64 },
+    Minimum { limit: Value },
     /// String is too short.
     MinLength { limit: u64 },
     /// Not enough properties in an object.
@@ -364,7 +364,7 @@ impl<'a> ValidationError<'a> {
         schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
-        limit: f64,
+        limit: Value,
     ) -> ValidationError<'a> {
         ValidationError {
             instance_path,
@@ -377,7 +377,7 @@ impl<'a> ValidationError<'a> {
         schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
-        limit: f64,
+        limit: Value,
     ) -> ValidationError<'a> {
         ValidationError {
             instance_path,
@@ -468,7 +468,7 @@ impl<'a> ValidationError<'a> {
         schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
-        limit: f64,
+        limit: Value,
     ) -> ValidationError<'a> {
         ValidationError {
             instance_path,
@@ -520,7 +520,7 @@ impl<'a> ValidationError<'a> {
         schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
-        limit: f64,
+        limit: Value,
     ) -> ValidationError<'a> {
         ValidationError {
             instance_path,
