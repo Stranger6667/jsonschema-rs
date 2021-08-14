@@ -12,6 +12,10 @@
   It allows us to add features from the 2019-09 Draft without exposing them in the public API. Therefore, support for this draft can be added incrementally.
 - The `Draft` enum is now marked as `non_exhaustive`.
 
+### Fixed
+
+- Display the original value in errors from `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`. [#215](https://github.com/Stranger6667/jsonschema-rs/issues/215)
+
 ## [0.12.1] - 2021-07-29
 
 ### Fixed
