@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Display the original value in errors from `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`. [#215](https://github.com/Stranger6667/jsonschema-rs/issues/215)
+
 ## [0.12.1] - 2021-07-29
 
 ### Fixed
