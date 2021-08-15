@@ -342,6 +342,18 @@ impl Validate for UUIDValidator {
     }
 }
 
+format_validator!(DurationValidator, "duration");
+impl Validate for DurationValidator {
+    validate!("duration");
+    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            iso8601::duration(item).is_ok()
+        } else {
+            true
+        }
+    }
+}
+
 struct CustomFormatValidator {
     schema_path: JSONPointer,
     format_name: &'static str,
@@ -465,6 +477,10 @@ pub(crate) fn compile<'a>(
             #[cfg(feature = "draft201909")]
             "uuid" if draft_version == Draft::Draft201909 => Some(UUIDValidator::compile(context)),
             "uri" => Some(URIValidator::compile(context)),
+            #[cfg(feature = "draft201909")]
+            "duration" if draft_version == Draft::Draft201909 => {
+                Some(DurationValidator::compile(context))
+            }
             _ => None,
         }
     } else {
@@ -526,5 +542,25 @@ mod tests {
 
         tests_util::is_valid(&schema, &passing_instance);
         tests_util::is_not_valid(&schema, &failing_instance);
+    }
+
+    #[test]
+    fn duration() {
+        let schema = json!({"format": "duration", "type": "string"});
+
+        let passing_instances = vec![json!("P15DT1H22M1.5S"), json!("P30D"), json!("PT5M")];
+        let failing_instances = vec![json!("15DT1H22M1.5S"), json!("unknown")];
+
+        let compiled = JSONSchema::options()
+            .with_draft(Draft201909)
+            .compile(&schema)
+            .unwrap();
+
+        for passing_instance in passing_instances {
+            assert!(compiled.is_valid(&passing_instance));
+        }
+        for failing_instance in failing_instances {
+            assert!(!compiled.is_valid(&failing_instance));
+        }
     }
 }
