@@ -75,6 +75,10 @@ fn main() {
 }
 ```
 
+## Status
+
+This library is functional and ready for use, but its API is still evolving to the 1.0 API.
+
 ## Bindings
 
 - Python - See the `./bindings/python` directory
@@ -121,8 +125,6 @@ Notes:
 2. `jsonschema_valid` fails to resolve local references (e.g. `#/definitions/definitions`).
 
 You can find benchmark code in `benches/jsonschema.rs`, Rust version is `1.51`.
-
-**NOTE**. This library is in early development.
 
 ## Support
 

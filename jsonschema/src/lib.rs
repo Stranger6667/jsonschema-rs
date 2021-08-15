@@ -7,6 +7,8 @@
 //!   - JSON Schema drafts 4, 6, 7 (except some optional test cases);
 //!   - Loading remote documents via HTTP(S);
 //!
+//! This library is functional and ready for use, but its API is still evolving to the 1.0 API.
+//!
 //! ## Usage Examples:
 //! A schema can be compiled with two main flavours:
 //!  * using default configurations
