@@ -5,6 +5,7 @@
 ### Added
 
 - UUID format validator. [#266](https://github.com/Stranger6667/jsonschema-rs/issues/266)
+- duration format validator. [#265](https://github.com/Stranger6667/jsonschema-rs/issues/265)
 
 ### Changed
 
