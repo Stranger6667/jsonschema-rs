@@ -4,8 +4,10 @@
 
 ### Added
 
-- UUID format validator. [#266](https://github.com/Stranger6667/jsonschema-rs/issues/266)
-- duration format validator. [#265](https://github.com/Stranger6667/jsonschema-rs/issues/265)
+- `uuid` format validator. [#266](https://github.com/Stranger6667/jsonschema-rs/issues/266)
+- `duration` format validator. [#265](https://github.com/Stranger6667/jsonschema-rs/issues/265)
+- Collect annotations whilst evaulating schemas.[#262](https://github.com/Stranger6667/jsonschema-rs/issues/262)
+- `basic` & `flag` output formatting styles. [#100](https://github.com/Stranger6667/jsonschema-rs/issues/100)
 
 ### Changed
 
