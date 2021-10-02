@@ -11,7 +11,7 @@ described by [JSON-Schema-Test-Suite](https://github.com/json-schema-org/JSON-Sc
 The main objective is to ensure that for each test a mock server is started and will be able to
 capture all the requests, ensuring that tests can be ran only interacting with `cargo test`
 
-In order to ude the procedural macro attribute there are few assumptions that are made:
+In order to use the procedural macro attribute there are few assumptions that are made:
 
 * [`lazy_static`](https://crates.io/crates/lazy_static) dependency is added into your `[dev-dependencies]`
   section of the `Cargo.toml` file
