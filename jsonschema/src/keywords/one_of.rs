@@ -1,4 +1,13 @@
-use crate::{compilation::{compile_validators, context::CompilationContext, JSONSchema}, error::{error, no_error, ErrorIterator, ValidationError}, keywords::CompilationResult, output::BasicOutput, paths::{InstancePath, JSONPointer}, primitive_type::PrimitiveType, schema_node::SchemaNode, validator::{format_iter_of_validators, PartialApplication, Validate}};
+use crate::{
+    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    error::{error, no_error, ErrorIterator, ValidationError},
+    keywords::CompilationResult,
+    output::BasicOutput,
+    paths::{InstancePath, JSONPointer},
+    primitive_type::PrimitiveType,
+    schema_node::SchemaNode,
+    validator::{format_iter_of_validators, PartialApplication, Validate},
+};
 use serde_json::{Map, Value};
 
 pub(crate) struct OneOfValidator {

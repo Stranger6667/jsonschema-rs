@@ -1,4 +1,12 @@
-use crate::{compilation::{compile_validators, context::CompilationContext, JSONSchema}, error::{error, no_error, ErrorIterator, ValidationError}, keywords::{boolean::FalseValidator, CompilationResult}, paths::{InstancePath, JSONPointer}, primitive_type::{PrimitiveType, PrimitiveTypesBitMap}, schema_node::SchemaNode, validator::{format_validators, Validate}};
+use crate::{
+    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    error::{error, no_error, ErrorIterator, ValidationError},
+    keywords::{boolean::FalseValidator, CompilationResult},
+    paths::{InstancePath, JSONPointer},
+    primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
+    schema_node::SchemaNode,
+    validator::{format_validators, Validate},
+};
 use serde_json::{Map, Value};
 
 pub(crate) struct AdditionalItemsObjectValidator {

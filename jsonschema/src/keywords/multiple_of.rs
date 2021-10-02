@@ -1,4 +1,11 @@
-use crate::{compilation::{context::CompilationContext, JSONSchema}, error::{error, no_error, ErrorIterator, ValidationError}, keywords::CompilationResult, paths::{InstancePath, JSONPointer}, primitive_type::PrimitiveType, validator::Validate};
+use crate::{
+    compilation::{context::CompilationContext, JSONSchema},
+    error::{error, no_error, ErrorIterator, ValidationError},
+    keywords::CompilationResult,
+    paths::{InstancePath, JSONPointer},
+    primitive_type::PrimitiveType,
+    validator::Validate,
+};
 use fraction::{BigFraction, BigUint};
 use serde_json::{Map, Value};
 use std::f64::EPSILON;

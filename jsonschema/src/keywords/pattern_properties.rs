@@ -1,4 +1,13 @@
-use crate::{compilation::{compile_validators, context::CompilationContext, JSONSchema}, error::{no_error, ErrorIterator, ValidationError}, keywords::CompilationResult, output::BasicOutput, paths::{InstancePath, JSONPointer}, primitive_type::PrimitiveType, schema_node::SchemaNode, validator::{format_validators, PartialApplication, Validate}};
+use crate::{
+    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    error::{no_error, ErrorIterator, ValidationError},
+    keywords::CompilationResult,
+    output::BasicOutput,
+    paths::{InstancePath, JSONPointer},
+    primitive_type::PrimitiveType,
+    schema_node::SchemaNode,
+    validator::{format_validators, PartialApplication, Validate},
+};
 use fancy_regex::Regex;
 use serde_json::{Map, Value};
 
@@ -19,12 +28,14 @@ impl PatternPropertiesValidator {
             patterns.push((
                 match Regex::new(pattern) {
                     Ok(r) => r,
-                    Err(_) => return Err(ValidationError::format(
-                        context.clone().into_pointer(),
-                        keyword_context.clone().into_pointer(),
-                        subschema,
-                        "patternProperties",
-                    )),
+                    Err(_) => {
+                        return Err(ValidationError::format(
+                            context.clone().into_pointer(),
+                            keyword_context.clone().into_pointer(),
+                            subschema,
+                            "patternProperties",
+                        ))
+                    }
                 },
                 compile_validators(subschema, &pattern_context)?,
             ));
@@ -130,12 +141,14 @@ impl SingleValuePatternPropertiesValidator {
         Ok(Box::new(SingleValuePatternPropertiesValidator {
             pattern: match Regex::new(pattern) {
                 Ok(r) => r,
-                Err(_) => return Err(ValidationError::format(
-                    context.clone().into_pointer(),
-                    keyword_context.clone().into_pointer(),
-                    schema,
-                    "patternProperties",
-                )),
+                Err(_) => {
+                    return Err(ValidationError::format(
+                        context.clone().into_pointer(),
+                        keyword_context.clone().into_pointer(),
+                        schema,
+                        "patternProperties",
+                    ))
+                }
             },
             node: compile_validators(schema, &pattern_context)?,
         }))
