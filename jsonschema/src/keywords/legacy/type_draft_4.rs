@@ -24,10 +24,22 @@ impl MultipleTypesValidator {
                     if let Ok(primitive_type) = PrimitiveType::try_from(string.as_str()) {
                         types |= primitive_type;
                     } else {
-                        return Err(ValidationError::schema(item));
+                        return Err(ValidationError::format(
+                            schema_path,
+                            JSONPointer::default(),
+                            item,
+                            "type",
+                        ));
                     }
                 }
-                _ => return Err(ValidationError::schema(item)),
+                _ => {
+                    return Err(ValidationError::single_type_error(
+                        schema_path,
+                        JSONPointer::default(),
+                        item,
+                        PrimitiveType::String,
+                    ))
+                }
             }
         }
         Ok(Box::new(MultipleTypesValidator { types, schema_path }))
@@ -139,18 +151,29 @@ pub(crate) fn compile<'a>(
     let schema_path = context.as_pointer_with("type");
     match schema {
         Value::String(item) => compile_single_type(item.as_str(), schema_path),
-        Value::Array(items) => {
-            if items.len() == 1 {
-                if let Some(Value::String(item)) = items.iter().next() {
+        Value::Array(items) => match items.as_slice() {
+            [item] => {
+                if let Value::String(item) = item {
                     compile_single_type(item.as_str(), schema_path)
                 } else {
-                    Some(Err(ValidationError::schema(schema)))
+                    Some(Err(ValidationError::single_type_error(
+                        schema_path,
+                        JSONPointer::default(),
+                        item,
+                        PrimitiveType::String,
+                    )))
                 }
-            } else {
-                Some(MultipleTypesValidator::compile(items, schema_path))
             }
-        }
-        _ => Some(Err(ValidationError::schema(schema))),
+            items => Some(MultipleTypesValidator::compile(items, schema_path)),
+        },
+        _ => Some(Err(ValidationError::multiple_type_error(
+            schema_path,
+            context.clone().into_pointer(),
+            schema,
+            PrimitiveTypesBitMap::new()
+                .add_type(PrimitiveType::String)
+                .add_type(PrimitiveType::Array),
+        ))),
     }
 }
 

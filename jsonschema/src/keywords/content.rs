@@ -6,6 +6,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
+    primitive_type::PrimitiveType,
     validator::Validate,
 };
 use serde_json::{Map, Value};
@@ -246,7 +247,12 @@ pub(crate) fn compile_media_type<'a>(
                             context.schema_path.clone().into(),
                         ))
                     }
-                    _ => Some(Err(ValidationError::schema(subschema))),
+                    _ => Some(Err(ValidationError::single_type_error(
+                        context.clone().into_pointer(),
+                        JSONPointer::default(),
+                        content_encoding,
+                        PrimitiveType::String,
+                    ))),
                 }
             } else {
                 Some(ContentMediaTypeValidator::compile(
@@ -256,7 +262,12 @@ pub(crate) fn compile_media_type<'a>(
                 ))
             }
         }
-        _ => Some(Err(ValidationError::schema(subschema))),
+        _ => Some(Err(ValidationError::single_type_error(
+            context.clone().into_pointer(),
+            JSONPointer::default(),
+            subschema,
+            PrimitiveType::String,
+        ))),
     }
 }
 
@@ -286,7 +297,12 @@ pub(crate) fn compile_content_encoding<'a>(
                 context.as_pointer_with("contentEncoding"),
             ))
         }
-        _ => Some(Err(ValidationError::schema(subschema))),
+        _ => Some(Err(ValidationError::single_type_error(
+            context.clone().into_pointer(),
+            JSONPointer::default(),
+            subschema,
+            PrimitiveType::String,
+        ))),
     }
 }
 

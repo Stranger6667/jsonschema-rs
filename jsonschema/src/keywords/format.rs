@@ -7,14 +7,7 @@ use serde_json::{Map, Value};
 use url::Url;
 use uuid::Uuid;
 
-use crate::{
-    compilation::{context::CompilationContext, JSONSchema},
-    error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{pattern, CompilationResult},
-    paths::{InstancePath, JSONPointer},
-    validator::Validate,
-    Draft,
-};
+use crate::{Draft, compilation::{context::CompilationContext, JSONSchema}, error::{error, no_error, ErrorIterator, ValidationError}, keywords::{pattern, CompilationResult}, paths::{InstancePath, JSONPointer}, primitive_type::PrimitiveType, validator::Validate};
 
 lazy_static::lazy_static! {
     static ref DATE_RE: Regex =
@@ -484,7 +477,12 @@ pub(crate) fn compile<'a>(
             _ => None,
         }
     } else {
-        Some(Err(ValidationError::schema(schema)))
+        Some(Err(ValidationError::single_type_error(
+            context.clone().into_pointer(),
+            JSONPointer::default(),
+            schema,
+            PrimitiveType::String,
+        )))
     }
 }
 

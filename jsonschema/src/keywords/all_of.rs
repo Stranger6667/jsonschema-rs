@@ -2,7 +2,8 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{ErrorIterator, ValidationError},
     output::BasicOutput,
-    paths::InstancePath,
+    paths::{InstancePath, JSONPointer},
+    primitive_type::PrimitiveType,
     schema_node::SchemaNode,
     validator::{format_iter_of_validators, format_validators, PartialApplication, Validate},
 };
@@ -136,7 +137,12 @@ pub(crate) fn compile<'a>(
             Some(AllOfValidator::compile(items, context))
         }
     } else {
-        Some(Err(ValidationError::schema(schema)))
+        Some(Err(ValidationError::single_type_error(
+            context.clone().into_pointer(),
+            JSONPointer::default(),
+            schema,
+            PrimitiveType::Array,
+        )))
     }
 }
 

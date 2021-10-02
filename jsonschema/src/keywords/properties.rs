@@ -1,12 +1,4 @@
-use crate::{
-    compilation::{compile_validators, context::CompilationContext, JSONSchema},
-    error::{no_error, ErrorIterator, ValidationError},
-    keywords::CompilationResult,
-    output::BasicOutput,
-    paths::InstancePath,
-    schema_node::SchemaNode,
-    validator::{format_key_value_validators, PartialApplication, Validate},
-};
+use crate::{compilation::{compile_validators, context::CompilationContext, JSONSchema}, error::{no_error, ErrorIterator, ValidationError}, keywords::CompilationResult, output::BasicOutput, paths::{InstancePath, JSONPointer}, primitive_type::PrimitiveType, schema_node::SchemaNode, validator::{format_key_value_validators, PartialApplication, Validate}};
 use serde_json::{Map, Value};
 
 pub(crate) struct PropertiesValidator {
@@ -32,7 +24,12 @@ impl PropertiesValidator {
                 }
                 Ok(Box::new(PropertiesValidator { properties }))
             }
-            _ => Err(ValidationError::schema(schema)),
+            _ => Err(ValidationError::single_type_error(
+                context.clone().into_pointer(),
+                JSONPointer::default(),
+                schema,
+                PrimitiveType::Object,
+            )),
         }
     }
 }

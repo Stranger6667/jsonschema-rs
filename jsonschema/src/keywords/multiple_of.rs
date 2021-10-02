@@ -1,10 +1,4 @@
-use crate::{
-    compilation::{context::CompilationContext, JSONSchema},
-    error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::CompilationResult,
-    paths::{InstancePath, JSONPointer},
-    validator::Validate,
-};
+use crate::{compilation::{context::CompilationContext, JSONSchema}, error::{error, no_error, ErrorIterator, ValidationError}, keywords::CompilationResult, paths::{InstancePath, JSONPointer}, primitive_type::PrimitiveType, validator::Validate};
 use fraction::{BigFraction, BigUint};
 use serde_json::{Map, Value};
 use std::f64::EPSILON;
@@ -139,7 +133,12 @@ pub(crate) fn compile<'a>(
             Some(MultipleOfFloatValidator::compile(multiple_of, schema_path))
         }
     } else {
-        Some(Err(ValidationError::schema(schema)))
+        Some(Err(ValidationError::single_type_error(
+            context.clone().into_pointer(),
+            JSONPointer::default(),
+            schema,
+            PrimitiveType::Number,
+        )))
     }
 }
 

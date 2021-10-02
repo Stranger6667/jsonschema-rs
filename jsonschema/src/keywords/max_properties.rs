@@ -18,7 +18,12 @@ impl MaxPropertiesValidator {
         if let Some(limit) = schema.as_u64() {
             Ok(Box::new(MaxPropertiesValidator { limit, schema_path }))
         } else {
-            Err(ValidationError::schema(schema))
+            Err(ValidationError::format(
+                schema_path,
+                JSONPointer::default(),
+                schema,
+                "max_properties int validation",
+            ))
         }
     }
 }

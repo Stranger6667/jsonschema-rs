@@ -433,19 +433,34 @@ pub(crate) fn compile<'a>(
                                 max_contains,
                             ))
                         } else {
-                            Some(Err(ValidationError::schema(schema)))
+                            Some(Err(ValidationError::format(
+                                context.clone().into_pointer(),
+                                context.clone().into_pointer(),
+                                schema,
+                                "maxContains",
+                            )))
                         }
                     } else {
                         Some(MinContainsValidator::compile(schema, context, min_contains))
                     }
                 } else {
-                    Some(Err(ValidationError::schema(schema)))
+                    Some(Err(ValidationError::format(
+                        context.clone().into_pointer(),
+                        context.clone().into_pointer(),
+                        schema,
+                        "minContains",
+                    )))
                 }
             } else if let Some(max_contains) = parent.get("maxContains") {
                 if let Some(max_contains) = max_contains.as_u64() {
                     Some(MaxContainsValidator::compile(schema, context, max_contains))
                 } else {
-                    Some(Err(ValidationError::schema(schema)))
+                    Some(Err(ValidationError::format(
+                        context.clone().into_pointer(),
+                        context.clone().into_pointer(),
+                        schema,
+                        "maxContains",
+                    )))
                 }
             } else {
                 Some(ContainsValidator::compile(schema, context))

@@ -18,7 +18,12 @@ impl MinPropertiesValidator {
         if let Some(limit) = schema.as_u64() {
             Ok(Box::new(MinPropertiesValidator { limit, schema_path }))
         } else {
-            Err(ValidationError::schema(schema))
+            Err(ValidationError::format(
+                schema_path,
+                JSONPointer::default(),
+                schema,
+                "min_properties int validation",
+            ))
         }
     }
 }
