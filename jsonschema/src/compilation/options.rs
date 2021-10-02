@@ -135,6 +135,7 @@ pub struct CompilationOptions {
         AHashMap<&'static str, Option<(ContentEncodingCheckType, ContentEncodingConverterType)>>,
     store: AHashMap<String, Arc<serde_json::Value>>,
     formats: AHashMap<&'static str, fn(&str) -> bool>,
+    validate_formats: Option<bool>,
     validate_schema: bool,
 }
 
@@ -147,6 +148,7 @@ impl Default for CompilationOptions {
             content_encoding_checks_and_converters: AHashMap::default(),
             store: AHashMap::default(),
             formats: AHashMap::default(),
+            validate_formats: None,
         }
     }
 }
@@ -459,6 +461,18 @@ impl CompilationOptions {
     pub(crate) fn without_schema_validation(&mut self) -> &mut Self {
         self.validate_schema = false;
         self
+    }
+    #[inline]
+    /// Force enable or disable format validation.
+    /// The default behavior is dependent on draft version, but the default behavior can be
+    /// overridden to validate or not regardless of draft.
+    pub fn should_validate_formats(&mut self, validate_formats: bool) -> &mut Self {
+        self.validate_formats = Some(validate_formats);
+        self
+    }
+    pub(crate) fn validate_formats(&self) -> bool {
+        self.validate_formats
+            .unwrap_or_else(|| self.draft().validate_formats_by_default())
     }
 }
 // format name & a pointer to a check function
