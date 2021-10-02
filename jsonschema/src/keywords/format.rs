@@ -414,6 +414,10 @@ pub(crate) fn compile<'a>(
     schema: &'a Value,
     context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
+    if !context.config.validate_formats() {
+        return None;
+    }
+
     if let Value::String(format) = schema {
         if let Some((format, func)) = context.config.format(format) {
             return Some(CustomFormatValidator::compile(context, format, *func));
@@ -504,6 +508,27 @@ mod tests {
     }
 
     #[test]
+    fn format_validation() {
+        let schema = json!({"format": "email", "type": "string"});
+        let email_instance = json!("email@example.com");
+        let not_email_instance = json!("foo");
+
+        let with_validation = JSONSchema::options()
+            .should_validate_formats(true)
+            .compile(&schema)
+            .unwrap();
+        let without_validation = JSONSchema::options()
+            .should_validate_formats(false)
+            .compile(&schema)
+            .unwrap();
+
+        assert!(with_validation.is_valid(&email_instance));
+        assert!(!with_validation.is_valid(&not_email_instance));
+        assert!(without_validation.is_valid(&email_instance));
+        assert!(without_validation.is_valid(&not_email_instance));
+    }
+
+    #[test]
     fn ecma_regex() {
         // See GH-230
         let schema = json!({"format": "regex", "type": "string"});
@@ -526,6 +551,7 @@ mod tests {
 
         let compiled = JSONSchema::options()
             .with_draft(Draft201909)
+            .should_validate_formats(true)
             .compile(&schema)
             .unwrap();
 
@@ -553,6 +579,7 @@ mod tests {
 
         let compiled = JSONSchema::options()
             .with_draft(Draft201909)
+            .should_validate_formats(true)
             .compile(&schema)
             .unwrap();
 

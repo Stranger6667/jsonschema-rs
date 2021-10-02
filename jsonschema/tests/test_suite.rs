@@ -51,6 +51,7 @@ fn test_draft(_server_address: &str, test_case: TestCase) {
     let compiled = JSONSchema::options()
         .with_draft(draft_version)
         .with_meta_schemas()
+        .should_validate_formats(true)
         .compile(&test_case.schema)
         .unwrap();
 

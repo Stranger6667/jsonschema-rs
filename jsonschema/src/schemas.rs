@@ -22,6 +22,16 @@ impl Default for Draft {
     }
 }
 
+impl Draft {
+    pub(crate) const fn validate_formats_by_default(self) -> bool {
+        match self {
+            Draft::Draft4 | Draft::Draft6 | Draft::Draft7 => true,
+            #[cfg(feature = "draft201909")]
+            Draft::Draft201909 => false,
+        }
+    }
+}
+
 type CompileFunc<'a> = fn(
     &'a Map<String, Value>,
     &'a Value,
