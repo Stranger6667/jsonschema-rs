@@ -48,8 +48,8 @@ impl PatternValidator {
                 }))
             }
             _ => Err(ValidationError::single_type_error(
-                context.clone().into_pointer(),
                 JSONPointer::default(),
+                context.clone().into_pointer(),
                 pattern,
                 PrimitiveType::String,
             )),

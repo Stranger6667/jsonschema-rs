@@ -248,8 +248,8 @@ pub(crate) fn compile_media_type<'a>(
                         ))
                     }
                     _ => Some(Err(ValidationError::single_type_error(
-                        context.clone().into_pointer(),
                         JSONPointer::default(),
+                        context.clone().into_pointer(),
                         content_encoding,
                         PrimitiveType::String,
                     ))),
@@ -263,8 +263,8 @@ pub(crate) fn compile_media_type<'a>(
             }
         }
         _ => Some(Err(ValidationError::single_type_error(
-            context.clone().into_pointer(),
             JSONPointer::default(),
+            context.clone().into_pointer(),
             subschema,
             PrimitiveType::String,
         ))),
@@ -298,8 +298,8 @@ pub(crate) fn compile_content_encoding<'a>(
             ))
         }
         _ => Some(Err(ValidationError::single_type_error(
-            context.clone().into_pointer(),
             JSONPointer::default(),
+            context.clone().into_pointer(),
             subschema,
             PrimitiveType::String,
         ))),

@@ -1361,7 +1361,7 @@ fn compile_patterns<'a>(
             compiled_patterns.push((compiled_pattern, node));
         } else {
             return Err(ValidationError::format(
-                context.clone().into_pointer(),
+                JSONPointer::default(),
                 keyword_context.clone().into_pointer(),
                 subschema,
                 "patternProperties",
