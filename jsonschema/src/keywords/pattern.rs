@@ -34,7 +34,7 @@ impl PatternValidator {
                     Ok(r) => r,
                     Err(_) => {
                         return Err(ValidationError::format(
-                            context.clone().into_pointer(),
+                            JSONPointer::default(),
                             context.clone().into_pointer(),
                             pattern,
                             "pattern regex",

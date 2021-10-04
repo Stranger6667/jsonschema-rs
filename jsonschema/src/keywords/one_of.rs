@@ -35,8 +35,8 @@ impl OneOfValidator {
             }))
         } else {
             Err(ValidationError::single_type_error(
-                context.clone().into_pointer(),
                 JSONPointer::default(),
+                context.clone().into_pointer(),
                 schema,
                 PrimitiveType::Array,
             ))

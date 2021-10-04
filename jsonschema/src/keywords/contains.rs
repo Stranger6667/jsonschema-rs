@@ -434,7 +434,7 @@ pub(crate) fn compile<'a>(
                             ))
                         } else {
                             Some(Err(ValidationError::format(
-                                context.clone().into_pointer(),
+                                JSONPointer::default(),
                                 context.clone().into_pointer(),
                                 schema,
                                 "maxContains",
@@ -445,7 +445,7 @@ pub(crate) fn compile<'a>(
                     }
                 } else {
                     Some(Err(ValidationError::format(
-                        context.clone().into_pointer(),
+                        JSONPointer::default(),
                         context.clone().into_pointer(),
                         schema,
                         "minContains",
@@ -456,7 +456,7 @@ pub(crate) fn compile<'a>(
                     Some(MaxContainsValidator::compile(schema, context, max_contains))
                 } else {
                     Some(Err(ValidationError::format(
-                        context.clone().into_pointer(),
+                        JSONPointer::default(),
                         context.clone().into_pointer(),
                         schema,
                         "maxContains",

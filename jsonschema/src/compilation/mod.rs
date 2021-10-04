@@ -176,8 +176,8 @@ pub(crate) fn compile_validators<'a, 'c>(
                     ))
                 } else {
                     Err(ValidationError::single_type_error(
-                        relative_path,
                         JSONPointer::default(),
+                        relative_path,
                         reference,
                         PrimitiveType::String,
                     ))
@@ -230,8 +230,8 @@ pub(crate) fn compile_validators<'a, 'c>(
             }
         }
         _ => Err(ValidationError::multiple_type_error(
-            relative_path,
             JSONPointer::default(),
+            relative_path,
             schema,
             PrimitiveTypesBitMap::new()
                 .add_type(PrimitiveType::Boolean)
