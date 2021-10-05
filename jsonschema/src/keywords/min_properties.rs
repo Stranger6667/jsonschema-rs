@@ -20,7 +20,7 @@ impl MinPropertiesValidator {
         } else {
             Err(ValidationError::format(
                 JSONPointer::default(),
-                JSONPointer::default(),
+                schema_path,
                 schema,
                 "min_properties int validation",
             ))

@@ -10,6 +10,9 @@ use crate::{
 };
 use serde_json::{Map, Value};
 
+#[cfg(feature = "draft201909")]
+use super::helpers::map_get_u64;
+
 pub(crate) struct ContainsValidator {
     node: SchemaNode,
     schema_path: JSONPointer,
@@ -441,34 +444,6 @@ pub(crate) fn compile<'a>(
                 (None, None) => Some(ContainsValidator::compile(schema, context)),
             }
         }
-    }
-}
-
-#[cfg(feature = "draft201909")]
-#[inline]
-pub(crate) fn map_get_u64<'a>(
-    m: &'a Map<String, Value>,
-    context: &CompilationContext,
-    type_name: &str,
-) -> Option<Result<u64, ValidationError<'a>>> {
-    let value = m.get(type_name)?;
-    if matches!(value.as_i64(), Some(n) if n < 0) {
-        return Some(Err(ValidationError::minimum(
-            JSONPointer::default(),
-            context.clone().into_pointer(),
-            value,
-            0.into(),
-        )));
-    }
-
-    match value.as_u64() {
-        Some(n) => Some(Ok(n)),
-        None => Some(Err(ValidationError::single_type_error(
-            JSONPointer::default(),
-            context.clone().into_pointer(),
-            value,
-            PrimitiveType::Integer,
-        ))),
     }
 }
 
