@@ -6,7 +6,7 @@ use crate::{
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
 };
-use serde_json::{Map, Number, Value};
+use serde_json::{json, Map, Number, Value};
 use std::convert::TryFrom;
 
 pub(crate) struct MultipleTypesValidator {
@@ -24,18 +24,20 @@ impl MultipleTypesValidator {
                     if let Ok(primitive_type) = PrimitiveType::try_from(string.as_str()) {
                         types |= primitive_type;
                     } else {
-                        return Err(ValidationError::format(
-                            schema_path,
+                        return Err(ValidationError::enumeration(
                             JSONPointer::default(),
+                            schema_path,
                             item,
-                            "type",
+                            &json!([
+                                "array", "boolean", "integer", "null", "number", "object", "string"
+                            ]),
                         ));
                     }
                 }
                 _ => {
                     return Err(ValidationError::single_type_error(
-                        schema_path,
                         JSONPointer::default(),
+                        schema_path,
                         item,
                         PrimitiveType::String,
                     ))
@@ -151,23 +153,25 @@ pub(crate) fn compile<'a>(
     let schema_path = context.as_pointer_with("type");
     match schema {
         Value::String(item) => compile_single_type(item.as_str(), schema_path),
-        Value::Array(items) => match items.as_slice() {
-            [item] => {
+        Value::Array(items) => {
+            if items.len() == 1 {
+                let item = &items[0];
                 if let Value::String(item) = item {
                     compile_single_type(item.as_str(), schema_path)
                 } else {
                     Some(Err(ValidationError::single_type_error(
-                        schema_path,
                         JSONPointer::default(),
+                        schema_path,
                         item,
                         PrimitiveType::String,
                     )))
                 }
+            } else {
+                Some(MultipleTypesValidator::compile(items, schema_path))
             }
-            items => Some(MultipleTypesValidator::compile(items, schema_path)),
-        },
+        }
         _ => Some(Err(ValidationError::multiple_type_error(
-            schema_path,
+            JSONPointer::default(),
             context.clone().into_pointer(),
             schema,
             PrimitiveTypesBitMap::new()

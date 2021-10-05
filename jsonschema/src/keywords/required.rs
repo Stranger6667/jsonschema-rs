@@ -22,8 +22,8 @@ impl RequiredValidator {
                 Value::String(string) => required.push(string.clone()),
                 _ => {
                     return Err(ValidationError::single_type_error(
-                        schema_path,
                         JSONPointer::default(),
+                        schema_path,
                         item,
                         PrimitiveType::String,
                     ))
@@ -149,13 +149,13 @@ pub(crate) fn compile_with_path(
     match schema {
         Value::Array(items) => {
             if items.len() == 1 {
-                let item = items.iter().next().unwrap();
+                let item = &items[0];
                 if let Value::String(item) = item {
                     Some(SingleItemRequiredValidator::compile(item, schema_path))
                 } else {
                     Some(Err(ValidationError::single_type_error(
-                        schema_path,
                         JSONPointer::default(),
+                        schema_path,
                         item,
                         PrimitiveType::String,
                     )))
@@ -165,8 +165,8 @@ pub(crate) fn compile_with_path(
             }
         }
         _ => Some(Err(ValidationError::single_type_error(
-            schema_path,
             JSONPointer::default(),
+            schema_path,
             schema,
             PrimitiveType::Array,
         ))),

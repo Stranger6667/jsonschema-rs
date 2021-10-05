@@ -1364,7 +1364,7 @@ fn compile_patterns<'a>(
                 JSONPointer::default(),
                 keyword_context.clone().into_pointer(),
                 subschema,
-                "patternProperties",
+                "regex",
             ));
         }
     }

@@ -33,7 +33,7 @@ impl PatternPropertiesValidator {
                             JSONPointer::default(),
                             keyword_context.clone().into_pointer(),
                             subschema,
-                            "patternProperties",
+                            "regex",
                         ))
                     }
                 },
@@ -143,10 +143,10 @@ impl SingleValuePatternPropertiesValidator {
                 Ok(r) => r,
                 Err(_) => {
                     return Err(ValidationError::format(
-                        context.clone().into_pointer(),
+                        JSONPointer::default(),
                         keyword_context.clone().into_pointer(),
                         schema,
-                        "patternProperties",
+                        "regex",
                     ))
                 }
             },

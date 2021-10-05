@@ -19,8 +19,8 @@ impl MaxPropertiesValidator {
             Ok(Box::new(MaxPropertiesValidator { limit, schema_path }))
         } else {
             Err(ValidationError::format(
-                schema_path,
                 JSONPointer::default(),
+                schema_path,
                 schema,
                 "max_properties int validation",
             ))

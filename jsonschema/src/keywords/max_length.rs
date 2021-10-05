@@ -19,8 +19,8 @@ impl MaxLengthValidator {
             Ok(Box::new(MaxLengthValidator { limit, schema_path }))
         } else {
             Err(ValidationError::format(
-                schema_path,
                 JSONPointer::default(),
+                schema_path,
                 schema,
                 "max_length int validation",
             ))

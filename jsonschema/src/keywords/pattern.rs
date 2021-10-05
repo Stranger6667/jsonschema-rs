@@ -37,7 +37,7 @@ impl PatternValidator {
                             JSONPointer::default(),
                             context.clone().into_pointer(),
                             pattern,
-                            "pattern regex",
+                            "regex",
                         ))
                     }
                 };

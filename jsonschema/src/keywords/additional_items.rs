@@ -159,8 +159,9 @@ pub(crate) fn compile<'a>(
                 context.clone().into_pointer(),
                 schema,
                 PrimitiveTypesBitMap::new()
-                    .add_type(PrimitiveType::Boolean)
-                    .add_type(PrimitiveType::Object),
+                    .add_type(PrimitiveType::Object)
+                    .add_type(PrimitiveType::Array)
+                    .add_type(PrimitiveType::Boolean),
             ))),
         }
     } else {

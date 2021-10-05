@@ -19,8 +19,8 @@ impl MaxItemsValidator {
             Ok(Box::new(MaxItemsValidator { limit, schema_path }))
         } else {
             Err(ValidationError::format(
-                schema_path,
                 JSONPointer::default(),
+                schema_path,
                 schema,
                 "max_items int validation",
             ))

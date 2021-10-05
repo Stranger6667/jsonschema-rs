@@ -19,7 +19,7 @@ impl MinPropertiesValidator {
             Ok(Box::new(MinPropertiesValidator { limit, schema_path }))
         } else {
             Err(ValidationError::format(
-                schema_path,
+                JSONPointer::default(),
                 JSONPointer::default(),
                 schema,
                 "min_properties int validation",

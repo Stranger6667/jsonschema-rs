@@ -3,6 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
+    primitive_type::PrimitiveType,
     schema_node::SchemaNode,
     validator::{format_validators, PartialApplication, Validate},
     Draft,
@@ -422,50 +423,52 @@ pub(crate) fn compile<'a>(
         }
         #[cfg(feature = "draft201909")]
         Draft::Draft201909 => {
-            if let Some(min_contains) = parent.get("minContains") {
-                if let Some(min_contains) = min_contains.as_u64() {
-                    if let Some(max_contains) = parent.get("maxContains") {
-                        if let Some(max_contains) = max_contains.as_u64() {
-                            Some(MinMaxContainsValidator::compile(
-                                schema,
-                                context,
-                                min_contains,
-                                max_contains,
-                            ))
-                        } else {
-                            Some(Err(ValidationError::format(
-                                JSONPointer::default(),
-                                context.clone().into_pointer(),
-                                schema,
-                                "maxContains",
-                            )))
-                        }
-                    } else {
-                        Some(MinContainsValidator::compile(schema, context, min_contains))
-                    }
-                } else {
-                    Some(Err(ValidationError::format(
-                        JSONPointer::default(),
-                        context.clone().into_pointer(),
-                        schema,
-                        "minContains",
-                    )))
+            let min_contains = match map_get_u64(parent, context, "minContains").transpose() {
+                Ok(n) => n,
+                Err(err) => return Some(Err(err)),
+            };
+            let max_contains = match map_get_u64(parent, context, "maxContains").transpose() {
+                Ok(n) => n,
+                Err(err) => return Some(Err(err)),
+            };
+
+            match (min_contains, max_contains) {
+                (Some(min), Some(max)) => {
+                    Some(MinMaxContainsValidator::compile(schema, context, min, max))
                 }
-            } else if let Some(max_contains) = parent.get("maxContains") {
-                if let Some(max_contains) = max_contains.as_u64() {
-                    Some(MaxContainsValidator::compile(schema, context, max_contains))
-                } else {
-                    Some(Err(ValidationError::format(
-                        JSONPointer::default(),
-                        context.clone().into_pointer(),
-                        schema,
-                        "maxContains",
-                    )))
-                }
-            } else {
-                Some(ContainsValidator::compile(schema, context))
+                (Some(min), None) => Some(MinContainsValidator::compile(schema, context, min)),
+                (None, Some(max)) => Some(MaxContainsValidator::compile(schema, context, max)),
+                (None, None) => Some(ContainsValidator::compile(schema, context)),
             }
         }
+    }
+}
+
+#[cfg(feature = "draft201909")]
+#[inline]
+pub(crate) fn map_get_u64<'a>(
+    m: &'a Map<String, Value>,
+    context: &CompilationContext,
+    type_name: &str,
+) -> Option<Result<u64, ValidationError<'a>>> {
+    let value = m.get(type_name)?;
+    if matches!(value.as_i64(), Some(n) if n < 0) {
+        return Some(Err(ValidationError::minimum(
+            JSONPointer::default(),
+            context.clone().into_pointer(),
+            value,
+            0.into(),
+        )));
+    }
+
+    match value.as_u64() {
+        Some(n) => Some(Ok(n)),
+        None => Some(Err(ValidationError::single_type_error(
+            JSONPointer::default(),
+            context.clone().into_pointer(),
+            value,
+            PrimitiveType::Integer,
+        ))),
     }
 }
 

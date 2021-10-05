@@ -19,8 +19,8 @@ impl MinItemsValidator {
             Ok(Box::new(MinItemsValidator { limit, schema_path }))
         } else {
             Err(ValidationError::format(
-                schema_path,
                 JSONPointer::default(),
+                schema_path,
                 schema,
                 "min_length int validation",
             ))
