@@ -502,6 +502,7 @@ pub(crate) fn compile<'a>(
 mod tests {
     use serde_json::json;
 
+    #[cfg(feature = "draft201909")]
     use crate::schemas::Draft::Draft201909;
     use crate::{compilation::JSONSchema, tests_util};
 
@@ -548,6 +549,7 @@ mod tests {
         tests_util::assert_schema_path(&json!({"format": "date"}), &json!("bla"), "/format")
     }
 
+    #[cfg(feature = "draft201909")]
     #[test]
     fn uuid() {
         let schema = json!({"format": "uuid", "type": "string"});
@@ -576,6 +578,7 @@ mod tests {
         tests_util::is_not_valid(&schema, &failing_instance);
     }
 
+    #[cfg(feature = "draft201909")]
     #[test]
     fn duration() {
         let schema = json!({"format": "duration", "type": "string"});
