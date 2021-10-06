@@ -63,7 +63,7 @@ pub(crate) fn map_get_u64<'a>(
     let value = m.get(type_name)?;
     match value.as_u64() {
         Some(n) => Some(Ok(n)),
-        None if value.as_i64().is_some() => Some(Err(ValidationError::minimum(
+        None if value.is_i64() => Some(Err(ValidationError::minimum(
             JSONPointer::default(),
             context.clone().into_pointer(),
             value,
@@ -75,6 +75,23 @@ pub(crate) fn map_get_u64<'a>(
             value,
             PrimitiveType::Integer,
         ))),
+    }
+}
+
+/// Fail if the input value is not `u64`.
+pub(crate) fn fail_on_non_positive_integer(
+    value: &Value,
+    instance_path: JSONPointer,
+) -> ValidationError<'_> {
+    if value.is_i64() {
+        ValidationError::minimum(JSONPointer::default(), instance_path, value, 0.into())
+    } else {
+        ValidationError::single_type_error(
+            JSONPointer::default(),
+            instance_path,
+            value,
+            PrimitiveType::Integer,
+        )
     }
 }
 

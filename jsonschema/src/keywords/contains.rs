@@ -3,7 +3,6 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
-    primitive_type::PrimitiveType,
     schema_node::SchemaNode,
     validator::{format_validators, PartialApplication, Validate},
     Draft,
