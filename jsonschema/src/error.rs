@@ -656,15 +656,6 @@ impl<'a> ValidationError<'a> {
         }
     }
 
-    pub(crate) fn schema(instance: &'a Value) -> ValidationError<'a> {
-        ValidationError {
-            instance_path: JSONPointer::default(),
-            instance: Cow::Borrowed(instance),
-            kind: ValidationErrorKind::Schema,
-            schema_path: JSONPointer::default(),
-        }
-    }
-
     pub(crate) fn null_schema() -> ValidationError<'a> {
         ValidationError {
             instance_path: JSONPointer::default(),

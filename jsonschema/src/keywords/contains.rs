@@ -3,11 +3,15 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
+    primitive_type::PrimitiveType,
     schema_node::SchemaNode,
     validator::{format_validators, PartialApplication, Validate},
     Draft,
 };
 use serde_json::{Map, Value};
+
+#[cfg(feature = "draft201909")]
+use super::helpers::map_get_u64;
 
 pub(crate) struct ContainsValidator {
     node: SchemaNode,
@@ -422,33 +426,22 @@ pub(crate) fn compile<'a>(
         }
         #[cfg(feature = "draft201909")]
         Draft::Draft201909 => {
-            if let Some(min_contains) = parent.get("minContains") {
-                if let Some(min_contains) = min_contains.as_u64() {
-                    if let Some(max_contains) = parent.get("maxContains") {
-                        if let Some(max_contains) = max_contains.as_u64() {
-                            Some(MinMaxContainsValidator::compile(
-                                schema,
-                                context,
-                                min_contains,
-                                max_contains,
-                            ))
-                        } else {
-                            Some(Err(ValidationError::schema(schema)))
-                        }
-                    } else {
-                        Some(MinContainsValidator::compile(schema, context, min_contains))
-                    }
-                } else {
-                    Some(Err(ValidationError::schema(schema)))
+            let min_contains = match map_get_u64(parent, context, "minContains").transpose() {
+                Ok(n) => n,
+                Err(err) => return Some(Err(err)),
+            };
+            let max_contains = match map_get_u64(parent, context, "maxContains").transpose() {
+                Ok(n) => n,
+                Err(err) => return Some(Err(err)),
+            };
+
+            match (min_contains, max_contains) {
+                (Some(min), Some(max)) => {
+                    Some(MinMaxContainsValidator::compile(schema, context, min, max))
                 }
-            } else if let Some(max_contains) = parent.get("maxContains") {
-                if let Some(max_contains) = max_contains.as_u64() {
-                    Some(MaxContainsValidator::compile(schema, context, max_contains))
-                } else {
-                    Some(Err(ValidationError::schema(schema)))
-                }
-            } else {
-                Some(ContainsValidator::compile(schema, context))
+                (Some(min), None) => Some(MinContainsValidator::compile(schema, context, min)),
+                (None, Some(max)) => Some(MaxContainsValidator::compile(schema, context, max)),
+                (None, None) => Some(ContainsValidator::compile(schema, context)),
             }
         }
     }

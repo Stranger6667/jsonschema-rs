@@ -18,7 +18,12 @@ impl MaxItemsValidator {
         if let Some(limit) = schema.as_u64() {
             Ok(Box::new(MaxItemsValidator { limit, schema_path }))
         } else {
-            Err(ValidationError::schema(schema))
+            Err(ValidationError::format(
+                JSONPointer::default(),
+                schema_path,
+                schema,
+                "max_items int validation",
+            ))
         }
     }
 }

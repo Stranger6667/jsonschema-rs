@@ -3,6 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::InstancePath,
+    primitive_type::PrimitiveType,
     validator::Validate,
 };
 use serde_json::{Map, Value};
@@ -31,7 +32,14 @@ impl PatternValidator {
             Value::String(item) => {
                 let pattern = match convert_regex(item) {
                     Ok(r) => r,
-                    Err(_) => return Err(ValidationError::schema(pattern)),
+                    Err(_) => {
+                        return Err(ValidationError::format(
+                            JSONPointer::default(),
+                            context.clone().into_pointer(),
+                            pattern,
+                            "regex",
+                        ))
+                    }
                 };
                 Ok(Box::new(PatternValidator {
                     original: item.clone(),
@@ -39,7 +47,12 @@ impl PatternValidator {
                     schema_path: context.as_pointer_with("pattern"),
                 }))
             }
-            _ => Err(ValidationError::schema(pattern)),
+            _ => Err(ValidationError::single_type_error(
+                JSONPointer::default(),
+                context.clone().into_pointer(),
+                pattern,
+                PrimitiveType::String,
+            )),
         }
     }
 }

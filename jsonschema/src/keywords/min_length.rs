@@ -18,7 +18,12 @@ impl MinLengthValidator {
         if let Some(limit) = schema.as_u64() {
             Ok(Box::new(MinLengthValidator { limit, schema_path }))
         } else {
-            Err(ValidationError::schema(schema))
+            Err(ValidationError::format(
+                JSONPointer::default(),
+                schema_path,
+                schema,
+                "min_length int validation",
+            ))
         }
     }
 }

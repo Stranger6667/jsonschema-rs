@@ -3,6 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
+    primitive_type::PrimitiveType,
     validator::Validate,
 };
 use num_cmp::NumCmp;
@@ -138,7 +139,12 @@ pub(crate) fn compile<'a>(
             })))
         }
     } else {
-        Some(Err(ValidationError::schema(schema)))
+        Some(Err(ValidationError::single_type_error(
+            JSONPointer::default(),
+            context.clone().into_pointer(),
+            schema,
+            PrimitiveType::Number,
+        )))
     }
 }
 

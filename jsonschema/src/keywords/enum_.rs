@@ -153,7 +153,12 @@ pub(crate) fn compile<'a>(
             Some(EnumValidator::compile(schema, items, schema_path))
         }
     } else {
-        Some(Err(ValidationError::schema(schema)))
+        Some(Err(ValidationError::single_type_error(
+            JSONPointer::default(),
+            context.clone().into_pointer(),
+            schema,
+            PrimitiveType::Array,
+        )))
     }
 }
 

@@ -18,7 +18,12 @@ impl MaxLengthValidator {
         if let Some(limit) = schema.as_u64() {
             Ok(Box::new(MaxLengthValidator { limit, schema_path }))
         } else {
-            Err(ValidationError::schema(schema))
+            Err(ValidationError::format(
+                JSONPointer::default(),
+                schema_path,
+                schema,
+                "max_length int validation",
+            ))
         }
     }
 }

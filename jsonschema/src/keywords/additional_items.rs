@@ -3,6 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{boolean::FalseValidator, CompilationResult},
     paths::{InstancePath, JSONPointer},
+    primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     schema_node::SchemaNode,
     validator::{format_validators, Validate},
 };
@@ -153,7 +154,15 @@ pub(crate) fn compile<'a>(
                     Some(FalseValidator::compile(schema_path))
                 }
             }
-            _ => Some(Err(ValidationError::schema(schema))),
+            _ => Some(Err(ValidationError::multiple_type_error(
+                JSONPointer::default(),
+                context.clone().into_pointer(),
+                schema,
+                PrimitiveTypesBitMap::new()
+                    .add_type(PrimitiveType::Object)
+                    .add_type(PrimitiveType::Array)
+                    .add_type(PrimitiveType::Boolean),
+            ))),
         }
     } else {
         None

@@ -2,6 +2,7 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
     paths::InstancePath,
+    primitive_type::PrimitiveType,
     schema_node::SchemaNode,
     validator::{format_iter_of_validators, PartialApplication, Validate},
 };
@@ -34,7 +35,12 @@ impl AnyOfValidator {
                 schema_path: keyword_context.into_pointer(),
             }))
         } else {
-            Err(ValidationError::schema(schema))
+            Err(ValidationError::single_type_error(
+                JSONPointer::default(),
+                context.clone().into_pointer(),
+                schema,
+                PrimitiveType::Array,
+            ))
         }
     }
 }

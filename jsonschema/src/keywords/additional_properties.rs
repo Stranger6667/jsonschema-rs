@@ -1357,13 +1357,15 @@ fn compile_patterns<'a>(
     for (pattern, subschema) in obj {
         let pattern_context = keyword_context.with_path(pattern.to_string());
         if let Ok(compiled_pattern) = Regex::new(pattern) {
-            if let Ok(node) = compile_validators(subschema, &pattern_context) {
-                compiled_patterns.push((compiled_pattern, node));
-            } else {
-                return Err(ValidationError::schema(subschema));
-            }
+            let node = compile_validators(subschema, &pattern_context)?;
+            compiled_patterns.push((compiled_pattern, node));
         } else {
-            return Err(ValidationError::schema(subschema));
+            return Err(ValidationError::format(
+                JSONPointer::default(),
+                keyword_context.clone().into_pointer(),
+                subschema,
+                "regex",
+            ));
         }
     }
     Ok(compiled_patterns)

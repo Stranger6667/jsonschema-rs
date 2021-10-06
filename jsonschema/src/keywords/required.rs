@@ -3,6 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
+    primitive_type::PrimitiveType,
     validator::Validate,
 };
 use serde_json::{Map, Value};
@@ -19,7 +20,14 @@ impl RequiredValidator {
         for item in items {
             match item {
                 Value::String(string) => required.push(string.clone()),
-                _ => return Err(ValidationError::schema(item)),
+                _ => {
+                    return Err(ValidationError::single_type_error(
+                        JSONPointer::default(),
+                        schema_path,
+                        item,
+                        PrimitiveType::String,
+                    ))
+                }
             }
         }
         Ok(Box::new(RequiredValidator {
@@ -141,16 +149,27 @@ pub(crate) fn compile_with_path(
     match schema {
         Value::Array(items) => {
             if items.len() == 1 {
-                if let Some(Value::String(item)) = items.iter().next() {
+                let item = &items[0];
+                if let Value::String(item) = item {
                     Some(SingleItemRequiredValidator::compile(item, schema_path))
                 } else {
-                    Some(Err(ValidationError::schema(schema)))
+                    Some(Err(ValidationError::single_type_error(
+                        JSONPointer::default(),
+                        schema_path,
+                        item,
+                        PrimitiveType::String,
+                    )))
                 }
             } else {
                 Some(RequiredValidator::compile(items, schema_path))
             }
         }
-        _ => Some(Err(ValidationError::schema(schema))),
+        _ => Some(Err(ValidationError::single_type_error(
+            JSONPointer::default(),
+            schema_path,
+            schema,
+            PrimitiveType::Array,
+        ))),
     }
 }
 

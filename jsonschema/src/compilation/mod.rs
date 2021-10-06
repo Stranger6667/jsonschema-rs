@@ -5,8 +5,14 @@ pub(crate) mod context;
 pub(crate) mod options;
 
 use crate::{
-    error::ErrorIterator, keywords, paths::InstancePath, resolver::Resolver,
-    schema_node::SchemaNode, validator::Validate, Draft, Output, ValidationError,
+    error::ErrorIterator,
+    keywords,
+    paths::{InstancePath, JSONPointer},
+    primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
+    resolver::Resolver,
+    schema_node::SchemaNode,
+    validator::Validate,
+    Draft, Output, ValidationError,
 };
 use ahash::AHashMap;
 use context::CompilationContext;
@@ -169,7 +175,12 @@ pub(crate) fn compile_validators<'a, 'c>(
                         Some(unmatched_keywords),
                     ))
                 } else {
-                    Err(ValidationError::schema(schema))
+                    Err(ValidationError::single_type_error(
+                        JSONPointer::default(),
+                        relative_path,
+                        reference,
+                        PrimitiveType::String,
+                    ))
                 }
             } else {
                 let mut validators = Vec::with_capacity(object.len());
@@ -218,7 +229,14 @@ pub(crate) fn compile_validators<'a, 'c>(
                 ))
             }
         }
-        _ => Err(ValidationError::schema(schema)),
+        _ => Err(ValidationError::multiple_type_error(
+            JSONPointer::default(),
+            relative_path,
+            schema,
+            PrimitiveTypesBitMap::new()
+                .add_type(PrimitiveType::Boolean)
+                .add_type(PrimitiveType::Object),
+        )),
     }
 }
 

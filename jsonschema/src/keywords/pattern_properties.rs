@@ -3,7 +3,8 @@ use crate::{
     error::{no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     output::BasicOutput,
-    paths::InstancePath,
+    paths::{InstancePath, JSONPointer},
+    primitive_type::PrimitiveType,
     schema_node::SchemaNode,
     validator::{format_validators, PartialApplication, Validate},
 };
@@ -27,7 +28,14 @@ impl PatternPropertiesValidator {
             patterns.push((
                 match Regex::new(pattern) {
                     Ok(r) => r,
-                    Err(_) => return Err(ValidationError::schema(subschema)),
+                    Err(_) => {
+                        return Err(ValidationError::format(
+                            JSONPointer::default(),
+                            keyword_context.clone().into_pointer(),
+                            subschema,
+                            "regex",
+                        ))
+                    }
                 },
                 compile_validators(subschema, &pattern_context)?,
             ));
@@ -133,7 +141,14 @@ impl SingleValuePatternPropertiesValidator {
         Ok(Box::new(SingleValuePatternPropertiesValidator {
             pattern: match Regex::new(pattern) {
                 Ok(r) => r,
-                Err(_) => return Err(ValidationError::schema(schema)),
+                Err(_) => {
+                    return Err(ValidationError::format(
+                        JSONPointer::default(),
+                        keyword_context.clone().into_pointer(),
+                        schema,
+                        "regex",
+                    ))
+                }
             },
             node: compile_validators(schema, &pattern_context)?,
         }))
@@ -229,7 +244,12 @@ pub(crate) fn compile<'a>(
                     Some(PatternPropertiesValidator::compile(map, context))
                 }
             } else {
-                Some(Err(ValidationError::schema(schema)))
+                Some(Err(ValidationError::single_type_error(
+                    JSONPointer::default(),
+                    context.clone().into_pointer(),
+                    schema,
+                    PrimitiveType::Object,
+                )))
             }
         }
     }

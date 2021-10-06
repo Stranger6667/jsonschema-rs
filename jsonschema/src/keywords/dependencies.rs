@@ -2,7 +2,8 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator, ValidationError},
     keywords::{required, CompilationResult},
-    paths::InstancePath,
+    paths::{InstancePath, JSONPointer},
+    primitive_type::PrimitiveType,
     schema_node::SchemaNode,
     validator::{format_key_value_validators, Validate},
 };
@@ -38,7 +39,12 @@ impl DependenciesValidator {
             }
             Ok(Box::new(DependenciesValidator { dependencies }))
         } else {
-            Err(ValidationError::schema(schema))
+            Err(ValidationError::single_type_error(
+                JSONPointer::default(),
+                context.clone().into_pointer(),
+                schema,
+                PrimitiveType::Object,
+            ))
         }
     }
 }
