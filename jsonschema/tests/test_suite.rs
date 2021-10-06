@@ -7,7 +7,7 @@ use std::fs;
 #[json_schema_test_suite("tests/suite", "draft7", {
     r"optional_format_idn_hostname_0_\d+",  // https://github.com/Stranger6667/jsonschema-rs/issues/101
 })]
-#[json_schema_test_suite("tests/suite", "draft2019-09", {
+#[cfg_attr(feature = "draft201909", json_schema_test_suite("tests/suite", "draft2019-09", {
     r"optional_format_idn_hostname_0_\d+",  // https://github.com/Stranger6667/jsonschema-rs/issues/101
     r"format_\d+_6",  // https://github.com/Stranger6667/jsonschema-rs/issues/261
     // These depend on the new `$defs` keyword (which is renamed from `definitions`)
@@ -36,12 +36,13 @@ use std::fs;
     r"optional_format_uuid_.+",  // https://github.com/Stranger6667/jsonschema-rs/issues/266
     r"unevaluatedItems_.+",
     r"unevaluatedProperties_.+",
-})]
+}))]
 fn test_draft(_server_address: &str, test_case: TestCase) {
     let draft_version = match test_case.draft_version.as_ref() {
         "draft4" => Draft::Draft4,
         "draft6" => Draft::Draft6,
         "draft7" => Draft::Draft7,
+        #[cfg(feature = "draft201909")]
         "draft2019-09" => Draft::Draft201909,
         _ => panic!("Unsupported draft"),
     };
