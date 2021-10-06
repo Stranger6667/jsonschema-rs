@@ -1,7 +1,7 @@
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::CompilationResult,
+    keywords::{helpers::fail_on_non_positive_integer, CompilationResult},
     paths::{InstancePath, JSONPointer},
     validator::Validate,
 };
@@ -18,12 +18,7 @@ impl MinPropertiesValidator {
         if let Some(limit) = schema.as_u64() {
             Ok(Box::new(MinPropertiesValidator { limit, schema_path }))
         } else {
-            Err(ValidationError::format(
-                JSONPointer::default(),
-                schema_path,
-                schema,
-                "min_properties int validation",
-            ))
+            Err(fail_on_non_positive_integer(schema, schema_path))
         }
     }
 }
