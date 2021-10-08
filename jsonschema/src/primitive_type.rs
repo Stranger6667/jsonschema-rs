@@ -118,7 +118,7 @@ impl IntoIterator for PrimitiveTypesBitMap {
     type IntoIter = PrimitiveTypesBitMapIterator;
     fn into_iter(self) -> Self::IntoIter {
         PrimitiveTypesBitMapIterator {
-            range: 0..7,
+            idx: 0,
             bit_map: self,
         }
     }
@@ -137,23 +137,21 @@ impl From<Vec<PrimitiveType>> for PrimitiveTypesBitMap {
 /// Iterator over all `PrimitiveType` present in a `PrimitiveTypesBitMap`
 #[derive(Debug)]
 pub struct PrimitiveTypesBitMapIterator {
-    range: std::ops::Range<u8>,
+    idx: u8,
     bit_map: PrimitiveTypesBitMap,
 }
 impl Iterator for PrimitiveTypesBitMapIterator {
     type Item = PrimitiveType;
     #[allow(clippy::integer_arithmetic)]
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if let Some(value) = self.range.next() {
-                let bit_value = 1 << value;
-                if self.bit_map.inner & bit_value != 0 {
-                    return Some(bit_map_representation_primitive_type(bit_value));
-                }
-            } else {
-                return None;
+        while self.idx <= 7 {
+            let bit_value = 1 << self.idx;
+            self.idx += 1;
+            if self.bit_map.inner & bit_value != 0 {
+                return Some(bit_map_representation_primitive_type(bit_value));
             }
         }
+        None
     }
 }
 
