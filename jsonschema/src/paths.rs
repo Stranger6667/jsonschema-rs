@@ -3,13 +3,14 @@ use std::{fmt, fmt::Write, slice::Iter, str::FromStr};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// JSON Pointer as a wrapper around individual path components.
-pub struct JSONPointer(Vec<PathChunk>);
+pub struct JSONPointer(Box<[PathChunk]>);
 
 impl JSONPointer {
     #[must_use]
     /// JSON pointer as a vector of strings. Each component is casted to `String`. Consumes `JSONPointer`.
     pub fn into_vec(self) -> Vec<String> {
         self.0
+            .into_vec()
             .into_iter()
             .map(|item| match item {
                 PathChunk::Property(value) => value.into_string(),
@@ -31,18 +32,18 @@ impl JSONPointer {
     }
 
     pub(crate) fn clone_with(&self, chunk: impl Into<PathChunk>) -> Self {
-        let mut new = self.clone();
-        new.0.push(chunk.into());
-        new
+        let mut vec = self.0.to_vec();
+        vec.push(chunk.into());
+        Self(vec.into_boxed_slice())
     }
 
     pub(crate) fn extend_with(&self, chunks: &[PathChunk]) -> Self {
-        let mut new = self.clone();
-        new.0.extend_from_slice(chunks);
-        new
+        let mut vec = self.0.to_vec();
+        vec.extend_from_slice(chunks);
+        Self(vec.into_boxed_slice())
     }
 
-    pub(crate) fn as_slice(&self) -> &[PathChunk] {
+    pub(crate) const fn as_slice(&self) -> &[PathChunk] {
         &self.0
     }
 }
@@ -58,14 +59,14 @@ impl serde::Serialize for JSONPointer {
 
 impl Default for JSONPointer {
     fn default() -> Self {
-        JSONPointer(Vec::new())
+        JSONPointer(Box::new([]))
     }
 }
 
 impl fmt::Display for JSONPointer {
     fn fmt(&self, mut f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if !self.0.is_empty() {
-            for chunk in &self.0 {
+            for chunk in self.0.iter() {
                 f.write_char('/')?;
                 match chunk {
                     PathChunk::Property(value) => {
@@ -156,7 +157,7 @@ impl IntoIterator for JSONPointer {
     type IntoIter = <Vec<PathChunk> as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
+        self.0.into_vec().into_iter()
     }
 }
 
@@ -191,14 +192,14 @@ impl From<usize> for PathChunk {
 impl<'a> From<&'a InstancePath<'a>> for JSONPointer {
     #[inline]
     fn from(path: &'a InstancePath<'a>) -> Self {
-        JSONPointer(path.to_vec())
+        JSONPointer(path.to_vec().into_boxed_slice())
     }
 }
 
 impl From<InstancePath<'_>> for JSONPointer {
     #[inline]
     fn from(path: InstancePath<'_>) -> Self {
-        JSONPointer(path.to_vec())
+        JSONPointer(path.to_vec().into_boxed_slice())
     }
 }
 
@@ -215,7 +216,7 @@ impl From<&[&str]> for JSONPointer {
 impl From<&[PathChunk]> for JSONPointer {
     #[inline]
     fn from(path: &[PathChunk]) -> Self {
-        JSONPointer(path.to_vec())
+        JSONPointer(path.to_vec().into_boxed_slice())
     }
 }
 
