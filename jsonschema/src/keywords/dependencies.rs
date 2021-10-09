@@ -1,7 +1,7 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema},
     error::{no_error, ErrorIterator, ValidationError},
-    keywords::{required, CompilationResult},
+    keywords::{required, unique_items, CompilationResult},
     paths::{InstancePath, JSONPointer},
     primitive_type::PrimitiveType,
     schema_node::SchemaNode,
@@ -93,6 +93,166 @@ impl core::fmt::Display for DependenciesValidator {
     }
 }
 
+pub(crate) struct DependentRequiredValidator {
+    dependencies: Vec<(String, SchemaNode)>,
+}
+
+impl DependentRequiredValidator {
+    #[inline]
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
+        if let Value::Object(map) = schema {
+            let keyword_context = context.with_path("dependentRequired");
+            let mut dependencies = Vec::with_capacity(map.len());
+            for (key, subschema) in map {
+                let item_context = keyword_context.with_path(key.to_string());
+                if let Value::Array(dependency_array) = subschema {
+                    if !unique_items::is_unique(dependency_array) {
+                        return Err(ValidationError::unique_items(
+                            JSONPointer::default(),
+                            item_context.clone().into_pointer(),
+                            subschema,
+                        ));
+                    }
+                    let validators = vec![required::compile_with_path(
+                        subschema,
+                        (&keyword_context.schema_path).into(),
+                    )
+                    .expect("The required validator compilation does not return None")?];
+                    dependencies.push((
+                        key.clone(),
+                        SchemaNode::new_from_array(&keyword_context, validators),
+                    ));
+                } else {
+                    return Err(ValidationError::single_type_error(
+                        JSONPointer::default(),
+                        item_context.clone().into_pointer(),
+                        subschema,
+                        PrimitiveType::Array,
+                    ));
+                }
+            }
+            Ok(Box::new(DependentRequiredValidator { dependencies }))
+        } else {
+            Err(ValidationError::single_type_error(
+                JSONPointer::default(),
+                context.clone().into_pointer(),
+                schema,
+                PrimitiveType::Object,
+            ))
+        }
+    }
+}
+impl Validate for DependentRequiredValidator {
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = instance {
+            self.dependencies
+                .iter()
+                .filter(|(property, _)| item.contains_key(property))
+                .all(move |(_, node)| node.is_valid(schema, instance))
+        } else {
+            true
+        }
+    }
+    fn validate<'a, 'b>(
+        &self,
+        schema: &'a JSONSchema,
+        instance: &'b Value,
+        instance_path: &InstancePath,
+    ) -> ErrorIterator<'b> {
+        if let Value::Object(item) = instance {
+            let errors: Vec<_> = self
+                .dependencies
+                .iter()
+                .filter(|(property, _)| item.contains_key(property))
+                .flat_map(move |(_, node)| node.validate(schema, instance, instance_path))
+                .collect();
+            Box::new(errors.into_iter())
+        } else {
+            no_error()
+        }
+    }
+}
+impl core::fmt::Display for DependentRequiredValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "dependentRequired: {{{}}}",
+            format_key_value_validators(&self.dependencies)
+        )
+    }
+}
+
+pub(crate) struct DependentSchemasValidator {
+    dependencies: Vec<(String, SchemaNode)>,
+}
+impl DependentSchemasValidator {
+    #[inline]
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
+        if let Value::Object(map) = schema {
+            let keyword_context = context.with_path("dependentSchemas");
+            let mut dependencies = Vec::with_capacity(map.len());
+            for (key, subschema) in map {
+                let item_context = keyword_context.with_path(key.to_string());
+                let schema_nodes = compile_validators(subschema, &item_context)?;
+                dependencies.push((key.clone(), schema_nodes));
+            }
+            Ok(Box::new(DependentSchemasValidator { dependencies }))
+        } else {
+            Err(ValidationError::single_type_error(
+                JSONPointer::default(),
+                context.clone().into_pointer(),
+                schema,
+                PrimitiveType::Object,
+            ))
+        }
+    }
+}
+impl Validate for DependentSchemasValidator {
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Object(item) = instance {
+            self.dependencies
+                .iter()
+                .filter(|(property, _)| item.contains_key(property))
+                .all(move |(_, node)| node.is_valid(schema, instance))
+        } else {
+            true
+        }
+    }
+    fn validate<'a, 'b>(
+        &self,
+        schema: &'a JSONSchema,
+        instance: &'b Value,
+        instance_path: &InstancePath,
+    ) -> ErrorIterator<'b> {
+        if let Value::Object(item) = instance {
+            let errors: Vec<_> = self
+                .dependencies
+                .iter()
+                .filter(|(property, _)| item.contains_key(property))
+                .flat_map(move |(_, node)| node.validate(schema, instance, instance_path))
+                .collect();
+            Box::new(errors.into_iter())
+        } else {
+            no_error()
+        }
+    }
+}
+
+impl core::fmt::Display for DependentSchemasValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "dependentSchemas: {{{}}}",
+            format_key_value_validators(&self.dependencies)
+        )
+    }
+}
 #[inline]
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
@@ -101,7 +261,22 @@ pub(crate) fn compile<'a>(
 ) -> Option<CompilationResult<'a>> {
     Some(DependenciesValidator::compile(schema, context))
 }
-
+#[inline]
+pub(crate) fn compile_dependent_required<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
+    context: &CompilationContext,
+) -> Option<CompilationResult<'a>> {
+    Some(DependentRequiredValidator::compile(schema, context))
+}
+#[inline]
+pub(crate) fn compile_dependent_schemas<'a>(
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
+    context: &CompilationContext,
+) -> Option<CompilationResult<'a>> {
+    Some(DependentSchemasValidator::compile(schema, context))
+}
 #[cfg(test)]
 mod tests {
     use crate::tests_util;

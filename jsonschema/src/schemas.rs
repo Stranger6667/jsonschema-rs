@@ -73,6 +73,10 @@ impl Draft {
                 Draft::Draft201909 => None,
             },
             "dependencies" => Some(keywords::dependencies::compile),
+            #[cfg(feature = "draft201909")]
+            "dependentRequired" => Some(keywords::dependencies::compile_dependent_required),
+            #[cfg(feature = "draft201909")]
+            "dependentSchemas" => Some(keywords::dependencies::compile_dependent_schemas),
             "enum" => Some(keywords::enum_::compile),
             "exclusiveMaximum" => match self {
                 Draft::Draft7 | Draft::Draft6 => Some(keywords::exclusive_maximum::compile),
