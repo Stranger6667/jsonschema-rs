@@ -19,7 +19,7 @@ use pyo3::{
     exceptions,
     prelude::*,
     types::{PyAny, PyList, PyType},
-    wrap_pyfunction, PyObjectProtocol,
+    wrap_pyfunction, PyObjectProtocol, PyIterProtocol
 };
 
 mod ser;
@@ -71,6 +71,22 @@ impl<'p> PyObjectProtocol<'p> for ValidationError {
     }
 }
 
+#[pyclass]
+struct ValidationErrorIter {
+    iter: Box<dyn Iterator<Item = PyErr> + Send>,
+}
+
+#[pyproto]
+impl PyIterProtocol for ValidationErrorIter {
+    fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
+        slf
+    }
+    fn __next__(mut slf: PyRefMut<Self>) -> Option<PyErr> {
+        slf.iter.next()
+    }
+}
+
+
 fn into_py_err(py: Python, error: jsonschema::ValidationError) -> PyResult<PyErr> {
     let pyerror_type = PyType::new::<ValidationError>(py);
     let message = error.to_string();
@@ -121,6 +137,24 @@ fn make_options(
         options.with_meta_schemas();
     }
     Ok(options)
+}
+
+fn iter_on_error(
+    py: Python,
+    compiled: &jsonschema::JSONSchema,
+    instance: &PyAny,
+) -> PyResult<ValidationErrorIter> {
+    let instance = ser::to_value(instance)?;
+    let mut pyerrors = vec![];
+
+    if let Err(errors) = compiled.validate(&instance) {
+        for error in errors {
+            pyerrors.push(into_py_err(py, error)?);
+        }
+    };
+    Ok(ValidationErrorIter {
+        iter: Box::new(pyerrors.into_iter()),
+    })
 }
 
 fn raise_on_error(py: Python, compiled: &jsonschema::JSONSchema, instance: &PyAny) -> PyResult<()> {
@@ -243,6 +277,33 @@ fn validate(
     }
 }
 
+/// iter_errors(schema, instance, draft=None, with_meta_schemas=False)
+///
+/// Iterate the validation errors of the input instance
+///
+///     >>> next(iter_errors({"minimum": 5}, 3))
+///     ...
+///     ValidationError: 3 is less than the minimum of 5
+///
+/// If your workflow implies validating against the same schema, consider using `JSONSchema.list_errors`
+/// instead.
+#[pyfunction]
+#[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False)")]
+fn iter_errors(
+    py: Python,
+    schema: &PyAny,
+    instance: &PyAny,
+    draft: Option<u8>,
+    with_meta_schemas: Option<bool>,
+) -> PyResult<ValidationErrorIter> {
+    let options = make_options(draft, with_meta_schemas)?;
+    let schema = ser::to_value(schema)?;
+    match options.compile(&schema) {
+        Ok(compiled) => iter_on_error(py, &compiled, instance),
+        Err(error) => Err(into_py_err(py, error)?),
+    }
+}
+
 /// JSONSchema(schema, draft=None, with_meta_schemas=False)
 ///
 /// JSON Schema compiled into a validation tree.
@@ -318,6 +379,17 @@ impl JSONSchema {
     fn validate(&self, py: Python, instance: &PyAny) -> PyResult<()> {
         raise_on_error(py, &self.schema, instance)
     }
+
+    /// iter_errors(schema, instance, draft=None, with_meta_schemas=False)
+    ///
+    /// Iterate the validation errors of the input instance
+    ///
+    ///     >>> next(iter_errors({"minimum": 5}, 3))
+    ///     ...
+    ///     ValidationError: 3 is less than the minimum of 5
+    fn iter_errors(&self, py: Python, instance: &PyAny) -> PyResult<ValidationErrorIter> {
+        iter_on_error(py, &self.schema, instance)
+    }
 }
 
 const SCHEMA_LENGTH_LIMIT: usize = 32;
@@ -342,6 +414,7 @@ fn jsonschema_rs(py: Python, module: &PyModule) -> PyResult<()> {
     types::init();
     module.add_wrapped(wrap_pyfunction!(is_valid))?;
     module.add_wrapped(wrap_pyfunction!(validate))?;
+    module.add_wrapped(wrap_pyfunction!(iter_errors))?;
     module.add_class::<JSONSchema>()?;
     module.add("ValidationError", py.get_type::<ValidationError>())?;
     module.add("Draft4", DRAFT4)?;

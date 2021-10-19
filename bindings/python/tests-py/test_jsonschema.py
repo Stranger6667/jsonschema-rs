@@ -5,7 +5,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from jsonschema_rs import JSONSchema, ValidationError, is_valid, validate
+from jsonschema_rs import JSONSchema, ValidationError, is_valid, iter_errors, validate
 
 json = st.recursive(
     st.none() | st.booleans() | st.floats() | st.integers() | st.text(),
@@ -127,3 +127,32 @@ Failed validating "type" in schema["properties"]["foo"]
 On instance["foo"]:
     null"""
         )
+
+
+def test_iter_err_message():
+    schema = {"properties": {"foo": {"type": "integer"}, "bar": {"type": "string"}}}
+    instance = {"foo": None, "bar": None}
+    errs = iter_errors(schema, instance)
+
+    err_a = next(errs)
+    assert err_a.message == 'null is not of type "string"'
+
+    err_b = next(errs)
+    assert err_b.message == 'null is not of type "integer"'
+
+    try:
+        next(errs)
+        pytest.fail("Validation error should happen")
+    except StopIteration:
+        pass
+
+
+def test_iter_err_empty():
+    schema = {"properties": {"foo": {"type": "integer"}}}
+    instance = {"foo": 1}
+    errs = iter_errors(schema, instance)
+    try:
+        next(errs)
+        pytest.fail("Validation error should happen")
+    except StopIteration:
+        pass
