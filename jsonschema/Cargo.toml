@@ -27,7 +27,7 @@ percent-encoding = "2"
 regex = "1"
 fancy-regex = "^0.7.1"
 base64 = ">= 0.2"
-chrono = ">= 0.2"
+time = { version = ">= 0.3.3", features = ["parsing", "macros"] }
 reqwest = { version = ">= 0.10", features = ["blocking", "json"], optional = true}
 parking_lot = ">= 0.1"
 num-cmp = ">= 0.1"
