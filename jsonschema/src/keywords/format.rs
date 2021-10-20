@@ -1,7 +1,6 @@
 //! Validator for `format` keyword.
 use std::{net::IpAddr, str::FromStr};
 
-use chrono::{DateTime, NaiveDate};
 use fancy_regex::Regex;
 use serde_json::{Map, Value};
 use url::Url;
@@ -85,7 +84,12 @@ impl Validate for DateValidator {
     validate!("date");
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            if NaiveDate::parse_from_str(item, "%Y-%m-%d").is_ok() {
+            if time::Date::parse(
+                item,
+                &time::macros::format_description!("[year]-[month]-[day]"),
+            )
+            .is_ok()
+            {
                 // Padding with zeroes is ignored by the underlying parser. The most efficient
                 // way to check it will be to use a custom parser that won't ignore zeroes,
                 // but this regex will do the trick and costs ~20% extra time in this validator.
@@ -105,7 +109,8 @@ impl Validate for DateTimeValidator {
     validate!("date-time");
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            DateTime::parse_from_rfc3339(item).is_ok()
+            time::OffsetDateTime::parse(item, &time::format_description::well_known::Rfc3339)
+                .is_ok()
         } else {
             true
         }
