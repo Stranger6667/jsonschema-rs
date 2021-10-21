@@ -4,7 +4,6 @@ use std::{net::IpAddr, str::FromStr};
 use fancy_regex::Regex;
 use serde_json::{Map, Value};
 use url::Url;
-use uuid::Uuid;
 
 use crate::{
     compilation::{context::CompilationContext, JSONSchema},
