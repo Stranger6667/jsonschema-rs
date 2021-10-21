@@ -285,7 +285,7 @@ fn validate(
 ///     ...
 ///     ValidationError: 3 is less than the minimum of 5
 ///
-/// If your workflow implies validating against the same schema, consider using `JSONSchema.list_errors`
+/// If your workflow implies validating against the same schema, consider using `JSONSchema.iter_errors`
 /// instead.
 #[pyfunction]
 #[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False)")]
@@ -380,13 +380,15 @@ impl JSONSchema {
         raise_on_error(py, &self.schema, instance)
     }
 
-    /// iter_errors(schema, instance, draft=None, with_meta_schemas=False)
+    /// iter_errors(instance)
     ///
     /// Iterate the validation errors of the input instance
     ///
-    ///     >>> next(iter_errors({"minimum": 5}, 3))
+    ///     >>> compiled = JSONSchema({"minimum": 5})
+    ///     >>> next(compiled.iter_errors(3))
     ///     ...
     ///     ValidationError: 3 is less than the minimum of 5
+    #[pyo3(text_signature = "(instance)")]
     fn iter_errors(&self, py: Python, instance: &PyAny) -> PyResult<ValidationErrorIter> {
         iter_on_error(py, &self.schema, instance)
     }
