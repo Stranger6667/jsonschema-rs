@@ -32,7 +32,7 @@ fn fast_schema(c: &mut Criterion) {
         let compiled = scope
             .compile_and_return(schema.clone(), false)
             .expect("Valid schema");
-        c.bench_function(&format!("valico {} compile", name), |b| {
+        c.bench_function(&format!("{} valico/compile", name), |b| {
             b.iter(|| {
                 let mut scope = json_schema::Scope::new();
                 scope
@@ -40,10 +40,10 @@ fn fast_schema(c: &mut Criterion) {
                     .expect("Valid schema");
             })
         });
-        c.bench_function(&format!("valico {} validate valid", name), |b| {
+        c.bench_function(&format!("{} valico/validate/valid", name), |b| {
             b.iter(|| compiled.validate(&valid).is_valid())
         });
-        c.bench_function(&format!("valico {} validate invalid", name), |b| {
+        c.bench_function(&format!("{} valico/validate/invalid", name), |b| {
             b.iter(|| compiled.validate(&invalid).is_valid())
         });
     });
