@@ -6,7 +6,7 @@
 
 - `uuid` format validator. [#266](https://github.com/Stranger6667/jsonschema-rs/issues/266)
 - `duration` format validator. [#265](https://github.com/Stranger6667/jsonschema-rs/issues/265)
-- Collect annotations whilst evaulating schemas.[#262](https://github.com/Stranger6667/jsonschema-rs/issues/262)
+- Collect annotations whilst evaulating schemas. [#262](https://github.com/Stranger6667/jsonschema-rs/issues/262)
 - Option to turn off processing of the `format` keyword. [#261](https://github.com/Stranger6667/jsonschema-rs/issues/261)
 - `basic` & `flag` output formatting styles. [#100](https://github.com/Stranger6667/jsonschema-rs/issues/100)
 
@@ -20,6 +20,7 @@
 ### Fixed
 
 - Display the original value in errors from `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`. [#215](https://github.com/Stranger6667/jsonschema-rs/issues/215)
+- Switch from `chrono` to `time==0.3.3` due to [RUSTSEC-2020-0159](https://rustsec.org/advisories/RUSTSEC-2020-0159.html) in older `time` versions that `chrono` depends on. 
 
 ### Performance
 
