@@ -11,7 +11,7 @@ macro_rules! jsonschema_valid_bench {
             jsonschema_valid::validate(&cfg, &$instance).is_ok(),
             "Invalid instance"
         );
-        $c.bench_function(&format!("jsonschema-valid {}", $name), |b| {
+        $c.bench_function(&format!("{} jsonschema_valid/validate/valid", $name), |b| {
             // There is no specialized method for fast boolean return value
             b.iter(|| jsonschema_valid::validate(&cfg, &$instance).is_ok())
         });
@@ -33,17 +33,17 @@ fn fast_schema(c: &mut Criterion) {
     bench_fast(&mut |name, schema, valid, invalid| {
         let cfg = jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7))
             .expect("Valid schema");
-        c.bench_function(&format!("jsonschema_valid {} compile", name), |b| {
+        c.bench_function(&format!("{} jsonschema_valid/compile", name), |b| {
             b.iter(|| {
                 jsonschema_valid::Config::from_schema(&schema, Some(schemas::Draft::Draft7))
                     .expect("Valid schema")
             })
         });
-        c.bench_function(&format!("jsonschema_valid {} validate valid", name), |b| {
+        c.bench_function(&format!("{} jsonschema_valid/validate/valid", name), |b| {
             b.iter(|| jsonschema_valid::validate(&cfg, &valid))
         });
         c.bench_function(
-            &format!("jsonschema_valid {} validate invalid", name),
+            &format!("{} jsonschema_valid/validate/invalid", name),
             |b| b.iter(|| jsonschema_valid::validate(&cfg, &invalid).ok()),
         );
     });

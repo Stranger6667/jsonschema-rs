@@ -85,7 +85,7 @@ pub fn bench_keywords(
                 let suffix = strip_characters(&instance.to_string());
                 bench_valid(
                     c,
-                    &format!("{} valid {}", benchmark.name, suffix),
+                    &format!("{} {}", benchmark.name, suffix),
                     &benchmark.schema,
                     &instance,
                 )
@@ -99,7 +99,7 @@ pub fn bench_keywords(
             let suffix = strip_characters(&instance.to_string());
             bench_invalid(
                 c,
-                &format!("{} invalid {}", benchmark.name, suffix),
+                &format!("{} {}", benchmark.name, suffix),
                 &benchmark.schema,
                 &instance,
             )

@@ -13,13 +13,13 @@ macro_rules! jsonschema_rs_bench {
             .expect("Invalid schema");
         assert!(compiled.is_valid(&$instance), "Invalid instance");
         assert!(compiled.validate(&$instance).is_ok(), "Invalid instance");
-        $c.bench_function(&format!("jsonschema-rs {} compile", $name), |b| {
+        $c.bench_function(&format!("{} jsonschema_rs/compile", $name), |b| {
             b.iter(|| JSONSchema::options().with_meta_schemas().compile(&$schema))
         });
-        $c.bench_function(&format!("jsonschema-rs {} is_valid", $name), |b| {
+        $c.bench_function(&format!("{} jsonschema_rs/is_valid", $name), |b| {
             b.iter(|| compiled.is_valid(&$instance))
         });
-        $c.bench_function(&format!("jsonschema-rs {} validate", $name), |b| {
+        $c.bench_function(&format!("{} jsonschema_rs/validate", $name), |b| {
             b.iter(|| compiled.validate(&$instance).ok())
         });
     }};
@@ -42,19 +42,19 @@ fn fast_schema(c: &mut Criterion) {
         let compiled = JSONSchema::compile(&schema).expect("Valid schema");
         assert!(compiled.is_valid(&valid));
         assert!(!compiled.is_valid(&invalid));
-        c.bench_function(&format!("jsonschema-rs {} compile", name), |b| {
+        c.bench_function(&format!("{} jsonschema_rs/compile", name), |b| {
             b.iter(|| JSONSchema::compile(&schema).expect("Valid schema"))
         });
-        c.bench_function(&format!("jsonschema-rs {} is_valid valid", name), |b| {
+        c.bench_function(&format!("{} jsonschema_rs/is_valid/valid", name), |b| {
             b.iter(|| compiled.is_valid(&valid))
         });
-        c.bench_function(&format!("jsonschema-rs {} validate valid", name), |b| {
+        c.bench_function(&format!("{} jsonschema_rs/validate/valid", name), |b| {
             b.iter(|| compiled.validate(&valid).ok())
         });
-        c.bench_function(&format!("jsonschema-rs {} is_valid invalid", name), |b| {
+        c.bench_function(&format!("{} jsonschema_rs/is_valid/invalid", name), |b| {
             b.iter(|| compiled.is_valid(&invalid))
         });
-        c.bench_function(&format!("jsonschema-rs {} validate invalid", name), |b| {
+        c.bench_function(&format!("{} jsonschema_rs/validate/invalid", name), |b| {
             b.iter(|| {
                 let _: Vec<_> = compiled
                     .validate(&invalid)
@@ -92,7 +92,7 @@ fn keywords(c: &mut Criterion) {
 fn validate_valid(c: &mut Criterion, name: &str, schema: &Value, instance: &Value) {
     let compiled = JSONSchema::compile(schema).expect("Valid schema");
     c.bench_with_input(
-        BenchmarkId::new(name, "jsonschema_rs/is_valid"),
+        BenchmarkId::new(name, "jsonschema_rs/is_valid/valid"),
         instance,
         |b, instance| {
             b.iter(|| {
@@ -101,7 +101,7 @@ fn validate_valid(c: &mut Criterion, name: &str, schema: &Value, instance: &Valu
         },
     );
     c.bench_with_input(
-        BenchmarkId::new(name, "jsonschema_rs/validate"),
+        BenchmarkId::new(name, "jsonschema_rs/validate/valid"),
         instance,
         |b, instance| {
             b.iter(|| {
@@ -114,7 +114,7 @@ fn validate_valid(c: &mut Criterion, name: &str, schema: &Value, instance: &Valu
 fn validate_invalid(c: &mut Criterion, name: &str, schema: &Value, instance: &Value) {
     let compiled = JSONSchema::compile(schema).expect("Valid schema");
     c.bench_with_input(
-        BenchmarkId::new(name, "jsonschema_rs/is_valid"),
+        BenchmarkId::new(name, "jsonschema_rs/is_valid/invalid"),
         instance,
         |b, instance| {
             b.iter(|| {
@@ -123,7 +123,7 @@ fn validate_invalid(c: &mut Criterion, name: &str, schema: &Value, instance: &Va
         },
     );
     c.bench_with_input(
-        BenchmarkId::new(name, "jsonschema_rs/validate"),
+        BenchmarkId::new(name, "jsonschema_rs/validate/invalid"),
         instance,
         |b, instance| {
             b.iter(|| {
