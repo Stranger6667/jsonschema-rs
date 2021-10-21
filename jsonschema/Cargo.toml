@@ -36,7 +36,7 @@ num-cmp = ">= 0.1"
 ahash = { version = "0.7", features = ["serde"] }
 structopt = { version = ">= 0.3", optional = true }
 itoa = "0.4"
-fraction = { version = "0.8", default-features = false, features = ["with-bigint"] }
+fraction = { version = "0.9", default-features = false, features = ["with-bigint"] }
 uuid = "0.8"
 iso8601 = "0.4"
 
