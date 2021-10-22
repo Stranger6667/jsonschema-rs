@@ -67,7 +67,7 @@ impl core::fmt::Display for ItemsArrayValidator {
         write!(
             f,
             "items: [{}]",
-            format_iter_of_validators(self.items.iter().map(|i| i.validators()))
+            format_iter_of_validators(self.items.iter().map(SchemaNode::validators))
         )
     }
 }

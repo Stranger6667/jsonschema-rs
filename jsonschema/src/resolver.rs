@@ -274,7 +274,7 @@ mod tests {
             resolver
                 .schemas
                 .get("json-schema:///#foo")
-                .map(|s| s.as_ref()),
+                .map(AsRef::as_ref),
             schema.pointer("/definitions/A")
         );
     }
@@ -297,14 +297,14 @@ mod tests {
             resolver
                 .schemas
                 .get("json-schema:///#foo")
-                .map(|s| s.as_ref()),
+                .map(AsRef::as_ref),
             schema.pointer("/definitions/A/0")
         );
         assert_eq!(
             resolver
                 .schemas
                 .get("json-schema:///#bar")
-                .map(|s| s.as_ref()),
+                .map(AsRef::as_ref),
             schema.pointer("/definitions/A/1")
         );
     }
@@ -344,14 +344,14 @@ mod tests {
             resolver
                 .schemas
                 .get("http://localhost:1234/tree")
-                .map(|s| s.as_ref()),
+                .map(AsRef::as_ref),
             schema.pointer("")
         );
         assert_eq!(
             resolver
                 .schemas
                 .get("http://localhost:1234/node")
-                .map(|s| s.as_ref()),
+                .map(AsRef::as_ref),
             schema.pointer("/definitions/node")
         );
     }
@@ -370,7 +370,7 @@ mod tests {
             resolver
                 .schemas
                 .get("http://localhost:1234/bar#foo")
-                .map(|s| s.as_ref()),
+                .map(AsRef::as_ref),
             schema.pointer("/definitions/A")
         );
     }
@@ -398,21 +398,21 @@ mod tests {
             resolver
                 .schemas
                 .get("http://localhost:1234/root")
-                .map(|s| s.as_ref()),
+                .map(AsRef::as_ref),
             schema.pointer("")
         );
         assert_eq!(
             resolver
                 .schemas
                 .get("http://localhost:1234/nested.json")
-                .map(|s| s.as_ref()),
+                .map(AsRef::as_ref),
             schema.pointer("/definitions/A")
         );
         assert_eq!(
             resolver
                 .schemas
                 .get("http://localhost:1234/nested.json#foo")
-                .map(|s| s.as_ref()),
+                .map(AsRef::as_ref),
             schema.pointer("/definitions/A/definitions/B")
         );
     }
@@ -432,14 +432,14 @@ mod tests {
             resolver
                 .schemas
                 .get("http://localhost:1234/")
-                .map(|s| s.as_ref()),
+                .map(AsRef::as_ref),
             schema.pointer("")
         );
         assert_eq!(
             resolver
                 .schemas
                 .get("http://localhost:1234/folder/")
-                .map(|s| s.as_ref()),
+                .map(AsRef::as_ref),
             schema.pointer("/items")
         );
     }
@@ -466,14 +466,14 @@ mod tests {
             resolver
                 .schemas
                 .get("http://localhost:1234/scope_change_defs1.json")
-                .map(|s| s.as_ref()),
+                .map(AsRef::as_ref),
             schema.pointer("")
         );
         assert_eq!(
             resolver
                 .schemas
                 .get("http://localhost:1234/folder/")
-                .map(|s| s.as_ref()),
+                .map(AsRef::as_ref),
             schema.pointer("/definitions/baz")
         );
     }

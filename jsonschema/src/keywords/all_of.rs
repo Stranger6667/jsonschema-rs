@@ -71,7 +71,7 @@ impl core::fmt::Display for AllOfValidator {
         write!(
             f,
             "allOf: [{}]",
-            format_iter_of_validators(self.schemas.iter().map(|s| s.validators()))
+            format_iter_of_validators(self.schemas.iter().map(SchemaNode::validators))
         )
     }
 }
