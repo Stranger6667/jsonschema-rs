@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- `iter_errors` to iterate all errors. [#236](https://github.com/Stranger6667/jsonschema-rs/issues/236)
+
 ### Fixed
 
 - Display the original value in errors from `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`. [#215](https://github.com/Stranger6667/jsonschema-rs/issues/215)
