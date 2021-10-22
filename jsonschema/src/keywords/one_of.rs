@@ -127,7 +127,7 @@ impl core::fmt::Display for OneOfValidator {
         write!(
             f,
             "oneOf: [{}]",
-            format_iter_of_validators(self.schemas.iter().map(|s| s.validators()))
+            format_iter_of_validators(self.schemas.iter().map(SchemaNode::validators))
         )
     }
 }
