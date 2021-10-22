@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.12.3] - 2021-10-22
+
 ### Added
 
 - `iter_errors` to iterate all errors. [#236](https://github.com/Stranger6667/jsonschema-rs/issues/236)
@@ -220,7 +222,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.12.2...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.12.3...HEAD
+[0.12.3]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.12.2...python-v0.12.3
 [0.12.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.12.1...python-v0.12.2
 [0.12.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.12.0...python-v0.12.1
 [0.12.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.11.1...python-v0.12.0
