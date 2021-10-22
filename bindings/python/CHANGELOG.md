@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- `iter_errors` to iterate all errors. [#236](https://github.com/Stranger6667/jsonschema-rs/issues/236)
+
 ## [0.12.2] - 2021-10-21
 
 ### Fixed
