@@ -75,6 +75,7 @@ impl core::fmt::Display for ItemsArrayValidator {
 pub(crate) struct ItemsObjectValidator {
     node: SchemaNode,
 }
+
 impl ItemsObjectValidator {
     #[inline]
     pub(crate) fn compile<'a>(
@@ -131,8 +132,9 @@ impl Validate for ItemsObjectValidator {
             let mut output: PartialApplication = results.into_iter().collect();
             // Per draft 2020-12 section https://json-schema.org/draft/2020-12/json-schema-core.html#rfc.section.10.3.1.2
             // we must produce an annotation with a boolean value indicating whether the subschema
-            // was applied to any positions in the underlying array. As we have not yet implemented
-            // prefixItems this is true if there are any items in the instance.
+            // was applied to any positions in the underlying array. Since the struct
+            // `ItemsObjectValidator` is not used when prefixItems is defined, this is true if
+            // there are any items in the instance.
             let schema_was_applied = !items.is_empty();
             output.annotate(serde_json::json! {schema_was_applied}.into());
             output
@@ -148,21 +150,111 @@ impl core::fmt::Display for ItemsObjectValidator {
     }
 }
 
+pub(crate) struct ItemsObjectSkipPrefixValidator {
+    node: SchemaNode,
+    skip_prefix: usize,
+}
+
+impl ItemsObjectSkipPrefixValidator {
+    #[inline]
+    pub(crate) fn compile<'a>(
+        schema: &'a Value,
+        skip_prefix: usize,
+        context: &CompilationContext,
+    ) -> CompilationResult<'a> {
+        let keyword_context = context.with_path("items");
+        let node = compile_validators(schema, &keyword_context)?;
+        Ok(Box::new(ItemsObjectSkipPrefixValidator {
+            node,
+            skip_prefix,
+        }))
+    }
+}
+
+impl Validate for ItemsObjectSkipPrefixValidator {
+    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+        if let Value::Array(items) = instance {
+            items
+                .iter()
+                .skip(self.skip_prefix)
+                .all(|i| self.node.is_valid(schema, i))
+        } else {
+            true
+        }
+    }
+
+    #[allow(clippy::needless_collect)]
+    fn validate<'a, 'b>(
+        &self,
+        schema: &'a JSONSchema,
+        instance: &'b Value,
+        instance_path: &InstancePath,
+    ) -> ErrorIterator<'b> {
+        if let Value::Array(items) = instance {
+            let errors: Vec<_> = items
+                .iter()
+                .skip(self.skip_prefix)
+                .enumerate()
+                .flat_map(move |(idx, item)| {
+                    self.node
+                        .validate(schema, item, &instance_path.push(idx + self.skip_prefix))
+                })
+                .collect();
+            Box::new(errors.into_iter())
+        } else {
+            no_error()
+        }
+    }
+
+    fn apply<'a>(
+        &'a self,
+        schema: &JSONSchema,
+        instance: &Value,
+        instance_path: &InstancePath,
+    ) -> PartialApplication<'a> {
+        if let Value::Array(items) = instance {
+            let mut results = Vec::with_capacity(items.len() - self.skip_prefix);
+            for (idx, item) in items.iter().skip(self.skip_prefix).enumerate() {
+                let path = instance_path.push(idx + self.skip_prefix);
+                results.push(self.node.apply_rooted(schema, item, &path));
+            }
+            let mut output: PartialApplication = results.into_iter().collect();
+            // Per draft 2020-12 section https://json-schema.org/draft/2020-12/json-schema-core.html#rfc.section.10.3.1.2
+            // we must produce an annotation with a boolean value indicating whether the subschema
+            // was applied to any positions in the underlying array.
+            let schema_was_applied = items.len() > self.skip_prefix;
+            output.annotate(serde_json::json! {schema_was_applied}.into());
+            output
+        } else {
+            PartialApplication::valid_empty()
+        }
+    }
+}
+
+impl core::fmt::Display for ItemsObjectSkipPrefixValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "items: {}", format_validators(self.node.validators()))
+    }
+}
+
 #[inline]
 pub(crate) fn compile<'a>(
-    _: &'a Map<String, Value>,
+    parent: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     match schema {
         Value::Array(items) => Some(ItemsArrayValidator::compile(items, context)),
-        Value::Object(_) => Some(ItemsObjectValidator::compile(schema, context)),
-        Value::Bool(value) => {
-            if *value {
-                None
-            } else {
-                Some(ItemsObjectValidator::compile(schema, context))
+        Value::Object(_) | Value::Bool(false) => {
+            #[cfg(feature = "draft202012")]
+            if let Some(Value::Array(prefix_items)) = parent.get("prefixItems") {
+                return Some(ItemsObjectSkipPrefixValidator::compile(
+                    schema,
+                    prefix_items.len(),
+                    context,
+                ));
             }
+            Some(ItemsObjectValidator::compile(schema, context))
         }
         _ => None,
     }

@@ -9,7 +9,7 @@ use crate::{
 };
 use serde_json::{Map, Value};
 
-#[cfg(feature = "draft201909")]
+#[cfg(any(feature = "draft201909", feature = "draft202012"))]
 use super::helpers::map_get_u64;
 
 pub(crate) struct ContainsValidator {
@@ -423,26 +423,36 @@ pub(crate) fn compile<'a>(
         Draft::Draft4 | Draft::Draft6 | Draft::Draft7 => {
             Some(ContainsValidator::compile(schema, context))
         }
-        #[cfg(feature = "draft201909")]
-        Draft::Draft201909 => {
-            let min_contains = match map_get_u64(parent, context, "minContains").transpose() {
-                Ok(n) => n,
-                Err(err) => return Some(Err(err)),
-            };
-            let max_contains = match map_get_u64(parent, context, "maxContains").transpose() {
-                Ok(n) => n,
-                Err(err) => return Some(Err(err)),
-            };
+        #[cfg(all(feature = "draft201909", feature = "draft202012"))]
+        Draft::Draft201909 | Draft::Draft202012 => compile_contains(parent, schema, context),
+        #[cfg(all(feature = "draft201909", not(feature = "draft202012")))]
+        Draft::Draft201909 => compile_contains(parent, schema, context),
+        #[cfg(all(feature = "draft202012", not(feature = "draft201909")))]
+        Draft::Draft202012 => compile_contains(parent, schema, context),
+    }
+}
 
-            match (min_contains, max_contains) {
-                (Some(min), Some(max)) => {
-                    Some(MinMaxContainsValidator::compile(schema, context, min, max))
-                }
-                (Some(min), None) => Some(MinContainsValidator::compile(schema, context, min)),
-                (None, Some(max)) => Some(MaxContainsValidator::compile(schema, context, max)),
-                (None, None) => Some(ContainsValidator::compile(schema, context)),
-            }
-        }
+#[cfg(any(feature = "draft201909", feature = "draft202012"))]
+#[inline]
+fn compile_contains<'a>(
+    parent: &'a Map<String, Value>,
+    schema: &'a Value,
+    context: &CompilationContext,
+) -> Option<CompilationResult<'a>> {
+    let min_contains = match map_get_u64(parent, context, "minContains").transpose() {
+        Ok(n) => n,
+        Err(err) => return Some(Err(err)),
+    };
+    let max_contains = match map_get_u64(parent, context, "maxContains").transpose() {
+        Ok(n) => n,
+        Err(err) => return Some(Err(err)),
+    };
+
+    match (min_contains, max_contains) {
+        (Some(min), Some(max)) => Some(MinMaxContainsValidator::compile(schema, context, min, max)),
+        (Some(min), None) => Some(MinContainsValidator::compile(schema, context, min)),
+        (None, Some(max)) => Some(MaxContainsValidator::compile(schema, context, max)),
+        (None, None) => Some(ContainsValidator::compile(schema, context)),
     }
 }
 

@@ -37,6 +37,43 @@ use std::fs;
     r"unevaluatedItems_.+",
     r"unevaluatedProperties_.+",
 }))]
+#[cfg_attr(feature = "draft202012", json_schema_test_suite("tests/suite", "draft2020-12", {
+    r"optional_format_idn_hostname_0_\d+",  // https://github.com/Stranger6667/jsonschema-rs/issues/101
+    r"format_\d+_6",  // https://github.com/Stranger6667/jsonschema-rs/issues/261
+    // These depend on the new `$defs` keyword (which is renamed from `definitions`)
+    r"id_0_[0-6]",
+    // Various types of new behavior used in the `$ref` context
+    "ref_5_1",
+    "ref_13_0",
+    "refRemote_4_0",
+    "refRemote_4_1",
+    "recursiveRef_0_3",
+    "recursiveRef_1_2",
+    "recursiveRef_1_4",
+    "recursiveRef_3_2",
+    "recursiveRef_3_4",
+    "recursiveRef_4_2",
+    "recursiveRef_4_4",
+    "recursiveRef_5_2",
+    "recursiveRef_6_2",
+    "recursiveRef_7_0",
+    "recursiveRef_7_1",
+    // New keywords & formats.
+    // https://github.com/Stranger6667/jsonschema-rs/issues/100
+    r"anchor_.+",
+    r"defs_.+",
+    r"dynamicRef_.+",
+    r"uniqueItems_.+",
+    r"optional_format_duration_.+",  // https://github.com/Stranger6667/jsonschema-rs/issues/265
+    r"optional_format_uuid_.+",  // https://github.com/Stranger6667/jsonschema-rs/issues/266
+    r"optional_format_iri_.+",
+    r"optional_format_json_pointer_.+",
+    r"optional_format_relative_json_pointer_.+",
+    r"optional_format_uri_reference_.+",
+    r"optional_format_uri_template_.+",
+    r"unevaluatedItems_.+",
+    r"unevaluatedProperties_.+",
+}))]
 fn test_draft(_server_address: &str, test_case: TestCase) {
     let draft_version = match test_case.draft_version.as_ref() {
         "draft4" => Draft::Draft4,
@@ -44,6 +81,8 @@ fn test_draft(_server_address: &str, test_case: TestCase) {
         "draft7" => Draft::Draft7,
         #[cfg(feature = "draft201909")]
         "draft2019-09" => Draft::Draft201909,
+        #[cfg(feature = "draft202012")]
+        "draft2020-12" => Draft::Draft202012,
         _ => panic!("Unsupported draft"),
     };
 

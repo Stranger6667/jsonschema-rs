@@ -19,6 +19,7 @@ name = "jsonschema"
 cli = ["structopt"]
 default = ["reqwest", "cli"]
 draft201909 = []
+draft202012 = []
 reqwest-native-tls = ["reqwest/native-tls"]
 reqwest-native-tls-alpn = ["reqwest/native-tls-alpn"]
 reqwest-native-tls-vendored = ["reqwest/native-tls-vendored"]
