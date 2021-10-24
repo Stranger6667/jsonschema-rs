@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Support for `prefixItems` keyword. [#303](https://github.com/Stranger6667/jsonschema-rs/pull/303)
+
 ## [0.13.1] - 2021-10-28
 
 ### Fixed
@@ -14,7 +16,7 @@
 
 - `uuid` format validator. [#266](https://github.com/Stranger6667/jsonschema-rs/issues/266)
 - `duration` format validator. [#265](https://github.com/Stranger6667/jsonschema-rs/issues/265)
-- Collect annotations whilst evaulating schemas. [#262](https://github.com/Stranger6667/jsonschema-rs/issues/262)
+- Collect annotations whilst evaluating schemas. [#262](https://github.com/Stranger6667/jsonschema-rs/issues/262)
 - Option to turn off processing of the `format` keyword. [#261](https://github.com/Stranger6667/jsonschema-rs/issues/261)
 - `basic` & `flag` output formatting styles. [#100](https://github.com/Stranger6667/jsonschema-rs/issues/100)
 - Support for `dependentRequired` & `dependentSchemas` keywords. [#286](https://github.com/Stranger6667/jsonschema-rs/issues/286)

@@ -14,6 +14,10 @@ pub enum Draft {
     #[cfg(feature = "draft201909")]
     /// JSON Schema Draft 2019-09
     Draft201909,
+
+    #[cfg(feature = "draft202012")]
+    /// JSON Schema Draft 2020-12
+    Draft202012,
 }
 
 impl Default for Draft {
@@ -26,8 +30,12 @@ impl Draft {
     pub(crate) const fn validate_formats_by_default(self) -> bool {
         match self {
             Draft::Draft4 | Draft::Draft6 | Draft::Draft7 => true,
-            #[cfg(feature = "draft201909")]
+            #[cfg(all(feature = "draft201909", feature = "draft202012"))]
+            Draft::Draft201909 | Draft::Draft202012 => false,
+            #[cfg(all(feature = "draft201909", not(feature = "draft202012")))]
             Draft::Draft201909 => false,
+            #[cfg(all(feature = "draft202012", not(feature = "draft201909")))]
+            Draft::Draft202012 => false,
         }
     }
 }
@@ -51,12 +59,16 @@ impl Draft {
                 Draft::Draft6 | Draft::Draft7 => Some(keywords::const_::compile),
                 #[cfg(feature = "draft201909")]
                 Draft::Draft201909 => Some(keywords::const_::compile),
+                #[cfg(feature = "draft202012")]
+                Draft::Draft202012 => Some(keywords::const_::compile),
             },
             "contains" => match self {
                 Draft::Draft4 => None,
                 Draft::Draft6 | Draft::Draft7 => Some(keywords::contains::compile),
                 #[cfg(feature = "draft201909")]
                 Draft::Draft201909 => Some(keywords::contains::compile),
+                #[cfg(feature = "draft202012")]
+                Draft::Draft202012 => Some(keywords::contains::compile),
             },
             "contentMediaType" => match self {
                 Draft::Draft7 | Draft::Draft6 => Some(keywords::content::compile_media_type),
@@ -64,6 +76,8 @@ impl Draft {
                 #[cfg(feature = "draft201909")]
                 // Should be collected as an annotation
                 Draft::Draft201909 => None,
+                #[cfg(feature = "draft202012")]
+                Draft::Draft202012 => None,
             },
             "contentEncoding" => match self {
                 Draft::Draft7 | Draft::Draft6 => Some(keywords::content::compile_content_encoding),
@@ -71,11 +85,13 @@ impl Draft {
                 #[cfg(feature = "draft201909")]
                 // Should be collected as an annotation
                 Draft::Draft201909 => None,
+                #[cfg(feature = "draft202012")]
+                Draft::Draft202012 => None,
             },
             "dependencies" => Some(keywords::dependencies::compile),
-            #[cfg(feature = "draft201909")]
+            #[cfg(any(feature = "draft201909", feature = "draft202012"))]
             "dependentRequired" => Some(keywords::dependencies::compile_dependent_required),
-            #[cfg(feature = "draft201909")]
+            #[cfg(any(feature = "draft201909", feature = "draft202012"))]
             "dependentSchemas" => Some(keywords::dependencies::compile_dependent_schemas),
             "enum" => Some(keywords::enum_::compile),
             "exclusiveMaximum" => match self {
@@ -83,12 +99,16 @@ impl Draft {
                 Draft::Draft4 => None,
                 #[cfg(feature = "draft201909")]
                 Draft::Draft201909 => Some(keywords::exclusive_maximum::compile),
+                #[cfg(feature = "draft202012")]
+                Draft::Draft202012 => Some(keywords::exclusive_maximum::compile),
             },
             "exclusiveMinimum" => match self {
                 Draft::Draft7 | Draft::Draft6 => Some(keywords::exclusive_minimum::compile),
                 Draft::Draft4 => None,
                 #[cfg(feature = "draft201909")]
                 Draft::Draft201909 => Some(keywords::exclusive_minimum::compile),
+                #[cfg(feature = "draft202012")]
+                Draft::Draft202012 => Some(keywords::exclusive_minimum::compile),
             },
             "format" => Some(keywords::format::compile),
             "if" => match self {
@@ -96,6 +116,8 @@ impl Draft {
                 Draft::Draft6 | Draft::Draft4 => None,
                 #[cfg(feature = "draft201909")]
                 Draft::Draft201909 => Some(keywords::if_::compile),
+                #[cfg(feature = "draft202012")]
+                Draft::Draft202012 => Some(keywords::if_::compile),
             },
             "items" => Some(keywords::items::compile),
             "maximum" => match self {
@@ -103,6 +125,8 @@ impl Draft {
                 Draft::Draft6 | Draft::Draft7 => Some(keywords::maximum::compile),
                 #[cfg(feature = "draft201909")]
                 Draft::Draft201909 => Some(keywords::maximum::compile),
+                #[cfg(feature = "draft202012")]
+                Draft::Draft202012 => Some(keywords::maximum::compile),
             },
             "maxItems" => Some(keywords::max_items::compile),
             "maxLength" => Some(keywords::max_length::compile),
@@ -112,6 +136,8 @@ impl Draft {
                 Draft::Draft6 | Draft::Draft7 => Some(keywords::minimum::compile),
                 #[cfg(feature = "draft201909")]
                 Draft::Draft201909 => Some(keywords::minimum::compile),
+                #[cfg(feature = "draft202012")]
+                Draft::Draft202012 => Some(keywords::minimum::compile),
             },
             "minItems" => Some(keywords::min_items::compile),
             "minLength" => Some(keywords::min_length::compile),
@@ -121,12 +147,16 @@ impl Draft {
             "oneOf" => Some(keywords::one_of::compile),
             "pattern" => Some(keywords::pattern::compile),
             "patternProperties" => Some(keywords::pattern_properties::compile),
+            #[cfg(feature = "draft202012")]
+            "prefixItems" => Some(keywords::prefix_items::compile),
             "properties" => Some(keywords::properties::compile),
             "propertyNames" => match self {
                 Draft::Draft4 => None,
                 Draft::Draft6 | Draft::Draft7 => Some(keywords::property_names::compile),
                 #[cfg(feature = "draft201909")]
                 Draft::Draft201909 => Some(keywords::property_names::compile),
+                #[cfg(feature = "draft202012")]
+                Draft::Draft202012 => Some(keywords::property_names::compile),
             },
             "required" => Some(keywords::required::compile),
             "type" => match self {
@@ -134,6 +164,8 @@ impl Draft {
                 Draft::Draft6 | Draft::Draft7 => Some(keywords::type_::compile),
                 #[cfg(feature = "draft201909")]
                 Draft::Draft201909 => Some(keywords::type_::compile),
+                #[cfg(feature = "draft202012")]
+                Draft::Draft202012 => Some(keywords::type_::compile),
             },
             "uniqueItems" => Some(keywords::unique_items::compile),
             _ => None,
@@ -145,6 +177,8 @@ impl Draft {
 #[inline]
 pub(crate) fn draft_from_url(url: &str) -> Option<Draft> {
     match url {
+        #[cfg(feature = "draft202012")]
+        "https://json-schema.org/draft/2020-12/schema#" => Some(Draft::Draft202012),
         #[cfg(feature = "draft201909")]
         "https://json-schema.org/draft/2019-09/schema#" => Some(Draft::Draft201909),
         "http://json-schema.org/draft-07/schema#" => Some(Draft::Draft7),
@@ -184,6 +218,7 @@ mod tests {
     use test_case::test_case;
 
     #[cfg_attr(feature = "draft201909", test_case(&json!({"$schema": "https://json-schema.org/draft/2019-09/schema#"}), Some(Draft::Draft201909)))]
+    #[cfg_attr(feature = "draft202012", test_case(&json!({"$schema": "https://json-schema.org/draft/2020-12/schema#"}), Some(Draft::Draft202012)))]
     #[test_case(&json!({"$schema": "http://json-schema.org/draft-07/schema#"}), Some(Draft::Draft7))]
     #[test_case(&json!({"$schema": "http://json-schema.org/draft-06/schema#"}), Some(Draft::Draft6))]
     #[test_case(&json!({"$schema": "http://json-schema.org/draft-04/schema#"}), Some(Draft::Draft4))]

@@ -28,6 +28,7 @@ pub(crate) mod not;
 pub(crate) mod one_of;
 pub(crate) mod pattern;
 pub(crate) mod pattern_properties;
+pub(crate) mod prefix_items;
 pub(crate) mod properties;
 pub(crate) mod property_names;
 pub(crate) mod ref_;

@@ -24,6 +24,14 @@ lazy_static::lazy_static! {
     static ref DRAFT201909_FORMAT:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2019-09/meta/format.json")).expect("Valid schema!");
     static ref DRAFT201909_META_DATA:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2019-09/meta/meta-data.json")).expect("Valid schema!");
     static ref DRAFT201909_VALIDATION:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2019-09/meta/validation.json")).expect("Valid schema!");
+    static ref DRAFT202012:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2020-12/schema.json")).expect("Valid schema!");
+    static ref DRAFT202012_CORE:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2020-12/meta/core.json")).expect("Valid schema!");
+    static ref DRAFT202012_APPLICATOR:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2020-12/meta/applicator.json")).expect("Valid schema!");
+    static ref DRAFT202012_UNEVALUATED:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2020-12/meta/unevaluated.json")).expect("Valid schema!");
+    static ref DRAFT202012_VALIDATION:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2020-12/meta/validation.json")).expect("Valid schema!");
+    static ref DRAFT202012_META_DATA:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2020-12/meta/meta-data.json")).expect("Valid schema!");
+    static ref DRAFT202012_FORMAT_ANNOTATION:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2020-12/meta/format-annotation.json")).expect("Valid schema!");
+    static ref DRAFT202012_CONTENT:serde_json::Value = serde_json::from_str(include_str!("../../meta_schemas/draft2020-12/meta/content.json")).expect("Valid schema!");
 
     static ref META_SCHEMAS: AHashMap<String, Arc<serde_json::Value>> = {
         let mut store = AHashMap::with_capacity(3);
@@ -68,6 +76,41 @@ lazy_static::lazy_static! {
             store.insert(
                 "https://json-schema.org/draft/2019-09/meta/validation".to_string(),
                 Arc::new(DRAFT201909_VALIDATION.clone())
+            );
+        }
+        #[cfg(feature = "draft202012")]
+        {
+            store.insert(
+                "https://json-schema.org/draft/2020-12/schema".to_string(),
+                Arc::new(DRAFT202012.clone())
+            );
+            store.insert(
+                "https://json-schema.org/draft/2020-12/meta/core".to_string(),
+                Arc::new(DRAFT202012_CORE.clone())
+            );
+            store.insert(
+                "https://json-schema.org/draft/2020-12/meta/applicator".to_string(),
+                Arc::new(DRAFT202012_APPLICATOR.clone())
+            );
+            store.insert(
+                "https://json-schema.org/draft/2020-12/meta/unevaluated".to_string(),
+                Arc::new(DRAFT202012_UNEVALUATED.clone())
+            );
+            store.insert(
+                "https://json-schema.org/draft/2020-12/meta/validation".to_string(),
+                Arc::new(DRAFT202012_VALIDATION.clone())
+            );
+            store.insert(
+                "https://json-schema.org/draft/2020-12/meta/meta-data".to_string(),
+                Arc::new(DRAFT202012_META_DATA.clone())
+            );
+            store.insert(
+                "https://json-schema.org/draft/2020-12/meta/format-annotation".to_string(),
+                Arc::new(DRAFT202012_FORMAT_ANNOTATION.clone())
+            );
+            store.insert(
+                "https://json-schema.org/draft/2020-12/meta/content".to_string(),
+                Arc::new(DRAFT202012_CONTENT.clone())
             );
         }
         store
@@ -117,6 +160,46 @@ lazy_static::lazy_static! {
                     DRAFT201909_VALIDATION.clone()
                 )
                 .compile(&DRAFT201909)
+                .expect(EXPECT_MESSAGE)
+        );
+        #[cfg(feature = "draft202012")]
+        store.insert(
+            schemas::Draft::Draft202012,
+            JSONSchema::options()
+                .without_schema_validation()
+                .with_document(
+                    "https://json-schema.org/draft/2020-12/meta/applicator".to_string(),
+                    DRAFT202012_APPLICATOR.clone()
+                )
+                .with_document(
+                    "https://json-schema.org/draft/2020-12/meta/core".to_string(),
+                    DRAFT202012_CORE.clone()
+                )
+                .with_document(
+                    "https://json-schema.org/draft/2020-12/meta/applicator".to_string(),
+                    DRAFT202012_APPLICATOR.clone()
+                )
+                .with_document(
+                    "https://json-schema.org/draft/2020-12/meta/unevaluated".to_string(),
+                    DRAFT202012_UNEVALUATED.clone()
+                )
+                .with_document(
+                    "https://json-schema.org/draft/2020-12/meta/validation".to_string(),
+                    DRAFT202012_VALIDATION.clone()
+                )
+                .with_document(
+                    "https://json-schema.org/draft/2020-12/meta/meta-data".to_string(),
+                    DRAFT202012_META_DATA.clone()
+                )
+                .with_document(
+                    "https://json-schema.org/draft/2020-12/meta/format-annotation".to_string(),
+                    DRAFT202012_FORMAT_ANNOTATION.clone()
+                )
+                .with_document(
+                    "https://json-schema.org/draft/2020-12/meta/content".to_string(),
+                    DRAFT202012_CONTENT.clone()
+                )
+                .compile(&DRAFT202012)
                 .expect(EXPECT_MESSAGE)
         );
         store
