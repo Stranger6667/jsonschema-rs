@@ -26,7 +26,7 @@ impl MinLengthValidator {
 impl Validate for MinLengthValidator {
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            if (item.chars().count() as u64) < self.limit {
+            if (bytecount::num_chars(item.as_bytes()) as u64) < self.limit {
                 return false;
             }
         }
@@ -40,7 +40,7 @@ impl Validate for MinLengthValidator {
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
         if let Value::String(item) = instance {
-            if (item.chars().count() as u64) < self.limit {
+            if (bytecount::num_chars(item.as_bytes()) as u64) < self.limit {
                 return error(ValidationError::min_length(
                     self.schema_path.clone(),
                     instance_path.into(),

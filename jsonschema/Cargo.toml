@@ -39,6 +39,7 @@ itoa = "0.4"
 fraction = { version = "0.9", default-features = false, features = ["with-bigint"] }
 uuid = "0.8"
 iso8601 = "0.4"
+bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
 
 [dev-dependencies]
 criterion = ">= 0.1"
