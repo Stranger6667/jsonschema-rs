@@ -596,7 +596,8 @@
             "foo"
         ],
         "invalid": [
-            "foob"
+            "foob",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         ]
     },
     {

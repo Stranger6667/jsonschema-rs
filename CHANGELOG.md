@@ -26,6 +26,7 @@
 ### Performance
 
 - Reduce the size of `PrimitiveTypesBitMapIterator` from 3 to 2 bytes. [#282](https://github.com/Stranger6667/jsonschema-rs/issues/282)
+- Use the `bytecount` crate for `maxLength` & `minLength` keywords, and for the `hostname` format.
 
 ## [0.12.1] - 2021-07-29
 

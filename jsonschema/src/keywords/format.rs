@@ -166,11 +166,13 @@ impl Validate for HostnameValidator {
             !(item.ends_with('-')
                 || item.starts_with('-')
                 || item.is_empty()
-                || item.chars().count() > 255
+                || bytecount::num_chars(item.as_bytes()) > 255
                 || item
                     .chars()
                     .any(|c| !(c.is_alphanumeric() || c == '-' || c == '.'))
-                || item.split('.').any(|part| part.chars().count() > 63))
+                || item
+                    .split('.')
+                    .any(|part| bytecount::num_chars(part.as_bytes()) > 63))
         } else {
             true
         }
@@ -184,11 +186,13 @@ impl Validate for IDNHostnameValidator {
             !(item.ends_with('-')
                 || item.starts_with('-')
                 || item.is_empty()
-                || item.chars().count() > 255
+                || bytecount::num_chars(item.as_bytes()) > 255
                 || item
                     .chars()
                     .any(|c| !(c.is_alphanumeric() || c == '-' || c == '.'))
-                || item.split('.').any(|part| part.chars().count() > 63))
+                || item
+                    .split('.')
+                    .any(|part| bytecount::num_chars(part.as_bytes()) > 63))
         } else {
             true
         }
