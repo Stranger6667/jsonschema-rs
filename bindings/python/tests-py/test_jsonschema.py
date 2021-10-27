@@ -39,6 +39,10 @@ def test_invalid_type(func):
         func(set(), True)
 
 
+def test_module():
+    assert JSONSchema.__module__ == "jsonschema_rs"
+
+
 def test_repr():
     assert repr(JSONSchema({"minimum": 5})) == '<JSONSchema: {"minimum":5}>'
 

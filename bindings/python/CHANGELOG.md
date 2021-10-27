@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Set `jsonschema_rs.JSONSchema.__module__` to `jsonschema_rs`.
+
 ## [0.12.3] - 2021-10-22
 
 ### Added

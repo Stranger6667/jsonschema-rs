@@ -19,7 +19,7 @@ use pyo3::{
     exceptions,
     prelude::*,
     types::{PyAny, PyList, PyType},
-    wrap_pyfunction, PyObjectProtocol, PyIterProtocol
+    wrap_pyfunction, PyIterProtocol, PyObjectProtocol,
 };
 
 mod ser;
@@ -85,7 +85,6 @@ impl PyIterProtocol for ValidationErrorIter {
         slf.iter.next()
     }
 }
-
 
 fn into_py_err(py: Python, error: jsonschema::ValidationError) -> PyResult<PyErr> {
     let pyerror_type = PyType::new::<ValidationError>(py);
@@ -313,7 +312,7 @@ fn iter_errors(
 ///     False
 ///
 /// By default Draft 7 will be used for compilation.
-#[pyclass]
+#[pyclass(module = "jsonschema_rs")]
 #[pyo3(text_signature = "(schema, draft=None, with_meta_schemas=False)")]
 struct JSONSchema {
     schema: jsonschema::JSONSchema,
