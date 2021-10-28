@@ -1,7 +1,7 @@
 //! Facilities for working with paths within schemas or validated instances.
 use std::{fmt, fmt::Write, slice::Iter, str::FromStr};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 /// JSON Pointer as a wrapper around individual path components.
 pub struct JSONPointer(Vec<PathChunk>);
 
@@ -53,12 +53,6 @@ impl serde::Serialize for JSONPointer {
         S: serde::Serializer,
     {
         serializer.collect_str(self)
-    }
-}
-
-impl Default for JSONPointer {
-    fn default() -> Self {
-        JSONPointer(Vec::new())
     }
 }
 
