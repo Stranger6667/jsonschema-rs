@@ -10,6 +10,7 @@
 - Option to turn off processing of the `format` keyword. [#261](https://github.com/Stranger6667/jsonschema-rs/issues/261)
 - `basic` & `flag` output formatting styles. [#100](https://github.com/Stranger6667/jsonschema-rs/issues/100)
 - Support for `dependentRequired` & `dependentSchemas` keywords. [#286](https://github.com/Stranger6667/jsonschema-rs/issues/286)
+- Forward `reqwest` features.
 
 ### Changed
 
