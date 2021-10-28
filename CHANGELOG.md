@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Missing `derive` from `serde`.
+
 ## [0.13.0] - 2021-10-28
 
 ### Added
