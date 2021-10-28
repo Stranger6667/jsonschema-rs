@@ -19,7 +19,7 @@ def load_json(filename):
 
 
 def load_from_benches(filename):
-    return load_json(f"../../jsonschema/benches/{filename}")
+    return load_json(f"../../jsonschema/benches/data/{filename}")
 
 
 OPENAPI = load_from_benches("openapi.json")
