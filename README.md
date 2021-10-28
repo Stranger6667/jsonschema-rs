@@ -75,6 +75,45 @@ fn main() {
 }
 ```
 
+## Output styles
+
+`jsonschema` supports `basic` & `flag` output styles from Draft 2019-09, so you can serialize the validation results with `serde`:
+
+```rust
+use jsonschema::{Draft, Output, BasicOutput, JSONSchema};
+
+fn main() {
+    let schema_json = serde_json::json!({
+        "title": "string value",
+        "type": "string"
+    });
+    let instance = serde_json::json!{"some string"};
+    let schema = JSONSchema::options()
+        .compile(&schema_json)
+        .expect("A valid schema");
+    
+    let output: BasicOutput = schema.apply(&instance).basic();
+    let output_json = serde_json::to_value(output)
+        .expect("Failed to serialize output");
+    
+    assert_eq!(
+        output_json, 
+        serde_json::json!({
+            "valid": true,
+            "annotations": [
+                {
+                    "keywordLocation": "",
+                    "instanceLocation": "",
+                    "annotations": {
+                        "title": "string value"
+                    }
+                }
+            ]
+        })
+    );
+}
+```
+
 ## Status
 
 This library is functional and ready for use, but its API is still evolving to the 1.0 API.
