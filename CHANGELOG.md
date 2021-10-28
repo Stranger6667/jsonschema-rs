@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.13.0] - 2021-10-28
+
 ### Added
 
 - `uuid` format validator. [#266](https://github.com/Stranger6667/jsonschema-rs/issues/266)
@@ -302,7 +304,9 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.12.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.0...HEAD
+[0.13.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.12.2...rust-v0.13.0
+[0.12.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.12.1...rust-v0.12.2
 [0.12.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.12.0...rust-v0.12.1
 [0.12.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.11.0...rust-v0.12.0
 [0.11.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.10.0...rust-v0.11.0

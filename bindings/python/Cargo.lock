@@ -73,6 +73,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f1e260c3a9040a7c19a12468758f4c16f31a81a1fe087482be9570ec864bb6c"
 
 [[package]]
+name = "bytecount"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72feb31ffc86498dacdbd0fcebb56138e7177a8cc5cea4516031d15ae85a742e"
+
+[[package]]
 name = "bytes"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -441,10 +447,11 @@ dependencies = [
 
 [[package]]
 name = "jsonschema"
-version = "0.12.1"
+version = "0.13.0"
 dependencies = [
  "ahash",
  "base64",
+ "bytecount",
  "fancy-regex",
  "fraction",
  "iso8601",
