@@ -1,14 +1,14 @@
 [package]
-name = "jsonschema"
-version = "0.12.1"
 authors = ["dmitry.dygalo <dadygalo@gmail.com>"]
-edition = "2018"
-license = "MIT"
-readme = "../README.md"
 description = "A crate for performing JSON schema validation"
-repository = "https://github.com/Stranger6667/jsonschema-rs"
-keywords = ["jsonschema", "validation"]
+edition = "2018"
 exclude = ["tests", "python", "benches/data/*.json", ".github", ".yamllint", ".pre-commit-config.yaml", ".gitignore", ".gitmodules", "*.md"]
+keywords = ["jsonschema", "validation"]
+license = "MIT"
+name = "jsonschema"
+readme = "../README.md"
+repository = "https://github.com/Stranger6667/jsonschema-rs"
+version = "0.12.1"
 
 categories = ["web-programming"]
 
@@ -16,56 +16,63 @@ categories = ["web-programming"]
 name = "jsonschema"
 
 [features]
-default = ["reqwest", "cli"]
 cli = ["structopt"]
+default = ["reqwest", "cli"]
 draft201909 = []
+reqwest-native-tls = ["reqwest/native-tls"]
+reqwest-native-tls-alpn = ["reqwest/native-tls-alpn"]
+reqwest-native-tls-vendored = ["reqwest/native-tls-vendored"]
+reqwest-rustls-tls = ["reqwest/rustls-tls"]
+reqwest-rustls-tls-manual-roots = ["reqwest/rustls-tls-manual-roots"]
+reqwest-rustls-tls-native-roots = ["reqwest/rustls-tls-native-roots"]
+reqwest-rustls-tls-webpki-roots = ["reqwest/rustls-tls-webpki-roots"]
 
 [dependencies]
-serde_json = "1"
-serde = "1"
-url = "2"
+ahash = {version = "0.7", features = ["serde"]}
+base64 = ">= 0.2"
+bytecount = {version = "0.6", features = ["runtime-dispatch-simd"]}
+fancy-regex = "^0.7.1"
+fraction = {version = "0.9", default-features = false, features = ["with-bigint"]}
+iso8601 = "0.4"
+itoa = "0.4"
 lazy_static = "1"
+num-cmp = ">= 0.1"
+parking_lot = ">= 0.1"
 percent-encoding = "2"
 regex = "1"
-fancy-regex = "^0.7.1"
-base64 = ">= 0.2"
-time = { version = ">= 0.3.3", features = ["parsing", "macros"] }
-reqwest = { version = ">= 0.10", features = ["blocking", "json"], optional = true}
-parking_lot = ">= 0.1"
-num-cmp = ">= 0.1"
-ahash = { version = "0.7", features = ["serde"] }
-structopt = { version = ">= 0.3", optional = true }
-itoa = "0.4"
-fraction = { version = "0.9", default-features = false, features = ["with-bigint"] }
+reqwest = {version = ">= 0.10", features = ["blocking", "json"], optional = true}
+serde = "1"
+serde_json = "1"
+structopt = {version = ">= 0.3", optional = true}
+time = {version = ">= 0.3.3", features = ["parsing", "macros"]}
+url = "2"
 uuid = "0.8"
-iso8601 = "0.4"
-bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
 
 [dev-dependencies]
+bench_helpers = {path = "../bench_helpers"}
 criterion = ">= 0.1"
-mockito = ">= 0"
-json_schema_test_suite = { version = ">= 0.3", path = "../jsonschema-test-suite"}
+json_schema_test_suite = {version = ">= 0.3", path = "../jsonschema-test-suite"}
 jsonschema-valid = "0.4.0"
-bench_helpers = { path = "../bench_helpers" }
-valico = "3.6.0"
-test-case = "1"
+mockito = ">= 0"
 paste = ">= 0.1"
-reqwest = { version = ">= 0.10", features = ["blocking", "json"] }
+reqwest = {version = ">= 0.10", features = ["blocking", "json"]}
+test-case = "1"
+valico = "3.6.0"
 
 # Benchmarks for `jsonschema`
 [[bench]]
-name = "jsonschema"
 harness = false
+name = "jsonschema"
 
 # Benchmarks for `valico`
 [[bench]]
-name = "valico"
 harness = false
+name = "valico"
 
 # Benchmarks for `jsonschema_valid`
 [[bench]]
-name = "jsonschema_valid"
 harness = false
+name = "jsonschema_valid"
 
 [profile.release]
 codegen-units = 1
