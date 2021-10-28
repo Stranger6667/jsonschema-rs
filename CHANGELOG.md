@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.13.1] - 2021-10-28
+
 ### Fixed
 
 - Missing `derive` from `serde`.
@@ -308,7 +310,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.1...HEAD
+[0.13.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.0...rust-v0.13.1
 [0.13.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.12.2...rust-v0.13.0
 [0.12.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.12.1...rust-v0.12.2
 [0.12.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.12.0...rust-v0.12.1

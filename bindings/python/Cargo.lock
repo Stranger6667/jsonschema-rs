@@ -447,7 +447,7 @@ dependencies = [
 
 [[package]]
 name = "jsonschema"
-version = "0.13.0"
+version = "0.13.1"
 dependencies = [
  "ahash",
  "base64",
