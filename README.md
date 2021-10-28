@@ -16,7 +16,7 @@ Supported drafts:
 
 ```toml
 # Cargo.toml
-jsonschema = "0.12"
+jsonschema = "0.13"
 ```
 
 To validate documents against some schema and get validation errors (if any):
@@ -122,6 +122,7 @@ This library is functional and ready for use, but its API is still evolving to t
 
 - Python - See the `./bindings/python` directory
 - Ruby - a [crate](https://github.com/driv3r/rusty_json_schema) by @driv3r
+- NodeJS - a [package](https://github.com/ahungrynoob/jsonschema) by @ahungrynoob
 
 ## Performance
 
