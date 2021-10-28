@@ -146,16 +146,16 @@ Input values and schemas:
 | Fast (valid)   | 595 B       | 55 B          |
 | Fast (invalid) | 595 B       | 60 B          |
 
-Here is the average time for each contender to validate Ratios are given against compiled `JSONSchema` using its `validate` method. The `is_valid` method is faster, but gives only a boolean return value:
+Here is the average time for each contender to validate. Ratios are given against compiled `JSONSchema` using its `validate` method. The `is_valid` method is faster, but gives only a boolean return value:
 
 | Case           | jsonschema_valid        | valico                  | jsonschema (validate) | jsonschema (is_valid)  |
 | -------------- | ----------------------- | ----------------------- | --------------------- | ---------------------- |
-| OpenAPI        |                   - (1) |                   - (1) |              1.704 ms |   1.651 ms (**x0.96**) |
-| Swagger        |                   - (2) |  97.401 ms (**x18.37**) |              5.234 ms |   3.507 ms (**x0.66**) |
-| Canada         |  45.555 ms (**x39.20**) | 164.12 ms (**x141.23**) |              1.162 ms |   1.165 ms (**x1.00**) |
-| CITM catalog   |    6.107 ms (**x2.28**) |   15.233 ms (**x5.69**) |              2.677 ms |  755.58 us (**x0.28**) |
-| Fast (valid)   |     2.04 us (**x5.67**) |    3.70 us (**x10.28**) |             359.59 ns |   93.40 ns (**x0.25**) |
-| Fast (invalid) |   397.52 ns (**x0.81**) |     3.78 us (**x7.75**) |             487.25 ns |    5.15 ns (**x0.01**) |
+| OpenAPI        |                   - (1) |                   - (1) |              5.231 ms |   4.712 ms (**x0.90**) |
+| Swagger        |                   - (2) |  92.861 ms (**x12.27**) |              7.565 ms |   4.954 ms (**x0.65**) |
+| Canada         |  35.773 ms (**x29.06**) | 152.84 ms (**x124.15**) |              1.231 ms |   1.233 ms (**x1.00**) |
+| CITM catalog   |    5.215 ms (**x1.92**) |   14.555 ms (**x5.38**) |              2.703 ms |  576.38 us (**x0.21**) |
+| Fast (valid)   |     2.14 us (**x3.32**) |     3.53 us (**x5.49**) |             642.95 ns |  107.34 ns (**x0.16**) |
+| Fast (invalid) |   380.58 ns (**x0.47**) |     3.64 us (**x4.54**) |             800.74 ns |    7.19 ns (**x0.01**) |
 
 Notes:
 
@@ -163,7 +163,7 @@ Notes:
 
 2. `jsonschema_valid` fails to resolve local references (e.g. `#/definitions/definitions`).
 
-You can find benchmark code in `benches/jsonschema.rs`, Rust version is `1.51`.
+You can find benchmark code in `benches/jsonschema.rs`, Rust version is `1.56`.
 
 ## Support
 
