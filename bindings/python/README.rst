@@ -46,7 +46,14 @@ or:
     validator = jsonschema_rs.JSONSchema({"minimum": 42})
     validator.validate(41)  # raises ValidationError
 
-**NOTE**. This library is in early development.
+If you have a schema as a JSON string, then you could use `jsonschema_rs.JSONSchema.from_str` to avoid parsing on the Python side:
+
+.. code:: python
+
+    import jsonschema_rs
+
+    validator = jsonschema_rs.JSONSchema.from_str('{"minimum": 42}')
+    ...
 
 Performance
 -----------

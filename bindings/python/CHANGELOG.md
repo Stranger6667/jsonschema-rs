@@ -2,9 +2,18 @@
 
 ## [Unreleased]
 
+### Added
+
+- `JSONSchema.from_str` method that accepts a string to construct a compiled schema. 
+  Useful if you have a schema as string, because you don't have to call `json.loads` on your side - parsing will happen on the Rust side.
+
 ### Fixed
 
 - Set `jsonschema_rs.JSONSchema.__module__` to `jsonschema_rs`.
+
+### Performance
+
+- Minor performance improvements.
 
 ## [0.12.3] - 2021-10-22
 

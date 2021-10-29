@@ -16,10 +16,10 @@
 
 use jsonschema::{paths::JSONPointer, Draft};
 use pyo3::{
-    exceptions,
+    exceptions::{self, PyValueError},
     prelude::*,
     types::{PyAny, PyList, PyType},
-    wrap_pyfunction, PyIterProtocol, PyObjectProtocol,
+    wrap_pyfunction, AsPyPointer, PyIterProtocol, PyObjectProtocol,
 };
 
 mod ser;
@@ -346,6 +346,47 @@ impl JSONSchema {
                 repr: get_schema_repr(&raw_schema),
             }),
             Err(error) => Err(into_py_err(py, error)?),
+        }
+    }
+    /// from_str(string, draft=None, with_meta_schemas=False)
+    ///
+    /// Create `JSONSchema` from a serialized JSON string.
+    ///
+    ///     >>> compiled = JSONSchema.from_str('{"minimum": 5}')
+    ///
+    /// Use it if you have your schema as a string and want to utilize Rust JSON parsing.
+    #[classmethod]
+    #[pyo3(text_signature = "(string, draft=None, with_meta_schemas=False)")]
+    fn from_str(
+        _: &PyType,
+        py: Python,
+        pyschema: &PyAny,
+        draft: Option<u8>,
+        with_meta_schemas: Option<bool>,
+    ) -> PyResult<Self> {
+        let obj_ptr = pyschema.as_ptr();
+        let object_type = unsafe { pyo3::ffi::Py_TYPE(obj_ptr) };
+        if unsafe { object_type != types::STR_TYPE } {
+            let type_name =
+                unsafe { std::ffi::CStr::from_ptr((*object_type).tp_name).to_string_lossy() };
+            Err(PyValueError::new_err(format!(
+                "Expected string, got {}",
+                type_name
+            )))
+        } else {
+            let mut str_size: pyo3::ffi::Py_ssize_t = 0;
+            let uni = unsafe { string::read_utf8_from_str(obj_ptr, &mut str_size) };
+            let slice = unsafe { std::slice::from_raw_parts(uni, str_size as usize) };
+            let raw_schema = serde_json::from_slice(slice)
+                .map_err(|error| PyValueError::new_err(format!("Invalid string: {}", error)))?;
+            let options = make_options(draft, with_meta_schemas)?;
+            match options.compile(&raw_schema) {
+                Ok(schema) => Ok(JSONSchema {
+                    schema,
+                    repr: get_schema_repr(&raw_schema),
+                }),
+                Err(error) => Err(into_py_err(py, error)?),
+            }
         }
     }
 
