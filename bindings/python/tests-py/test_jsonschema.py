@@ -47,10 +47,22 @@ def test_repr():
     assert repr(JSONSchema({"minimum": 5})) == '<JSONSchema: {"minimum":5}>'
 
 
-@pytest.mark.parametrize("func", (JSONSchema({"minimum": 5}).validate, partial(validate, {"minimum": 5})))
+@pytest.mark.parametrize(
+    "func",
+    (
+        JSONSchema({"minimum": 5}).validate,
+        JSONSchema.from_str('{"minimum": 5}').validate,
+        partial(validate, {"minimum": 5}),
+    ),
+)
 def test_validate(func):
     with pytest.raises(ValidationError, match="2 is less than the minimum of 5"):
         func(2)
+
+
+def test_from_str_error():
+    with pytest.raises(ValueError, match="Expected string, got int"):
+        JSONSchema.from_str(42)
 
 
 def test_recursive_dict():

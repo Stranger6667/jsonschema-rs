@@ -18,8 +18,13 @@ def load_json(filename):
         return json.load(fd)
 
 
-def load_from_benches(filename):
-    return load_json(f"../../jsonschema/benches/data/{filename}")
+def load_json_str(filename):
+    with open(filename) as fd:
+        return fd.read()
+
+
+def load_from_benches(filename, loader=load_json):
+    return loader(f"../../jsonschema/benches/data/{filename}")
 
 
 OPENAPI = load_from_benches("openapi.json")
@@ -77,6 +82,24 @@ def args(request, variant, is_compiled):
             return fastjsonschema.compile(schema, use_default=False), instance
         else:
             return partial(fastjsonschema.validate, use_default=False), schema, instance
+
+
+@pytest.mark.parametrize(
+    "name", ("openapi.json", "swagger.json", "geojson.json", "citm_catalog_schema.json", "fast_schema.json")
+)
+@pytest.mark.parametrize(
+    "func",
+    (
+        lambda x: jsonschema_rs.JSONSchema(json.loads(x)),
+        jsonschema_rs.JSONSchema.from_str,
+    ),
+    ids=["py-parse", "rs-parse"],
+)
+@pytest.mark.benchmark(group="create schema")
+def test_create_schema(benchmark, func, name):
+    benchmark.group = f"{name}: {benchmark.group}"
+    schema = load_from_benches(name, loader=load_json_str)
+    benchmark(func, schema)
 
 
 # Small schemas
