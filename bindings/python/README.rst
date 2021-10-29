@@ -14,7 +14,7 @@ Supported drafts:
 There are some notable restrictions at the moment:
 
 - The underlying crate doesn't support arbitrary precision integers yet, which may lead to ``SystemError`` when such value is used;
-- ``multipleOf`` keyword validation may produce false-negative results on some input. See `#84 <https://github.com/Stranger6667/jsonschema-rs/issues/84>`_ for more details
+- Unicode surrogates are not supported;
 
 Installation
 ------------

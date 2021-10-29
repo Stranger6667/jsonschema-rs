@@ -113,13 +113,6 @@ def test_maximum(maximum):
         assert is_valid({"maximum": maximum}, maximum + 1) is False
 
 
-@pytest.mark.xfail(reason="The underlying Rust crate has not enough precision.")
-@given(multiple_of=(st.integers() | st.floats(allow_infinity=False, allow_nan=False)).filter(lambda x: x > 0))
-def test_multiple_of(multiple_of):
-    with suppress(SystemError):
-        assert is_valid({"multipleOf": multiple_of}, multiple_of * 3)
-
-
 @pytest.mark.parametrize("method", ("is_valid", "validate"))
 def test_invalid_value(method):
     schema = JSONSchema({"minimum": 42})
