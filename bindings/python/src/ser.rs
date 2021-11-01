@@ -2,7 +2,7 @@ use pyo3::{
     exceptions,
     ffi::{
         PyDictObject, PyFloat_AS_DOUBLE, PyList_GET_ITEM, PyList_GET_SIZE, PyLong_AsLongLong,
-        Py_TYPE,
+        Py_TYPE, PyTuple_GET_ITEM, PyTuple_GET_SIZE
     },
     prelude::*,
     types::PyAny,
@@ -27,6 +27,7 @@ pub enum ObjectType {
     Float,
     List,
     Dict,
+    Tuple,
     Unknown(String),
 }
 
@@ -81,6 +82,8 @@ pub fn get_object_type(object_type: *mut pyo3::ffi::PyTypeObject) -> ObjectType 
         ObjectType::None
     } else if object_type == unsafe { types::LIST_TYPE } {
         ObjectType::List
+    } else if object_type == unsafe { types::TUPLE_TYPE } {
+        ObjectType::Tuple
     } else if object_type == unsafe { types::DICT_TYPE } {
         ObjectType::Dict
     } else {
@@ -159,6 +162,34 @@ impl Serialize for SerializePyObject {
                     let mut sequence = serializer.serialize_seq(Some(length))?;
                     for i in 0..length {
                         let elem = unsafe { PyList_GET_ITEM(self.object, i as isize) };
+                        let current_ob_type = unsafe { Py_TYPE(elem) };
+                        if current_ob_type != type_ptr {
+                            type_ptr = current_ob_type;
+                            ob_type = get_object_type(current_ob_type);
+                        }
+                        #[allow(clippy::integer_arithmetic)]
+                        sequence.serialize_element(&SerializePyObject::with_obtype(
+                            elem,
+                            ob_type.clone(),
+                            self.recursion_depth + 1,
+                        ))?;
+                    }
+                    sequence.end()
+                }
+            }
+            ObjectType::Tuple => {
+                if self.recursion_depth == RECURSION_LIMIT {
+                    return Err(ser::Error::custom("Recursion limit reached"));
+                }
+                let length = unsafe { PyTuple_GET_SIZE(self.object) } as usize;
+                if length == 0 {
+                    serializer.serialize_seq(Some(0))?.end()
+                } else {
+                    let mut type_ptr = std::ptr::null_mut();
+                    let mut ob_type = ObjectType::Str;
+                    let mut sequence = serializer.serialize_seq(Some(length))?;
+                    for i in 0..length {
+                        let elem = unsafe { PyTuple_GET_ITEM(self.object, i as isize) };
                         let current_ob_type = unsafe { Py_TYPE(elem) };
                         if current_ob_type != type_ptr {
                             type_ptr = current_ob_type;

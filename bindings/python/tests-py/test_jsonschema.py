@@ -65,6 +65,12 @@ def test_from_str_error():
         JSONSchema.from_str(42)
 
 
+def test_tuple():
+    schema = {"properties": {"foo": {"type": "array"}}}
+    instance = {"foo": (1, 2, 3)}
+    assert is_valid(instance, schema) == True
+
+
 def test_recursive_dict():
     instance = {}
     instance["foo"] = instance
