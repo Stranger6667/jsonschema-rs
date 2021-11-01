@@ -1,6 +1,6 @@
 use pyo3::ffi::{
-    PyDict_New, PyFloat_FromDouble, PyList_New, PyLong_FromLongLong, PyTypeObject, PyUnicode_New,
-    Py_None, Py_TYPE, Py_True, PyTuple_New
+    PyDict_New, PyFloat_FromDouble, PyList_New, PyLong_FromLongLong, PyTuple_New, PyTypeObject,
+    PyUnicode_New, Py_None, Py_TYPE, Py_True,
 };
 use std::sync::Once;
 
