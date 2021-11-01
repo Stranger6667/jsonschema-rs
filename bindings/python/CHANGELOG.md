@@ -10,6 +10,7 @@
 ### Fixed
 
 - Set `jsonschema_rs.JSONSchema.__module__` to `jsonschema_rs`.
+- Convert tuples into lists for validation to fix `ValueError: Unsupported type: 'tuple'`
 
 ### Performance
 

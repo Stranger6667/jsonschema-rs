@@ -1,6 +1,6 @@
 use pyo3::ffi::{
     PyDict_New, PyFloat_FromDouble, PyList_New, PyLong_FromLongLong, PyTypeObject, PyUnicode_New,
-    Py_None, Py_TYPE, Py_True,
+    Py_None, Py_TYPE, Py_True, PyTuple_New
 };
 use std::sync::Once;
 
@@ -13,6 +13,7 @@ pub static mut NONE_TYPE: *mut PyTypeObject = 0 as *mut PyTypeObject;
 pub static mut FLOAT_TYPE: *mut PyTypeObject = 0 as *mut PyTypeObject;
 pub static mut LIST_TYPE: *mut PyTypeObject = 0 as *mut PyTypeObject;
 pub static mut DICT_TYPE: *mut PyTypeObject = 0 as *mut PyTypeObject;
+pub static mut TUPLE_TYPE: *mut PyTypeObject = 0 as *mut PyTypeObject;
 
 static INIT: Once = Once::new();
 
@@ -24,6 +25,7 @@ pub fn init() {
         TRUE = Py_True();
         STR_TYPE = Py_TYPE(PyUnicode_New(0, 255));
         DICT_TYPE = Py_TYPE(PyDict_New());
+        TUPLE_TYPE = Py_TYPE(PyTuple_New(1));
         LIST_TYPE = Py_TYPE(PyList_New(0_isize));
         NONE_TYPE = Py_TYPE(Py_None());
         BOOL_TYPE = Py_TYPE(TRUE);
