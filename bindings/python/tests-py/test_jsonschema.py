@@ -1,3 +1,4 @@
+from collections import namedtuple
 from contextlib import suppress
 from functools import partial
 
@@ -85,6 +86,14 @@ def test_array_tuple_invalid(val):
     schema = {"type": "array", "items": {"type": "string"}}
     with pytest.raises(ValueError):
         validate(schema, val)
+
+
+def test_named_tuple():
+    Person = namedtuple("Person", "first_name last_name")
+    person_a = Person("Joe", "Smith")
+    schema = {"type": "array", "items": {"type": "string"}}
+    with pytest.raises(ValueError):
+        validate(schema, person_a)
 
 
 def test_recursive_dict():
