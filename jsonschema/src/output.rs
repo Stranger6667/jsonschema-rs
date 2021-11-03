@@ -1,5 +1,14 @@
+//! Implementation of json schema output formats specified in <https://json-schema.org/draft/2020-12/json-schema-core.html#rfc.section.12.2>
+//!
+//! Currently the "flag" and "basic" formats are supported. The "flag" format is
+//! idential to the [`JSONSchema::is_valid`] method and so is uninteresting. The
+//! main contribution of this module is [`Output::basic`]. See the documentation
+//! of that method for more information.
+
 use std::{
+    borrow::Cow,
     collections::VecDeque,
+    fmt,
     iter::{FromIterator, Sum},
     ops::AddAssign,
 };
@@ -46,14 +55,62 @@ impl<'a, 'b> Output<'a, 'b> {
     }
 
     /// Output a list of errors and annotations for each element in the schema
-    /// according to the basic output format
+    /// according to the basic output format. [`BasicOutput`] implements
+    /// `serde::Serialize` in a manner which conforms to the json core spec so
+    /// one way to use this is to serialize the `BasicOutput` and examine the
+    /// JSON which is produced. However, for rust programs this is not
+    /// necessary. Instead you can match on the `BasicOutput` and examine the
+    /// results. To use this API you'll need to understand a few things:
+    ///
+    /// Regardless of whether the the schema validation was successful or not
+    /// the `BasicOutput` is a sequence of [`OutputUnit`]s. An `OutputUnit` is
+    /// some metadata about where the output is coming from (where in the schema
+    /// and where in the instance). The difference between the
+    /// `BasicOutput::Valid` and `BasicOutput::Invalid` cases is the value which
+    /// is associated with each `OutputUnit`. For `Valid` outputs the value is
+    /// an annotation, whilst for `Invalid` outputs it's an `ErrorDescription`
+    /// (a `String` really).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use crate::jsonschema::{Draft, output::{Output, BasicOutput}, JSONSchema};
+    /// # let schema_json = serde_json::json!({
+    /// #     "title": "string value",
+    /// #     "type": "string"
+    /// # });
+    /// # let instance = serde_json::json!{"some string"};
+    /// # let schema = JSONSchema::options().compile(&schema_json).unwrap();
+    /// let output: BasicOutput = schema.apply(&instance).basic();
+    /// match output {
+    ///     BasicOutput::Valid(annotations) => {
+    ///         for annotation in annotations {
+    ///             println!(
+    ///                 "Value: {} at path {}",
+    ///                 annotation.value(),
+    ///                 annotation.instance_location()
+    ///             )
+    ///         }
+    ///     },
+    ///     BasicOutput::Invalid(errors) => {
+    ///         for error in errors {
+    ///             println!(
+    ///                 "Error: {} at path {}",
+    ///                 error.error_description(),
+    ///                 error.instance_location()
+    ///             )
+    ///         }
+    ///     }
+    /// }
+    /// ```
     pub fn basic(&self) -> BasicOutput<'a> {
         self.root_node
             .apply_rooted(self.schema, self.instance, &InstancePath::new())
     }
 }
 
-/// The "basic" output format
+/// The "basic" output format. See the documentation for [`Output::basic`] for
+/// examples of how to use this.
 #[derive(Debug, PartialEq)]
 pub enum BasicOutput<'a> {
     /// The schema was valid, collected annotations can be examined
@@ -133,6 +190,11 @@ impl<'a> FromIterator<BasicOutput<'a>> for PartialApplication<'a> {
     }
 }
 
+/// An output unit is a reference to a place in a schema and a place in an
+/// instance along with some value associated to that place. For annotations the
+/// value will be an [`Annotations`] and for errors it will be an
+/// [`ErrorDescription`]. See the documentation for [`Output::basic`] for a
+/// detailed example.
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputUnit<T> {
     keyword_location: JSONPointer,
@@ -169,10 +231,56 @@ impl<T> OutputUnit<T> {
             value: error,
         }
     }
+
+    ///  The location in the schema of the keyword
+    pub const fn keyword_location(&self) -> &JSONPointer {
+        &self.keyword_location
+    }
+
+    ///  The absolute location in the schema of the keyword. This will be
+    ///  different to `keyword_location` if the schema is a resolved reference.
+    pub const fn absolute_keyword_location(&self) -> &Option<AbsolutePath> {
+        &self.absolute_keyword_location
+    }
+
+    ///  The location in the instance
+    pub const fn instance_location(&self) -> &JSONPointer {
+        &self.instance_location
+    }
 }
 
+impl OutputUnit<Annotations<'_>> {
+    /// The annotations found at this output unit
+    pub fn value(&self) -> Cow<'_, serde_json::Value> {
+        self.value.value()
+    }
+}
+
+impl OutputUnit<ErrorDescription> {
+    /// The error for this output unit
+    pub const fn error_description(&self) -> &ErrorDescription {
+        &self.value
+    }
+}
+
+/// Annotations associated with an output unit.
 #[derive(serde::Serialize, Debug, Clone, PartialEq)]
 pub struct Annotations<'a>(AnnotationsInner<'a>);
+
+impl<'a> Annotations<'a> {
+    /// The `serde_json::Value` of the annotation
+    pub fn value(&'a self) -> Cow<'a, serde_json::Value> {
+        match &self.0 {
+            AnnotationsInner::Value(v) => Cow::Borrowed(v),
+            AnnotationsInner::ValueRef(v) => Cow::Borrowed(v),
+            AnnotationsInner::UnmatchedKeywords(kvs) => {
+                let value = serde_json::to_value(kvs)
+                    .expect("&AHashMap<String, serde_json::Value> cannot fail serializing");
+                Cow::Owned(value)
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 enum AnnotationsInner<'a> {
@@ -199,8 +307,15 @@ impl<'a> From<serde_json::Value> for Annotations<'a> {
     }
 }
 
+/// An error associated with an `OutputUnit`
 #[derive(serde::Serialize, Debug, Clone, PartialEq)]
 pub struct ErrorDescription(String);
+
+impl fmt::Display for ErrorDescription {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl From<ValidationError<'_>> for ErrorDescription {
     fn from(e: ValidationError<'_>) -> Self {

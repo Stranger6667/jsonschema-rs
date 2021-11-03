@@ -7,12 +7,13 @@ pub(crate) mod options;
 use crate::{
     error::ErrorIterator,
     keywords,
+    output::Output,
     paths::{InstancePath, JSONPointer},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     resolver::Resolver,
     schema_node::SchemaNode,
     validator::Validate,
-    Draft, Output, ValidationError,
+    Draft, ValidationError,
 };
 use ahash::AHashMap;
 use context::CompilationContext;
@@ -96,7 +97,7 @@ impl JSONSchema {
     /// "basic" output format
     ///
     /// ```rust
-    /// # use crate::jsonschema::{Draft, Output, BasicOutput, JSONSchema};
+    /// # use crate::jsonschema::{Draft, JSONSchema, output::{Output, BasicOutput}};
     /// let schema_json = serde_json::json!({
     ///     "title": "string value",
     ///     "type": "string"
