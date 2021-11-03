@@ -2,7 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
 - Support for `prefixItems` keyword. [#303](https://github.com/Stranger6667/jsonschema-rs/pull/303)
+- Expose methods to examine `OutputUnit`.
 
 ## [0.13.1] - 2021-10-28
 
