@@ -65,10 +65,26 @@ def test_from_str_error():
         JSONSchema.from_str(42)
 
 
-def test_tuple():
-    schema = {"properties": {"foo": {"type": "array"}}}
-    instance = {"foo": (1, 2, 3)}
-    assert is_valid(instance, schema) == True
+@pytest.mark.parametrize(
+    "val",
+    (
+        ("A", "B", "C"),
+        ["A", "B", "C"],
+    ),
+)
+def test_array_tuple(val):
+    schema = {"type": "array", "items": {"type": "string"}}
+    validate(schema, val)
+
+
+@pytest.mark.parametrize(
+    "val",
+    ((1, 2, 3), [1, 2, 3], {"foo": 1}),
+)
+def test_array_tuple_invalid(val):
+    schema = {"type": "array", "items": {"type": "string"}}
+    with pytest.raises(ValueError):
+        validate(schema, val)
 
 
 def test_recursive_dict():
