@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.13.2] - 2021-11-04
+
 ### Added
 
 - Support for `prefixItems` keyword. [#303](https://github.com/Stranger6667/jsonschema-rs/pull/303)
@@ -315,7 +317,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.2...HEAD
+[0.13.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.1...rust-v0.13.2
 [0.13.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.0...rust-v0.13.1
 [0.13.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.12.2...rust-v0.13.0
 [0.12.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.12.1...rust-v0.12.2
