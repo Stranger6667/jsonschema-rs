@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.13.0] - 2021-11-04
+
 ### Added
 
 - `JSONSchema.from_str` method that accepts a string to construct a compiled schema. 
@@ -236,7 +238,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.12.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.13.0...HEAD
+[0.13.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.12.1...python-v0.13.0
 [0.12.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.12.0...python-v0.12.1
 [0.12.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.11.1...python-v0.12.0
 [0.11.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.11.0...python-v0.11.1
