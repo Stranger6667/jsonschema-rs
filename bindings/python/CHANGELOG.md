@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Convert `Enum` into raw values before validating
+
 ## [0.13.0] - 2021-11-04
 
 ### Added

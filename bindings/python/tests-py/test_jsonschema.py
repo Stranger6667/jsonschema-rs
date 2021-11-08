@@ -1,5 +1,6 @@
 from collections import namedtuple
 from contextlib import suppress
+from enum import Enum
 from functools import partial
 
 import pytest
@@ -209,3 +210,30 @@ def test_iter_err_empty(func):
         pytest.fail("Validation error should happen")
     except StopIteration:
         pass
+
+
+class StrEnum(Enum):
+    bar = "bar"
+    foo = "foo"
+
+
+class IntEnum(Enum):
+    bar = 1
+    foo = 2
+
+
+def test_enum_str():
+    schema = {"properties": {"foo": {"type": "string"}}}
+    instance = {"foo": StrEnum.bar}
+    assert is_valid(schema, instance) == True
+
+    instance["foo"] = IntEnum.bar
+    assert is_valid(schema, instance) == False
+
+
+def test_enum_int():
+    schema = {"properties": {"foo": {"type": "number"}}}
+    instance = {"foo": IntEnum.bar}
+    assert is_valid(schema, instance) == True
+    instance["foo"] = StrEnum.bar
+    assert is_valid(schema, instance) == False
