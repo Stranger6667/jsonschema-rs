@@ -2,7 +2,7 @@ use pyo3::{
     exceptions,
     ffi::{
         PyDictObject, PyFloat_AS_DOUBLE, PyList_GET_ITEM, PyList_GET_SIZE, PyLong_AsLongLong,
-        PyTuple_GET_ITEM, PyTuple_GET_SIZE, Py_TYPE,
+        PyObject_GetAttr, PyTuple_GET_ITEM, PyTuple_GET_SIZE, Py_TYPE,
     },
     prelude::*,
     types::PyAny,
@@ -13,7 +13,7 @@ use serde::{
     Serializer,
 };
 
-use crate::{string, types};
+use crate::{ffi, string, types};
 use std::ffi::CStr;
 
 pub const RECURSION_LIMIT: u8 = 255;
@@ -28,6 +28,7 @@ pub enum ObjectType {
     List,
     Dict,
     Tuple,
+    Enum,
     Unknown(String),
 }
 
@@ -61,6 +62,13 @@ impl SerializePyObject {
     }
 }
 
+#[inline]
+fn is_enum_subclass(object_type: *mut pyo3::ffi::PyTypeObject) -> bool {
+    unsafe {
+        return (*(object_type as *mut ffi::PyTypeObject)).ob_type == types::ENUM_TYPE;
+    }
+}
+
 fn get_object_type_from_object(object: *mut pyo3::ffi::PyObject) -> ObjectType {
     unsafe {
         let object_type = Py_TYPE(object);
@@ -86,6 +94,8 @@ pub fn get_object_type(object_type: *mut pyo3::ffi::PyTypeObject) -> ObjectType 
         ObjectType::Tuple
     } else if object_type == unsafe { types::DICT_TYPE } {
         ObjectType::Dict
+    } else if is_enum_subclass(object_type) {
+        ObjectType::Enum
     } else {
         let type_name = unsafe { CStr::from_ptr((*object_type).tp_name).to_string_lossy() };
         ObjectType::Unknown(type_name.to_string())
@@ -204,6 +214,11 @@ impl Serialize for SerializePyObject {
                     }
                     sequence.end()
                 }
+            }
+            ObjectType::Enum => {
+                let value = unsafe { PyObject_GetAttr(self.object, types::VALUE_STR) };
+                #[allow(clippy::integer_arithmetic)]
+                SerializePyObject::new(value, self.recursion_depth + 1).serialize(serializer)
             }
             ObjectType::Unknown(ref type_name) => Err(ser::Error::custom(format!(
                 "Unsupported type: '{}'",

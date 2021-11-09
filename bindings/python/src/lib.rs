@@ -22,6 +22,7 @@ use pyo3::{
     wrap_pyfunction, AsPyPointer, PyIterProtocol, PyObjectProtocol,
 };
 
+mod ffi;
 mod ser;
 mod string;
 mod types;
