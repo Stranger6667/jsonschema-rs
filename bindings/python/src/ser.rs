@@ -62,6 +62,13 @@ impl SerializePyObject {
     }
 }
 
+#[inline]
+fn is_enum_subclass(object_type: *mut pyo3::ffi::PyTypeObject) -> bool {
+    unsafe {
+        return (*(object_type as *mut ffi::PyTypeObject)).ob_type == types::ENUM_TYPE;
+    }
+}
+
 fn get_object_type_from_object(object: *mut pyo3::ffi::PyObject) -> ObjectType {
     unsafe {
         let object_type = Py_TYPE(object);
@@ -87,9 +94,7 @@ pub fn get_object_type(object_type: *mut pyo3::ffi::PyTypeObject) -> ObjectType 
         ObjectType::Tuple
     } else if object_type == unsafe { types::DICT_TYPE } {
         ObjectType::Dict
-    } else if unsafe { (*(object_type as *mut ffi::PyTypeObjectSubObType)).ob_type }
-        == unsafe { types::ENUM_TYPE }
-    {
+    } else if is_enum_subclass(object_type) {
         ObjectType::Enum
     } else {
         let type_name = unsafe { CStr::from_ptr((*object_type).tp_name).to_string_lossy() };
