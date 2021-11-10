@@ -2,9 +2,11 @@
 
 ## [Unreleased]
 
+## [0.13.1] - 2021-11-10
+
 ### Added
 
-- Convert `Enum` into raw values before validating
+- Convert `Enum` into raw values before validating.
 
 ## [0.13.0] - 2021-11-04
 
@@ -16,7 +18,7 @@
 ### Fixed
 
 - Set `jsonschema_rs.JSONSchema.__module__` to `jsonschema_rs`.
-- Convert tuples into lists for validation to fix `ValueError: Unsupported type: 'tuple'`
+- Convert tuples into lists for validation to fix `ValueError: Unsupported type: 'tuple'`.
 
 ### Performance
 
@@ -242,7 +244,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.13.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.13.1...HEAD
+[0.13.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.13.0...python-v0.13.1
 [0.13.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.12.1...python-v0.13.0
 [0.12.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.12.0...python-v0.12.1
 [0.12.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.11.1...python-v0.12.0
