@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Performance
+
+- Remove unused private field in `JSONSchema`, that lead to improvement in the compilation performance.
+
 ## [0.13.2] - 2021-11-04
 
 ### Added

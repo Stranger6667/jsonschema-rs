@@ -19,7 +19,6 @@ use ahash::AHashMap;
 use context::CompilationContext;
 use options::CompilationOptions;
 use serde_json::Value;
-use std::sync::Arc;
 use url::Url;
 
 pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
@@ -27,7 +26,6 @@ pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
 /// The structure that holds a JSON Schema compiled into a validation tree
 #[derive(Debug)]
 pub struct JSONSchema {
-    pub(crate) schema: Arc<Value>,
     pub(crate) node: SchemaNode,
     pub(crate) resolver: Resolver,
     config: CompilationOptions,
