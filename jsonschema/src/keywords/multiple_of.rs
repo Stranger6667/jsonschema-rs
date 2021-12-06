@@ -34,13 +34,16 @@ impl Validate for MultipleOfFloatValidator {
                 // Involves heap allocations via the underlying `BigUint` type
                 let fraction = BigFraction::from(item) / BigFraction::from(self.multiple_of);
                 if let Some(denom) = fraction.denom() {
-                    return denom == &BigUint::from(1_u8);
+                    denom == &BigUint::from(1_u8)
+                } else {
+                    true
                 }
-            } else if !(remainder < EPSILON && remainder < (1. - EPSILON)) {
-                return false;
+            } else {
+                remainder < EPSILON
             }
+        } else {
+            true
         }
-        true
     }
 
     fn validate<'a, 'b>(
@@ -86,17 +89,12 @@ impl Validate for MultipleOfIntegerValidator {
     fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
         if let Value::Number(item) = instance {
             let item = item.as_f64().expect("Always valid");
-            let is_multiple = if item.fract() == 0. {
-                (item % self.multiple_of) == 0.
-            } else {
-                let remainder = (item / self.multiple_of) % 1.;
-                remainder < EPSILON && remainder < (1. - EPSILON)
-            };
-            if !is_multiple {
-                return false;
-            }
+            // As the divisor has its fractional part as zero, then any value with a non-zero
+            // fractional part can't be a multiple of this divisor, therefore it is short-circuited
+            item.fract() == 0. && (item % self.multiple_of) == 0.
+        } else {
+            true
         }
-        true
     }
 
     fn validate<'a, 'b>(
@@ -154,6 +152,19 @@ mod tests {
     use crate::tests_util;
     use serde_json::{json, Value};
     use test_case::test_case;
+
+    #[test_case(&json!({"multipleOf": 2}), &json!(4))]
+    #[test_case(&json!({"multipleOf": 1.0}), &json!(4.0))]
+    #[test_case(&json!({"multipleOf": 1.5}), &json!(3.0))]
+    #[test_case(&json!({"multipleOf": 1.5}), &json!(4.5))]
+    fn multiple_of_is_valid(schema: &Value, instance: &Value) {
+        tests_util::is_valid(schema, instance)
+    }
+
+    #[test_case(&json!({"multipleOf": 1.0}), &json!(4.5))]
+    fn multiple_of_is_not_valid(schema: &Value, instance: &Value) {
+        tests_util::is_not_valid(schema, instance)
+    }
 
     #[test_case(&json!({"multipleOf": 2}), &json!(3), "/multipleOf")]
     #[test_case(&json!({"multipleOf": 1.5}), &json!(5), "/multipleOf")]

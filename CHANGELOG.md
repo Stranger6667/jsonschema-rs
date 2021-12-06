@@ -5,6 +5,7 @@
 ### Performance
 
 - Remove unused private field in `JSONSchema`, that lead to improvement in the compilation performance.
+- Optimize the `multipleOf` implementation, which now can short-circuit in some cases
 
 ## [0.13.2] - 2021-11-04
 
