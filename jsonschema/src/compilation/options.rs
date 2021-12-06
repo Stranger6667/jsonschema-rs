@@ -270,7 +270,7 @@ impl CompilationOptions {
             None => DEFAULT_SCOPE.clone(),
         };
         let schema_json = Arc::new(schema.clone());
-        let resolver = Resolver::new(draft, &scope, schema_json.clone(), self.store.clone())?;
+        let resolver = Resolver::new(draft, &scope, schema_json, self.store.clone())?;
         let context = CompilationContext::new(scope.into(), &config);
 
         if self.validate_schema {
@@ -287,7 +287,6 @@ impl CompilationOptions {
         let node = compile_validators(schema, &context)?;
 
         Ok(JSONSchema {
-            schema: schema_json,
             node,
             resolver,
             config,
