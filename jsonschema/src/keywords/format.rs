@@ -7,7 +7,7 @@ use url::Url;
 use uuid::Uuid;
 
 use crate::{
-    compilation::{context::CompilationContext, JSONSchema},
+    compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{pattern, CompilationResult},
     paths::{InstancePath, JSONPointer},
@@ -60,12 +60,11 @@ macro_rules! validate {
     ($format:expr) => {
         fn validate<'a, 'b>(
             &self,
-            schema: &'a JSONSchema,
             instance: &'b Value,
             instance_path: &InstancePath,
         ) -> ErrorIterator<'b> {
             if let Value::String(_item) = instance {
-                if !self.is_valid(schema, instance) {
+                if !self.is_valid(instance) {
                     return error(ValidationError::format(
                         self.schema_path.clone(),
                         instance_path.into(),
@@ -82,7 +81,7 @@ macro_rules! validate {
 format_validator!(DateValidator, "date");
 impl Validate for DateValidator {
     validate!("date");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             if time::Date::parse(
                 item,
@@ -107,7 +106,7 @@ impl Validate for DateValidator {
 format_validator!(DateTimeValidator, "date-time");
 impl Validate for DateTimeValidator {
     validate!("date-time");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             time::OffsetDateTime::parse(item, &time::format_description::well_known::Rfc3339)
                 .is_ok()
@@ -139,7 +138,7 @@ fn is_valid_email(email: &str) -> bool {
 format_validator!(EmailValidator, "email");
 impl Validate for EmailValidator {
     validate!("email");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             is_valid_email(item)
         } else {
@@ -150,7 +149,7 @@ impl Validate for EmailValidator {
 format_validator!(IDNEmailValidator, "idn-email");
 impl Validate for IDNEmailValidator {
     validate!("idn-email");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             is_valid_email(item)
         } else {
@@ -161,7 +160,7 @@ impl Validate for IDNEmailValidator {
 format_validator!(HostnameValidator, "hostname");
 impl Validate for HostnameValidator {
     validate!("hostname");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             !(item.ends_with('-')
                 || item.starts_with('-')
@@ -181,7 +180,7 @@ impl Validate for HostnameValidator {
 format_validator!(IDNHostnameValidator, "idn-hostname");
 impl Validate for IDNHostnameValidator {
     validate!("idn-hostname");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             !(item.ends_with('-')
                 || item.starts_with('-')
@@ -201,7 +200,7 @@ impl Validate for IDNHostnameValidator {
 format_validator!(IpV4Validator, "ipv4");
 impl Validate for IpV4Validator {
     validate!("ipv4");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             if item.starts_with('0') {
                 return false;
@@ -219,7 +218,7 @@ impl Validate for IpV4Validator {
 format_validator!(IpV6Validator, "ipv6");
 impl Validate for IpV6Validator {
     validate!("ipv6");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             match IpAddr::from_str(item.as_str()) {
                 Ok(i) => i.is_ipv6(),
@@ -233,7 +232,7 @@ impl Validate for IpV6Validator {
 format_validator!(IRIValidator, "iri");
 impl Validate for IRIValidator {
     validate!("iri");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             Url::from_str(item).is_ok()
         } else {
@@ -244,7 +243,7 @@ impl Validate for IRIValidator {
 format_validator!(URIValidator, "uri");
 impl Validate for URIValidator {
     validate!("uri");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             Url::from_str(item).is_ok()
         } else {
@@ -255,7 +254,7 @@ impl Validate for URIValidator {
 format_validator!(IRIReferenceValidator, "iri-reference");
 impl Validate for IRIReferenceValidator {
     validate!("iri-reference");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             IRI_REFERENCE_RE
                 .is_match(item)
@@ -268,7 +267,7 @@ impl Validate for IRIReferenceValidator {
 format_validator!(JSONPointerValidator, "json-pointer");
 impl Validate for JSONPointerValidator {
     validate!("json-pointer");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             JSON_POINTER_RE
                 .is_match(item)
@@ -281,7 +280,7 @@ impl Validate for JSONPointerValidator {
 format_validator!(RegexValidator, "regex");
 impl Validate for RegexValidator {
     validate!("regex");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             pattern::convert_regex(item).is_ok()
         } else {
@@ -292,7 +291,7 @@ impl Validate for RegexValidator {
 format_validator!(RelativeJSONPointerValidator, "relative-json-pointer");
 impl Validate for RelativeJSONPointerValidator {
     validate!("relative-json-pointer");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             RELATIVE_JSON_POINTER_RE
                 .is_match(item)
@@ -305,7 +304,7 @@ impl Validate for RelativeJSONPointerValidator {
 format_validator!(TimeValidator, "time");
 impl Validate for TimeValidator {
     validate!("time");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             TIME_RE.is_match(item).expect("Simple TIME_RE pattern")
         } else {
@@ -316,7 +315,7 @@ impl Validate for TimeValidator {
 format_validator!(URIReferenceValidator, "uri-reference");
 impl Validate for URIReferenceValidator {
     validate!("uri-reference");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             URI_REFERENCE_RE
                 .is_match(item)
@@ -329,7 +328,7 @@ impl Validate for URIReferenceValidator {
 format_validator!(URITemplateValidator, "uri-template");
 impl Validate for URITemplateValidator {
     validate!("uri-template");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             URI_TEMPLATE_RE
                 .is_match(item)
@@ -343,7 +342,7 @@ impl Validate for URITemplateValidator {
 format_validator!(UUIDValidator, "uuid");
 impl Validate for UUIDValidator {
     validate!("uuid");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             Uuid::from_str(item.as_str()).is_ok()
         } else {
@@ -355,7 +354,7 @@ impl Validate for UUIDValidator {
 format_validator!(DurationValidator, "duration");
 impl Validate for DurationValidator {
     validate!("duration");
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             iso8601::duration(item).is_ok()
         } else {
@@ -392,12 +391,11 @@ impl core::fmt::Display for CustomFormatValidator {
 impl Validate for CustomFormatValidator {
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
         if let Value::String(_item) = instance {
-            if !self.is_valid(schema, instance) {
+            if !self.is_valid(instance) {
                 return error(ValidationError::format(
                     self.schema_path.clone(),
                     instance_path.into(),
@@ -409,7 +407,7 @@ impl Validate for CustomFormatValidator {
         no_error()
     }
 
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             (self.check)(item)
         } else {

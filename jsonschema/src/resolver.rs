@@ -234,7 +234,6 @@ fn parse_index(s: &str) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::JSONSchema;
     use serde_json::json;
     use std::sync::Arc;
     use url::Url;
@@ -493,28 +492,5 @@ mod tests {
         let (resource, resolved) = resolver.resolve_fragment(Draft::Draft7, &url).unwrap();
         assert_eq!(resource, Url::parse("json-schema:///").unwrap());
         assert_eq!(resolved.as_ref(), schema.pointer("/definitions/a").unwrap());
-    }
-
-    #[test]
-    fn id_value_is_cleaned() {
-        let schema = json!({
-            "$id": "http://foo.com/schema.json#",
-            "properties": {
-                "foo": {
-                    "$ref": "#/definitions/Bar"
-                }
-            },
-            "definitions": {
-                "Bar": {
-                    "const": 42
-                }
-            }
-        });
-        let compiled = JSONSchema::compile(&schema).unwrap();
-        // `#` should be removed
-        assert!(compiled
-            .resolver
-            .schemas
-            .contains_key("http://foo.com/schema.json"));
     }
 }

@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{context::CompilationContext, JSONSchema},
+    compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers, CompilationResult},
     paths::{InstancePath, JSONPointer},
@@ -40,11 +40,10 @@ impl EnumValidator {
 impl Validate for EnumValidator {
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self.is_valid(schema, instance) {
+        if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::enumeration(
@@ -56,7 +55,7 @@ impl Validate for EnumValidator {
         }
     }
 
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         // If the input value type is not in the types present among the enum options, then there
         // is no reason to compare it against all items - we know that
         // there are no items with such type at all
@@ -107,11 +106,10 @@ impl SingleValueEnumValidator {
 impl Validate for SingleValueEnumValidator {
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self.is_valid(schema, instance) {
+        if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::enumeration(
@@ -123,7 +121,7 @@ impl Validate for SingleValueEnumValidator {
         }
     }
 
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         helpers::equal(&self.value, instance)
     }
 }

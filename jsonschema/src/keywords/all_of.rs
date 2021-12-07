@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    compilation::{compile_validators, context::CompilationContext},
     error::{ErrorIterator, ValidationError},
     output::BasicOutput,
     paths::{InstancePath, JSONPointer},
@@ -33,34 +33,32 @@ impl AllOfValidator {
 }
 
 impl Validate for AllOfValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        self.schemas.iter().all(|n| n.is_valid(schema, instance))
+    fn is_valid(&self, instance: &Value) -> bool {
+        self.schemas.iter().all(|n| n.is_valid(instance))
     }
 
     #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
         let errors: Vec<_> = self
             .schemas
             .iter()
-            .flat_map(move |node| node.validate(schema, instance, instance_path))
+            .flat_map(move |node| node.validate(instance, instance_path))
             .collect();
         Box::new(errors.into_iter())
     }
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
         self.schemas
             .iter()
-            .map(move |node| node.apply_rooted(schema, instance, instance_path))
+            .map(move |node| node.apply_rooted(instance, instance_path))
             .sum::<BasicOutput<'_>>()
             .into()
     }
@@ -93,28 +91,24 @@ impl SingleValueAllOfValidator {
 }
 
 impl Validate for SingleValueAllOfValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        self.node.is_valid(schema, instance)
+    fn is_valid(&self, instance: &Value) -> bool {
+        self.node.is_valid(instance)
     }
 
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        self.node.validate(schema, instance, instance_path)
+        self.node.validate(instance, instance_path)
     }
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
-        self.node
-            .apply_rooted(schema, instance, instance_path)
-            .into()
+        self.node.apply_rooted(instance, instance_path).into()
     }
 }
 

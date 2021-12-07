@@ -5,7 +5,6 @@ use crate::{
     output::{Annotations, BasicOutput, ErrorDescription, OutputUnit},
     paths::{AbsolutePath, InstancePath, JSONPointer},
     validator::{format_validators, PartialApplication, Validate},
-    JSONSchema,
 };
 use ahash::AHashMap;
 use std::{collections::VecDeque, fmt};
@@ -116,11 +115,10 @@ impl SchemaNode {
     /// results from sub-schemas
     pub(crate) fn apply_rooted(
         &self,
-        schema: &JSONSchema,
         instance: &serde_json::Value,
         instance_path: &InstancePath,
     ) -> BasicOutput {
-        match self.apply(schema, instance, instance_path) {
+        match self.apply(instance, instance_path) {
             PartialApplication::Valid {
                 annotations,
                 mut child_results,
@@ -173,37 +171,32 @@ impl SchemaNode {
     /// Here we return a `NodeValidatorsErrIter` to avoid allocating in some situations. This isn't
     /// always possible but for a lot of common cases (e.g nodes with a single child) we can do it.
     /// This is wrapped in a `Box` by `SchemaNode::validate`
-    pub(crate) fn err_iter<'a, 'b>(
+    pub(crate) fn err_iter<'a>(
         &self,
-        schema: &'a JSONSchema,
-        instance: &'b serde_json::Value,
+        instance: &'a serde_json::Value,
         instance_path: &InstancePath,
-    ) -> NodeValidatorsErrIter<'b> {
+    ) -> NodeValidatorsErrIter<'a> {
         match &self.validators {
             NodeValidators::Keyword(kvs) if kvs.validators.len() == 1 => {
-                NodeValidatorsErrIter::Single(kvs.validators[0].1.validate(
-                    schema,
-                    instance,
-                    instance_path,
-                ))
+                NodeValidatorsErrIter::Single(kvs.validators[0].1.validate(instance, instance_path))
             }
             NodeValidators::Keyword(kvs) => NodeValidatorsErrIter::Multiple(
                 kvs.validators
                     .iter()
-                    .flat_map(|(_, v)| v.validate(schema, instance, instance_path))
+                    .flat_map(|(_, v)| v.validate(instance, instance_path))
                     .collect::<Vec<_>>()
                     .into_iter(),
             ),
             NodeValidators::Boolean {
                 validator: Some(v), ..
-            } => NodeValidatorsErrIter::Single(v.validate(schema, instance, instance_path)),
+            } => NodeValidatorsErrIter::Single(v.validate(instance, instance_path)),
             NodeValidators::Boolean {
                 validator: None, ..
             } => NodeValidatorsErrIter::NoErrs,
             NodeValidators::Array { validators } => NodeValidatorsErrIter::Multiple(
                 validators
                     .iter()
-                    .flat_map(move |v| v.validate(schema, instance, instance_path))
+                    .flat_map(move |v| v.validate(instance, instance_path))
                     .collect::<Vec<_>>()
                     .into_iter(),
             ),
@@ -216,7 +209,6 @@ impl SchemaNode {
     /// the `Into<PathChunk>` is a `usize`
     fn apply_subschemas<'a, I, P>(
         &self,
-        schema: &JSONSchema,
         instance: &serde_json::Value,
         instance_path: &InstancePath,
         path_and_validators: I,
@@ -235,7 +227,7 @@ impl SchemaNode {
                 .absolute_path
                 .clone()
                 .map(|p| p.with_path(path.to_string().as_str()));
-            match validator.apply(schema, instance, instance_path) {
+            match validator.apply(instance, instance_path) {
                 PartialApplication::Valid {
                     annotations,
                     child_results,
@@ -289,32 +281,28 @@ impl fmt::Display for SchemaNode {
 impl Validate for SchemaNode {
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b serde_json::Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        return Box::new(self.err_iter(schema, instance, instance_path));
+        return Box::new(self.err_iter(instance, instance_path));
     }
 
-    fn is_valid(&self, schema: &JSONSchema, instance: &serde_json::Value) -> bool {
+    fn is_valid(&self, instance: &serde_json::Value) -> bool {
         match &self.validators {
             // If we only have one validator then calling it's `is_valid` directly does
             // actually save the 20 or so instructions required to call the `slice::Iter::all`
             // implementation. Validators at the leaf of a tree are all single node validators so
             // this optimization can have significant cumulative benefits
             NodeValidators::Keyword(kvs) if kvs.validators.len() == 1 => {
-                kvs.validators[0].1.is_valid(schema, instance)
+                kvs.validators[0].1.is_valid(instance)
             }
-            NodeValidators::Keyword(kvs) => kvs
-                .validators
-                .iter()
-                .all(|(_, v)| v.is_valid(schema, instance)),
-            NodeValidators::Array { validators } => {
-                validators.iter().all(|v| v.is_valid(schema, instance))
+            NodeValidators::Keyword(kvs) => {
+                kvs.validators.iter().all(|(_, v)| v.is_valid(instance))
             }
+            NodeValidators::Array { validators } => validators.iter().all(|v| v.is_valid(instance)),
             NodeValidators::Boolean {
                 validator: Some(v), ..
-            } => v.is_valid(schema, instance),
+            } => v.is_valid(instance),
             NodeValidators::Boolean {
                 validator: None, ..
             } => true,
@@ -323,21 +311,16 @@ impl Validate for SchemaNode {
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &serde_json::Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
         match self.validators {
-            NodeValidators::Array { ref validators } => self.apply_subschemas(
-                schema,
-                instance,
-                instance_path,
-                validators.iter().enumerate(),
-                None,
-            ),
+            NodeValidators::Array { ref validators } => {
+                self.apply_subschemas(instance, instance_path, validators.iter().enumerate(), None)
+            }
             NodeValidators::Boolean { ref validator } => {
                 if let Some(validator) = validator {
-                    validator.apply(schema, instance, instance_path)
+                    validator.apply(instance, instance_path)
                 } else {
                     PartialApplication::Valid {
                         annotations: None,
@@ -353,7 +336,6 @@ impl Validate for SchemaNode {
                 let annotations: Option<Annotations<'a>> =
                     unmatched_keywords.as_ref().map(Annotations::from);
                 self.apply_subschemas(
-                    schema,
                     instance,
                     instance_path,
                     validators.iter().map(|(p, v)| (p.clone(), v)),

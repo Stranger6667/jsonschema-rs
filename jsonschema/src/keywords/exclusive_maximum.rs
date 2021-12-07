@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{context::CompilationContext, JSONSchema},
+    compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
@@ -30,11 +30,10 @@ macro_rules! validate {
         impl Validate for $validator {
             fn validate<'a, 'b>(
                 &self,
-                schema: &'a JSONSchema,
                 instance: &'b Value,
                 instance_path: &InstancePath,
             ) -> ErrorIterator<'b> {
-                if self.is_valid(schema, instance) {
+                if self.is_valid(instance) {
                     no_error()
                 } else {
                     error(ValidationError::exclusive_maximum(
@@ -46,7 +45,7 @@ macro_rules! validate {
                 }
             }
 
-            fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+            fn is_valid(&self, instance: &Value) -> bool {
                 if let Value::Number(item) = instance {
                     if let Some(item) = item.as_u64() {
                         NumCmp::num_lt(item, self.limit)
@@ -73,7 +72,7 @@ validate!(ExclusiveMaximumU64Validator);
 validate!(ExclusiveMaximumI64Validator);
 
 impl Validate for ExclusiveMaximumF64Validator {
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Number(item) = instance {
             if let Some(item) = item.as_u64() {
                 NumCmp::num_lt(item, self.limit)
@@ -90,11 +89,10 @@ impl Validate for ExclusiveMaximumF64Validator {
 
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self.is_valid(schema, instance) {
+        if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::exclusive_maximum(

@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{context::CompilationContext, JSONSchema},
+    compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers::fail_on_non_positive_integer, CompilationResult},
     paths::{InstancePath, JSONPointer},
@@ -24,7 +24,7 @@ impl MinLengthValidator {
 }
 
 impl Validate for MinLengthValidator {
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             if (bytecount::num_chars(item.as_bytes()) as u64) < self.limit {
                 return false;
@@ -35,7 +35,6 @@ impl Validate for MinLengthValidator {
 
     fn validate<'a, 'b>(
         &self,
-        _: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {

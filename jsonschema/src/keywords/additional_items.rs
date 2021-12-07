@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    compilation::{compile_validators, context::CompilationContext},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{boolean::FalseValidator, CompilationResult},
     paths::{InstancePath, JSONPointer},
@@ -28,12 +28,12 @@ impl AdditionalItemsObjectValidator {
     }
 }
 impl Validate for AdditionalItemsObjectValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Array(items) = instance {
             items
                 .iter()
                 .skip(self.items_count)
-                .all(|item| self.node.is_valid(schema, item))
+                .all(|item| self.node.is_valid(item))
         } else {
             true
         }
@@ -42,7 +42,6 @@ impl Validate for AdditionalItemsObjectValidator {
     #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -51,7 +50,7 @@ impl Validate for AdditionalItemsObjectValidator {
                 .iter()
                 .enumerate()
                 .skip(self.items_count)
-                .flat_map(|(idx, item)| self.node.validate(schema, item, &instance_path.push(idx)))
+                .flat_map(|(idx, item)| self.node.validate(item, &instance_path.push(idx)))
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -87,7 +86,7 @@ impl AdditionalItemsBooleanValidator {
     }
 }
 impl Validate for AdditionalItemsBooleanValidator {
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Array(items) = instance {
             if items.len() > self.items_count {
                 return false;
@@ -98,7 +97,6 @@ impl Validate for AdditionalItemsBooleanValidator {
 
     fn validate<'a, 'b>(
         &self,
-        _: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {

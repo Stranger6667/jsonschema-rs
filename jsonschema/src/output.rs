@@ -105,7 +105,7 @@ impl<'a, 'b> Output<'a, 'b> {
     /// ```
     pub fn basic(&self) -> BasicOutput<'a> {
         self.root_node
-            .apply_rooted(self.schema, self.instance, &InstancePath::new())
+            .apply_rooted(self.instance, &InstancePath::new())
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    compilation::{compile_validators, context::CompilationContext},
     error::{no_error, ErrorIterator, ValidationError},
     keywords::{required, unique_items, CompilationResult},
     paths::{InstancePath, JSONPointer},
@@ -50,12 +50,12 @@ impl DependenciesValidator {
 }
 
 impl Validate for DependenciesValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             self.dependencies
                 .iter()
                 .filter(|(property, _)| item.contains_key(property))
-                .all(move |(_, node)| node.is_valid(schema, instance))
+                .all(move |(_, node)| node.is_valid(instance))
         } else {
             true
         }
@@ -64,7 +64,6 @@ impl Validate for DependenciesValidator {
     #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -73,7 +72,7 @@ impl Validate for DependenciesValidator {
                 .dependencies
                 .iter()
                 .filter(|(property, _)| item.contains_key(property))
-                .flat_map(move |(_, node)| node.validate(schema, instance, instance_path))
+                .flat_map(move |(_, node)| node.validate(instance, instance_path))
                 .collect();
             // TODO. custom error message for "required" case
             Box::new(errors.into_iter())
@@ -146,19 +145,18 @@ impl DependentRequiredValidator {
     }
 }
 impl Validate for DependentRequiredValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             self.dependencies
                 .iter()
                 .filter(|(property, _)| item.contains_key(property))
-                .all(move |(_, node)| node.is_valid(schema, instance))
+                .all(move |(_, node)| node.is_valid(instance))
         } else {
             true
         }
     }
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -167,7 +165,7 @@ impl Validate for DependentRequiredValidator {
                 .dependencies
                 .iter()
                 .filter(|(property, _)| item.contains_key(property))
-                .flat_map(move |(_, node)| node.validate(schema, instance, instance_path))
+                .flat_map(move |(_, node)| node.validate(instance, instance_path))
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -214,19 +212,18 @@ impl DependentSchemasValidator {
     }
 }
 impl Validate for DependentSchemasValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             self.dependencies
                 .iter()
                 .filter(|(property, _)| item.contains_key(property))
-                .all(move |(_, node)| node.is_valid(schema, instance))
+                .all(move |(_, node)| node.is_valid(instance))
         } else {
             true
         }
     }
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -235,7 +232,7 @@ impl Validate for DependentSchemasValidator {
                 .dependencies
                 .iter()
                 .filter(|(property, _)| item.contains_key(property))
-                .flat_map(move |(_, node)| node.validate(schema, instance, instance_path))
+                .flat_map(move |(_, node)| node.validate(instance, instance_path))
                 .collect();
             Box::new(errors.into_iter())
         } else {

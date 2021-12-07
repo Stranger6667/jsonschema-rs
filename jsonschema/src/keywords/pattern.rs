@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{context::CompilationContext, JSONSchema},
+    compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::InstancePath,
@@ -60,7 +60,6 @@ impl PatternValidator {
 impl Validate for PatternValidator {
     fn validate<'a, 'b>(
         &self,
-        _: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -89,7 +88,7 @@ impl Validate for PatternValidator {
         no_error()
     }
 
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             return self.pattern.is_match(item).unwrap_or(false);
         }
@@ -172,8 +171,13 @@ pub(crate) fn compile<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{compilation::context::BaseUri, tests_util};
+    use crate::{
+        compilation::{context::BaseUri, DEFAULT_SCOPE},
+        resolver::Resolver,
+        tests_util, JSONSchema,
+    };
     use serde_json::{json, Value};
+    use std::sync::Arc;
     use test_case::test_case;
 
     #[test_case(r"^[\w\-\.\+]+$", "CC-BY-4.0", true)]
@@ -199,11 +203,20 @@ mod tests {
     fn negative_lookbehind_match(pattern: &str, text: &str, is_matching: bool) {
         let pattern = Value::String(pattern.into());
         let text = Value::String(text.into());
-        let schema = json!({});
-        let schema = JSONSchema::compile(&schema).unwrap();
-        let context = CompilationContext::new(BaseUri::Unknown, schema.config());
+        let schema_json = Arc::new(json!({}));
+        let schema = JSONSchema::compile(&schema_json).unwrap();
+        let resolver = Arc::new(
+            Resolver::new(
+                Default::default(),
+                &DEFAULT_SCOPE,
+                schema_json,
+                Default::default(),
+            )
+            .unwrap(),
+        );
+        let context = CompilationContext::new(BaseUri::Unknown, schema.config(), resolver);
         let compiled = PatternValidator::compile(&pattern, &context).unwrap();
-        assert_eq!(compiled.is_valid(&schema, &text), is_matching,)
+        assert_eq!(compiled.is_valid(&text), is_matching)
     }
 
     #[test]

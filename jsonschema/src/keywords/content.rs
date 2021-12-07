@@ -1,6 +1,6 @@
 //! Validators for `contentMediaType` and `contentEncoding` keywords.
 use crate::{
-    compilation::{context::CompilationContext, JSONSchema},
+    compilation::context::CompilationContext,
     content_encoding::{ContentEncodingCheckType, ContentEncodingConverterType},
     content_media_type::ContentMediaTypeCheckType,
     error::{error, no_error, ErrorIterator, ValidationError},
@@ -35,7 +35,7 @@ impl ContentMediaTypeValidator {
 
 /// Validator delegates validation to the stored function.
 impl Validate for ContentMediaTypeValidator {
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             (self.func)(item)
         } else {
@@ -45,7 +45,6 @@ impl Validate for ContentMediaTypeValidator {
 
     fn validate<'a, 'b>(
         &self,
-        _: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -95,7 +94,7 @@ impl ContentEncodingValidator {
 }
 
 impl Validate for ContentEncodingValidator {
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             (self.func)(item)
         } else {
@@ -105,7 +104,6 @@ impl Validate for ContentEncodingValidator {
 
     fn validate<'a, 'b>(
         &self,
-        _: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -162,7 +160,7 @@ impl ContentMediaTypeAndEncodingValidator {
 
 /// Decode the input value & check media type
 impl Validate for ContentMediaTypeAndEncodingValidator {
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             match (self.converter)(item) {
                 Ok(None) | Err(_) => false,
@@ -175,7 +173,6 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
 
     fn validate<'a, 'b>(
         &self,
-        _: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {

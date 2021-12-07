@@ -7,7 +7,7 @@
 //!
 //! Each valid combination of these keywords has a validator here.
 use crate::{
-    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    compilation::{compile_validators, context::CompilationContext},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     output::{Annotations, BasicOutput, OutputUnit},
@@ -83,14 +83,14 @@ macro_rules! dynamic_map {
     }};
 }
 macro_rules! is_valid {
-    ($node:expr, $schema:ident, $value:ident) => {{
-        $node.is_valid($schema, $value)
+    ($node:expr, $value:ident) => {{
+        $node.is_valid($value)
     }};
 }
 
 macro_rules! is_valid_pattern_schema {
-    ($node:expr, $schema:ident, $value:ident) => {{
-        if $node.is_valid($schema, $value) {
+    ($node:expr, $value:ident) => {{
+        if $node.is_valid($value) {
             // Matched & valid - check the next pattern
             continue;
         }
@@ -100,14 +100,14 @@ macro_rules! is_valid_pattern_schema {
 }
 
 macro_rules! is_valid_patterns {
-    ($schema:ident, $patterns:expr, $property:ident, $value:ident) => {{
+    ($patterns:expr, $property:ident, $value:ident) => {{
         // One property may match multiple patterns, therefore we need to check them all
         let mut has_match = false;
         for (re, node) in $patterns {
             // If there is a match, then the value should match the sub-schema
             if re.is_match($property).unwrap_or(false) {
                 has_match = true;
-                is_valid_pattern_schema!(node, $schema, $value)
+                is_valid_pattern_schema!(node, $value)
             }
         }
         if !has_match {
@@ -118,9 +118,9 @@ macro_rules! is_valid_patterns {
 }
 
 macro_rules! validate {
-    ($node:expr, $schema:ident, $value:ident, $instance_path:expr, $property_name:expr) => {{
+    ($node:expr, $value:ident, $instance_path:expr, $property_name:expr) => {{
         let instance_path = $instance_path.push($property_name.clone());
-        $node.validate($schema, $value, &instance_path)
+        $node.validate($value, &instance_path)
     }};
 }
 
@@ -186,9 +186,9 @@ impl AdditionalPropertiesValidator {
     }
 }
 impl Validate for AdditionalPropertiesValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
-            item.values().all(|i| self.node.is_valid(schema, i))
+            item.values().all(|i| self.node.is_valid(i))
         } else {
             true
         }
@@ -197,14 +197,13 @@ impl Validate for AdditionalPropertiesValidator {
     #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = item
                 .iter()
-                .flat_map(|(name, value)| validate!(self.node, schema, value, instance_path, name))
+                .flat_map(|(name, value)| validate!(self.node, value, instance_path, name))
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -214,7 +213,6 @@ impl Validate for AdditionalPropertiesValidator {
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
@@ -223,7 +221,7 @@ impl Validate for AdditionalPropertiesValidator {
             let mut output = BasicOutput::default();
             for (name, value) in item.iter() {
                 let path = instance_path.push(name.to_string());
-                output += self.node.apply_rooted(schema, value, &path);
+                output += self.node.apply_rooted(value, &path);
                 matched_props.push(name.clone());
             }
             let mut result: PartialApplication = output.into();
@@ -268,7 +266,7 @@ impl AdditionalPropertiesFalseValidator {
     }
 }
 impl Validate for AdditionalPropertiesFalseValidator {
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             item.iter().next().is_none()
         } else {
@@ -278,7 +276,6 @@ impl Validate for AdditionalPropertiesFalseValidator {
 
     fn validate<'a, 'b>(
         &self,
-        _: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -347,11 +344,11 @@ impl AdditionalPropertiesNotEmptyFalseValidator<BigValidatorsMap> {
     }
 }
 impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseValidator<M> {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             for (property, value) in item {
                 if let Some(node) = self.properties.get_validator(property) {
-                    is_valid_pattern_schema!(node, schema, value)
+                    is_valid_pattern_schema!(node, value)
                 }
                 // No extra properties are allowed
                 return false;
@@ -362,7 +359,6 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
 
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -372,7 +368,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
             for (property, value) in item {
                 if let Some((name, node)) = self.properties.get_key_validator(property) {
                     // When a property is in `properties`, then it should be VALID
-                    errors.extend(validate!(node, schema, value, instance_path, name));
+                    errors.extend(validate!(node, value, instance_path, name));
                 } else {
                     // No extra properties are allowed
                     unexpected.push(property.clone());
@@ -394,7 +390,6 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
@@ -404,7 +399,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
             for (property, value) in item {
                 if let Some((_name, node)) = self.properties.get_key_validator(property) {
                     let path = instance_path.push(property.clone());
-                    output += node.apply_rooted(schema, value, &path);
+                    output += node.apply_rooted(value, &path);
                 } else {
                     unexpected.push(property.clone())
                 }
@@ -488,13 +483,13 @@ impl AdditionalPropertiesNotEmptyValidator<BigValidatorsMap> {
     }
 }
 impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValidator<M> {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(map) = instance {
             for (property, value) in map {
                 if let Some(property_validators) = self.properties.get_validator(property) {
-                    is_valid_pattern_schema!(property_validators, schema, value)
+                    is_valid_pattern_schema!(property_validators, value)
                 }
-                if !self.node.is_valid(schema, value) {
+                if !self.node.is_valid(value) {
                     return false;
                 }
             }
@@ -504,7 +499,6 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValida
 
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -514,15 +508,9 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValida
                 if let Some((name, property_validators)) =
                     self.properties.get_key_validator(property)
                 {
-                    errors.extend(validate!(
-                        property_validators,
-                        schema,
-                        value,
-                        instance_path,
-                        name
-                    ))
+                    errors.extend(validate!(property_validators, value, instance_path, name))
                 } else {
-                    errors.extend(validate!(self.node, schema, value, instance_path, property))
+                    errors.extend(validate!(self.node, value, instance_path, property))
                 }
             }
             Box::new(errors.into_iter())
@@ -533,7 +521,6 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValida
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
@@ -545,9 +532,9 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValida
                 if let Some((_name, property_validators)) =
                     self.properties.get_key_validator(property)
                 {
-                    output += property_validators.apply_rooted(schema, value, &path);
+                    output += property_validators.apply_rooted(value, &path);
                 } else {
-                    output += self.node.apply_rooted(schema, value, &path);
+                    output += self.node.apply_rooted(value, &path);
                     matched_propnames.push(property.clone());
                 }
             }
@@ -622,17 +609,17 @@ impl AdditionalPropertiesWithPatternsValidator {
     }
 }
 impl Validate for AdditionalPropertiesWithPatternsValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             for (property, value) in item.iter() {
                 let mut has_match = false;
                 for (re, node) in &self.patterns {
                     if re.is_match(property).unwrap_or(false) {
                         has_match = true;
-                        is_valid_pattern_schema!(node, schema, value)
+                        is_valid_pattern_schema!(node, value)
                     }
                 }
-                if !has_match && !is_valid!(self.node, schema, value) {
+                if !has_match && !is_valid!(self.node, value) {
                     return false;
                 }
             }
@@ -642,7 +629,6 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
 
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -656,11 +642,11 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
                         .filter(|(re, _)| re.is_match(property).unwrap_or(false))
                         .flat_map(|(_, node)| {
                             has_match = true;
-                            validate!(node, schema, value, instance_path, property)
+                            validate!(node, value, instance_path, property)
                         }),
                 );
                 if !has_match {
-                    errors.extend(validate!(self.node, schema, value, instance_path, property))
+                    errors.extend(validate!(self.node, value, instance_path, property))
                 }
             }
             Box::new(errors.into_iter())
@@ -671,7 +657,6 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
@@ -686,12 +671,12 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
                     if pattern.is_match(property).unwrap_or(false) {
                         has_match = true;
                         pattern_matched_propnames.push(property.clone());
-                        output += node.apply_rooted(schema, value, &path)
+                        output += node.apply_rooted(value, &path)
                     }
                 }
                 if !has_match {
                     additional_matched_propnames.push(property.clone());
-                    output += self.node.apply_rooted(schema, value, &path)
+                    output += self.node.apply_rooted(value, &path)
                 }
             }
             if !pattern_matched_propnames.is_empty() {
@@ -769,11 +754,11 @@ impl AdditionalPropertiesWithPatternsFalseValidator {
     }
 }
 impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             // No properties are allowed, except ones defined in `patternProperties`
             for (property, value) in item {
-                is_valid_patterns!(schema, &self.patterns, property, value);
+                is_valid_patterns!(&self.patterns, property, value);
             }
         }
         true
@@ -781,7 +766,6 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
 
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -796,7 +780,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
                         .filter(|(re, _)| re.is_match(property).unwrap_or(false))
                         .flat_map(|(_, node)| {
                             has_match = true;
-                            validate!(node, schema, value, instance_path, property)
+                            validate!(node, value, instance_path, property)
                         }),
                 );
                 if !has_match {
@@ -819,7 +803,6 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
@@ -834,7 +817,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
                     if pattern.is_match(property).unwrap_or(false) {
                         has_match = true;
                         pattern_matched_props.push(property.clone());
-                        output += node.apply_rooted(schema, value, &path);
+                        output += node.apply_rooted(value, &path);
                     }
                 }
                 if !has_match {
@@ -943,16 +926,16 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator<BigValidatorsMap> {
     }
 }
 impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNotEmptyValidator<M> {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             for (property, value) in item.iter() {
                 if let Some(node) = self.properties.get_validator(property) {
-                    if is_valid!(node, schema, value) {
+                    if is_valid!(node, value) {
                         // Valid for `properties`, check `patternProperties`
                         for (re, node) in &self.patterns {
                             // If there is a match, then the value should match the sub-schema
                             if re.is_match(property).unwrap_or(false) {
-                                is_valid_pattern_schema!(node, schema, value)
+                                is_valid_pattern_schema!(node, value)
                             }
                         }
                     } else {
@@ -965,10 +948,10 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
                         // If there is a match, then the value should match the sub-schema
                         if re.is_match(property).unwrap_or(false) {
                             has_match = true;
-                            is_valid_pattern_schema!(node, schema, value)
+                            is_valid_pattern_schema!(node, value)
                         }
                     }
-                    if !has_match && !is_valid!(self.node, schema, value) {
+                    if !has_match && !is_valid!(self.node, value) {
                         return false;
                     }
                 }
@@ -981,7 +964,6 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
 
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -989,13 +971,13 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
             let mut errors = vec![];
             for (property, value) in item.iter() {
                 if let Some((name, node)) = self.properties.get_key_validator(property) {
-                    errors.extend(validate!(node, schema, value, instance_path, name));
+                    errors.extend(validate!(node, value, instance_path, name));
                     errors.extend(
                         self.patterns
                             .iter()
                             .filter(|(re, _)| re.is_match(property).unwrap_or(false))
                             .flat_map(|(_, validators)| {
-                                validate!(validators, schema, value, instance_path, name)
+                                validate!(validators, value, instance_path, name)
                             }),
                     );
                 } else {
@@ -1006,11 +988,11 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
                             .filter(|(re, _)| re.is_match(property).unwrap_or(false))
                             .flat_map(|(_, node)| {
                                 has_match = true;
-                                validate!(node, schema, value, instance_path, property)
+                                validate!(node, value, instance_path, property)
                             }),
                     );
                     if !has_match {
-                        errors.extend(validate!(self.node, schema, value, instance_path, property))
+                        errors.extend(validate!(self.node, value, instance_path, property))
                     }
                 }
             }
@@ -1022,7 +1004,6 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
@@ -1032,18 +1013,18 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
             for (property, value) in item.iter() {
                 let path = instance_path.push(property.clone());
                 if let Some((_name, node)) = self.properties.get_key_validator(property) {
-                    output += node.apply_rooted(schema, value, &path);
+                    output += node.apply_rooted(value, &path);
                 } else {
                     let mut has_match = false;
                     for (pattern, node) in &self.patterns {
                         if pattern.is_match(property).unwrap_or(false) {
                             has_match = true;
-                            output += node.apply_rooted(schema, value, &path);
+                            output += node.apply_rooted(value, &path);
                         }
                     }
                     if !has_match {
                         additional_matches.push(property.clone());
-                        output += self.node.apply_rooted(schema, value, &path);
+                        output += self.node.apply_rooted(value, &path);
                     }
                 }
             }
@@ -1134,17 +1115,17 @@ impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator<BigValidatorsMap> {
 impl<M: PropertiesValidatorsMap> Validate
     for AdditionalPropertiesWithPatternsNotEmptyFalseValidator<M>
 {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             // No properties are allowed, except ones defined in `properties` or `patternProperties`
             for (property, value) in item.iter() {
                 if let Some(node) = self.properties.get_validator(property) {
-                    if is_valid!(node, schema, value) {
+                    if is_valid!(node, value) {
                         // Valid for `properties`, check `patternProperties`
                         for (re, node) in &self.patterns {
                             // If there is a match, then the value should match the sub-schema
                             if re.is_match(property).unwrap_or(false) {
-                                is_valid_pattern_schema!(node, schema, value)
+                                is_valid_pattern_schema!(node, value)
                             }
                         }
                     } else {
@@ -1152,7 +1133,7 @@ impl<M: PropertiesValidatorsMap> Validate
                         return false;
                     }
                 } else {
-                    is_valid_patterns!(schema, &self.patterns, property, value);
+                    is_valid_patterns!(&self.patterns, property, value);
                 }
             }
         }
@@ -1161,7 +1142,6 @@ impl<M: PropertiesValidatorsMap> Validate
 
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -1171,14 +1151,12 @@ impl<M: PropertiesValidatorsMap> Validate
             // No properties are allowed, except ones defined in `properties` or `patternProperties`
             for (property, value) in item.iter() {
                 if let Some((name, node)) = self.properties.get_key_validator(property) {
-                    errors.extend(validate!(node, schema, value, instance_path, name));
+                    errors.extend(validate!(node, value, instance_path, name));
                     errors.extend(
                         self.patterns
                             .iter()
                             .filter(|(re, _)| re.is_match(property).unwrap_or(false))
-                            .flat_map(|(_, node)| {
-                                validate!(node, schema, value, instance_path, name)
-                            }),
+                            .flat_map(|(_, node)| validate!(node, value, instance_path, name)),
                     );
                 } else {
                     let mut has_match = false;
@@ -1188,7 +1166,7 @@ impl<M: PropertiesValidatorsMap> Validate
                             .filter(|(re, _)| re.is_match(property).unwrap_or(false))
                             .flat_map(|(_, node)| {
                                 has_match = true;
-                                validate!(node, schema, value, instance_path, property)
+                                validate!(node, value, instance_path, property)
                             }),
                     );
                     if !has_match {
@@ -1212,7 +1190,6 @@ impl<M: PropertiesValidatorsMap> Validate
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
@@ -1223,13 +1200,13 @@ impl<M: PropertiesValidatorsMap> Validate
             for (property, value) in item.iter() {
                 let path = instance_path.push(property.clone());
                 if let Some((_name, node)) = self.properties.get_key_validator(property) {
-                    output += node.apply_rooted(schema, value, &path);
+                    output += node.apply_rooted(value, &path);
                 } else {
                     let mut has_match = false;
                     for (pattern, node) in &self.patterns {
                         if pattern.is_match(property).unwrap_or(false) {
                             has_match = true;
-                            output += node.apply_rooted(schema, value, &path);
+                            output += node.apply_rooted(value, &path);
                         }
                     }
                     if !has_match {

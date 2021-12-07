@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    compilation::{compile_validators, context::CompilationContext},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     output::BasicOutput,
@@ -43,10 +43,10 @@ impl OneOfValidator {
         }
     }
 
-    fn get_first_valid(&self, schema: &JSONSchema, instance: &Value) -> Option<usize> {
+    fn get_first_valid(&self, instance: &Value) -> Option<usize> {
         let mut first_valid_idx = None;
         for (idx, node) in self.schemas.iter().enumerate() {
-            if node.is_valid(schema, instance) {
+            if node.is_valid(instance) {
                 first_valid_idx = Some(idx);
                 break;
             }
@@ -55,31 +55,30 @@ impl OneOfValidator {
     }
 
     #[allow(clippy::integer_arithmetic)]
-    fn are_others_valid(&self, schema: &JSONSchema, instance: &Value, idx: usize) -> bool {
+    fn are_others_valid(&self, instance: &Value, idx: usize) -> bool {
         // `idx + 1` will not overflow, because the maximum possible value there is `usize::MAX - 1`
         // For example we have `usize::MAX` schemas and only the last one is valid, then
         // in `get_first_valid` we enumerate from `0`, and on the last index will be `usize::MAX - 1`
         self.schemas
             .iter()
             .skip(idx + 1)
-            .any(|n| n.is_valid(schema, instance))
+            .any(|n| n.is_valid(instance))
     }
 }
 
 impl Validate for OneOfValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        let first_valid_idx = self.get_first_valid(schema, instance);
-        first_valid_idx.map_or(false, |idx| !self.are_others_valid(schema, instance, idx))
+    fn is_valid(&self, instance: &Value) -> bool {
+        let first_valid_idx = self.get_first_valid(instance);
+        first_valid_idx.map_or(false, |idx| !self.are_others_valid(instance, idx))
     }
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        let first_valid_idx = self.get_first_valid(schema, instance);
+        let first_valid_idx = self.get_first_valid(instance);
         if let Some(idx) = first_valid_idx {
-            if self.are_others_valid(schema, instance, idx) {
+            if self.are_others_valid(instance, idx) {
                 return error(ValidationError::one_of_multiple_valid(
                     self.schema_path.clone(),
                     instance_path.into(),
@@ -97,14 +96,13 @@ impl Validate for OneOfValidator {
     }
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
         let mut failures = Vec::new();
         let mut successes = Vec::new();
         for node in &self.schemas {
-            match node.apply_rooted(schema, instance, instance_path) {
+            match node.apply_rooted(instance, instance_path) {
                 output @ BasicOutput::Valid(..) => successes.push(output),
                 output @ BasicOutput::Invalid(..) => failures.push(output),
             };

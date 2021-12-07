@@ -10,7 +10,6 @@ use crate::{
     output::Output,
     paths::{InstancePath, JSONPointer},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
-    resolver::Resolver,
     schema_node::SchemaNode,
     validator::Validate,
     Draft, ValidationError,
@@ -19,6 +18,7 @@ use ahash::AHashMap;
 use context::CompilationContext;
 use options::CompilationOptions;
 use serde_json::Value;
+use std::sync::Arc;
 use url::Url;
 
 pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
@@ -27,8 +27,7 @@ pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
 #[derive(Debug)]
 pub struct JSONSchema {
     pub(crate) node: SchemaNode,
-    pub(crate) resolver: Resolver,
-    config: CompilationOptions,
+    config: Arc<CompilationOptions>,
 }
 
 lazy_static::lazy_static! {
@@ -66,10 +65,7 @@ impl JSONSchema {
     #[inline]
     pub fn validate<'a>(&'a self, instance: &'a Value) -> Result<(), ErrorIterator<'a>> {
         let instance_path = InstancePath::new();
-        let mut errors = self
-            .node
-            .validate(self, instance, &instance_path)
-            .peekable();
+        let mut errors = self.node.validate(instance, &instance_path).peekable();
         if errors.peek().is_none() {
             Ok(())
         } else {
@@ -83,7 +79,7 @@ impl JSONSchema {
     #[must_use]
     #[inline]
     pub fn is_valid(&self, instance: &Value) -> bool {
-        self.node.is_valid(self, instance)
+        self.node.is_valid(instance)
     }
 
     /// Apply the schema and return an `Output`. No actual work is done at this point, the
@@ -127,8 +123,8 @@ impl JSONSchema {
     }
 
     /// The [`CompilationOptions`] that were used to compile this schema
-    pub const fn config(&self) -> &CompilationOptions {
-        &self.config
+    pub fn config(&self) -> Arc<CompilationOptions> {
+        Arc::clone(&self.config)
     }
 }
 
@@ -242,10 +238,9 @@ pub(crate) fn compile_validators<'a, 'c>(
 #[cfg(test)]
 mod tests {
     use super::JSONSchema;
-    use crate::{error::ValidationError, schemas};
+    use crate::error::ValidationError;
     use serde_json::{from_str, json, Value};
     use std::{fs::File, io::Read, path::Path};
-    use url::Url;
 
     fn load(path: &str, idx: usize) -> Value {
         let path = Path::new(path);
@@ -268,19 +263,6 @@ mod tests {
         assert_eq!(compiled.node.validators().len(), 1);
         assert!(compiled.validate(&value1).is_ok());
         assert!(compiled.validate(&value2).is_err());
-    }
-
-    #[test]
-    fn resolve_ref() {
-        let schema = load("tests/suite/tests/draft7/ref.json", 4);
-        let compiled = JSONSchema::compile(&schema).unwrap();
-        let url = Url::parse("json-schema:///#/definitions/a").unwrap();
-        let (resource, resolved) = compiled
-            .resolver
-            .resolve_fragment(schemas::Draft::Draft7, &url)
-            .unwrap();
-        assert_eq!(resource, Url::parse("json-schema:///").unwrap());
-        assert_eq!(resolved.as_ref(), schema.pointer("/definitions/a").unwrap());
     }
 
     #[test]

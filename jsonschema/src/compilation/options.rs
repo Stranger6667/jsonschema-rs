@@ -263,6 +263,8 @@ impl CompilationOptions {
                 config.with_draft(draft);
             }
         }
+        let config = Arc::new(config);
+
         let draft = config.draft();
 
         let scope = match schemas::id_of(draft, schema) {
@@ -270,8 +272,13 @@ impl CompilationOptions {
             None => DEFAULT_SCOPE.clone(),
         };
         let schema_json = Arc::new(schema.clone());
-        let resolver = Resolver::new(draft, &scope, schema_json, self.store.clone())?;
-        let context = CompilationContext::new(scope.into(), &config);
+        let resolver = Arc::new(Resolver::new(
+            draft,
+            &scope,
+            schema_json,
+            self.store.clone(),
+        )?);
+        let context = CompilationContext::new(scope.into(), Arc::clone(&config), resolver);
 
         if self.validate_schema {
             if let Some(mut errors) = META_SCHEMA_VALIDATORS
@@ -286,11 +293,7 @@ impl CompilationOptions {
 
         let node = compile_validators(schema, &context)?;
 
-        Ok(JSONSchema {
-            node,
-            resolver,
-            config,
-        })
+        Ok(JSONSchema { node, config })
     }
 
     /// Ensure that the schema is going to be compiled using the defined Draft.

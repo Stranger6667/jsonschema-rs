@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    compilation::{compile_validators, context::CompilationContext},
     error::{no_error, ErrorIterator, ValidationError},
     paths::{InstancePath, JSONPointer},
     primitive_type::PrimitiveType,
@@ -32,12 +32,12 @@ impl PrefixItemsValidator {
 }
 
 impl Validate for PrefixItemsValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Array(items) = instance {
             self.schemas
                 .iter()
                 .zip(items.iter())
-                .all(|(n, i)| n.is_valid(schema, i))
+                .all(|(n, i)| n.is_valid(i))
         } else {
             true
         }
@@ -46,7 +46,6 @@ impl Validate for PrefixItemsValidator {
     #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -56,7 +55,7 @@ impl Validate for PrefixItemsValidator {
                 .iter()
                 .zip(items.iter())
                 .enumerate()
-                .flat_map(|(idx, (n, i))| n.validate(schema, i, &instance_path.push(idx)))
+                .flat_map(|(idx, (n, i))| n.validate(i, &instance_path.push(idx)))
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -66,7 +65,6 @@ impl Validate for PrefixItemsValidator {
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
@@ -78,7 +76,7 @@ impl Validate for PrefixItemsValidator {
                 for (idx, (schema_node, item)) in self.schemas.iter().zip(items.iter()).enumerate()
                 {
                     let path = instance_path.push(idx);
-                    results.push(schema_node.apply_rooted(schema, item, &path));
+                    results.push(schema_node.apply_rooted(item, &path));
                     max_index_applied = idx;
                 }
                 // Per draft 2020-12 section https://json-schema.org/draft/2020-12/json-schema-core.html#rfc.section.10.3.1.1
@@ -129,8 +127,7 @@ pub(crate) fn compile<'a>(
 
 #[cfg(all(test, feature = "draft202012"))]
 mod tests {
-    use crate::compilation::JSONSchema;
-    use crate::tests_util;
+    use crate::{compilation::JSONSchema, tests_util};
     use serde_json::{json, Value};
     use test_case::test_case;
 

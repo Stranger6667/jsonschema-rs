@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{context::CompilationContext, JSONSchema},
+    compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
@@ -26,7 +26,7 @@ impl MultipleOfFloatValidator {
 }
 
 impl Validate for MultipleOfFloatValidator {
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Number(item) = instance {
             let item = item.as_f64().expect("Always valid");
             let remainder = (item / self.multiple_of) % 1.;
@@ -48,11 +48,10 @@ impl Validate for MultipleOfFloatValidator {
 
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if !self.is_valid(schema, instance) {
+        if !self.is_valid(instance) {
             return error(ValidationError::multiple_of(
                 self.schema_path.clone(),
                 instance_path.into(),
@@ -86,7 +85,7 @@ impl MultipleOfIntegerValidator {
 }
 
 impl Validate for MultipleOfIntegerValidator {
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Number(item) = instance {
             let item = item.as_f64().expect("Always valid");
             // As the divisor has its fractional part as zero, then any value with a non-zero
@@ -99,11 +98,10 @@ impl Validate for MultipleOfIntegerValidator {
 
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if !self.is_valid(schema, instance) {
+        if !self.is_valid(instance) {
             return error(ValidationError::multiple_of(
                 self.schema_path.clone(),
                 instance_path.into(),

@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{context::CompilationContext, JSONSchema},
+    compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers, CompilationResult},
     validator::Validate,
@@ -26,11 +26,10 @@ impl Validate for ConstArrayValidator {
     #[inline]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self.is_valid(schema, instance) {
+        if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::constant_array(
@@ -43,7 +42,7 @@ impl Validate for ConstArrayValidator {
     }
 
     #[inline]
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Array(instance_value) = instance {
             helpers::equal_arrays(&self.value, instance_value)
         } else {
@@ -79,11 +78,10 @@ impl Validate for ConstBooleanValidator {
     #[inline]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self.is_valid(schema, instance) {
+        if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::constant_boolean(
@@ -96,7 +94,7 @@ impl Validate for ConstBooleanValidator {
     }
 
     #[inline]
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Bool(instance_value) = instance {
             &self.value == instance_value
         } else {
@@ -123,11 +121,10 @@ impl Validate for ConstNullValidator {
     #[inline]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self.is_valid(schema, instance) {
+        if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::constant_null(
@@ -139,7 +136,7 @@ impl Validate for ConstNullValidator {
     }
 
     #[inline]
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         instance.is_null()
     }
 }
@@ -172,11 +169,10 @@ impl ConstNumberValidator {
 impl Validate for ConstNumberValidator {
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self.is_valid(schema, instance) {
+        if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::constant_number(
@@ -188,7 +184,7 @@ impl Validate for ConstNumberValidator {
         }
     }
 
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Number(item) = instance {
             (self.value - item.as_f64().expect("Always representable as f64")).abs() < EPSILON
         } else {
@@ -224,11 +220,10 @@ impl ConstObjectValidator {
 impl Validate for ConstObjectValidator {
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self.is_valid(schema, instance) {
+        if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::constant_object(
@@ -240,7 +235,7 @@ impl Validate for ConstObjectValidator {
         }
     }
 
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             helpers::equal_objects(&self.value, item)
         } else {
@@ -281,11 +276,10 @@ impl ConstStringValidator {
 impl Validate for ConstStringValidator {
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self.is_valid(schema, instance) {
+        if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::constant_string(
@@ -297,7 +291,7 @@ impl Validate for ConstStringValidator {
         }
     }
 
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             &self.value == item
         } else {
