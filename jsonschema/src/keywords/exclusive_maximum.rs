@@ -28,11 +28,11 @@ pub(crate) struct ExclusiveMaximumF64Validator {
 macro_rules! validate {
     ($validator: ty) => {
         impl Validate for $validator {
-            fn validate<'a, 'b>(
+            fn validate<'instance>(
                 &self,
-                instance: &'b Value,
+                instance: &'instance Value,
                 instance_path: &InstancePath,
-            ) -> ErrorIterator<'b> {
+            ) -> ErrorIterator<'instance> {
                 if self.is_valid(instance) {
                     no_error()
                 } else {
@@ -87,11 +87,11 @@ impl Validate for ExclusiveMaximumF64Validator {
         }
     }
 
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if self.is_valid(instance) {
             no_error()
         } else {

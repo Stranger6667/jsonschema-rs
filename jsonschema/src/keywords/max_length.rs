@@ -33,11 +33,11 @@ impl Validate for MaxLengthValidator {
         true
     }
 
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if let Value::String(item) = instance {
             if (bytecount::num_chars(item.as_bytes()) as u64) > self.limit {
                 return error(ValidationError::max_length(

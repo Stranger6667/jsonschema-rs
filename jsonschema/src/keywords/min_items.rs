@@ -33,11 +33,11 @@ impl Validate for MinItemsValidator {
         true
     }
 
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             if (items.len() as u64) < self.limit {
                 return error(ValidationError::min_items(

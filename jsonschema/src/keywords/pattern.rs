@@ -58,11 +58,11 @@ impl PatternValidator {
 }
 
 impl Validate for PatternValidator {
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if let Value::String(item) = instance {
             match self.pattern.is_match(item) {
                 Ok(is_match) => {

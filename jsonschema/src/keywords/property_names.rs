@@ -38,11 +38,11 @@ impl Validate for PropertyNamesObjectValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = &instance {
             let errors: Vec<_> = item
                 .keys()
@@ -118,11 +118,11 @@ impl Validate for PropertyNamesBooleanValidator {
         true
     }
 
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if self.is_valid(instance) {
             no_error()
         } else {

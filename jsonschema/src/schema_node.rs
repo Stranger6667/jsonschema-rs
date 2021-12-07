@@ -279,11 +279,11 @@ impl fmt::Display for SchemaNode {
 }
 
 impl Validate for SchemaNode {
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b serde_json::Value,
+        instance: &'instance serde_json::Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         return Box::new(self.err_iter(instance, instance_path));
     }
 

@@ -71,11 +71,11 @@ impl Validate for OneOfValidator {
         let first_valid_idx = self.get_first_valid(instance);
         first_valid_idx.map_or(false, |idx| !self.are_others_valid(instance, idx))
     }
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         let first_valid_idx = self.get_first_valid(instance);
         if let Some(idx) = first_valid_idx {
             if self.are_others_valid(instance, idx) {

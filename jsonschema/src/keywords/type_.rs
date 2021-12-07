@@ -63,11 +63,11 @@ impl Validate for MultipleTypesValidator {
             Value::String(_) => self.types.contains_type(PrimitiveType::String),
         }
     }
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if self.is_valid(instance) {
             no_error()
         } else {
@@ -110,11 +110,11 @@ impl Validate for NullTypeValidator {
     fn is_valid(&self, instance: &Value) -> bool {
         instance.is_null()
     }
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if self.is_valid(instance) {
             no_error()
         } else {
@@ -149,11 +149,11 @@ impl Validate for BooleanTypeValidator {
     fn is_valid(&self, instance: &Value) -> bool {
         instance.is_boolean()
     }
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if self.is_valid(instance) {
             no_error()
         } else {
@@ -189,11 +189,11 @@ impl Validate for StringTypeValidator {
         instance.is_string()
     }
 
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if self.is_valid(instance) {
             no_error()
         } else {
@@ -228,11 +228,11 @@ impl Validate for ArrayTypeValidator {
         instance.is_array()
     }
 
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if self.is_valid(instance) {
             no_error()
         } else {
@@ -267,11 +267,11 @@ impl Validate for ObjectTypeValidator {
     fn is_valid(&self, instance: &Value) -> bool {
         instance.is_object()
     }
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if self.is_valid(instance) {
             no_error()
         } else {
@@ -306,11 +306,11 @@ impl Validate for NumberTypeValidator {
     fn is_valid(&self, instance: &Value) -> bool {
         instance.is_number()
     }
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if self.is_valid(instance) {
             no_error()
         } else {
@@ -347,11 +347,11 @@ impl Validate for IntegerTypeValidator {
             false
         }
     }
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if self.is_valid(instance) {
             no_error()
         } else {

@@ -46,11 +46,11 @@ impl Validate for MultipleOfFloatValidator {
         }
     }
 
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if !self.is_valid(instance) {
             return error(ValidationError::multiple_of(
                 self.schema_path.clone(),
@@ -96,11 +96,11 @@ impl Validate for MultipleOfIntegerValidator {
         }
     }
 
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if !self.is_valid(instance) {
             return error(ValidationError::multiple_of(
                 self.schema_path.clone(),

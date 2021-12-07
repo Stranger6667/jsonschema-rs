@@ -62,11 +62,11 @@ impl Validate for DependenciesValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
                 .dependencies
@@ -155,11 +155,11 @@ impl Validate for DependentRequiredValidator {
             true
         }
     }
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
                 .dependencies
@@ -222,11 +222,11 @@ impl Validate for DependentSchemasValidator {
             true
         }
     }
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
                 .dependencies

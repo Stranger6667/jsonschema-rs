@@ -40,11 +40,11 @@ impl Validate for ContainsValidator {
         }
     }
 
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             if items.iter().any(|i| self.node.is_valid(i)) {
                 return no_error();
@@ -129,11 +129,11 @@ impl MinContainsValidator {
 }
 
 impl Validate for MinContainsValidator {
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             // From docs:
             //   An array instance is valid against "minContains" if the number of elements
@@ -227,11 +227,11 @@ impl MaxContainsValidator {
 }
 
 impl Validate for MaxContainsValidator {
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             // From docs:
             //   An array instance is valid against "maxContains" if the number of elements
@@ -335,11 +335,11 @@ impl MinMaxContainsValidator {
 }
 
 impl Validate for MinMaxContainsValidator {
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             let mut matches = 0;
             for item in items {
