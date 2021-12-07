@@ -58,11 +58,11 @@ macro_rules! format_validator {
 
 macro_rules! validate {
     ($format:expr) => {
-        fn validate<'a, 'b>(
+        fn validate<'instance>(
             &self,
-            instance: &'b Value,
+            instance: &'instance Value,
             instance_path: &InstancePath,
-        ) -> ErrorIterator<'b> {
+        ) -> ErrorIterator<'instance> {
             if let Value::String(_item) = instance {
                 if !self.is_valid(instance) {
                     return error(ValidationError::format(
@@ -389,11 +389,11 @@ impl core::fmt::Display for CustomFormatValidator {
 }
 
 impl Validate for CustomFormatValidator {
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if let Value::String(_item) = instance {
             if !self.is_valid(instance) {
                 return error(ValidationError::format(

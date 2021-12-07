@@ -44,11 +44,11 @@ impl Validate for PrefixItemsValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = self
                 .schemas

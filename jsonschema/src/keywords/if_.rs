@@ -43,11 +43,11 @@ impl Validate for IfThenValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if self.schema.is_valid(instance) {
             let errors: Vec<_> = self.then_schema.validate(instance, instance_path).collect();
             Box::new(errors.into_iter())
@@ -116,11 +116,11 @@ impl Validate for IfElseValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if !self.schema.is_valid(instance) {
             let errors: Vec<_> = self.else_schema.validate(instance, instance_path).collect();
             Box::new(errors.into_iter())
@@ -197,11 +197,11 @@ impl Validate for IfThenElseValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if self.schema.is_valid(instance) {
             let errors: Vec<_> = self.then_schema.validate(instance, instance_path).collect();
             Box::new(errors.into_iter())

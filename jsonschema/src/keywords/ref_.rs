@@ -66,11 +66,11 @@ impl Validate for RefValidator {
         false
     }
 
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         if let Some(node) = self.sub_nodes.read().as_ref() {
             return Box::new(
                 node.validate(instance, instance_path)

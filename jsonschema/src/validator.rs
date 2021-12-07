@@ -23,7 +23,11 @@ use std::{collections::VecDeque, fmt};
 /// `is_valid`. `apply` is only necessary for validators which compose other validators. See the
 /// documentation for `apply` for more information.
 pub(crate) trait Validate: Send + Sync + core::fmt::Display {
-    fn validate<'a>(&self, instance: &'a Value, instance_path: &InstancePath) -> ErrorIterator<'a>;
+    fn validate<'instance>(
+        &self,
+        instance: &'instance Value,
+        instance_path: &InstancePath,
+    ) -> ErrorIterator<'instance>;
     // The same as above, but does not construct ErrorIterator.
     // It is faster for cases when the result is not needed (like anyOf), since errors are
     // not constructed

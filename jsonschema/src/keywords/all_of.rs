@@ -38,11 +38,11 @@ impl Validate for AllOfValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         let errors: Vec<_> = self
             .schemas
             .iter()
@@ -95,11 +95,11 @@ impl Validate for SingleValueAllOfValidator {
         self.node.is_valid(instance)
     }
 
-    fn validate<'a, 'b>(
+    fn validate<'instance>(
         &self,
-        instance: &'b Value,
+        instance: &'instance Value,
         instance_path: &InstancePath,
-    ) -> ErrorIterator<'b> {
+    ) -> ErrorIterator<'instance> {
         self.node.validate(instance, instance_path)
     }
 
