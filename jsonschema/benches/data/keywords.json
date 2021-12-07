@@ -166,6 +166,28 @@
         "schema": {
             "additionalProperties": false,
             "properties": {
+                "foo": {
+                    "type": "integer"
+                }
+            }
+        },
+        "valid": [
+            {
+                "foo": 1
+            }
+        ],
+        "invalid": [
+            {
+                "foo": 1,
+                "bar": 2
+            }
+        ]
+    },
+    {
+        "name": "additional_properties_false_and_properties_empty",
+        "schema": {
+            "additionalProperties": false,
+            "properties": {
                 "foo": {}
             }
         },
@@ -559,6 +581,20 @@
         ]
     },
     {
+        "name": "items_empty",
+        "schema": {
+            "items": {}
+        },
+        "valid": [
+            [
+                1,
+                2,
+                3
+            ]
+        ],
+        "invalid": []
+    },
+    {
         "name": "maximum",
         "schema": {
             "maximum": 3
@@ -786,6 +822,20 @@
                 "foo": 1
             }
         ]
+    },
+    {
+        "name": "properties_empty",
+        "schema": {
+            "properties": {
+                "foo": {}
+            }
+        },
+        "valid": [
+            {
+                "foo": "bar"
+            }
+        ],
+        "invalid": []
     },
     {
         "name": "property_names",

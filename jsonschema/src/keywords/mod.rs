@@ -105,7 +105,7 @@ mod tests {
     #[test_case(&json!({"oneOf": [{"type": "integer"}, {"minimum": 2}]}), "oneOf: [{type: integer}, {minimum: 2}]")]
     #[test_case(&json!({"pattern": "^a*$"}), "pattern: ^a*$")]
     #[test_case(&json!({"patternProperties": {"f.*o": {"type": "integer"}}}), "patternProperties: {f.*o: {type: integer}}")]
-    #[test_case(&json!({"properties": {"foo": {}}}), "properties: {foo: {}}")]
+    #[test_case(&json!({"properties": {"foo": {"type": "string"}}}), "properties: {foo: {type: string}}")]
     #[test_case(&json!({"propertyNames": {"maxLength": 3}}), "propertyNames: {maxLength: 3}")]
     #[test_case(&json!({"propertyNames": false}), "propertyNames: false")]
     #[test_case(&json!({"$ref": "#/properties/foo"}), "$ref: json-schema:///#/properties/foo")]
@@ -210,6 +210,13 @@ mod tests {
     }
     #[test_case(&json!({"additionalProperties": false}), &json!({}))]
     #[test_case(&json!({"additionalItems": false, "items": true}), &json!([]))]
+    #[test_case(&json!({"additionalItems": false, "items": {}}), &json!([]))]
+    #[test_case(&json!({"properties": {"foo": {}}}), &json!({"foo": 1}))]
+    #[test_case(&json!({"properties": {"foo": true}}), &json!({"foo": 1}))]
+    #[test_case(&json!({"properties": {"foo": {"type": "integer"}}}), &json!({"foo": 1}))]
+    #[test_case(&json!({"items": {}}), &json!([1]))]
+    #[test_case(&json!({"items": true}), &json!([1]))]
+    #[test_case(&json!({"additionalProperties": false, "properties": {"foo": {}}}), &json!({"foo": 1}))]
     fn is_valid(schema: &Value, instance: &Value) {
         let compiled = JSONSchema::compile(schema).unwrap();
         assert!(compiled.is_valid(instance))

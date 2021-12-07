@@ -8,6 +8,7 @@
 - Optimize the `multipleOf` implementation, which now can short-circuit in some cases.
 - Add special cases for arrays with 2 and 3 items in the `uniqueItems` keyword implementation.
 - Remove the `schema` argument from all methods of the `Validate` trait.
+- Skip creating validators for always valid schemas such as `true` and `{}`.
 
 ## [0.13.2] - 2021-11-04
 

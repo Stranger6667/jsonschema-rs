@@ -25,11 +25,19 @@ impl PropertiesValidator {
                 let context = context.with_path("properties");
                 let mut properties = Vec::with_capacity(map.len());
                 for (key, subschema) in map {
-                    let property_context = context.with_path(key.clone());
-                    properties.push((
-                        key.clone(),
-                        compile_validators(subschema, &property_context)?,
-                    ));
+                    match subschema {
+                        // Skip always valid schemas as this code is executed only if there are no
+                        // `patternProperties` / `additionalProperties` present
+                        Value::Bool(true) => continue,
+                        Value::Object(obj) if obj.is_empty() => continue,
+                        _ => {
+                            let property_context = context.with_path(key.clone());
+                            properties.push((
+                                key.clone(),
+                                compile_validators(subschema, &property_context)?,
+                            ))
+                        }
+                    }
                 }
                 Ok(Box::new(PropertiesValidator { properties }))
             }
