@@ -1,5 +1,4 @@
 use crate::{
-    compilation::JSONSchema,
     error::ErrorIterator,
     keywords::BoxedValidator,
     output::{Annotations, ErrorDescription, OutputUnit},
@@ -24,22 +23,17 @@ use std::{collections::VecDeque, fmt};
 /// `is_valid`. `apply` is only necessary for validators which compose other validators. See the
 /// documentation for `apply` for more information.
 pub(crate) trait Validate: Send + Sync + core::fmt::Display {
-    fn validate<'a, 'b>(
-        &self,
-        schema: &'a JSONSchema,
-        instance: &'b Value,
-        instance_path: &InstancePath,
-    ) -> ErrorIterator<'b>;
+    fn validate<'a>(&self, instance: &'a Value, instance_path: &InstancePath) -> ErrorIterator<'a>;
     // The same as above, but does not construct ErrorIterator.
     // It is faster for cases when the result is not needed (like anyOf), since errors are
     // not constructed
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool;
+    fn is_valid(&self, instance: &Value) -> bool;
 
     /// `apply` applies this validator and any sub-validators it is composed of to the value in
     /// question and collects the resulting annotations or errors. Note that the result of `apply`
     /// is a `PartialApplication`.
     ///
-    /// What does "partial" mean in this context? Each valdator can produce annotations or errors
+    /// What does "partial" mean in this context? Each validator can produce annotations or errors
     /// in the case of successful or unsuccessful validation respectively. We're ultimately
     /// producing these errors and annotations to produce the "basic" output format as specified in
     /// the 2020-12 draft specification. In this format each annotation or error must include a
@@ -61,17 +55,17 @@ pub(crate) trait Validate: Send + Sync + core::fmt::Display {
     ///
     /// ```rust,ignore
     /// // Note that self.schema is a `SchemaNode` and we use `apply_rooted` to return a `BasicOutput`
-    /// let mut if_result = self.schema.apply_rooted(schema, instance, instance_path);
+    /// let mut if_result = self.schema.apply_rooted(instance, instance_path);
     /// if if_result.is_valid() {
     ///     // here we use the `AddAssign` implementation to combine the results of subschemas
     ///     if_result += self
     ///         .then_schema
-    ///         .apply_rooted(schema, instance, instance_path);
+    ///         .apply_rooted(instance, instance_path);
     ///     // Here we use the `From<BasicOutput> for PartialApplication impl
     ///     if_result.into()
     /// } else {
     ///     self.else_schema
-    ///         .apply_rooted(schema, instance, instance_path)
+    ///         .apply_rooted(instance, instance_path)
     ///         .into()
     /// }
     /// ```
@@ -80,12 +74,11 @@ pub(crate) trait Validate: Send + Sync + core::fmt::Display {
     /// so you can use `sum()` and `collect()` in simple cases.
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
         let errors: Vec<ErrorDescription> = self
-            .validate(schema, instance, instance_path)
+            .validate(instance, instance_path)
             .map(ErrorDescription::from)
             .collect();
         if errors.is_empty() {

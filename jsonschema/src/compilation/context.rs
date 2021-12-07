@@ -2,10 +2,11 @@ use super::options::CompilationOptions;
 use crate::{
     compilation::DEFAULT_SCOPE,
     paths::{InstancePath, JSONPointer, PathChunk},
+    resolver::Resolver,
     schemas,
 };
 use serde_json::Value;
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Arc};
 use url::{ParseError, Url};
 
 static DEFAULT_SCHEME: &str = "json-schema";
@@ -14,7 +15,8 @@ static DEFAULT_SCHEME: &str = "json-schema";
 #[derive(Debug, Clone)]
 pub(crate) struct CompilationContext<'a> {
     base_uri: BaseUri<'a>,
-    pub(crate) config: &'a CompilationOptions,
+    pub(crate) config: Arc<CompilationOptions>,
+    pub(crate) resolver: Arc<Resolver>,
     pub(crate) schema_path: InstancePath<'a>,
 }
 
@@ -73,10 +75,15 @@ impl<'a> From<&'a BaseUri<'a>> for Cow<'a, Url> {
 }
 
 impl<'a> CompilationContext<'a> {
-    pub(crate) const fn new(scope: BaseUri<'a>, config: &'a CompilationOptions) -> Self {
+    pub(crate) const fn new(
+        scope: BaseUri<'a>,
+        config: Arc<CompilationOptions>,
+        resolver: Arc<Resolver>,
+    ) -> Self {
         CompilationContext {
             base_uri: scope,
             config,
+            resolver,
             schema_path: InstancePath::new(),
         }
     }
@@ -96,13 +103,15 @@ impl<'a> CompilationContext<'a> {
         if let Some(id) = schemas::id_of(self.config.draft(), schema) {
             Ok(CompilationContext {
                 base_uri: self.base_uri.with_new_scope(id)?,
-                config: self.config,
+                config: Arc::clone(&self.config),
+                resolver: Arc::clone(&self.resolver),
                 schema_path: self.schema_path.clone(),
             })
         } else {
             Ok(CompilationContext {
                 base_uri: self.base_uri.clone(),
-                config: self.config,
+                config: Arc::clone(&self.config),
+                resolver: Arc::clone(&self.resolver),
                 schema_path: self.schema_path.clone(),
             })
         }
@@ -113,7 +122,8 @@ impl<'a> CompilationContext<'a> {
         let schema_path = self.schema_path.push(chunk);
         CompilationContext {
             base_uri: self.base_uri.clone(),
-            config: self.config,
+            config: Arc::clone(&self.config),
+            resolver: Arc::clone(&self.resolver),
             schema_path,
         }
     }

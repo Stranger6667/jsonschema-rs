@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    compilation::{compile_validators, context::CompilationContext},
     error::{no_error, ErrorIterator},
     keywords::CompilationResult,
     paths::InstancePath,
@@ -34,9 +34,9 @@ impl IfThenValidator {
 }
 
 impl Validate for IfThenValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if self.schema.is_valid(schema, instance) {
-            self.then_schema.is_valid(schema, instance)
+    fn is_valid(&self, instance: &Value) -> bool {
+        if self.schema.is_valid(instance) {
+            self.then_schema.is_valid(instance)
         } else {
             true
         }
@@ -45,15 +45,11 @@ impl Validate for IfThenValidator {
     #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self.schema.is_valid(schema, instance) {
-            let errors: Vec<_> = self
-                .then_schema
-                .validate(schema, instance, instance_path)
-                .collect();
+        if self.schema.is_valid(instance) {
+            let errors: Vec<_> = self.then_schema.validate(instance, instance_path).collect();
             Box::new(errors.into_iter())
         } else {
             no_error()
@@ -62,15 +58,12 @@ impl Validate for IfThenValidator {
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
-        let mut if_result = self.schema.apply_rooted(schema, instance, instance_path);
+        let mut if_result = self.schema.apply_rooted(instance, instance_path);
         if if_result.is_valid() {
-            let then_result = self
-                .then_schema
-                .apply_rooted(schema, instance, instance_path);
+            let then_result = self.then_schema.apply_rooted(instance, instance_path);
             if_result += then_result;
         }
         if_result.into()
@@ -114,9 +107,9 @@ impl IfElseValidator {
 }
 
 impl Validate for IfElseValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if !self.schema.is_valid(schema, instance) {
-            self.else_schema.is_valid(schema, instance)
+    fn is_valid(&self, instance: &Value) -> bool {
+        if !self.schema.is_valid(instance) {
+            self.else_schema.is_valid(instance)
         } else {
             true
         }
@@ -125,15 +118,11 @@ impl Validate for IfElseValidator {
     #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if !self.schema.is_valid(schema, instance) {
-            let errors: Vec<_> = self
-                .else_schema
-                .validate(schema, instance, instance_path)
-                .collect();
+        if !self.schema.is_valid(instance) {
+            let errors: Vec<_> = self.else_schema.validate(instance, instance_path).collect();
             Box::new(errors.into_iter())
         } else {
             no_error()
@@ -142,16 +131,15 @@ impl Validate for IfElseValidator {
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
-        let if_result = self.schema.apply_rooted(schema, instance, instance_path);
+        let if_result = self.schema.apply_rooted(instance, instance_path);
         if if_result.is_valid() {
             if_result.into()
         } else {
             self.else_schema
-                .apply_rooted(schema, instance, instance_path)
+                .apply_rooted(instance, instance_path)
                 .into()
         }
     }
@@ -200,51 +188,41 @@ impl IfThenElseValidator {
 }
 
 impl Validate for IfThenElseValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        if self.schema.is_valid(schema, instance) {
-            self.then_schema.is_valid(schema, instance)
+    fn is_valid(&self, instance: &Value) -> bool {
+        if self.schema.is_valid(instance) {
+            self.then_schema.is_valid(instance)
         } else {
-            self.else_schema.is_valid(schema, instance)
+            self.else_schema.is_valid(instance)
         }
     }
 
     #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self.schema.is_valid(schema, instance) {
-            let errors: Vec<_> = self
-                .then_schema
-                .validate(schema, instance, instance_path)
-                .collect();
+        if self.schema.is_valid(instance) {
+            let errors: Vec<_> = self.then_schema.validate(instance, instance_path).collect();
             Box::new(errors.into_iter())
         } else {
-            let errors: Vec<_> = self
-                .else_schema
-                .validate(schema, instance, instance_path)
-                .collect();
+            let errors: Vec<_> = self.else_schema.validate(instance, instance_path).collect();
             Box::new(errors.into_iter())
         }
     }
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
-        let mut if_result = self.schema.apply_rooted(schema, instance, instance_path);
+        let mut if_result = self.schema.apply_rooted(instance, instance_path);
         if if_result.is_valid() {
-            if_result += self
-                .then_schema
-                .apply_rooted(schema, instance, instance_path);
+            if_result += self.then_schema.apply_rooted(instance, instance_path);
             if_result.into()
         } else {
             self.else_schema
-                .apply_rooted(schema, instance, instance_path)
+                .apply_rooted(instance, instance_path)
                 .into()
         }
     }

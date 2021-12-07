@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{context::CompilationContext, JSONSchema},
+    compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
@@ -38,7 +38,7 @@ impl RequiredValidator {
 }
 
 impl Validate for RequiredValidator {
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             self.required
                 .iter()
@@ -50,7 +50,6 @@ impl Validate for RequiredValidator {
 
     fn validate<'a, 'b>(
         &self,
-        _: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -99,11 +98,10 @@ impl SingleItemRequiredValidator {
 impl Validate for SingleItemRequiredValidator {
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if !self.is_valid(schema, instance) {
+        if !self.is_valid(instance) {
             return error(ValidationError::required(
                 self.schema_path.clone(),
                 instance_path.into(),
@@ -115,7 +113,7 @@ impl Validate for SingleItemRequiredValidator {
         no_error()
     }
 
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             item.contains_key(&self.value)
         } else {

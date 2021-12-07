@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    compilation::{compile_validators, context::CompilationContext},
     error::{no_error, ErrorIterator},
     keywords::CompilationResult,
     paths::InstancePath,
@@ -28,12 +28,12 @@ impl ItemsArrayValidator {
     }
 }
 impl Validate for ItemsArrayValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Array(items) = instance {
             items
                 .iter()
                 .zip(self.items.iter())
-                .all(move |(item, node)| node.is_valid(schema, item))
+                .all(move |(item, node)| node.is_valid(item))
         } else {
             true
         }
@@ -42,7 +42,6 @@ impl Validate for ItemsArrayValidator {
     #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -51,9 +50,7 @@ impl Validate for ItemsArrayValidator {
                 .iter()
                 .zip(self.items.iter())
                 .enumerate()
-                .flat_map(move |(idx, (item, node))| {
-                    node.validate(schema, item, &instance_path.push(idx))
-                })
+                .flat_map(move |(idx, (item, node))| node.validate(item, &instance_path.push(idx)))
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -88,9 +85,9 @@ impl ItemsObjectValidator {
     }
 }
 impl Validate for ItemsObjectValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Array(items) = instance {
-            items.iter().all(|i| self.node.is_valid(schema, i))
+            items.iter().all(|i| self.node.is_valid(i))
         } else {
             true
         }
@@ -99,7 +96,6 @@ impl Validate for ItemsObjectValidator {
     #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -107,9 +103,7 @@ impl Validate for ItemsObjectValidator {
             let errors: Vec<_> = items
                 .iter()
                 .enumerate()
-                .flat_map(move |(idx, item)| {
-                    self.node.validate(schema, item, &instance_path.push(idx))
-                })
+                .flat_map(move |(idx, item)| self.node.validate(item, &instance_path.push(idx)))
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -119,7 +113,6 @@ impl Validate for ItemsObjectValidator {
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
@@ -127,7 +120,7 @@ impl Validate for ItemsObjectValidator {
             let mut results = Vec::with_capacity(items.len());
             for (idx, item) in items.iter().enumerate() {
                 let path = instance_path.push(idx);
-                results.push(self.node.apply_rooted(schema, item, &path));
+                results.push(self.node.apply_rooted(item, &path));
             }
             let mut output: PartialApplication = results.into_iter().collect();
             // Per draft 2020-12 section https://json-schema.org/draft/2020-12/json-schema-core.html#rfc.section.10.3.1.2
@@ -172,12 +165,12 @@ impl ItemsObjectSkipPrefixValidator {
 }
 
 impl Validate for ItemsObjectSkipPrefixValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Array(items) = instance {
             items
                 .iter()
                 .skip(self.skip_prefix)
-                .all(|i| self.node.is_valid(schema, i))
+                .all(|i| self.node.is_valid(i))
         } else {
             true
         }
@@ -186,7 +179,6 @@ impl Validate for ItemsObjectSkipPrefixValidator {
     #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -197,7 +189,7 @@ impl Validate for ItemsObjectSkipPrefixValidator {
                 .enumerate()
                 .flat_map(move |(idx, item)| {
                     self.node
-                        .validate(schema, item, &instance_path.push(idx + self.skip_prefix))
+                        .validate(item, &instance_path.push(idx + self.skip_prefix))
                 })
                 .collect();
             Box::new(errors.into_iter())
@@ -208,7 +200,6 @@ impl Validate for ItemsObjectSkipPrefixValidator {
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
@@ -216,7 +207,7 @@ impl Validate for ItemsObjectSkipPrefixValidator {
             let mut results = Vec::with_capacity(items.len() - self.skip_prefix);
             for (idx, item) in items.iter().skip(self.skip_prefix).enumerate() {
                 let path = instance_path.push(idx + self.skip_prefix);
-                results.push(self.node.apply_rooted(schema, item, &path));
+                results.push(self.node.apply_rooted(item, &path));
             }
             let mut output: PartialApplication = results.into_iter().collect();
             // Per draft 2020-12 section https://json-schema.org/draft/2020-12/json-schema-core.html#rfc.section.10.3.1.2

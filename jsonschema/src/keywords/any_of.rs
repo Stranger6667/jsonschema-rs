@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    compilation::{compile_validators, context::CompilationContext},
     error::{error, no_error, ErrorIterator, ValidationError},
     paths::InstancePath,
     primitive_type::PrimitiveType,
@@ -46,17 +46,16 @@ impl AnyOfValidator {
 }
 
 impl Validate for AnyOfValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        self.schemas.iter().any(|s| s.is_valid(schema, instance))
+    fn is_valid(&self, instance: &Value) -> bool {
+        self.schemas.iter().any(|s| s.is_valid(instance))
     }
 
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self.is_valid(schema, instance) {
+        if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::any_of(
@@ -69,14 +68,13 @@ impl Validate for AnyOfValidator {
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
         let mut successes = Vec::new();
         let mut failures = Vec::new();
         for node in &self.schemas {
-            let result = node.apply_rooted(schema, instance, instance_path);
+            let result = node.apply_rooted(instance, instance_path);
             if result.is_valid() {
                 successes.push(result);
             } else {

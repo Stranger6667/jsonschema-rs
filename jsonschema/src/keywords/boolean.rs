@@ -1,7 +1,6 @@
 use crate::paths::{InstancePath, JSONPointer};
 
 use crate::{
-    compilation::JSONSchema,
     error::{error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
@@ -18,13 +17,12 @@ impl FalseValidator {
     }
 }
 impl Validate for FalseValidator {
-    fn is_valid(&self, _: &JSONSchema, _: &Value) -> bool {
+    fn is_valid(&self, _: &Value) -> bool {
         false
     }
 
     fn validate<'a, 'b>(
         &self,
-        _: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {

@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{context::CompilationContext, JSONSchema},
+    compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{type_, CompilationResult},
     paths::{InstancePath, JSONPointer},
@@ -49,7 +49,7 @@ impl MultipleTypesValidator {
 }
 
 impl Validate for MultipleTypesValidator {
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         match instance {
             Value::Array(_) => self.types.contains_type(PrimitiveType::Array),
             Value::Bool(_) => self.types.contains_type(PrimitiveType::Boolean),
@@ -64,11 +64,10 @@ impl Validate for MultipleTypesValidator {
     }
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self.is_valid(schema, instance) {
+        if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::multiple_type_error(
@@ -107,7 +106,7 @@ impl IntegerTypeValidator {
 }
 
 impl Validate for IntegerTypeValidator {
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Number(num) = instance {
             is_integer(num)
         } else {
@@ -117,11 +116,10 @@ impl Validate for IntegerTypeValidator {
 
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self.is_valid(schema, instance) {
+        if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(

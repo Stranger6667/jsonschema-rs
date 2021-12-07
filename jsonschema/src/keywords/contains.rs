@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    compilation::{compile_validators, context::CompilationContext},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
@@ -32,9 +32,9 @@ impl ContainsValidator {
 }
 
 impl Validate for ContainsValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Array(items) = instance {
-            items.iter().any(|i| self.node.is_valid(schema, i))
+            items.iter().any(|i| self.node.is_valid(i))
         } else {
             true
         }
@@ -42,12 +42,11 @@ impl Validate for ContainsValidator {
 
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
         if let Value::Array(items) = instance {
-            if items.iter().any(|i| self.node.is_valid(schema, i)) {
+            if items.iter().any(|i| self.node.is_valid(i)) {
                 return no_error();
             }
             error(ValidationError::contains(
@@ -62,7 +61,6 @@ impl Validate for ContainsValidator {
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
@@ -71,7 +69,7 @@ impl Validate for ContainsValidator {
             let mut indices = Vec::new();
             for (idx, item) in items.iter().enumerate() {
                 let path = instance_path.push(idx);
-                let result = self.node.apply_rooted(schema, item, &path);
+                let result = self.node.apply_rooted(item, &path);
                 if result.is_valid() {
                     indices.push(idx);
                     results.push(result);
@@ -133,7 +131,6 @@ impl MinContainsValidator {
 impl Validate for MinContainsValidator {
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -147,7 +144,7 @@ impl Validate for MinContainsValidator {
                 if self
                     .node
                     .validators()
-                    .all(|validator| validator.is_valid(schema, item))
+                    .all(|validator| validator.is_valid(item))
                 {
                     matches += 1;
                     // Shortcircuit - there is enough matches to satisfy `minContains`
@@ -171,14 +168,14 @@ impl Validate for MinContainsValidator {
         }
     }
 
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Array(items) = instance {
             let mut matches = 0;
             for item in items {
                 if self
                     .node
                     .validators()
-                    .all(|validator| validator.is_valid(schema, item))
+                    .all(|validator| validator.is_valid(item))
                 {
                     matches += 1;
                     if matches >= self.min_contains {
@@ -232,7 +229,6 @@ impl MaxContainsValidator {
 impl Validate for MaxContainsValidator {
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -246,7 +242,7 @@ impl Validate for MaxContainsValidator {
                 if self
                     .node
                     .validators()
-                    .all(|validator| validator.is_valid(schema, item))
+                    .all(|validator| validator.is_valid(item))
                 {
                     matches += 1;
                     // Shortcircuit - there should be no more than `self.max_contains` matches
@@ -276,14 +272,14 @@ impl Validate for MaxContainsValidator {
         }
     }
 
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Array(items) = instance {
             let mut matches = 0;
             for item in items {
                 if self
                     .node
                     .validators()
-                    .all(|validator| validator.is_valid(schema, item))
+                    .all(|validator| validator.is_valid(item))
                 {
                     matches += 1;
                     if matches > self.max_contains {
@@ -341,7 +337,6 @@ impl MinMaxContainsValidator {
 impl Validate for MinMaxContainsValidator {
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -351,7 +346,7 @@ impl Validate for MinMaxContainsValidator {
                 if self
                     .node
                     .validators()
-                    .all(|validator| validator.is_valid(schema, item))
+                    .all(|validator| validator.is_valid(item))
                 {
                     matches += 1;
                     // Shortcircuit - there should be no more than `self.max_contains` matches
@@ -379,14 +374,14 @@ impl Validate for MinMaxContainsValidator {
         }
     }
 
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Array(items) = instance {
             let mut matches = 0;
             for item in items {
                 if self
                     .node
                     .validators()
-                    .all(|validator| validator.is_valid(schema, item))
+                    .all(|validator| validator.is_valid(item))
                 {
                     matches += 1;
                     if matches > self.max_contains {

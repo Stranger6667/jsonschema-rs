@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    compilation::{compile_validators, context::CompilationContext},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
@@ -31,17 +31,16 @@ impl NotValidator {
 }
 
 impl Validate for NotValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
-        !self.node.is_valid(schema, instance)
+    fn is_valid(&self, instance: &Value) -> bool {
+        !self.node.is_valid(instance)
     }
 
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self.is_valid(schema, instance) {
+        if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::not(

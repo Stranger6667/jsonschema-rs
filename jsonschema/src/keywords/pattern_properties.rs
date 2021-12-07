@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    compilation::{compile_validators, context::CompilationContext},
     error::{no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     output::BasicOutput,
@@ -45,12 +45,12 @@ impl PatternPropertiesValidator {
 }
 
 impl Validate for PatternPropertiesValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             self.patterns.iter().all(move |(re, node)| {
                 item.iter()
                     .filter(move |(key, _)| re.is_match(key).unwrap_or(false))
-                    .all(move |(_key, value)| node.is_valid(schema, value))
+                    .all(move |(_key, value)| node.is_valid(value))
             })
         } else {
             true
@@ -60,7 +60,6 @@ impl Validate for PatternPropertiesValidator {
     #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -73,7 +72,7 @@ impl Validate for PatternPropertiesValidator {
                         .filter(move |(key, _)| re.is_match(key).unwrap_or(false))
                         .flat_map(move |(key, value)| {
                             let instance_path = instance_path.push(key.clone());
-                            node.validate(schema, value, &instance_path)
+                            node.validate(value, &instance_path)
                         })
                 })
                 .collect();
@@ -85,7 +84,6 @@ impl Validate for PatternPropertiesValidator {
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
@@ -97,7 +95,7 @@ impl Validate for PatternPropertiesValidator {
                     if pattern.is_match(key).unwrap_or(false) {
                         let path = instance_path.push(key.clone());
                         matched_propnames.push(key.clone());
-                        sub_results += node.apply_rooted(schema, value, &path);
+                        sub_results += node.apply_rooted(value, &path);
                     }
                 }
             }
@@ -156,11 +154,11 @@ impl SingleValuePatternPropertiesValidator {
 }
 
 impl Validate for SingleValuePatternPropertiesValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             item.iter()
                 .filter(move |(key, _)| self.pattern.is_match(key).unwrap_or(false))
-                .all(move |(_key, value)| self.node.is_valid(schema, value))
+                .all(move |(_key, value)| self.node.is_valid(value))
         } else {
             true
         }
@@ -169,7 +167,6 @@ impl Validate for SingleValuePatternPropertiesValidator {
     #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -179,7 +176,7 @@ impl Validate for SingleValuePatternPropertiesValidator {
                 .filter(move |(key, _)| self.pattern.is_match(key).unwrap_or(false))
                 .flat_map(move |(key, value)| {
                     let instance_path = instance_path.push(key.clone());
-                    self.node.validate(schema, value, &instance_path)
+                    self.node.validate(value, &instance_path)
                 })
                 .collect();
             Box::new(errors.into_iter())
@@ -190,7 +187,6 @@ impl Validate for SingleValuePatternPropertiesValidator {
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
@@ -201,7 +197,7 @@ impl Validate for SingleValuePatternPropertiesValidator {
                 if self.pattern.is_match(key).unwrap_or(false) {
                     let path = instance_path.push(key.clone());
                     matched_propnames.push(key.clone());
-                    outputs += self.node.apply_rooted(schema, value, &path);
+                    outputs += self.node.apply_rooted(value, &path);
                 }
             }
             let mut result: PartialApplication = outputs.into();

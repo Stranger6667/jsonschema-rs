@@ -1,13 +1,16 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    compilation::{compile_validators, context::CompilationContext},
     error::{error, ErrorIterator},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
+    resolver::Resolver,
     schema_node::SchemaNode,
     validator::Validate,
+    CompilationOptions,
 };
 use parking_lot::RwLock;
 use serde_json::Value;
+use std::sync::Arc;
 use url::Url;
 
 pub(crate) struct RefValidator {
@@ -19,6 +22,8 @@ pub(crate) struct RefValidator {
     /// references (&self) and not owned references (&mut self).
     sub_nodes: RwLock<Option<SchemaNode>>,
     schema_path: JSONPointer,
+    config: Arc<CompilationOptions>,
+    pub(crate) resolver: Arc<Resolver>,
 }
 
 impl RefValidator {
@@ -32,22 +37,28 @@ impl RefValidator {
             reference,
             sub_nodes: RwLock::new(None),
             schema_path: context.schema_path.clone().into(),
+            config: Arc::clone(&context.config),
+            resolver: Arc::clone(&context.resolver),
         }))
     }
 }
 
 impl Validate for RefValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Some(sub_nodes) = self.sub_nodes.read().as_ref() {
-            return sub_nodes.is_valid(schema, instance);
+            return sub_nodes.is_valid(instance);
         }
-        if let Ok((scope, resolved)) = schema
+        if let Ok((scope, resolved)) = self
             .resolver
-            .resolve_fragment(schema.draft(), &self.reference)
+            .resolve_fragment(self.config.draft(), &self.reference)
         {
-            let context = CompilationContext::new(scope.into(), schema.config());
+            let context = CompilationContext::new(
+                scope.into(),
+                Arc::clone(&self.config),
+                Arc::clone(&self.resolver),
+            );
             if let Ok(node) = compile_validators(&resolved, &context) {
-                let result = node.is_valid(schema, instance);
+                let result = node.is_valid(instance);
                 *self.sub_nodes.write() = Some(node);
                 return result;
             }
@@ -57,27 +68,30 @@ impl Validate for RefValidator {
 
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
         if let Some(node) = self.sub_nodes.read().as_ref() {
             return Box::new(
-                node.validate(schema, instance, instance_path)
+                node.validate(instance, instance_path)
                     .collect::<Vec<_>>()
                     .into_iter(),
             );
         }
-        match schema
+        match self
             .resolver
-            .resolve_fragment(schema.draft(), &self.reference)
+            .resolve_fragment(self.config.draft(), &self.reference)
         {
             Ok((scope, resolved)) => {
-                let context = CompilationContext::new(scope.into(), schema.config());
+                let context = CompilationContext::new(
+                    scope.into(),
+                    Arc::clone(&self.config),
+                    Arc::clone(&self.resolver),
+                );
                 match compile_validators(&resolved, &context) {
                     Ok(node) => {
                         let result = Box::new(
-                            node.err_iter(schema, instance, instance_path)
+                            node.err_iter(instance, instance_path)
                                 .map(move |mut error| {
                                     let schema_path = self.schema_path.clone();
                                     error.schema_path =

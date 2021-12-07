@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    compilation::{compile_validators, context::CompilationContext},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
@@ -26,11 +26,11 @@ impl PropertyNamesObjectValidator {
 }
 
 impl Validate for PropertyNamesObjectValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = &instance {
             item.keys().all(move |key| {
                 let wrapper = Value::String(key.to_string());
-                self.node.is_valid(schema, &wrapper)
+                self.node.is_valid(&wrapper)
             })
         } else {
             true
@@ -40,7 +40,6 @@ impl Validate for PropertyNamesObjectValidator {
     #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -51,7 +50,7 @@ impl Validate for PropertyNamesObjectValidator {
                     let wrapper = Value::String(key.to_string());
                     let errors: Vec<_> = self
                         .node
-                        .validate(schema, &wrapper, instance_path)
+                        .validate(&wrapper, instance_path)
                         .map(|error| {
                             ValidationError::property_names(
                                 error.schema_path.clone(),
@@ -72,7 +71,6 @@ impl Validate for PropertyNamesObjectValidator {
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
@@ -80,7 +78,7 @@ impl Validate for PropertyNamesObjectValidator {
             item.keys()
                 .map(|key| {
                     let wrapper = Value::String(key.to_string());
-                    self.node.apply_rooted(schema, &wrapper, instance_path)
+                    self.node.apply_rooted(&wrapper, instance_path)
                 })
                 .collect()
         } else {
@@ -111,7 +109,7 @@ impl PropertyNamesBooleanValidator {
 }
 
 impl Validate for PropertyNamesBooleanValidator {
-    fn is_valid(&self, _: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             if !item.is_empty() {
                 return false;
@@ -122,11 +120,10 @@ impl Validate for PropertyNamesBooleanValidator {
 
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
-        if self.is_valid(schema, instance) {
+        if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::false_schema(

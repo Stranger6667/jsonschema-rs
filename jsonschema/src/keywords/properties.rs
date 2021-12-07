@@ -1,5 +1,5 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext, JSONSchema},
+    compilation::{compile_validators, context::CompilationContext},
     error::{no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     output::BasicOutput,
@@ -11,7 +11,7 @@ use crate::{
 use serde_json::{Map, Value};
 
 pub(crate) struct PropertiesValidator {
-    properties: Vec<(String, SchemaNode)>,
+    pub(crate) properties: Vec<(String, SchemaNode)>,
 }
 
 impl PropertiesValidator {
@@ -44,13 +44,11 @@ impl PropertiesValidator {
 }
 
 impl Validate for PropertiesValidator {
-    fn is_valid(&self, schema: &JSONSchema, instance: &Value) -> bool {
+    fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             self.properties.iter().all(move |(name, node)| {
                 let option = item.get(name);
-                option
-                    .into_iter()
-                    .all(move |item| node.is_valid(schema, item))
+                option.into_iter().all(move |item| node.is_valid(item))
             })
         } else {
             true
@@ -60,7 +58,6 @@ impl Validate for PropertiesValidator {
     #[allow(clippy::needless_collect)]
     fn validate<'a, 'b>(
         &self,
-        schema: &'a JSONSchema,
         instance: &'b Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'b> {
@@ -72,7 +69,7 @@ impl Validate for PropertiesValidator {
                     let option = item.get(name);
                     option.into_iter().flat_map(move |item| {
                         let instance_path = instance_path.push(name.clone());
-                        node.validate(schema, item, &instance_path)
+                        node.validate(item, &instance_path)
                     })
                 })
                 .collect();
@@ -84,7 +81,6 @@ impl Validate for PropertiesValidator {
 
     fn apply<'a>(
         &'a self,
-        schema: &JSONSchema,
         instance: &Value,
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
@@ -95,7 +91,7 @@ impl Validate for PropertiesValidator {
                 if let Some(prop) = props.get(prop_name) {
                     let path = instance_path.push(prop_name.clone());
                     matched_props.push(prop_name.clone());
-                    result += node.apply_rooted(schema, prop, &path);
+                    result += node.apply_rooted(prop, &path);
                 }
             }
             let mut application: PartialApplication = result.into();
