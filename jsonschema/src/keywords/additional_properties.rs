@@ -976,9 +976,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
                         self.patterns
                             .iter()
                             .filter(|(re, _)| re.is_match(property).unwrap_or(false))
-                            .flat_map(|(_, validators)| {
-                                validate!(validators, value, instance_path, name)
-                            }),
+                            .flat_map(|(_, node)| validate!(node, value, instance_path, name)),
                     );
                 } else {
                     let mut has_match = false;
@@ -1014,6 +1012,11 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
                 let path = instance_path.push(property.clone());
                 if let Some((_name, node)) = self.properties.get_key_validator(property) {
                     output += node.apply_rooted(value, &path);
+                    for (pattern, node) in &self.patterns {
+                        if pattern.is_match(property).unwrap_or(false) {
+                            output += node.apply_rooted(value, &path);
+                        }
+                    }
                 } else {
                     let mut has_match = false;
                     for (pattern, node) in &self.patterns {
@@ -1201,6 +1204,11 @@ impl<M: PropertiesValidatorsMap> Validate
                 let path = instance_path.push(property.clone());
                 if let Some((_name, node)) = self.properties.get_key_validator(property) {
                     output += node.apply_rooted(value, &path);
+                    for (pattern, node) in &self.patterns {
+                        if pattern.is_match(property).unwrap_or(false) {
+                            output += node.apply_rooted(value, &path);
+                        }
+                    }
                 } else {
                     let mut has_match = false;
                     for (pattern, node) in &self.patterns {
