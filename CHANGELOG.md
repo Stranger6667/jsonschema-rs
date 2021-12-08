@@ -9,6 +9,7 @@
 ### Fixed
 
 - False positives in some cases when calling `JSONSchema.apply` on a schema with `additionalProperties`, `patternProperties`, and `properties` combined.
+- False negatives in some cases when calling `JSONSchema.apply` on schemas with `if` and `then` (without `else`) keywords. [#318](https://github.com/Stranger6667/jsonschema-rs/pull/318)
 
 ### Performance
 
