@@ -120,7 +120,8 @@ pub enum BasicOutput<'a> {
 }
 
 impl<'a> BasicOutput<'a> {
-    pub(crate) const fn is_valid(&self) -> bool {
+    /// A shortcut to check whether the output represents passed validation.
+    pub const fn is_valid(&self) -> bool {
         match self {
             BasicOutput::Valid(..) => true,
             BasicOutput::Invalid(..) => false,
