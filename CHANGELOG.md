@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Make `BasicOutput.is_valid` public.
+
 ### Performance
 
 - Remove unused private field in `JSONSchema`, that lead to improvement in the compilation performance.
