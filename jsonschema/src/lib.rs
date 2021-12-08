@@ -137,6 +137,11 @@ pub(crate) mod tests_util {
             "{} should not be valid (via validate)",
             instance
         );
+        assert!(
+            !compiled.apply(instance).basic().is_valid(),
+            "{} should not be valid (via apply)",
+            instance
+        );
     }
 
     pub(crate) fn expect_errors(schema: &Value, instance: &Value, errors: &[&str]) {
@@ -162,6 +167,11 @@ pub(crate) mod tests_util {
         assert!(
             compiled.validate(instance).is_ok(),
             "{} should be valid (via validate)",
+            instance
+        );
+        assert!(
+            compiled.apply(instance).basic().is_valid(),
+            "{} should be valid (via apply)",
             instance
         );
     }
