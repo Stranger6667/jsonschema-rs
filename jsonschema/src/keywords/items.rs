@@ -204,7 +204,7 @@ impl Validate for ItemsObjectSkipPrefixValidator {
         instance_path: &InstancePath,
     ) -> PartialApplication<'a> {
         if let Value::Array(items) = instance {
-            let mut results = Vec::with_capacity(items.len() - self.skip_prefix);
+            let mut results = Vec::with_capacity(items.len().saturating_sub(self.skip_prefix));
             for (idx, item) in items.iter().skip(self.skip_prefix).enumerate() {
                 let path = instance_path.push(idx + self.skip_prefix);
                 results.push(self.node.apply_rooted(item, &path));

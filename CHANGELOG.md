@@ -8,8 +8,9 @@
 
 ### Fixed
 
-- False positives in some cases when calling `JSONSchema.apply` on a schema with `additionalProperties`, `patternProperties`, and `properties` combined.
+- False positives in some cases when calling `JSONSchema.apply` on schemas with `additionalProperties`, `patternProperties`, and `properties` combined.
 - False negatives in some cases when calling `JSONSchema.apply` on schemas with `if` and `then` (without `else`) keywords. [#318](https://github.com/Stranger6667/jsonschema-rs/pull/318)
+- Panic in `JSONSchema.apply` on some schemas with `prefixItems` and `items`. It panicked if `items` is an object and the length of `prefixItems` is greater than the length of the input array.
 
 ### Performance
 
