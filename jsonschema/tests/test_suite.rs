@@ -106,6 +106,19 @@ fn test_draft(_server_address: &str, test_case: TestCase) {
                 first_error,
             );
         }
+        if !compiled.is_valid(&test_case.instance) {
+            panic!(
+                "Schema: {}\nInstance: {}\nError: It is supposed to be VALID!",
+                test_case.schema, test_case.instance,
+            );
+        }
+        let output = compiled.apply(&test_case.instance).basic();
+        if !output.is_valid() {
+            panic!(
+                "Schema: {}\nInstance: {}\nError: {:?}",
+                test_case.schema, test_case.instance, output
+            );
+        }
     } else {
         assert!(
             result.is_err(),
@@ -118,10 +131,20 @@ fn test_draft(_server_address: &str, test_case: TestCase) {
             let pointer = error.instance_path.to_string();
             assert_eq!(test_case.instance.pointer(&pointer), Some(&*error.instance))
         }
+        if compiled.is_valid(&test_case.instance) {
+            panic!(
+                "Schema: {}\nInstance: {}\nError: It is supposed to be INVALID!",
+                test_case.schema, test_case.instance,
+            );
+        }
+        let output = compiled.apply(&test_case.instance).basic();
+        if output.is_valid() {
+            panic!(
+                "Schema: {}\nInstance: {}\nError: It is supposed to be INVALID!",
+                test_case.schema, test_case.instance,
+            );
+        }
     }
-
-    // Ensure that `JSONSchema::is_valid` is in sync with the validity expectation
-    assert_eq!(compiled.is_valid(&test_case.instance), test_case.is_valid);
 }
 
 #[test]
