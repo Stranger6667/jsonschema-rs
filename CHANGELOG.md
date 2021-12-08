@@ -6,6 +6,10 @@
 
 - Make `BasicOutput.is_valid` public.
 
+### Fixed
+
+- False positives in some cases when calling `JSONSchema.apply` on a schema with `additionalProperties`, `patternProperties`, and `properties` combined.
+
 ### Performance
 
 - Remove unused private field in `JSONSchema`, that lead to improvement in the compilation performance.
