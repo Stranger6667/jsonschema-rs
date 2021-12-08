@@ -65,8 +65,10 @@ impl Validate for IfThenValidator {
         if if_result.is_valid() {
             let then_result = self.then_schema.apply_rooted(instance, instance_path);
             if_result += then_result;
+            if_result.into()
+        } else {
+            PartialApplication::valid_empty()
         }
-        if_result.into()
     }
 }
 
