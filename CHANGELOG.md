@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.13.3] - 2021-12-08
+
 ### Changed
 
 - Make `BasicOutput.is_valid` public.
@@ -334,7 +336,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.2...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.3...HEAD
+[0.13.3]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.2...rust-v0.13.3
 [0.13.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.1...rust-v0.13.2
 [0.13.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.0...rust-v0.13.1
 [0.13.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.12.2...rust-v0.13.0

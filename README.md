@@ -151,12 +151,12 @@ Here is the average time for each contender to validate. Ratios are given agains
 
 | Case           | jsonschema_valid        | valico                  | jsonschema (validate) | jsonschema (is_valid)  |
 | -------------- | ----------------------- | ----------------------- | --------------------- | ---------------------- |
-| OpenAPI        |                   - (1) |                   - (1) |              5.231 ms |   4.712 ms (**x0.90**) |
-| Swagger        |                   - (2) |  92.861 ms (**x12.27**) |              7.565 ms |   4.954 ms (**x0.65**) |
-| Canada         |  35.773 ms (**x29.06**) | 152.84 ms (**x124.15**) |              1.231 ms |   1.233 ms (**x1.00**) |
-| CITM catalog   |    5.215 ms (**x1.92**) |   14.555 ms (**x5.38**) |              2.703 ms |  576.38 us (**x0.21**) |
-| Fast (valid)   |     2.14 us (**x3.32**) |     3.53 us (**x5.49**) |             642.95 ns |  107.34 ns (**x0.16**) |
-| Fast (invalid) |   380.58 ns (**x0.47**) |     3.64 us (**x4.54**) |             800.74 ns |    7.19 ns (**x0.01**) |
+| OpenAPI        |                   - (1) |                   - (1) |              4.823 ms |   4.478 ms (**x0.92**) |
+| Swagger        |                   - (2) |  83.357 ms (**x12.11**) |              6.880 ms |   4.651 ms (**x0.67**) |
+| Canada         |  32.987 ms (**x28.98**) | 141.41 ms (**x124.59**) |              1.135 ms |   1.130 ms (**x0.99**) |
+| CITM catalog   |    4.735 ms (**x1.92**) |   13.222 ms (**x5.38**) |              2.455 ms |  535.07 us (**x0.21**) |
+| Fast (valid)   |     2.00 us (**x3.71**) |     3.18 us (**x5.91**) |             538.02 ns |  100.39 ns (**x0.18**) |
+| Fast (invalid) |   339.28 ns (**x0.50**) |     3.34 us (**x4.95**) |             674.18 ns |    6.00 ns (**x0.01**) |
 
 Notes:
 
@@ -164,7 +164,7 @@ Notes:
 
 2. `jsonschema_valid` fails to resolve local references (e.g. `#/definitions/definitions`).
 
-You can find benchmark code in `benches/jsonschema.rs`, Rust version is `1.56`.
+You can find benchmark code in `benches/jsonschema.rs`, Rust version is `1.57`.
 
 ## Support
 
