@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Performance
+
+- Optimize the loop implementation used for uniqueness check on short arrays.
+
 ## [0.13.3] - 2021-12-08
 
 ### Changed
