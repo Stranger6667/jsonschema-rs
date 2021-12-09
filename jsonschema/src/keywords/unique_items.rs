@@ -57,7 +57,7 @@ impl Hash for HashedValue<'_> {
 // Calculated for an array of mixed types, large homogenous arrays of primitive values might be
 // processed faster with different thresholds, but this one gives a good baseline for the common
 // case.
-const ITEMS_SIZE_THRESHOLD: usize = 11;
+const ITEMS_SIZE_THRESHOLD: usize = 15;
 
 #[inline]
 pub(crate) fn is_unique(items: &[Value]) -> bool {
@@ -72,12 +72,16 @@ pub(crate) fn is_unique(items: &[Value]) -> bool {
     } else if size <= ITEMS_SIZE_THRESHOLD {
         // If the array size is small enough we can compare all elements pairwise, which will
         // be faster than calculating hashes for each element, even if the algorithm is O(N^2)
-        for (idx, item) in items.iter().enumerate() {
-            for other_item in items.iter().skip(idx + 1) {
-                if equal(item, other_item) {
+        let mut idx = 0_usize;
+        while idx < items.len() {
+            let mut inner_idx = idx + 1;
+            while inner_idx < items.len() {
+                if equal(&items[idx], &items[inner_idx]) {
                     return false;
                 }
+                inner_idx += 1;
             }
+            idx += 1;
         }
         true
     } else {
