@@ -154,7 +154,7 @@ impl SchemaNode {
         )
     }
 
-    /// Create an anontation output which is marked as occurring at this schema node
+    /// Create an annotation output which is marked as occurring at this schema node
     pub(crate) fn annotation_at<'a>(
         &self,
         instance_path: &InstancePath,
@@ -300,12 +300,8 @@ impl Validate for SchemaNode {
                 kvs.validators.iter().all(|(_, v)| v.is_valid(instance))
             }
             NodeValidators::Array { validators } => validators.iter().all(|v| v.is_valid(instance)),
-            NodeValidators::Boolean {
-                validator: Some(v), ..
-            } => v.is_valid(instance),
-            NodeValidators::Boolean {
-                validator: None, ..
-            } => true,
+            NodeValidators::Boolean { validator: Some(_) } => false,
+            NodeValidators::Boolean { validator: None } => true,
         }
     }
 
