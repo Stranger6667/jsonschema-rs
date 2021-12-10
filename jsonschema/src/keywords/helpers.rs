@@ -42,7 +42,16 @@ pub(crate) fn equal(left: &Value, right: &Value) -> bool {
 
 #[inline]
 pub(crate) fn equal_arrays(left: &[Value], right: &[Value]) -> bool {
-    left.len() == right.len() && left.iter().zip(right.iter()).all(|(a, b)| equal(a, b))
+    left.len() == right.len() && {
+        let mut idx = 0_usize;
+        while idx < left.len() {
+            if !equal(&left[idx], &right[idx]) {
+                return false;
+            }
+            idx += 1;
+        }
+        true
+    }
 }
 
 #[inline]

@@ -151,12 +151,12 @@ Here is the average time for each contender to validate. Ratios are given agains
 
 | Case           | jsonschema_valid        | valico                  | jsonschema (validate) | jsonschema (is_valid)  |
 | -------------- | ----------------------- | ----------------------- | --------------------- | ---------------------- |
-| OpenAPI        |                   - (1) |                   - (1) |              4.823 ms |   4.478 ms (**x0.92**) |
-| Swagger        |                   - (2) |  83.357 ms (**x12.11**) |              6.880 ms |   4.651 ms (**x0.67**) |
-| Canada         |  32.987 ms (**x28.98**) | 141.41 ms (**x124.59**) |              1.135 ms |   1.130 ms (**x0.99**) |
-| CITM catalog   |    4.735 ms (**x1.92**) |   13.222 ms (**x5.38**) |              2.455 ms |  535.07 us (**x0.21**) |
-| Fast (valid)   |     2.00 us (**x3.71**) |     3.18 us (**x5.91**) |             538.02 ns |  100.39 ns (**x0.18**) |
-| Fast (invalid) |   339.28 ns (**x0.50**) |     3.34 us (**x4.95**) |             674.18 ns |    6.00 ns (**x0.01**) |
+| OpenAPI        |                   - (1) |                   - (1) |              4.846 ms |   4.443 ms (**x0.91**) |
+| Swagger        |                   - (2) |  83.357 ms (**x12.18**) |              6.839 ms |   4.579 ms (**x0.66**) |
+| Canada         |  32.987 ms (**x31.38**) | 141.41 ms (**x134.54**) |              1.051 ms |   1.046 ms (**x0.99**) |
+| CITM catalog   |    4.735 ms (**x2.00**) |   13.222 ms (**x5.58**) |              2.367 ms |  535.07 us (**x0.22**) |
+| Fast (valid)   |     2.00 us (**x3.85**) |     3.18 us (**x6.13**) |             518.39 ns |   97.91 ns (**x0.18**) |
+| Fast (invalid) |   339.28 ns (**x0.50**) |     3.34 us (**x5.00**) |             667.55 ns |     5.41ns (**x0.01**) |
 
 Notes:
 
