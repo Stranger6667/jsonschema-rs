@@ -22,7 +22,7 @@ jsonschema = "0.13"
 To validate documents against some schema and get validation errors (if any):
 
 ```rust
-use jsonschema::{Draft, JSONSchema};
+use jsonschema::JSONSchema;
 use serde_json::json;
 
 fn main() {
@@ -61,7 +61,7 @@ fn main() {
 Or use a compiled schema (preferred):
 
 ```rust
-use jsonschema::{Draft, JSONSchema};
+use jsonschema::JSONSchema;
 use serde_json::json;
 
 fn main() {
@@ -80,7 +80,7 @@ fn main() {
 `jsonschema` supports `basic` & `flag` output styles from Draft 2019-09, so you can serialize the validation results with `serde`:
 
 ```rust
-use jsonschema::{Draft, Output, BasicOutput, JSONSchema};
+use jsonschema::{Output, BasicOutput, JSONSchema};
 
 fn main() {
     let schema_json = serde_json::json!({

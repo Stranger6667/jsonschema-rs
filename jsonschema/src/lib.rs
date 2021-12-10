@@ -13,7 +13,7 @@
 //! A schema can be compiled with two main flavours:
 //!  * using default configurations
 //! ```rust
-//! # use jsonschema::{Draft, JSONSchema};
+//! # use jsonschema::JSONSchema;
 //! # use serde_json::json;
 //! # fn foo() {
 //! # let schema = json!({"maxLength": 5});
