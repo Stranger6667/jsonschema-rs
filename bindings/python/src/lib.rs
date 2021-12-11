@@ -74,7 +74,7 @@ impl<'p> PyObjectProtocol<'p> for ValidationError {
 
 #[pyclass]
 struct ValidationErrorIter {
-    iter: Box<dyn Iterator<Item = PyErr> + Send>,
+    iter: std::vec::IntoIter<PyErr>,
 }
 
 #[pyproto]
@@ -153,7 +153,7 @@ fn iter_on_error(
         }
     };
     Ok(ValidationErrorIter {
-        iter: Box::new(pyerrors.into_iter()),
+        iter: pyerrors.into_iter(),
     })
 }
 
