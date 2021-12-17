@@ -770,13 +770,13 @@ impl fmt::Display for ValidationError<'_> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match &self.kind {
-            ValidationErrorKind::Schema => write!(f, "Schema error"),
-            ValidationErrorKind::JSONParse { error } => write!(f, "{}", error),
+            ValidationErrorKind::Schema => f.write_str("Schema error"),
+            ValidationErrorKind::JSONParse { error } => error.fmt(f),
             #[cfg(any(feature = "reqwest", test))]
-            ValidationErrorKind::Reqwest { error } => write!(f, "{}", error),
-            ValidationErrorKind::FileNotFound { error } => write!(f, "{}", error),
-            ValidationErrorKind::InvalidURL { error } => write!(f, "{}", error),
-            ValidationErrorKind::BacktrackLimitExceeded { error } => write!(f, "{}", error),
+            ValidationErrorKind::Reqwest { error } => error.fmt(f),
+            ValidationErrorKind::FileNotFound { error } => error.fmt(f),
+            ValidationErrorKind::InvalidURL { error } => error.fmt(f),
+            ValidationErrorKind::BacktrackLimitExceeded { error } => error.fmt(f),
             ValidationErrorKind::UnknownReferenceScheme { scheme } => {
                 write!(f, "Unknown scheme: {}", scheme)
             }
@@ -857,8 +857,8 @@ impl fmt::Display for ValidationError<'_> {
                     self.instance, content_media_type
                 )
             }
-            ValidationErrorKind::FromUtf8 { error } => write!(f, "{}", error),
-            ValidationErrorKind::Utf8 { error } => write!(f, "{}", error),
+            ValidationErrorKind::FromUtf8 { error } => error.fmt(f),
+            ValidationErrorKind::Utf8 { error } => error.fmt(f),
             ValidationErrorKind::Enum { options } => {
                 write!(f, "{} is not one of {}", self.instance, options)
             }
@@ -939,9 +939,7 @@ impl fmt::Display for ValidationError<'_> {
             ValidationErrorKind::Pattern { pattern } => {
                 write!(f, r#"{} does not match "{}""#, self.instance, pattern)
             }
-            ValidationErrorKind::PropertyNames { error } => {
-                write!(f, "{}", error.to_string())
-            }
+            ValidationErrorKind::PropertyNames { error } => error.fmt(f),
             ValidationErrorKind::Required { property } => {
                 write!(f, "{} is a required property", property)
             }

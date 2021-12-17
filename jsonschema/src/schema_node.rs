@@ -106,7 +106,7 @@ impl SchemaNode {
     }
 
     fn format_validators(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", format_validators(self.validators()))
+        f.write_str(&format_validators(self.validators()))
     }
 
     /// This is similar to `Validate::apply` except that `SchemaNode` knows where it is in the

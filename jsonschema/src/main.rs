@@ -25,7 +25,7 @@ pub fn main() -> BoxErrorResult<()> {
     let config = Cli::from_args();
 
     if config.version {
-        println!("Version: {}", env!("CARGO_PKG_VERSION"));
+        println!(concat!("Version: ", env!("CARGO_PKG_VERSION")));
         return Ok(());
     }
 
