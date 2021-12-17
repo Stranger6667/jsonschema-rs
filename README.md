@@ -151,8 +151,8 @@ Here is the average time for each contender to validate. Ratios are given agains
 
 | Case           | jsonschema_valid        | valico                  | jsonschema (validate) | jsonschema (is_valid)  |
 | -------------- | ----------------------- | ----------------------- | --------------------- | ---------------------- |
-| OpenAPI        |                   - (1) |                   - (1) |              4.846 ms |   4.443 ms (**x0.91**) |
-| Swagger        |                   - (2) |  83.357 ms (**x12.18**) |              6.839 ms |   4.579 ms (**x0.66**) |
+| OpenAPI        |                   - (1) |                   - (1) |              4.717 ms |   4.279 ms (**x0.90**) |
+| Swagger        |                   - (2) |  83.357 ms (**x12.47**) |              6.681 ms |   4.533 ms (**x0.67**) |
 | Canada         |  32.987 ms (**x31.38**) | 141.41 ms (**x134.54**) |              1.051 ms |   1.046 ms (**x0.99**) |
 | CITM catalog   |    4.735 ms (**x2.00**) |   13.222 ms (**x5.58**) |              2.367 ms |  535.07 us (**x0.22**) |
 | Fast (valid)   |     2.00 us (**x3.85**) |     3.18 us (**x6.13**) |             518.39 ns |   97.91 ns (**x0.18**) |
