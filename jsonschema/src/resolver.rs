@@ -103,6 +103,9 @@ impl Resolver {
         // Each resolved document may be in a changed subfolder
         // They are tracked when JSON pointer is resolved and added to the resource
         let document = self.resolve_url(&resource)?;
+        if fragment.is_empty() {
+            return Ok((resource, Arc::clone(&document)));
+        }
         match pointer(draft, &document, fragment.as_ref()) {
             Some((folders, resolved)) => {
                 let joined_folders = join_folders(resource, &folders)?;
@@ -184,9 +187,6 @@ pub(crate) fn pointer<'a, 'b>(
     document: &'a Value,
     pointer: &'b str,
 ) -> Option<(Vec<&'a str>, &'a Value)> {
-    if pointer.is_empty() {
-        return Some((vec![], document));
-    }
     if !pointer.starts_with('/') {
         return None;
     }
