@@ -8,6 +8,7 @@ use crate::{
 use ahash::AHashMap;
 use parking_lot::RwLock;
 use serde_json::Value;
+use std::borrow::Cow;
 use std::sync::Arc;
 use url::Url;
 
@@ -181,6 +182,31 @@ where
     Ok(None)
 }
 
+/// Searching twice is better than unconditionally allocating a String twice
+trait MaybeReplaceExt<'a> {
+    fn maybe_replace(self, needle: &str, replacement: &str) -> Cow<'a, str>;
+}
+
+impl<'a> MaybeReplaceExt<'a> for &'a str {
+    fn maybe_replace(self, needle: &str, replacement: &str) -> Cow<'a, str> {
+        if memchr::memmem::find(self.as_bytes(), needle.as_bytes()).is_some() {
+            self.replace(needle, replacement).into()
+        } else {
+            self.into()
+        }
+    }
+}
+
+impl<'a> MaybeReplaceExt<'a> for Cow<'a, str> {
+    fn maybe_replace(self, needle: &str, replacement: &str) -> Cow<'a, str> {
+        if memchr::memmem::find(self.as_bytes(), needle.as_bytes()).is_some() {
+            self.replace(needle, replacement).into()
+        } else {
+            self
+        }
+    }
+}
+
 /// Based on `serde_json`, but tracks folders in the traversed documents.
 pub(crate) fn pointer<'a, 'b>(
     draft: Draft,
@@ -193,7 +219,7 @@ pub(crate) fn pointer<'a, 'b>(
     let tokens = pointer
         .split('/')
         .skip(1)
-        .map(|x| x.replace("~1", "/").replace("~0", "~"));
+        .map(|x| x.maybe_replace("~1", "/").maybe_replace("~0", "~"));
     let mut target = document;
     let mut folders = vec![];
 
@@ -203,7 +229,7 @@ pub(crate) fn pointer<'a, 'b>(
                 if let Some(id) = id_of(draft, target) {
                     folders.push(id);
                 }
-                map.get(&token)
+                map.get(&*token)
             }
             Value::Array(ref list) => parse_index(&token).and_then(|x| list.get(x)),
             _ => return None,

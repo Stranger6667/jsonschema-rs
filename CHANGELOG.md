@@ -9,7 +9,8 @@
 - Shortcut for `false` schemas.
 - Reduce the number of generated LLVM lines.
 - Do less work when resolving fragments.
-- Avoid cloning the value when resolving empty fragments
+- Avoid cloning the value when resolving empty fragments.
+- Optimize searching by pointer in JSON documents.
 
 ## [0.13.3] - 2021-12-08
 
