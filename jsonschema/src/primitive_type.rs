@@ -20,13 +20,13 @@ pub enum PrimitiveType {
 impl fmt::Display for PrimitiveType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            PrimitiveType::Array => write!(f, "array"),
-            PrimitiveType::Boolean => write!(f, "boolean"),
-            PrimitiveType::Integer => write!(f, "integer"),
-            PrimitiveType::Null => write!(f, "null"),
-            PrimitiveType::Number => write!(f, "number"),
-            PrimitiveType::Object => write!(f, "object"),
-            PrimitiveType::String => write!(f, "string"),
+            PrimitiveType::Array => f.write_str("array"),
+            PrimitiveType::Boolean => f.write_str("boolean"),
+            PrimitiveType::Integer => f.write_str("integer"),
+            PrimitiveType::Null => f.write_str("null"),
+            PrimitiveType::Number => f.write_str("number"),
+            PrimitiveType::Object => f.write_str("object"),
+            PrimitiveType::String => f.write_str("string"),
         }
     }
 }

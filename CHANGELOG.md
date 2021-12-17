@@ -7,6 +7,7 @@
 - Optimize the loop implementation used for uniqueness check on short arrays.
 - Simplify `equal_arrays` helper.
 - Shortcut for `false` schemas.
+- Reduce the number of generated LLVM lines.
 
 ## [0.13.3] - 2021-12-08
 
