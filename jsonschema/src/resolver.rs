@@ -1,7 +1,7 @@
 //! Reference resolver. Implements logic, required by `$ref` keyword.
 //! Is able to load documents from remote locations via HTTP(S).
 use crate::{
-    compilation::{DEFAULT_ROOT_URL, DEFAULT_SCOPE},
+    compilation::DEFAULT_ROOT_URL,
     error::ValidationError,
     schemas::{id_of, Draft},
 };
@@ -96,14 +96,8 @@ impl Resolver {
 
         // Location-independent identifiers are searched before trying to resolve by
         // fragment-less url
-        if let Some(x) = find_schemas(draft, &self.root_schema, &DEFAULT_SCOPE, &mut |id, x| {
-            if id == url.as_str() {
-                Some(x)
-            } else {
-                None
-            }
-        })? {
-            return Ok((resource, Arc::new(x.clone())));
+        if let Some(document) = self.schemas.get(url.as_str()) {
+            return Ok((resource, Arc::clone(document)));
         }
 
         // Each resolved document may be in a changed subfolder
