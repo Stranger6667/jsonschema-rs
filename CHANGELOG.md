@@ -9,6 +9,7 @@
 - Shortcut for `false` schemas.
 - Reduce the number of generated LLVM lines.
 - Do less work when resolving fragments.
+- Avoid cloning the value when resolving empty fragments
 
 ## [0.13.3] - 2021-12-08
 
