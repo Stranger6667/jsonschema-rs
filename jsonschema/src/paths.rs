@@ -57,7 +57,7 @@ impl serde::Serialize for JSONPointer {
 }
 
 impl fmt::Display for JSONPointer {
-    fn fmt(&self, mut f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if !self.0.is_empty() {
             for chunk in &self.0 {
                 f.write_char('/')?;
@@ -71,7 +71,7 @@ impl fmt::Display for JSONPointer {
                             }
                         }
                     }
-                    PathChunk::Index(idx) => itoa::fmt(&mut f, *idx)?,
+                    PathChunk::Index(idx) => f.write_str(itoa::Buffer::new().format(*idx))?,
                     PathChunk::Keyword(keyword) => f.write_str(keyword)?,
                 }
             }
