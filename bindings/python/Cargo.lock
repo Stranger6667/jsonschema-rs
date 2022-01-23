@@ -457,6 +457,7 @@ dependencies = [
  "iso8601",
  "itoa",
  "lazy_static",
+ "memchr",
  "num-cmp",
  "parking_lot",
  "percent-encoding",

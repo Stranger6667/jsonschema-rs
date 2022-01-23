@@ -35,7 +35,7 @@ bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
 fancy-regex = "^0.7.1"
 fraction = { version = "0.9", default-features = false, features = ["with-bigint"] }
 iso8601 = "0.4"
-itoa = "0.4"
+itoa = "1"
 lazy_static = "1"
 memchr = "2.4"
 num-cmp = ">= 0.1"

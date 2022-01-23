@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Bump `itoa` to `1.0`. [#337](https://github.com/Stranger6667/jsonschema-rs/issues/337)
+
 ### Performance
 
 - Optimize the loop implementation used for uniqueness check on short arrays.
