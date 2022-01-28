@@ -5,7 +5,7 @@ use crate::{
         DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS,
     },
     content_media_type::{ContentMediaTypeCheckType, DEFAULT_CONTENT_MEDIA_TYPE_CHECKS},
-    resolver::Resolver,
+    resolver::{DefaultResolver, SchemaResolver, Resolver},
     schemas, ValidationError,
 };
 use ahash::AHashMap;
@@ -212,6 +212,7 @@ lazy_static::lazy_static! {
 /// content media types and more (check the exposed methods)
 #[derive(Clone)]
 pub struct CompilationOptions {
+    external_resolver: Arc<dyn SchemaResolver>,
     draft: Option<schemas::Draft>,
     content_media_type_checks: AHashMap<&'static str, Option<ContentMediaTypeCheckType>>,
     content_encoding_checks_and_converters:
@@ -225,6 +226,7 @@ pub struct CompilationOptions {
 impl Default for CompilationOptions {
     fn default() -> Self {
         CompilationOptions {
+            external_resolver: Arc::new(DefaultResolver),
             validate_schema: true,
             draft: Option::default(),
             content_media_type_checks: AHashMap::default(),
@@ -273,6 +275,7 @@ impl CompilationOptions {
         };
         let schema_json = Arc::new(schema.clone());
         let resolver = Arc::new(Resolver::new(
+            self.external_resolver.clone(),
             draft,
             &scope,
             schema_json,
@@ -346,6 +349,12 @@ impl CompilationOptions {
     ) -> &mut Self {
         self.content_media_type_checks
             .insert(media_type, Some(media_type_check));
+        self
+    }
+
+    /// Use a custom resolver for resolving external schema references.
+    pub fn with_resolver(&mut self, resolver: impl SchemaResolver + 'static) -> &mut Self {
+        self.external_resolver = Arc::new(resolver);
         self
     }
 

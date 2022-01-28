@@ -17,19 +17,16 @@ name = "jsonschema"
 
 [features]
 cli = ["structopt"]
-default = ["reqwest", "cli"]
+default = ["resolve-http", "resolve-file", "cli"]
 draft201909 = []
 draft202012 = []
-reqwest-native-tls = ["reqwest/native-tls"]
-reqwest-native-tls-alpn = ["reqwest/native-tls-alpn"]
-reqwest-native-tls-vendored = ["reqwest/native-tls-vendored"]
-reqwest-rustls-tls = ["reqwest/rustls-tls"]
-reqwest-rustls-tls-manual-roots = ["reqwest/rustls-tls-manual-roots"]
-reqwest-rustls-tls-native-roots = ["reqwest/rustls-tls-native-roots"]
-reqwest-rustls-tls-webpki-roots = ["reqwest/rustls-tls-webpki-roots"]
+
+resolve-http = ["reqwest"]
+resolve-file = []
 
 [dependencies]
 ahash = { version = "0.7", features = ["serde"] }
+anyhow = "1.0.53"
 base64 = ">= 0.2"
 bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
 fancy-regex = "^0.7.1"
@@ -47,7 +44,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 structopt = { version = ">= 0.3", optional = true }
 time = { version = ">= 0.3.3", features = ["parsing", "macros"] }
-url = "2"
+url = "2.2.2"
 uuid = "0.8"
 
 [dev-dependencies]

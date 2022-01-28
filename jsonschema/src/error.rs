@@ -2,6 +2,7 @@
 use crate::{
     paths::JSONPointer,
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
+    resolver::SchemaResolverError,
 };
 use serde_json::{Map, Number, Value};
 use std::{
@@ -13,6 +14,7 @@ use std::{
     str::Utf8Error,
     string::FromUtf8Error,
 };
+use url::Url;
 
 /// An error that can occur during validation.
 #[derive(Debug)]
@@ -132,9 +134,6 @@ pub enum ValidationErrorKind {
     },
     /// When a required property is missing.
     Required { property: Value },
-    /// Any error that happens during network request via `reqwest` crate
-    #[cfg(any(feature = "reqwest", test))]
-    Reqwest { error: reqwest::Error },
     /// Resolved schema failed to compile.
     Schema,
     /// When the input value doesn't match one or multiple required types.
@@ -143,6 +142,13 @@ pub enum ValidationErrorKind {
     UniqueItems,
     /// Reference contains unknown scheme.
     UnknownReferenceScheme { scheme: String },
+    /// Error during schema ref resolution.
+    Resolver {
+        /// The url that was tried to be resolved.
+        url: Url,
+        /// The resolution error.
+        error: SchemaResolverError,
+    },
 }
 
 #[derive(Debug)]
@@ -646,15 +652,6 @@ impl<'a> ValidationError<'a> {
             schema_path,
         }
     }
-    #[cfg(any(feature = "reqwest", test))]
-    pub(crate) fn reqwest(error: reqwest::Error) -> ValidationError<'a> {
-        ValidationError {
-            instance_path: JSONPointer::default(),
-            instance: Cow::Owned(Value::Null),
-            kind: ValidationErrorKind::Reqwest { error },
-            schema_path: JSONPointer::default(),
-        }
-    }
 
     pub(crate) fn null_schema() -> ValidationError<'a> {
         ValidationError {
@@ -723,6 +720,14 @@ impl<'a> ValidationError<'a> {
             schema_path: JSONPointer::default(),
         }
     }
+    pub(crate) fn resolver(url: Url, error: SchemaResolverError) -> ValidationError<'a> {
+        ValidationError {
+            instance_path: JSONPointer::default(),
+            instance: Cow::Owned(Value::Null),
+            kind: ValidationErrorKind::Resolver { url, error },
+            schema_path: JSONPointer::default(),
+        }
+    }
 }
 
 impl error::Error for ValidationError<'_> {}
@@ -756,13 +761,6 @@ impl From<url::ParseError> for ValidationError<'_> {
         ValidationError::invalid_url(err)
     }
 }
-#[cfg(any(feature = "reqwest", test))]
-impl From<reqwest::Error> for ValidationError<'_> {
-    #[inline]
-    fn from(err: reqwest::Error) -> Self {
-        ValidationError::reqwest(err)
-    }
-}
 
 /// Textual representation of various validation errors.
 impl fmt::Display for ValidationError<'_> {
@@ -772,8 +770,9 @@ impl fmt::Display for ValidationError<'_> {
         match &self.kind {
             ValidationErrorKind::Schema => f.write_str("Schema error"),
             ValidationErrorKind::JSONParse { error } => error.fmt(f),
-            #[cfg(any(feature = "reqwest", test))]
-            ValidationErrorKind::Reqwest { error } => error.fmt(f),
+            ValidationErrorKind::Resolver { url, error } => {
+                write!(f, "failed to resolve {}: {}", url, error)
+            }
             ValidationErrorKind::FileNotFound { error } => error.fmt(f),
             ValidationErrorKind::InvalidURL { error } => error.fmt(f),
             ValidationErrorKind::BacktrackLimitExceeded { error } => error.fmt(f),

@@ -11,8 +11,87 @@ use serde_json::Value;
 use std::{borrow::Cow, sync::Arc};
 use url::Url;
 
-#[derive(Debug)]
+/// An opaque error type that is returned
+/// by resolvers on resolution failures.
+pub type SchemaResolverError = anyhow::Error;
+
+/// A resolver that resolves external schema references.
+/// Internal references such as `#/definitions` and JSON pointers are handled internally.
+/// 
+/// All operations are blocking and it is not possible to return futures.
+/// As a workaround, errors can be returned that will contain the schema URLs to resolve
+/// and can be resolved outside the validation process if needed.
+/// 
+/// # Example
+/// 
+/// ```rust,ignore
+/// struct MyCustomResolver;
+/// 
+/// impl SchemaResolver for MyCustomResolver {
+///     fn resolve(&self, root_schema: &Value, url: &Url) -> Result<Arc<Value>, SchemaResolverError> {
+///         match url.scheme() {
+///             "json-schema" => {
+///                 Err(CustomError::new("cannot resolve schema without root schema ID"))
+///             },
+///             "http" | "http" => {
+///                 Ok(fetch_http(url).json()?)
+///             }
+///         }
+///     }
+/// }
+/// ```
+pub trait SchemaResolver: Send + Sync {
+    /// Resolve an external schema via an URL.
+    /// 
+    /// Relative URLs are resolved based on the root schema's ID,
+    /// if there is no root schema ID available, the schema `json-schema` is used
+    /// and any relative paths are turned into absolutes.
+    fn resolve(&self, root_schema: &Value, url: &Url) -> Result<Arc<Value>, SchemaResolverError>;
+}
+
+pub(crate) struct DefaultResolver;
+
+impl SchemaResolver for DefaultResolver {
+    fn resolve(&self, _root_schema: &Value, url: &Url) -> Result<Arc<Value>, SchemaResolverError> {
+        match url.scheme() {
+            "http" | "https" => {
+                #[cfg(any(feature = "resolve-http", test))]
+                {
+                    let response = reqwest::blocking::get(url.as_str())?;
+                    let document: Value = response.json()?;
+                    Ok(Arc::new(document))
+                }
+                #[cfg(not(any(feature = "resolve-http", test)))]
+                Err(anyhow::anyhow!("`resolve-http` feature or a custom resolver is required to resolve external schemas via HTTP"))
+            }
+            "file" => {
+                #[cfg(any(feature = "resolve-file", test))]
+                {
+                    if let Ok(path) = url.to_file_path() {
+                        let f = std::fs::File::open(path)?;
+                        let document: Value = serde_json::from_reader(f)?;
+                        Ok(Arc::new(document))
+                    } else {
+                        Err(anyhow::anyhow!("invalid file path"))
+                    }
+                }
+                #[cfg(not(any(feature = "resolve-file", test)))]
+                {
+                    Err(anyhow::anyhow!("`resolve-file` feature or a custom resolver is required to resolve external schemas via files"))
+                }
+            }
+            "json-schema" => {
+                Err(anyhow::anyhow!("cannot resolve relative external schema without root schema ID"))
+            }
+            _ => {
+                Err(anyhow::anyhow!("unknown scheme {}", url.scheme()))
+            }
+        }
+    }
+}
+
 pub(crate) struct Resolver {
+    external_resolver: Arc<dyn SchemaResolver>,
     root_schema: Arc<Value>,
     // canonical_id: sub-schema mapping to resolve documents by their ID
     // canonical_id is composed with the root document id
@@ -21,8 +100,19 @@ pub(crate) struct Resolver {
     store: RwLock<AHashMap<String, Arc<Value>>>,
 }
 
+impl std::fmt::Debug for Resolver {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Resolver")
+            .field("root_schema", &self.root_schema)
+            .field("schemas", &self.schemas)
+            .field("store", &self.store)
+            .finish()
+    }
+}
+
 impl Resolver {
     pub(crate) fn new<'a>(
+        external_resolver: Arc<dyn SchemaResolver>,
         draft: Draft,
         scope: &Url,
         schema: Arc<Value>,
@@ -35,6 +125,7 @@ impl Resolver {
             None
         })?;
         Ok(Resolver {
+            external_resolver,
             root_schema: schema,
             schemas,
             store: RwLock::new(store),
@@ -55,25 +146,19 @@ impl Resolver {
                 }
                 match self.schemas.get(url_str) {
                     Some(value) => Ok(value.clone()),
-                    None => match url.scheme() {
-                        "http" | "https" => {
-                            #[cfg(any(feature = "reqwest", test))]
-                            {
-                                let response = reqwest::blocking::get(url.as_str())?;
-                                let document: Value = response.json()?;
-                                let arcdoc = Arc::new(document);
-                                self.store
-                                    .write()
-                                    .insert(url_str.to_string(), arcdoc.clone());
-                                Ok(arcdoc)
-                            }
-                            #[cfg(not(any(feature = "reqwest", test)))]
-                            panic!("trying to resolve an http(s), but reqwest support has not been included");
+                    None => {
+                        if let Some(s) = self.store.read().get(url_str) {
+                            return Ok(s.clone());
                         }
-                        http_scheme => Err(ValidationError::unknown_reference_scheme(
-                            http_scheme.to_owned(),
-                        )),
-                    },
+                        let resolved = self
+                            .external_resolver
+                            .resolve(&self.root_schema, url)
+                            .map_err(|error| ValidationError::resolver(url.clone(), error))?;
+                        self.store
+                            .write()
+                            .insert(url.clone().into(), resolved.clone());
+                        Ok(resolved)
+                    }
                 }
             }
         }
@@ -259,6 +344,7 @@ mod tests {
 
     fn make_resolver(schema: &Value) -> Resolver {
         Resolver::new(
+            Arc::new(DefaultResolver),
             Draft::Draft7,
             &Url::parse("json-schema:///").unwrap(),
             Arc::new(schema.clone()),
