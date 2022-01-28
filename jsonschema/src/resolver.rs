@@ -17,16 +17,16 @@ pub type SchemaResolverError = anyhow::Error;
 
 /// A resolver that resolves external schema references.
 /// Internal references such as `#/definitions` and JSON pointers are handled internally.
-/// 
+///
 /// All operations are blocking and it is not possible to return futures.
 /// As a workaround, errors can be returned that will contain the schema URLs to resolve
 /// and can be resolved outside the validation process if needed.
-/// 
+///
 /// # Example
-/// 
+///
 /// ```rust,ignore
 /// struct MyCustomResolver;
-/// 
+///
 /// impl SchemaResolver for MyCustomResolver {
 ///     fn resolve(&self, root_schema: &Value, url: &Url) -> Result<Arc<Value>, SchemaResolverError> {
 ///         match url.scheme() {
@@ -42,7 +42,7 @@ pub type SchemaResolverError = anyhow::Error;
 /// ```
 pub trait SchemaResolver: Send + Sync {
     /// Resolve an external schema via an URL.
-    /// 
+    ///
     /// Relative URLs are resolved based on the root schema's ID,
     /// if there is no root schema ID available, the schema `json-schema` is used
     /// and any relative paths are turned into absolutes.
@@ -80,12 +80,10 @@ impl SchemaResolver for DefaultResolver {
                     Err(anyhow::anyhow!("`resolve-file` feature or a custom resolver is required to resolve external schemas via files"))
                 }
             }
-            "json-schema" => {
-                Err(anyhow::anyhow!("cannot resolve relative external schema without root schema ID"))
-            }
-            _ => {
-                Err(anyhow::anyhow!("unknown scheme {}", url.scheme()))
-            }
+            "json-schema" => Err(anyhow::anyhow!(
+                "cannot resolve relative external schema without root schema ID"
+            )),
+            _ => Err(anyhow::anyhow!("unknown scheme {}", url.scheme())),
         }
     }
 }
