@@ -1,4 +1,4 @@
-use std::{error::Error, fs, path::PathBuf, process};
+use std::{error::Error, fs::File, io::BufReader, path::PathBuf, process};
 
 use jsonschema::JSONSchema;
 use structopt::StructOpt;
@@ -43,17 +43,21 @@ pub fn main() -> BoxErrorResult<()> {
     Ok(())
 }
 
-fn validate_instances(instances: &[PathBuf], schema: PathBuf) -> BoxErrorResult<bool> {
+fn read_json(path: &PathBuf) -> serde_json::Result<serde_json::Value> {
+    let file = File::open(path).expect("Failed to open file");
+    let reader = BufReader::new(file);
+    serde_json::from_reader(reader)
+}
+
+fn validate_instances(instances: &[PathBuf], schema_path: PathBuf) -> BoxErrorResult<bool> {
     let mut success = true;
 
-    let schema_json = fs::read_to_string(schema)?;
-    let schema_json = serde_json::from_str(&schema_json)?;
+    let schema_json = read_json(&schema_path)?;
     match JSONSchema::compile(&schema_json) {
         Ok(schema) => {
             for instance in instances {
                 let instance_path_name = instance.to_str().unwrap();
-                let instance_json = fs::read_to_string(&instance)?;
-                let instance_json = serde_json::from_str(&instance_json)?;
+                let instance_json = read_json(instance)?;
                 let validation = schema.validate(&instance_json);
                 match validation {
                     Ok(_) => println!("{} - VALID", instance_path_name),

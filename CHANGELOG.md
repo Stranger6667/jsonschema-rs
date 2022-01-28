@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Performance
+
+- CLI: Use `serde::from_reader` instead of `serde::from_str`.
+
 ## [0.14.0] - 2022-01-23
 
 ### Changed
