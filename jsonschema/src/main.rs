@@ -56,15 +56,15 @@ fn validate_instances(instances: &[PathBuf], schema_path: PathBuf) -> BoxErrorRe
     match JSONSchema::compile(&schema_json) {
         Ok(schema) => {
             for instance in instances {
-                let instance_path_name = instance.to_str().unwrap();
                 let instance_json = read_json(instance)?;
                 let validation = schema.validate(&instance_json);
+                let filename = instance.to_string_lossy();
                 match validation {
-                    Ok(_) => println!("{} - VALID", instance_path_name),
+                    Ok(_) => println!("{} - VALID", filename),
                     Err(errors) => {
                         success = false;
 
-                        println!("{} - INVALID. Errors:", instance_path_name);
+                        println!("{} - INVALID. Errors:", filename);
                         for (i, e) in errors.enumerate() {
                             println!("{}. {}", i + 1, e);
                         }
