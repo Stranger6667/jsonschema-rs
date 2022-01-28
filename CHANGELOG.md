@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.14.0] - 2022-01-23
+
 ### Changed
 
 - Bump `itoa` to `1.0`. [#337](https://github.com/Stranger6667/jsonschema-rs/issues/337)
@@ -17,8 +19,6 @@
 - Optimize searching by pointer in JSON documents.
 
 ## [0.13.3] - 2021-12-08
-
-## [0.14.0] - 2022-01-23
 
 ### Changed
 
