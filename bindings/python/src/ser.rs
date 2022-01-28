@@ -64,9 +64,7 @@ impl SerializePyObject {
 
 #[inline]
 fn is_enum_subclass(object_type: *mut pyo3::ffi::PyTypeObject) -> bool {
-    unsafe {
-        return (*(object_type as *mut ffi::PyTypeObject)).ob_type == types::ENUM_TYPE;
-    }
+    unsafe { (*(object_type.cast::<ffi::PyTypeObject>())).ob_type == types::ENUM_TYPE }
 }
 
 fn get_object_type_from_object(object: *mut pyo3::ffi::PyObject) -> ObjectType {

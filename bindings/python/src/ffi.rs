@@ -1,6 +1,6 @@
 use std::os::raw::c_char;
 
-/// ob_type is not exposed by default as is needed to check if something inherits from a enum
+/// ``ob_type`` is not exposed by default as is needed to check if something inherits from a enum.
 #[repr(C)]
 #[derive(Debug)]
 pub struct PyTypeObject {

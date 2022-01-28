@@ -24,10 +24,10 @@ static INIT: Once = Once::new();
 // Taken from orjson
 #[cold]
 unsafe fn look_up_enum_type() -> *mut PyTypeObject {
-    let module = PyImport_ImportModule("enum\0".as_ptr() as *const c_char);
+    let module = PyImport_ImportModule("enum\0".as_ptr().cast::<c_char>());
     let module_dict = PyObject_GenericGetDict(module, std::ptr::null_mut());
-    let ptr = PyMapping_GetItemString(module_dict, "EnumMeta\0".as_ptr() as *const c_char)
-        as *mut PyTypeObject;
+    let ptr = PyMapping_GetItemString(module_dict, "EnumMeta\0".as_ptr().cast::<c_char>())
+        .cast::<PyTypeObject>();
     Py_DECREF(module_dict);
     Py_DECREF(module);
     ptr
@@ -48,6 +48,6 @@ pub fn init() {
         INT_TYPE = Py_TYPE(PyLong_FromLongLong(0));
         FLOAT_TYPE = Py_TYPE(PyFloat_FromDouble(0.0));
         ENUM_TYPE = look_up_enum_type();
-        VALUE_STR = pyo3::ffi::PyUnicode_InternFromString("value\0".as_ptr() as *const c_char);
+        VALUE_STR = pyo3::ffi::PyUnicode_InternFromString("value\0".as_ptr().cast::<c_char>());
     });
 }
