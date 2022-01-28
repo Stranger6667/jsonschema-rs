@@ -1,7 +1,10 @@
 use criterion::Criterion;
 use serde::Deserialize;
-use serde_json::{from_str, Value};
-use std::fs::read_to_string;
+use serde_json::{from_reader, Value};
+use std::{
+    fs::{read_to_string, File},
+    io::BufReader,
+};
 
 #[derive(Debug, Deserialize)]
 struct Benchmark<'a> {
@@ -12,8 +15,9 @@ struct Benchmark<'a> {
 }
 
 pub fn read_json(filepath: &str) -> Value {
-    let content = read_to_string(filepath).expect("Can't read file");
-    from_str(&content).expect("Invalid JSON")
+    let file = File::open(filepath).expect("Failed to open file");
+    let reader = BufReader::new(file);
+    from_reader(reader).expect("Invalid JSON")
 }
 
 fn strip_characters(original: &str) -> String {
