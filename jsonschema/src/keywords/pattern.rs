@@ -173,7 +173,7 @@ mod tests {
     use super::*;
     use crate::{
         compilation::{context::BaseUri, DEFAULT_SCOPE},
-        resolver::{Resolver, DefaultResolver},
+        resolver::{DefaultResolver, Resolver},
         tests_util, JSONSchema,
     };
     use serde_json::{json, Value};

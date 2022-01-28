@@ -5,7 +5,7 @@ use crate::{
         DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS,
     },
     content_media_type::{ContentMediaTypeCheckType, DEFAULT_CONTENT_MEDIA_TYPE_CHECKS},
-    resolver::{DefaultResolver, SchemaResolver, Resolver},
+    resolver::{DefaultResolver, Resolver, SchemaResolver},
     schemas, ValidationError,
 };
 use ahash::AHashMap;
