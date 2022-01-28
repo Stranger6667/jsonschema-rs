@@ -8,8 +8,7 @@ use crate::{
 use ahash::AHashMap;
 use parking_lot::RwLock;
 use serde_json::Value;
-use std::borrow::Cow;
-use std::sync::Arc;
+use std::{borrow::Cow, sync::Arc};
 use url::Url;
 
 #[derive(Debug)]

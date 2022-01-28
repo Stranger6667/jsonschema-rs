@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::{error::Error, fs::File, io::BufReader, path::PathBuf, process};
 
 use jsonschema::JSONSchema;
@@ -43,7 +44,7 @@ pub fn main() -> BoxErrorResult<()> {
     Ok(())
 }
 
-fn read_json(path: &PathBuf) -> serde_json::Result<serde_json::Value> {
+fn read_json(path: &Path) -> serde_json::Result<serde_json::Value> {
     let file = File::open(path).expect("Failed to open file");
     let reader = BufReader::new(file);
     serde_json::from_reader(reader)
