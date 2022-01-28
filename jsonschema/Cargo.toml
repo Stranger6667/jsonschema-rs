@@ -26,7 +26,7 @@ resolve-file = []
 
 [dependencies]
 ahash = { version = "0.7", features = ["serde"] }
-anyhow = "1.0.53"
+anyhow = "1"
 base64 = ">= 0.2"
 bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
 fancy-regex = "^0.7.1"
