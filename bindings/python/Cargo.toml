@@ -27,7 +27,7 @@ features = ["reqwest"]
 [dependencies]
 serde_json = "1"
 serde = "1"
-pyo3 = { version = "^0.14.1", features = ["extension-module"] }
+pyo3 = { version = "^0.15", features = ["extension-module"] }
 pyo3-built = "0.4"
 
 [package.metadata.maturin]
@@ -36,7 +36,7 @@ project-url = { repository = "https://github.com/Stranger6667/jsonschema-rs" }
 maintainer = "Dmitry Dygalo"
 maintainer-email = "Dmitry Dygalo <dadygalo@gmail.com>"
 classifier = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
