@@ -33,7 +33,7 @@ pub type SchemaResolverError = anyhow::Error;
 ///             "json-schema" => {
 ///                 Err(CustomError::new("cannot resolve schema without root schema ID"))
 ///             },
-///             "http" | "http" => {
+///             "http" | "https" => {
 ///                 Ok(fetch_http(url).json()?)
 ///             }
 ///         }
