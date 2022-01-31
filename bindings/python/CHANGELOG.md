@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Support for resolving external schema files. [#76](https://github.com/Stranger6667/jsonschema-rs/issues/76)
+
 ### Changed
 
 - Update `pyo3` to `0.15`.

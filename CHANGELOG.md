@@ -4,8 +4,8 @@
 
 ### Added
 
-- The `SchemaResolver` trait to support resolving external schema references. [#341](https://github.com/Stranger6667/jsonschema-rs/pull/341)
-- `resolve-file` feature to resolve external schema files via `std::fs`. [#341](https://github.com/Stranger6667/jsonschema-rs/pull/341)
+- The `SchemaResolver` trait to support resolving external schema references. [#246](https://github.com/Stranger6667/jsonschema-rs/issues/246)
+- `resolve-file` feature to resolve external schema files via `std::fs`. [#76](https://github.com/Stranger6667/jsonschema-rs/issues/76)
 
 ### Changed
 
