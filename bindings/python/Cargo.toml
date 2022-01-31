@@ -22,7 +22,7 @@ built = { version = "0.5", features = ["chrono"] }
 path = "../../jsonschema"
 version = "*"
 default-features = false
-features = ["reqwest"]
+features = ["resolve-http", "resolve-file"]
 
 [dependencies]
 serde_json = "1"

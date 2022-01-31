@@ -173,7 +173,7 @@ mod tests {
     use super::*;
     use crate::{
         compilation::{context::BaseUri, DEFAULT_SCOPE},
-        resolver::Resolver,
+        resolver::{DefaultResolver, Resolver},
         tests_util, JSONSchema,
     };
     use serde_json::{json, Value};
@@ -207,6 +207,7 @@ mod tests {
         let schema = JSONSchema::compile(&schema_json).unwrap();
         let resolver = Arc::new(
             Resolver::new(
+                Arc::new(DefaultResolver),
                 Default::default(),
                 &DEFAULT_SCOPE,
                 schema_json,
