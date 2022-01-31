@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.14.0] - 2022-01-31
+
 ### Added
 
 - Support for resolving external schema files. [#76](https://github.com/Stranger6667/jsonschema-rs/issues/76)
@@ -252,7 +254,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.13.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.14.0...HEAD
+[0.14.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.13.1...python-v0.14.0
 [0.13.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.13.0...python-v0.13.1
 [0.13.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.12.1...python-v0.13.0
 [0.12.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.12.0...python-v0.12.1
