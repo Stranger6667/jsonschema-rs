@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.15.0] - 2022-01-31
+
 ### Added
 
 - The `SchemaResolver` trait to support resolving external schema references. [#246](https://github.com/Stranger6667/jsonschema-rs/issues/246)
@@ -365,7 +367,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.14.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.0...HEAD
+[0.15.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.14.0...rust-v0.15.0
 [0.14.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.3...rust-v0.14.0
 [0.13.3]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.2...rust-v0.13.3
 [0.13.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.1...rust-v0.13.2
