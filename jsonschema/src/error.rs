@@ -704,14 +704,6 @@ impl<'a> ValidationError<'a> {
             schema_path,
         }
     }
-    pub(crate) fn unknown_reference_scheme(scheme: String) -> ValidationError<'a> {
-        ValidationError {
-            instance_path: JSONPointer::default(),
-            instance: Cow::Owned(Value::Null),
-            kind: ValidationErrorKind::UnknownReferenceScheme { scheme },
-            schema_path: JSONPointer::default(),
-        }
-    }
     pub(crate) fn utf8(error: Utf8Error) -> ValidationError<'a> {
         ValidationError {
             instance_path: JSONPointer::default(),
