@@ -24,18 +24,25 @@ pub type SchemaResolverError = anyhow::Error;
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```no_run
+/// # use serde_json::{json, Value};
+/// # use anyhow::anyhow;
+/// # use jsonschema::{SchemaResolver, SchemaResolverError};
+/// # use std::sync::Arc;
+/// # use url::Url;
+///
 /// struct MyCustomResolver;
 ///
 /// impl SchemaResolver for MyCustomResolver {
 ///     fn resolve(&self, root_schema: &Value, url: &Url) -> Result<Arc<Value>, SchemaResolverError> {
 ///         match url.scheme() {
 ///             "json-schema" => {
-///                 Err(CustomError::new("cannot resolve schema without root schema ID"))
+///                 Err(anyhow!("cannot resolve schema without root schema ID"))
 ///             },
-///             "http" | "http" => {
-///                 Ok(fetch_http(url).json()?)
+///             "http" | "https" => {
+///                 Ok(Arc::new(json!({ "description": "an external schema" })))
 ///             }
+///             _ => Err(anyhow!("scheme is not supported"))
 ///         }
 ///     }
 /// }
@@ -44,15 +51,29 @@ pub trait SchemaResolver: Send + Sync {
     /// Resolve an external schema via an URL.
     ///
     /// Relative URLs are resolved based on the root schema's ID,
-    /// if there is no root schema ID available, the schema `json-schema` is used
+    /// if there is no root schema ID available, the scheme `json-schema` is used
     /// and any relative paths are turned into absolutes.
-    fn resolve(&self, root_schema: &Value, url: &Url) -> Result<Arc<Value>, SchemaResolverError>;
+    ///
+    /// Additionally the original reference string is also passed,
+    /// in most cases it should not be needed, but it preserves some information,
+    /// such as relative paths that are lost when the URL is built.
+    fn resolve(
+        &self,
+        root_schema: &Value,
+        url: &Url,
+        original_reference: &str,
+    ) -> Result<Arc<Value>, SchemaResolverError>;
 }
 
 pub(crate) struct DefaultResolver;
 
 impl SchemaResolver for DefaultResolver {
-    fn resolve(&self, _root_schema: &Value, url: &Url) -> Result<Arc<Value>, SchemaResolverError> {
+    fn resolve(
+        &self,
+        _root_schema: &Value,
+        url: &Url,
+        _reference: &str,
+    ) -> Result<Arc<Value>, SchemaResolverError> {
         match url.scheme() {
             "http" | "https" => {
                 #[cfg(any(feature = "resolve-http", test))]
@@ -135,30 +156,25 @@ impl Resolver {
     ///   - the root document (`DEFAULT_ROOT_URL`) case;
     ///   - named subschema that is stored in `self.schemas`;
     ///   - document from a remote location;
-    fn resolve_url<'a>(&'a self, url: &Url) -> Result<Arc<Value>, ValidationError> {
+    fn resolve_url<'a>(&'a self, url: &Url, orig_ref: &str) -> Result<Arc<Value>, ValidationError> {
         match url.as_str() {
             DEFAULT_ROOT_URL => Ok(self.root_schema.clone()),
-            url_str => {
-                if let Some(cached) = self.store.read().get(url_str) {
-                    return Ok(cached.clone());
-                }
-                match self.schemas.get(url_str) {
-                    Some(value) => Ok(value.clone()),
-                    None => {
-                        if let Some(s) = self.store.read().get(url_str) {
-                            return Ok(s.clone());
-                        }
-                        let resolved = self
-                            .external_resolver
-                            .resolve(&self.root_schema, url)
-                            .map_err(|error| ValidationError::resolver(url.clone(), error))?;
-                        self.store
-                            .write()
-                            .insert(url.clone().into(), resolved.clone());
-                        Ok(resolved)
+            url_str => match self.schemas.get(url_str) {
+                Some(value) => Ok(value.clone()),
+                None => {
+                    if let Some(cached) = self.store.read().get(url_str) {
+                        return Ok(cached.clone());
                     }
+                    let resolved = self
+                        .external_resolver
+                        .resolve(&self.root_schema, url, orig_ref)
+                        .map_err(|error| ValidationError::resolver(url.clone(), error))?;
+                    self.store
+                        .write()
+                        .insert(url.clone().into(), resolved.clone());
+                    Ok(resolved)
                 }
-            }
+            },
         }
     }
 
@@ -171,6 +187,7 @@ impl Resolver {
         &self,
         draft: Draft,
         url: &Url,
+        orig_ref: &str,
     ) -> Result<(Url, Arc<Value>), ValidationError> {
         let mut resource = url.clone();
         resource.set_fragment(None);
@@ -185,7 +202,7 @@ impl Resolver {
 
         // Each resolved document may be in a changed subfolder
         // They are tracked when JSON pointer is resolved and added to the resource
-        let document = self.resolve_url(&resource)?;
+        let document = self.resolve_url(&resource, orig_ref)?;
         if fragment.is_empty() {
             return Ok((resource, Arc::clone(&document)));
         }
@@ -592,7 +609,9 @@ mod tests {
         });
         let resolver = make_resolver(&schema);
         let url = Url::parse("json-schema:///#/definitions/a").unwrap();
-        let (resource, resolved) = resolver.resolve_fragment(Draft::Draft7, &url).unwrap();
+        let (resource, resolved) = resolver
+            .resolve_fragment(Draft::Draft7, &url, "#/definitions/a")
+            .unwrap();
         assert_eq!(resource, Url::parse("json-schema:///").unwrap());
         assert_eq!(resolved.as_ref(), schema.pointer("/definitions/a").unwrap());
     }

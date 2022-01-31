@@ -14,6 +14,7 @@ use std::sync::Arc;
 use url::Url;
 
 pub(crate) struct RefValidator {
+    original_reference: String,
     reference: Url,
     /// Precomputed validators.
     /// They are behind a RwLock as is not possible to compute them
@@ -32,9 +33,9 @@ impl RefValidator {
         reference: &str,
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        let reference = context.build_url(reference)?;
         Ok(Box::new(RefValidator {
-            reference,
+            original_reference: reference.to_string(),
+            reference: context.build_url(reference)?,
             sub_nodes: RwLock::new(None),
             schema_path: context.schema_path.clone().into(),
             config: Arc::clone(&context.config),
@@ -48,10 +49,11 @@ impl Validate for RefValidator {
         if let Some(sub_nodes) = self.sub_nodes.read().as_ref() {
             return sub_nodes.is_valid(instance);
         }
-        if let Ok((scope, resolved)) = self
-            .resolver
-            .resolve_fragment(self.config.draft(), &self.reference)
-        {
+        if let Ok((scope, resolved)) = self.resolver.resolve_fragment(
+            self.config.draft(),
+            &self.reference,
+            &self.original_reference,
+        ) {
             let context = CompilationContext::new(
                 scope.into(),
                 Arc::clone(&self.config),
@@ -78,10 +80,11 @@ impl Validate for RefValidator {
                     .into_iter(),
             );
         }
-        match self
-            .resolver
-            .resolve_fragment(self.config.draft(), &self.reference)
-        {
+        match self.resolver.resolve_fragment(
+            self.config.draft(),
+            &self.reference,
+            &self.original_reference,
+        ) {
             Ok((scope, resolved)) => {
                 let context = CompilationContext::new(
                     scope.into(),
