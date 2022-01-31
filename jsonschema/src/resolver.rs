@@ -76,6 +76,11 @@ impl SchemaResolver for DefaultResolver {
     ) -> Result<Arc<Value>, SchemaResolverError> {
         match url.scheme() {
             "http" | "https" => {
+                #[cfg(all(feature = "reqwest", not(feature = "resolve-http")))]
+                {
+                    compile_error!("the `reqwest` feature does not enable HTTP schema resolving anymore, use the `resolve-http` feature instead");
+                }
+
                 #[cfg(any(feature = "resolve-http", test))]
                 {
                     let response = reqwest::blocking::get(url.as_str())?;
