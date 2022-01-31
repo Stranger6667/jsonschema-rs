@@ -34,7 +34,7 @@ pub type SchemaResolverError = anyhow::Error;
 /// struct MyCustomResolver;
 ///
 /// impl SchemaResolver for MyCustomResolver {
-///     fn resolve(&self, root_schema: &Value, url: &Url) -> Result<Arc<Value>, SchemaResolverError> {
+///     fn resolve(&self, root_schema: &Value, url: &Url, _original_reference: &str) -> Result<Arc<Value>, SchemaResolverError> {
 ///         match url.scheme() {
 ///             "json-schema" => {
 ///                 Err(anyhow!("cannot resolve schema without root schema ID"))
