@@ -1,0 +1,27 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+        "people": {
+            "type": "array",
+            "items": {
+                "$ref": "https://schema.rawkode.dev/person"
+            },
+            "links": [
+                {
+                    "rel": "collection",
+                    "href": "#/organizations/{id}",
+                    "templateRequired": [
+                        "id"
+                    ]
+                }
+            ]
+        },
+        "organizations": {
+            "type": "array",
+            "items": {
+                "$ref": "https://schema.rawkode.dev/organization"
+            }
+        }
+    }
+}

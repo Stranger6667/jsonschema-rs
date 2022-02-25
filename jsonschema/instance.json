@@ -1,0 +1,18 @@
+{
+    "$schema": "./schema.json",
+    "people": [
+        {
+            "forename": "David",
+            "surname": "Flanagan",
+            "email": "david@rawkode.dev",
+            "employers": [
+                "Pulumi"
+            ]
+        }
+    ],
+    "organizations": [
+        {
+            "name": "Pulumi"
+        }
+    ]
+}

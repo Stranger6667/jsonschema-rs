@@ -33,7 +33,7 @@ jobs:
       - run: pre-commit run --all-files
         working-directory: ./bindings/python
 
-  test-stable:
+  test-drafts:
     strategy:
       fail-fast: false
       matrix:
@@ -53,6 +53,27 @@ jobs:
           toolchain: stable
           override: true
       - run: cargo test --no-fail-fast --features ${{ matrix.draft }}
+        working-directory: ./jsonschema
+
+  test-stable:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    name: Test (stable) on ${{ matrix.os}}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - run: cargo test --no-fail-fast
         working-directory: ./jsonschema
 
   coverage:
