@@ -29,8 +29,8 @@ ahash = { version = "0.7", features = ["serde"] }
 anyhow = "1"
 base64 = ">= 0.2"
 bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
-fancy-regex = "^0.7.1"
-fraction = { version = "0.9", default-features = false, features = ["with-bigint"] }
+fancy-regex = "^0.8.0"
+fraction = { version = "0.10", default-features = false, features = ["with-bigint"] }
 iso8601 = "0.4"
 itoa = "1"
 lazy_static = "1"
