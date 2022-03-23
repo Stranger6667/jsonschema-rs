@@ -40,7 +40,7 @@ impl Draft {
     }
 }
 
-type CompileFunc<'a> = fn(
+pub(crate) type CompileFunc<'a> = fn(
     &'a Map<String, Value>,
     &'a Value,
     &CompilationContext,

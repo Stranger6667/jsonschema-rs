@@ -221,6 +221,7 @@ pub struct CompilationOptions {
     formats: AHashMap<&'static str, fn(&str) -> bool>,
     validate_formats: Option<bool>,
     validate_schema: bool,
+    // custom_keywords: Option(HashMap<String, Validator>
 }
 
 impl Default for CompilationOptions {

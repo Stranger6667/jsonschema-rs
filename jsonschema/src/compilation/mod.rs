@@ -4,6 +4,7 @@
 pub(crate) mod context;
 pub(crate) mod options;
 
+use std::fmt::{Display, Formatter};
 use crate::{
     error::ErrorIterator,
     keywords,
@@ -17,9 +18,13 @@ use crate::{
 use ahash::AHashMap;
 use context::CompilationContext;
 use options::CompilationOptions;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::sync::Arc;
 use url::Url;
+use crate::error::{error, no_error};
+use crate::keywords::CompilationResult;
+use crate::keywords::helpers::fail_on_non_positive_integer;
+use serde_json::Map;
 
 pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
 
@@ -32,6 +37,119 @@ pub struct JSONSchema {
 
 lazy_static::lazy_static! {
     pub static ref DEFAULT_SCOPE: Url = url::Url::parse(DEFAULT_ROOT_URL).expect("Is a valid URL");
+}
+
+pub(crate) struct ByteArrayValidator {
+    maxItems: u64,
+    minItems: u64,
+    schema_path: JSONPointer,
+}
+
+impl ByteArrayValidator {
+    #[inline]
+    pub(crate) fn compile(schema: &Value, schema_path: JSONPointer) -> CompilationResult {
+        println!("schema: {}", schema);
+        println!("schema_path: {}", schema_path);
+        Ok(Box::new(ByteArrayValidator { maxItems: 32, minItems: 32, schema_path }))
+    }
+}
+
+impl Display for ByteArrayValidator {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "maxItems: {}", self.maxItems)
+    }
+}
+
+impl Validate for ByteArrayValidator {
+    fn is_valid(&self, instance: &Value) -> bool {
+        println!("instance: {}", instance);
+        // if let Value::Array(items) = instance {
+        //     if (items.len() as u64) > self.limit {
+        //         return false;
+        //     }
+        // }
+        true
+    }
+
+    fn validate<'instance>(
+        &self,
+        instance: &'instance Value,
+        instance_path: &InstancePath,
+    ) -> ErrorIterator<'instance> {
+        println!("Validatin");
+        println!("instance: {}", instance);
+
+        let schema_json = json!({
+            "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+            },
+        });
+        let res = JSONSchema::compile(&schema_json);
+
+        match res {
+            Ok(json_schema) => {
+                match json_schema.validate(&instance).err() {
+                    None => {
+                        println!("All good");
+                        no_error()
+                    }
+                    Some(mut error_iter) => {
+                        let kek = error_iter.nth(0).unwrap();
+                        error(kek.into_owned())
+                    }
+                }
+            }
+            Err(err) => {
+                error(err.into_owned())
+            }
+        }
+
+
+
+        // if let Value::Array(items) = instance {
+        //     if (items.len() as u64) > self.maxItems {
+        //         return error(ValidationError::max_items(
+        //             self.schema_path.clone(),
+        //             instance_path.into(),
+        //             instance,
+        //             self.maxItems,
+        //         ));
+        //     }
+        //     if (items.len() as u64) < self.minItems {
+        //         return error(ValidationError::min_items(
+        //             self.schema_path.clone(),
+        //             instance_path.into(),
+        //             instance,
+        //             self.minItems,
+        //         ));
+        //     }
+        //
+        //     for item in items {
+        //         match Value {
+        //             Value::Number(kek) => {
+        //                 kek.is_u64();
+        //                 let num = kek.as_u64()
+        //             }
+        //         }
+        //     }
+        //
+        //     return no_error();
+        // }
+
+        // TODO: this should be in fact an error!
+    }
+}
+
+#[inline]
+pub(crate) fn compile<'a>(
+    _: &Map<String, Value>,
+    schema: &'a Value,
+    context: &CompilationContext,
+) -> Option<CompilationResult<'a>> {
+    let schema_path = context.as_pointer_with("maxItems");
+    Some(ByteArrayValidator::compile(schema, schema_path))
 }
 
 impl JSONSchema {
@@ -203,7 +321,15 @@ pub(crate) fn compile_validators<'a, 'c>(
                     {
                         validators.push((keyword.clone(), validator?));
                     } else {
-                        unmatched_keywords.insert(keyword.to_string(), subschema.clone());
+                        // TODO: no validators were found, check if there's a custom
+                        // validator,
+                        if keyword == "byteArray" {
+                            let validator = compile(object, subschema, &context).unwrap()?;
+                            validators.push((keyword.clone(), validator));
+                            println!("Found byte array!");
+                        } else {
+                            unmatched_keywords.insert(keyword.to_string(), subschema.clone());
+                        }
                     }
                 }
                 if is_if {
@@ -298,5 +424,32 @@ mod tests {
             r#"{"a":3} has less than 2 properties"#
         );
         assert_eq!(errors[1].to_string(), r#""a" is shorter than 3 characters"#);
+    }
+
+    #[test]
+    fn custom_keyword() {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "array",
+                    "byteArray": true,
+                    "minItems": 32,
+                    "maxItems": 32,
+                    "contentMediaType": "application/x.dash.dpp.identifier"
+                },
+            }
+        });
+
+        let compiled = JSONSchema::options().compile(&schema).unwrap();
+
+        let value = json!({ "id": [289,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32] });
+        let result = compiled.validate(&value);
+        let errors: Vec<ValidationError> = result.unwrap_err().collect();
+        assert_eq!(errors.len(), 1);
+        assert_eq!(
+            errors[0].to_string(),
+            r#"289 is greater than the maximum of 255"#
+        );
     }
 }
