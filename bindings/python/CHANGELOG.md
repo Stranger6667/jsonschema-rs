@@ -9,6 +9,15 @@
 ### Fixed
 
 - Installation error due to `pyo3-built` incompatibility
+- Memory leak in `iter_errors`. [#325](https://github.com/Stranger6667/jsonschema-rs/issues/325)
+
+### Changed
+
+- Update `pyo3` to `0.16`.
+
+### Removed
+
+- Support for Python 3.6
 
 ## [0.14.0] - 2022-01-31
 
