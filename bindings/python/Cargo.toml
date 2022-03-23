@@ -25,13 +25,13 @@ default-features = false
 features = ["resolve-http", "resolve-file"]
 
 [dependencies]
-serde_json = "1"
-serde = "1"
-pyo3 = { version = "^0.15", features = ["extension-module"] }
+serde_json = "1.0.81"
+serde = "1.0.137"
+pyo3 = { version = "0.16.4", features = ["extension-module"] }
 pyo3-built = "0.4.7"
 
 [package.metadata.maturin]
-requires-python = ">=3.6"
+requires-python = ">=3.7"
 project-url = { repository = "https://github.com/Stranger6667/jsonschema-rs" }
 maintainer = "Dmitry Dygalo"
 maintainer-email = "Dmitry Dygalo <dadygalo@gmail.com>"
@@ -43,7 +43,6 @@ classifier = [
     "Operating System :: OS Independent",
     "Programming Language :: Rust",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
