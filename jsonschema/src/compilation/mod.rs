@@ -13,6 +13,8 @@ use crate::{
     schema_node::SchemaNode,
     validator::Validate,
     Draft, ValidationError,
+    compilation::options::KeywordDefinition,
+    keywords::custom_keyword_schema::compile_custom_keyword_validator
 };
 use ahash::AHashMap;
 use context::CompilationContext;
@@ -20,8 +22,6 @@ use options::CompilationOptions;
 use serde_json::{json, Value};
 use std::sync::Arc;
 use url::Url;
-use crate::compilation::options::KeywordDefinition;
-use crate::keywords::custom_keyword_schema::compile_custom_keyword_validator;
 
 pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
 
@@ -257,7 +257,7 @@ mod tests {
     use crate::error::ValidationError;
     use serde_json::{from_str, json, Value};
     use std::{fs::File, io::Read, path::Path};
-    use crate::compilation::options::KeywordDefinition;
+    use crate::KeywordDefinition;
 
     fn load(path: &str, idx: usize) -> Value {
         let path = Path::new(path);
