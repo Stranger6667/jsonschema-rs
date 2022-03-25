@@ -1,12 +1,12 @@
-use std::fmt::{Display, Formatter};
-use serde_json::{Map, Value};
-use crate::{ErrorIterator, JSONSchema, ValidationError};
 use crate::compilation::context::CompilationContext;
 use crate::compilation::options::KeywordDefinition;
 use crate::error::no_error;
 use crate::keywords::CompilationResult;
 use crate::paths::{InstancePath, JSONPointer, PathChunk};
 use crate::validator::Validate;
+use crate::{ErrorIterator, JSONSchema, ValidationError};
+use serde_json::{Map, Value};
+use std::fmt::{Display, Formatter};
 
 pub(crate) struct CustomKeywordSchemaValidator {
     schema_path: JSONPointer,
@@ -16,8 +16,16 @@ pub(crate) struct CustomKeywordSchemaValidator {
 
 impl CustomKeywordSchemaValidator {
     #[inline]
-    pub(crate) fn compile(_: &Value, schema_path: JSONPointer, keyword_schema: Value) -> CompilationResult {
-        let mut validator = CustomKeywordSchemaValidator { schema_path, keyword_schema: Some(keyword_schema), json_schema: None };
+    pub(crate) fn compile(
+        _: &Value,
+        schema_path: JSONPointer,
+        keyword_schema: Value,
+    ) -> CompilationResult {
+        let mut validator = CustomKeywordSchemaValidator {
+            schema_path,
+            keyword_schema: Some(keyword_schema),
+            json_schema: None,
+        };
         validator.compile_schema().map_err(|e| e.into_owned())?;
         Ok(Box::new(validator))
     }
@@ -44,22 +52,24 @@ impl Validate for CustomKeywordSchemaValidator {
     ) -> ErrorIterator<'instance> {
         if let Some(schema) = &self.json_schema {
             return match schema.validate(&instance) {
-                Ok(_) => { no_error() }
+                Ok(_) => no_error(),
                 Err(mut error_iter) => {
                     let errors: Vec<ValidationError> = error_iter
-                        .map(
-                            |validation_error| {
-                                let mapped_error = ValidationError {
-                                    instance_path: JSONPointer::from(instance_path).extend_with(validation_error.instance_path.as_slice()),
-                                    schema_path: self.schema_path.extend_with(validation_error.schema_path.as_slice()),
-                                    ..validation_error
-                                };
-                                mapped_error.into_owned()
-                            })
+                        .map(|validation_error| {
+                            let mapped_error = ValidationError {
+                                instance_path: JSONPointer::from(instance_path)
+                                    .extend_with(validation_error.instance_path.as_slice()),
+                                schema_path: self
+                                    .schema_path
+                                    .extend_with(validation_error.schema_path.as_slice()),
+                                ..validation_error
+                            };
+                            mapped_error.into_owned()
+                        })
                         .collect();
                     Box::new(errors.into_iter())
                 }
-            }
+            };
         }
 
         no_error()

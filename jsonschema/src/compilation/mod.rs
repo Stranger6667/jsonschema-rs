@@ -21,7 +21,6 @@ use options::CompilationOptions;
 use serde_json::{json, Value};
 use std::sync::Arc;
 use url::Url;
-use crate::error::{error, no_error};
 use crate::keywords::CompilationResult;
 use crate::keywords::helpers::fail_on_non_positive_integer;
 use serde_json::Map;
