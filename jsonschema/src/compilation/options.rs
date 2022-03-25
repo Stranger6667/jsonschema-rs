@@ -10,6 +10,8 @@ use crate::{
 };
 use ahash::AHashMap;
 use std::{fmt, sync::Arc};
+use serde_json::Value;
+use valico::json_schema::validators::Validator;
 
 const EXPECT_MESSAGE: &str = "Valid meta-schema!";
 
@@ -221,7 +223,7 @@ pub struct CompilationOptions {
     formats: AHashMap<&'static str, fn(&str) -> bool>,
     validate_formats: Option<bool>,
     validate_schema: bool,
-    // custom_keywords: Option(HashMap<String, Validator>
+    custom_keywords: AHashMap<String, KeywordDefinition>,
 }
 
 impl Default for CompilationOptions {
@@ -235,6 +237,7 @@ impl Default for CompilationOptions {
             store: AHashMap::default(),
             formats: AHashMap::default(),
             validate_formats: None,
+            custom_keywords: AHashMap::default(),
         }
     }
 }
@@ -569,7 +572,25 @@ impl CompilationOptions {
         self.validate_formats
             .unwrap_or_else(|| self.draft().validate_formats_by_default())
     }
+
+    pub fn add_keyword<T>(mut self, keyword: T, keyword_definition: KeywordDefinition) -> Self
+        where T: Into<String>
+    {
+        self.custom_keywords.insert(keyword.into(), keyword_definition);
+        self
+    }
+
+    pub(crate) fn custom_keyword_definition(&self, keyword: &str) -> Option<&KeywordDefinition>
+    {
+        self.custom_keywords.get(keyword)
+    }
 }
+
+#[derive(Clone)]
+pub enum KeywordDefinition {
+    Schema(Value)
+}
+
 // format name & a pointer to a check function
 type FormatKV<'a> = Option<(&'a &'static str, &'a fn(&str) -> bool)>;
 

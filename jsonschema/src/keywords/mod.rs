@@ -35,6 +35,7 @@ pub(crate) mod ref_;
 pub(crate) mod required;
 pub(crate) mod type_;
 pub(crate) mod unique_items;
+pub(crate) mod custom_keyword_schema;
 use crate::{error, validator::Validate};
 
 pub(crate) type CompilationResult<'a> = Result<BoxedValidator, error::ValidationError<'a>>;
