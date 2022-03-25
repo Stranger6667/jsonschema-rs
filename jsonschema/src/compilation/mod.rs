@@ -4,7 +4,6 @@
 pub(crate) mod context;
 pub(crate) mod options;
 
-use std::fmt::{Display, Formatter};
 use crate::{
     error::ErrorIterator,
     keywords,
@@ -21,12 +20,8 @@ use options::CompilationOptions;
 use serde_json::{json, Value};
 use std::sync::Arc;
 use url::Url;
-use crate::keywords::CompilationResult;
-use crate::keywords::helpers::fail_on_non_positive_integer;
-use serde_json::Map;
 use crate::compilation::options::KeywordDefinition;
 use crate::keywords::custom_keyword_schema::compile_custom_keyword_validator;
-use crate::paths::PathChunk;
 
 pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
 
