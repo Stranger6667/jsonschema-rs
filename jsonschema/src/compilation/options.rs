@@ -11,7 +11,6 @@ use crate::{
 use ahash::AHashMap;
 use std::{fmt, sync::Arc};
 use serde_json::Value;
-use valico::json_schema::validators::Validator;
 
 const EXPECT_MESSAGE: &str = "Valid meta-schema!";
 
