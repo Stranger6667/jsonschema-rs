@@ -32,7 +32,7 @@ def test_schema_processing(func, instance):
 @pytest.mark.parametrize("func", (is_valid, validate))
 def test_invalid_schema(func):
     with pytest.raises(ValueError):
-        func(2 ** 64, True)
+        func(2**64, True)
 
 
 @pytest.mark.parametrize("func", (is_valid, validate))
