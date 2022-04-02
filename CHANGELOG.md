@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.15.1] - 2022-04-02
+
 ### Fixed
 
 - Enable `reqwest/native-tls` by default to avoid validation errors caused by `reqwest` missing a TLS backend. [#343](https://github.com/Stranger6667/jsonschema-rs/issues/343)
@@ -371,7 +373,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.1...HEAD
+[0.15.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.0...rust-v0.15.1
 [0.15.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.14.0...rust-v0.15.0
 [0.14.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.3...rust-v0.14.0
 [0.13.3]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.2...rust-v0.13.3
