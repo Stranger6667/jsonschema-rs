@@ -57,7 +57,7 @@ json_schema_test_suite = { version = "0.3.0", path = "../jsonschema-test-suite" 
 jsonschema-valid = "0.4.0"
 mockito = "0.31.0"
 paste = "1.0.6"
-test-case = "1.2.3"
+test-case = "2.0.2"
 valico = "3.6.0"
 
 # Benchmarks for `jsonschema`
