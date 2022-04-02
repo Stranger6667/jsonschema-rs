@@ -14,10 +14,17 @@ Supported drafts:
 - Draft 6
 - Draft 4 (except optional `bignum.json` test case)
 
+Partially supported drafts (some keywords are not implemented):
+- Draft 2019-09 (requires the `draft201909` feature enabled)
+- Draft 2020-12 (requires the `draft202012` feature enabled)
+
 ```toml
 # Cargo.toml
 jsonschema = "0.15"
 ```
+
+By default `jsonschema` resolves remote references via HTTP by using `reqwest` with `native-tls`.
+If you'd like to use `rustls`, you have to explicitly enable `reqwest` and `rustls` features and disable `native-tls` via `default-features = false` in your `Cargo.toml` file.
 
 To validate documents against some schema and get validation errors (if any):
 
