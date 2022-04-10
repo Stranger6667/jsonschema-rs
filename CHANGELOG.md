@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Allow HTTP(S) schema resolving with `rustls`. [#353](https://github.com/Stranger6667/jsonschema-rs/issues/353)
+
 ## [0.15.1] - 2022-04-02
 
 ### Fixed
