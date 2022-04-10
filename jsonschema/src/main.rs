@@ -1,5 +1,10 @@
-use std::path::Path;
-use std::{error::Error, fs::File, io::BufReader, path::PathBuf, process};
+use std::{
+    error::Error,
+    fs::File,
+    io::BufReader,
+    path::{Path, PathBuf},
+    process,
+};
 
 use jsonschema::JSONSchema;
 use structopt::StructOpt;
