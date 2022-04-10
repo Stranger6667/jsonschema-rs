@@ -2,7 +2,7 @@
 name = "json_schema_test_suite_test_case"
 version = "0.3.0"
 authors = ["Samuele Maci <macisamuele@gmail.com>"]
-edition = "2018"
+edition = "2021"
 publish = true
 keywords = ["jsonschema"]
 categories = ["development-tools::procedural-macro-helpers", "development-tools::testing"]

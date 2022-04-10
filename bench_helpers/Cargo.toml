@@ -2,7 +2,7 @@
 name = "bench_helpers"
 version = "0.1.0"
 authors = ["dmitry.dygalo <dadygalo@gmail.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 
 [dependencies]

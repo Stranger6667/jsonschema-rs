@@ -1,7 +1,7 @@
 [package]
 authors = ["dmitry.dygalo <dadygalo@gmail.com>"]
 description = "A crate for performing JSON schema validation"
-edition = "2018"
+edition = "2021"
 exclude = ["tests", "python", "benches/data/*.json", ".github", ".yamllint", ".pre-commit-config.yaml", ".gitignore", ".gitmodules", "*.md"]
 keywords = ["jsonschema", "validation"]
 license = "MIT"
