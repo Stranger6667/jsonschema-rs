@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.15.2] - 2022-04-10
+
 ### Fixed
 
 - Allow HTTP(S) schema resolving with `rustls`. [#353](https://github.com/Stranger6667/jsonschema-rs/issues/353)
@@ -377,7 +379,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.2...HEAD
+[0.15.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.1...rust-v0.15.2
 [0.15.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.0...rust-v0.15.1
 [0.15.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.14.0...rust-v0.15.0
 [0.14.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.13.3...rust-v0.14.0
