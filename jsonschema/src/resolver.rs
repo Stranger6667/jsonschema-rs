@@ -76,11 +76,11 @@ impl SchemaResolver for DefaultResolver {
     ) -> Result<Arc<Value>, SchemaResolverError> {
         match url.scheme() {
             "http" | "https" => {
-                #[cfg(not(any(
-                    feature = "resolve-http",
-                    all(feature = "reqwest", feature = "rustls"),
-                    test
-                )))]
+                #[cfg(all(
+                    feature = "reqwest",
+                    not(feature = "rustls"),
+                    not(feature = "resolve-http")
+                ))]
                 {
                     compile_error!(
                         r#"the `reqwest` feature alone does not enable HTTP schema resolving anymore.
