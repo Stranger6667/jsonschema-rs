@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.16.0] - 2022-04-21
+
 ### Fixed
 
 - Library compilation with no default features. [#356](https://github.com/Stranger6667/jsonschema-rs/issues/356)
@@ -388,7 +390,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.2...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.16.0...HEAD
+[0.16.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.2...rust-v0.16.0
 [0.15.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.1...rust-v0.15.2
 [0.15.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.0...rust-v0.15.1
 [0.15.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.14.0...rust-v0.15.0

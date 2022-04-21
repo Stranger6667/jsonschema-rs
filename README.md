@@ -20,7 +20,7 @@ Partially supported drafts (some keywords are not implemented):
 
 ```toml
 # Cargo.toml
-jsonschema = "0.15"
+jsonschema = "0.16"
 ```
 
 To validate documents against some schema and get validation errors (if any):
