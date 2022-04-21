@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Library compilation with no default features. [#356](https://github.com/Stranger6667/jsonschema-rs/issues/356)
+- Compilation with `resolve-file` only. [#358](https://github.com/Stranger6667/jsonschema-rs/issues/358)
+
+### Changed
+
+- **BREAKING**: Revert changes from [#353](https://github.com/Stranger6667/jsonschema-rs/issues/353) and [#343](https://github.com/Stranger6667/jsonschema-rs/issues/343), as they caused compilation issues.
+
 ## [0.15.2] - 2022-04-10
 
 ### Fixed

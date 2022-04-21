@@ -23,9 +23,6 @@ Partially supported drafts (some keywords are not implemented):
 jsonschema = "0.15"
 ```
 
-By default `jsonschema` resolves remote references via HTTP by using `reqwest` with `native-tls`.
-If you'd like to use `rustls`, you have to explicitly enable `reqwest` and `rustls` features and disable `native-tls` via `default-features = false` in your `Cargo.toml` file.
-
 To validate documents against some schema and get validation errors (if any):
 
 ```rust
@@ -120,6 +117,17 @@ fn main() {
     );
 }
 ```
+
+## Reference resolving and TLS
+
+By default, `jsonschema` resolves HTTP references via `reqwest` without TLS support.
+If you'd like to resolve HTTPS, you need to enable TLS support in `reqwest`:
+
+```toml
+reqwest = { version = "*", features = [ "rustls-tls" ] }
+```
+
+Otherwise, you might get validation errors like `invalid URL, scheme is not http`.
 
 ## Status
 

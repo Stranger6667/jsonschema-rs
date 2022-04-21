@@ -76,30 +76,17 @@ impl SchemaResolver for DefaultResolver {
     ) -> Result<Arc<Value>, SchemaResolverError> {
         match url.scheme() {
             "http" | "https" => {
-                #[cfg(not(any(
-                    feature = "resolve-http",
-                    all(feature = "reqwest", feature = "rustls"),
-                    test
-                )))]
+                #[cfg(all(feature = "reqwest", not(feature = "resolve-http")))]
                 {
-                    compile_error!(
-                        r#"the `reqwest` feature alone does not enable HTTP schema resolving anymore.
-Use the `resolve-http` feature which enables `native-tls` as well;
-or both `reqwest` and `rustls` features together, if you prefer rustls."#
-                    );
+                    compile_error!("the `reqwest` feature does not enable HTTP schema resolving anymore, use the `resolve-http` feature instead");
                 }
-
-                #[cfg(any(
-                    feature = "resolve-http",
-                    all(feature = "reqwest", feature = "rustls"),
-                    test
-                ))]
+                #[cfg(any(feature = "resolve-http", test))]
                 {
                     let response = reqwest::blocking::get(url.as_str())?;
                     let document: Value = response.json()?;
                     Ok(Arc::new(document))
                 }
-                #[cfg(not(any(feature = "resolve-http", all(feature="reqwest", feature="rustls"), test)))]
+                #[cfg(not(any(feature = "resolve-http", test)))]
                 Err(anyhow::anyhow!("`resolve-http` feature or a custom resolver is required to resolve external schemas via HTTP"))
             }
             "file" => {
