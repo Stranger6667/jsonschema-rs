@@ -110,10 +110,10 @@ impl IfElseValidator {
 
 impl Validate for IfElseValidator {
     fn is_valid(&self, instance: &Value) -> bool {
-        if !self.schema.is_valid(instance) {
-            self.else_schema.is_valid(instance)
-        } else {
+        if self.schema.is_valid(instance) {
             true
+        } else {
+            self.else_schema.is_valid(instance)
         }
     }
 
@@ -123,11 +123,11 @@ impl Validate for IfElseValidator {
         instance: &'instance Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'instance> {
-        if !self.schema.is_valid(instance) {
+        if self.schema.is_valid(instance) {
+            no_error()
+        } else {
             let errors: Vec<_> = self.else_schema.validate(instance, instance_path).collect();
             Box::new(errors.into_iter())
-        } else {
-            no_error()
         }
     }
 

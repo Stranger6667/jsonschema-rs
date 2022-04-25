@@ -116,16 +116,19 @@ impl JSONSchema {
     ///     ]
     /// }));
     /// ```
+    #[must_use]
     pub const fn apply<'a, 'b>(&'a self, instance: &'b Value) -> Output<'a, 'b> {
         Output::new(self, &self.node, instance)
     }
 
     /// The [`Draft`] which this schema was compiled against
+    #[must_use]
     pub fn draft(&self) -> Draft {
         self.config.draft()
     }
 
     /// The [`CompilationOptions`] that were used to compile this schema
+    #[must_use]
     pub fn config(&self) -> Arc<CompilationOptions> {
         Arc::clone(&self.config)
     }
@@ -155,10 +158,10 @@ pub(crate) fn compile_validators<'a, 'c>(
                 let unmatched_keywords = object
                     .iter()
                     .filter_map(|(k, v)| {
-                        if k.as_str() != "$ref" {
-                            Some((k.clone(), v.clone()))
-                        } else {
+                        if k.as_str() == "$ref" {
                             None
+                        } else {
+                            Some((k.clone(), v.clone()))
                         }
                     })
                     .collect();

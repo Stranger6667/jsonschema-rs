@@ -604,7 +604,7 @@ impl AdditionalPropertiesWithPatternsValidator {
             pattern_keyword_absolute_path: context
                 .with_path("patternProperties")
                 .base_uri()
-                .map(|u| u.into()),
+                .map(Into::into),
         }))
     }
 }
@@ -749,7 +749,7 @@ impl AdditionalPropertiesWithPatternsFalseValidator {
             pattern_keyword_absolute_path: context
                 .with_path("patternProperties")
                 .base_uri()
-                .map(|u| u.into()),
+                .map(Into::into),
         }))
     }
 }

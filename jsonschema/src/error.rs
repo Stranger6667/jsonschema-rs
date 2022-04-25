@@ -796,7 +796,7 @@ impl fmt::Display for ValidationError<'_> {
                     "Additional items are not allowed ({} {} unexpected)",
                     extras
                         .iter()
-                        .map(|x| x.to_string())
+                        .map(ToString::to_string)
                         .collect::<Vec<String>>()
                         .join(", "),
                     verb
