@@ -170,28 +170,28 @@ On instance["foo"]:
         )
 
 
+SCHEMA = {"properties": {"foo": {"type": "integer"}, "bar": {"type": "string"}}}
+
+
 @pytest.mark.parametrize(
     "func",
     (
-        JSONSchema({"properties": {"foo": {"type": "integer"}, "bar": {"type": "string"}}}).iter_errors,
-        partial(iter_errors, {"properties": {"foo": {"type": "integer"}, "bar": {"type": "string"}}}),
+        JSONSchema(SCHEMA).iter_errors,
+        partial(iter_errors, SCHEMA),
     ),
 )
 def test_iter_err_message(func):
-    instance = {"foo": None, "bar": None}
-    errs = func(instance)
+    errors = func({"foo": None, "bar": None})
 
-    err_a = next(errs)
-    assert err_a.message == 'null is not of type "string"'
+    first = next(errors)
+    assert first.message == 'null is not of type "string"'
 
-    err_b = next(errs)
-    assert err_b.message == 'null is not of type "integer"'
+    second = next(errors)
+    assert second.message == 'null is not of type "integer"'
 
-    try:
-        next(errs)
+    with suppress(StopIteration):
+        next(errors)
         pytest.fail("Validation error should happen")
-    except StopIteration:
-        pass
 
 
 @pytest.mark.parametrize(
@@ -202,14 +202,11 @@ def test_iter_err_message(func):
     ),
 )
 def test_iter_err_empty(func):
-    schema = {"properties": {"foo": {"type": "integer"}}}
     instance = {"foo": 1}
     errs = func(instance)
-    try:
+    with suppress(StopIteration):
         next(errs)
         pytest.fail("Validation error should happen")
-    except StopIteration:
-        pass
 
 
 class StrEnum(Enum):
@@ -222,18 +219,16 @@ class IntEnum(Enum):
     foo = 2
 
 
-def test_enum_str():
-    schema = {"properties": {"foo": {"type": "string"}}}
-    instance = {"foo": StrEnum.bar}
-    assert is_valid(schema, instance) == True
-
-    instance["foo"] = IntEnum.bar
-    assert is_valid(schema, instance) == False
-
-
-def test_enum_int():
-    schema = {"properties": {"foo": {"type": "number"}}}
-    instance = {"foo": IntEnum.bar}
-    assert is_valid(schema, instance) == True
-    instance["foo"] = StrEnum.bar
-    assert is_valid(schema, instance) == False
+@pytest.mark.parametrize(
+    "type_, value, expected",
+    (
+        ("number", IntEnum.bar, True),
+        ("number", StrEnum.bar, False),
+        ("string", IntEnum.bar, False),
+        ("string", StrEnum.bar, True),
+    ),
+)
+def test_enums(type_, value, expected):
+    schema = {"properties": {"foo": {"type": type_}}}
+    instance = {"foo": value}
+    assert is_valid(schema, instance) is expected
