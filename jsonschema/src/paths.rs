@@ -6,8 +6,8 @@ use std::{fmt, fmt::Write, slice::Iter, str::FromStr};
 pub struct JSONPointer(Vec<PathChunk>);
 
 impl JSONPointer {
-    #[must_use]
     /// JSON pointer as a vector of strings. Each component is casted to `String`. Consumes `JSONPointer`.
+    #[must_use]
     pub fn into_vec(self) -> Vec<String> {
         self.0
             .into_iter()
@@ -19,12 +19,12 @@ impl JSONPointer {
             .collect()
     }
 
-    #[must_use]
     /// Return an iterator over the underlying vector of path components.
     pub fn iter(&self) -> Iter<'_, PathChunk> {
         self.0.iter()
     }
     /// Take the last pointer chunk.
+    #[must_use]
     #[inline]
     pub fn last(&self) -> Option<&PathChunk> {
         self.0.last()

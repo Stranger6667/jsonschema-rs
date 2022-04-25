@@ -50,6 +50,7 @@ impl<'a, 'b> Output<'a, 'b> {
 
     /// Indicates whether the schema was valid, corresponds to the "flag" output
     /// format
+    #[must_use]
     pub fn flag(&self) -> bool {
         self.schema.is_valid(self.instance)
     }
@@ -103,6 +104,7 @@ impl<'a, 'b> Output<'a, 'b> {
     ///     }
     /// }
     /// ```
+    #[must_use]
     pub fn basic(&self) -> BasicOutput<'a> {
         self.root_node
             .apply_rooted(self.instance, &InstancePath::new())
@@ -121,6 +123,7 @@ pub enum BasicOutput<'a> {
 
 impl<'a> BasicOutput<'a> {
     /// A shortcut to check whether the output represents passed validation.
+    #[must_use]
     pub const fn is_valid(&self) -> bool {
         match self {
             BasicOutput::Valid(..) => true,
@@ -252,6 +255,7 @@ impl<T> OutputUnit<T> {
 
 impl OutputUnit<Annotations<'_>> {
     /// The annotations found at this output unit
+    #[must_use]
     pub fn value(&self) -> Cow<'_, serde_json::Value> {
         self.value.value()
     }
@@ -259,6 +263,7 @@ impl OutputUnit<Annotations<'_>> {
 
 impl OutputUnit<ErrorDescription> {
     /// The error for this output unit
+    #[must_use]
     pub const fn error_description(&self) -> &ErrorDescription {
         &self.value
     }
@@ -270,6 +275,7 @@ pub struct Annotations<'a>(AnnotationsInner<'a>);
 
 impl<'a> Annotations<'a> {
     /// The `serde_json::Value` of the annotation
+    #[must_use]
     pub fn value(&'a self) -> Cow<'a, serde_json::Value> {
         match &self.0 {
             AnnotationsInner::Value(v) => Cow::Borrowed(v),

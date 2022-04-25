@@ -216,8 +216,7 @@ impl SchemaNode {
     ) -> PartialApplication<'a>
     where
         I: Iterator<Item = (P, &'a Box<dyn Validate + Send + Sync + 'a>)> + 'a,
-        P: Into<crate::paths::PathChunk>,
-        P: std::fmt::Display,
+        P: Into<crate::paths::PathChunk> + std::fmt::Display,
     {
         let mut success_results: VecDeque<OutputUnit<Annotations>> = VecDeque::new();
         let mut error_results = VecDeque::new();
@@ -258,15 +257,15 @@ impl SchemaNode {
                 }
             }
         }
-        if !error_results.is_empty() {
-            PartialApplication::Invalid {
-                errors: Vec::new(),
-                child_results: error_results,
-            }
-        } else {
+        if error_results.is_empty() {
             PartialApplication::Valid {
                 annotations,
                 child_results: success_results,
+            }
+        } else {
+            PartialApplication::Invalid {
+                errors: Vec::new(),
+                child_results: error_results,
             }
         }
     }

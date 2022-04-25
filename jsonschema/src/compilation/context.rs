@@ -41,7 +41,7 @@ impl<'a> BaseUri<'a> {
 
 impl<'a> From<Option<Url>> for BaseUri<'a> {
     fn from(u: Option<Url>) -> Self {
-        u.map_or(BaseUri::Unknown, |u| u.into())
+        u.map_or(BaseUri::Unknown, Into::into)
     }
 }
 
