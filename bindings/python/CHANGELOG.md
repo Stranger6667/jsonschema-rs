@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Python 3.10 support
+
 ## [0.14.0] - 2022-01-31
 
 ### Added
