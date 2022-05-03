@@ -52,6 +52,16 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+
+      - name: Cache cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: stable-${{ matrix.os }}-${{ matrix.draft }}-cargo-cache
+
       - run: cargo test --no-fail-fast --features ${{ matrix.draft }}
         working-directory: ./jsonschema
 
@@ -69,6 +79,16 @@ jobs:
           override: true
       - name: Install grcov
         run: cargo install cargo-tarpaulin
+
+      - name: Cache cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: coverage-cargo-cache
+
       - name: Run tests
         run: cargo +nightly tarpaulin --verbose --all-features --out Xml
         working-directory: ./jsonschema
@@ -103,6 +123,15 @@ jobs:
         with:
           toolchain: stable
           override: true
+
+      - name: Cache cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: python-${{ matrix.python-version }}-${{ matrix.os }}-cargo-cache
 
       - name: Run ${{ matrix.python }} tox job
         run: tox -e py
