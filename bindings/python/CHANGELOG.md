@@ -6,6 +6,10 @@
 
 - Python 3.10 support
 
+### Fixed
+
+- Installation error due to `pyo3-built` incompatibility
+
 ## [0.14.0] - 2022-01-31
 
 ### Added

@@ -23,6 +23,8 @@ use pyo3::{
     types::{PyAny, PyList, PyType},
     wrap_pyfunction, AsPyPointer, PyIterProtocol, PyObjectProtocol,
 };
+#[macro_use]
+extern crate pyo3_built;
 
 mod ffi;
 mod ser;
@@ -470,8 +472,6 @@ fn jsonschema_rs(py: Python<'_>, module: &PyModule) -> PyResult<()> {
     module.add("Draft6", DRAFT6)?;
     module.add("Draft7", DRAFT7)?;
 
-    // Allow deprecated, unless `pyo3-built` is updated
-    #[allow(deprecated)]
     // Add build metadata to ease triaging incoming issues
     module.add("__build__", pyo3_built::pyo3_built!(py, build))?;
 
