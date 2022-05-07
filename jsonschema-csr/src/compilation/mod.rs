@@ -7,7 +7,7 @@
 use serde_json::Value;
 pub mod resolver;
 
-use resolver::Resolver;
+use resolver::LocalResolver;
 
 pub fn build(schema: &Value) {
     // The input graph may be incomplete:
@@ -22,25 +22,54 @@ pub fn build(schema: &Value) {
     //
     // Remote schemas could also have references that should be resolved, therefore
     // this step is applied recursively to all resolved schemas.
-    let resolver = Resolver::new(schema);
-    let mut output = vec![schema];
+    let mut output = vec![Node::Value(schema)];
+    let resolver = LocalResolver::new(schema);
+    build_one(schema, &resolver, &mut output);
+}
+
+pub(crate) fn build_one<'schema>(
+    schema: &'schema Value,
+    resolver: &'schema LocalResolver,
+    graph: &mut Vec<Node<'schema>>,
+) {
     let mut stack = vec![schema];
     while let Some(node) = stack.pop() {
         match node {
             Value::Object(object) => {
                 for (key, value) in object {
-                    stack.push(value);
-                    output.push(value);
+                    if key == "$ref" {
+                        // TODO.
+                        //   - Local reference - use local resolver,
+                        //   - remote - then, resolve and run the same procedure
+                        let resolved = resolver.resolve(value.as_str().unwrap()).unwrap();
+                        // Do not push onto the stack, because the reference is local, therefore
+                        // it will be processed in any case
+                        graph.push(Node::Reference(resolved));
+                    } else {
+                        stack.push(value);
+                        graph.push(Node::Value(value));
+                    }
                 }
             }
             Value::Array(array) => {}
             _ => {}
         }
     }
-    for r in &output {
-        println!("REF: {:p}", *r as *const Value);
+}
+
+#[derive(Debug)]
+pub(crate) enum Node<'schema> {
+    Value(&'schema Value),
+    Reference(&'schema Value),
+}
+
+impl<'schema> Node<'schema> {
+    pub(crate) fn as_inner(&self) -> &'schema Value {
+        match self {
+            Node::Value(value) => value,
+            Node::Reference(value) => value,
+        }
     }
-    println!("{:?}", output);
 }
 
 #[cfg(test)]
