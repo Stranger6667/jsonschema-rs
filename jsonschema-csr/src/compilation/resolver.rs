@@ -22,16 +22,27 @@ pub(crate) fn scope_of(schema: &Value) -> Url {
     Url::parse(url).unwrap()
 }
 
-pub(crate) struct Resolver<'schema> {
+pub(crate) struct LocalResolver<'schema> {
     root: &'schema Value,
     schemas: SchemaStore<'schema>,
 }
 
-impl<'schema> Resolver<'schema> {
+impl<'schema> LocalResolver<'schema> {
     pub(crate) fn new(root: &'schema Value) -> Self {
         Self {
             root,
             schemas: collect_schemas(root),
+        }
+    }
+
+    pub(crate) fn resolve(&'schema self, reference: &str) -> Option<&'schema Value> {
+        if reference == "#" {
+            Some(self.root)
+        } else if let Some(document) = self.schemas.get(reference) {
+            Some(document)
+        } else {
+            // TODO. use a more efficient impl
+            self.root.pointer(reference)
         }
     }
 }
