@@ -1,7 +1,4 @@
-use crate::{
-    compilation,
-    vocabularies::{Keyword, Validate},
-};
+use crate::vocabularies::{Keyword, Validate};
 use serde_json::{Map, Value};
 use std::ops::Range;
 
