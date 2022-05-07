@@ -21,3 +21,11 @@ pub enum Keyword {
     Properties,
     Ref,
 }
+
+#[derive(Debug)]
+pub enum KeywordKind {
+    ItemsArray,
+    Maximum,
+    Properties,
+    Ref,
+}

@@ -1,7 +1,3 @@
-use crate::compilation;
-// use crate::compilation::context::CompilationContext;
-use crate::compilation::Node;
-use crate::resolver::LocalResolver;
 use crate::vocabularies::{Keyword, Validate};
 use serde_json::Value;
 use std::cmp::Ordering;
@@ -10,30 +6,6 @@ use std::cmp::Ordering;
 pub struct Properties {
     properties: Box<[Box<str>]>,
     start: usize,
-}
-
-impl Properties {
-    // #[inline]
-    // pub(crate) fn compile<'schema>(
-    //     schema: &'schema Value,
-    //     global: &mut Vec<Node<'schema>>,
-    //     resolver: &'schema LocalResolver<'schema>,
-    // ) -> Node<'schema> {
-    //     match schema {
-    //         Value::Object(map) => {
-    //             let mut properties = Vec::with_capacity(map.len());
-    //             let mut local = Vec::with_capacity(map.len());
-    //             for (key, subschema) in map {
-    //                 properties.push(key.clone().into_boxed_str());
-    //                 compilation::build_one(subschema, resolver, global, &mut local)
-    //             }
-    //             let start = global.len();
-    //             // global.extend(local.into_iter());
-    //             Node::Value(schema)
-    //         }
-    //         _ => todo!(),
-    //     }
-    // }
 }
 
 macro_rules! next {
@@ -76,13 +48,34 @@ impl Validate for Properties {
         }
     }
 }
-//
-// #[inline]
-// pub(crate) fn compile<'schema>(
-//     schema: &'schema Value,
-//     global: &mut Vec<Node<'schema>>,
-//     resolver: &'schema LocalResolver<'schema>,
-//     // context: &mut CompilationContext,
-// ) -> Node<'schema> {
-//     Properties::compile(schema, global, resolver)
-// }
+
+pub(crate) mod compile {
+    use crate::{
+        compilation::{compile_one, IntermediateNode, LocalResolver},
+        vocabularies::KeywordKind,
+    };
+    use serde_json::Value;
+
+    pub(crate) fn intermediate<'schema>(
+        value: &'schema Value,
+        global: &mut Vec<IntermediateNode<'schema>>,
+        resolver: &'schema LocalResolver,
+    ) -> IntermediateNode<'schema> {
+        match value {
+            Value::Object(map) => {
+                let start = global.len();
+                let mut local = Vec::with_capacity(map.len());
+                for (key, subschema) in map {
+                    compile_one(subschema, resolver, global, &mut local)
+                }
+                global.extend(local.into_iter());
+                IntermediateNode::Parent {
+                    keyword: KeywordKind::Properties,
+                    children: start..global.len(),
+                    value,
+                }
+            }
+            _ => todo!(),
+        }
+    }
+}

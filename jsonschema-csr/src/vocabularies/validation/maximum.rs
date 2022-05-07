@@ -7,12 +7,6 @@ pub struct Maximum {
     limit: u64,
 }
 
-impl Maximum {
-    pub fn compile(limit: u64) -> Keyword {
-        Self { limit }.into()
-    }
-}
-
 impl Validate for Maximum {
     fn is_valid(&self, _: &[Keyword], instance: &Value) -> bool {
         if let Value::Number(item) = instance {
@@ -30,6 +24,14 @@ impl Validate for Maximum {
     }
 }
 
-pub(crate) fn compile(limit: u64) -> Keyword {
-    Maximum::compile(limit)
+pub(crate) mod compile {
+    use crate::{compilation::IntermediateNode, vocabularies::KeywordKind};
+    use serde_json::Value;
+
+    pub(crate) fn intermediate(value: &Value) -> IntermediateNode {
+        IntermediateNode::Leaf {
+            keyword: KeywordKind::Maximum,
+            value,
+        }
+    }
 }

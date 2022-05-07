@@ -1,4 +1,4 @@
 mod compilation;
 mod vocabularies;
 
-pub use compilation::{build, resolver};
+pub use compilation::JsonSchema;
