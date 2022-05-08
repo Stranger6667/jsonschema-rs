@@ -5,10 +5,6 @@ use std::ops::Range;
 /// An intermediate representation of a JSON Schema node.
 #[derive(Debug)]
 pub(crate) enum IntermediateNode<'schema> {
-    Root {
-        children: Range<usize>,
-        value: &'schema Value,
-    },
     Composite {
         keyword: CompositeKeyword,
         children: Range<usize>,
@@ -27,7 +23,6 @@ impl<'schema> IntermediateNode<'schema> {
             IntermediateNode::Leaf { value, .. } => value,
             IntermediateNode::Reference(value) => value,
             IntermediateNode::Composite { value, .. } => value,
-            IntermediateNode::Root { value, .. } => value,
         }
     }
 }

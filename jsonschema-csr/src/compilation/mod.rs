@@ -23,9 +23,9 @@ impl JsonSchema {
     pub fn compile(schema: &serde_json::Value) -> Self {
         let mut nodes = Vec::with_capacity(32);
         let resolver = LocalResolver::new(schema);
-        compile(schema, &resolver, &mut nodes);
+        let start = compile(schema, &resolver, &mut nodes);
         Self {
-            schema: resolve_references(nodes).into_boxed_slice(),
+            schema: resolve_references(nodes, schema, start).into_boxed_slice(),
         }
     }
 }
@@ -34,7 +34,7 @@ pub(crate) fn compile<'schema>(
     value: &'schema Value,
     resolver: &'schema LocalResolver,
     global: &mut Vec<IntermediateNode<'schema>>,
-) {
+) -> usize {
     // The input graph may be incomplete:
     //   1. Some nodes are absent because `$ref` can point to remote locations;
     //   2. Edges coming from the `$ref` keywords are unknown as they require resolving;
@@ -53,10 +53,7 @@ pub(crate) fn compile<'schema>(
     compile_one(value, resolver, global, &mut local);
     let start = global.len();
     global.extend(local.into_iter());
-    global.push(IntermediateNode::Root {
-        children: start..global.len(),
-        value,
-    });
+    start
 }
 
 pub(crate) fn compile_one<'schema>(
@@ -90,11 +87,10 @@ pub(crate) fn compile_one<'schema>(
     }
 }
 
-fn resolve_references(nodes: Vec<IntermediateNode>) -> Vec<Keyword> {
+fn resolve_references(nodes: Vec<IntermediateNode>, schema: &Value, start: usize) -> Vec<Keyword> {
     let mut keywords = Vec::with_capacity(nodes.len());
     for node in &nodes {
         match node {
-            IntermediateNode::Root { .. } => continue,
             IntermediateNode::Composite {
                 keyword,
                 children,
@@ -103,7 +99,6 @@ fn resolve_references(nodes: Vec<IntermediateNode>) -> Vec<Keyword> {
                 CompositeKeyword::ItemsArray => {}
                 CompositeKeyword::Properties => {
                     keywords.push(properties::compile::to_final(value, children.clone()));
-                    // stack.push(children.clone());
                 }
             },
             IntermediateNode::Leaf { keyword, value } => match keyword {
@@ -116,10 +111,19 @@ fn resolve_references(nodes: Vec<IntermediateNode>) -> Vec<Keyword> {
                 LeafKeyword::Ref => {}
             },
             IntermediateNode::Reference(value) => {
+                if std::ptr::eq(*value as *const _, schema as *const _) {
+                    keywords.push(
+                        ref_::Ref {
+                            reference: "".to_string(),
+                            range: start..nodes.len(),
+                        }
+                        .into(),
+                    );
+                    continue;
+                }
                 for (_, node) in nodes.iter().enumerate() {
                     match node {
-                        IntermediateNode::Root { children, .. }
-                        | IntermediateNode::Composite { children, .. } => {
+                        IntermediateNode::Composite { children, .. } => {
                             if std::ptr::eq(node.as_inner() as *const _, *value as *const _) {
                                 keywords.push(
                                     ref_::Ref {
@@ -155,5 +159,6 @@ mod tests {
             },
         });
         let compiled = JsonSchema::compile(&schema);
+        println!("{:?}", compiled)
     }
 }
