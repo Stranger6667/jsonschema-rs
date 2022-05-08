@@ -1,4 +1,4 @@
-use crate::vocabularies::KeywordKind;
+use crate::vocabularies::{CompositeKeyword, LeafKeyword};
 use serde_json::Value;
 use std::ops::Range;
 
@@ -9,13 +9,13 @@ pub(crate) enum IntermediateNode<'schema> {
         children: Range<usize>,
         value: &'schema Value,
     },
-    Parent {
-        keyword: KeywordKind,
+    Composite {
+        keyword: CompositeKeyword,
         children: Range<usize>,
         value: &'schema Value,
     },
     Leaf {
-        keyword: KeywordKind,
+        keyword: LeafKeyword,
         value: &'schema Value,
     },
     Reference(&'schema Value),
@@ -26,7 +26,7 @@ impl<'schema> IntermediateNode<'schema> {
         match self {
             IntermediateNode::Leaf { value, .. } => value,
             IntermediateNode::Reference(value) => value,
-            IntermediateNode::Parent { value, .. } => value,
+            IntermediateNode::Composite { value, .. } => value,
             IntermediateNode::Root { value, .. } => value,
         }
     }

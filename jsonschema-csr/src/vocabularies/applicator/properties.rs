@@ -1,11 +1,12 @@
 use crate::vocabularies::{Keyword, Validate};
 use serde_json::Value;
 use std::cmp::Ordering;
+use std::ops::Range;
 
 #[derive(Debug)]
 pub struct Properties {
-    properties: Box<[Box<str>]>,
-    start: usize,
+    properties: Box<[String]>,
+    children: Range<usize>,
 }
 
 macro_rules! next {
@@ -25,10 +26,7 @@ impl Validate for Properties {
             // TODO. It depends on serde feature - won't work for index map
             let mut items = items.iter();
             let (mut key, mut value) = next!(items);
-            let mut properties = self
-                .properties
-                .iter()
-                .zip(&keywords[self.start..self.properties.len()]);
+            let mut properties = self.properties.iter().zip(&keywords[self.children.clone()]);
             let (mut property, mut keyword) = next!(properties);
             loop {
                 match key.as_str().cmp(&**property) {
@@ -50,11 +48,10 @@ impl Validate for Properties {
 }
 
 pub(crate) mod compile {
-    use crate::{
-        compilation::{compile_one, IntermediateNode, LocalResolver},
-        vocabularies::KeywordKind,
-    };
+    use crate::compilation::{compile_one, IntermediateNode, LocalResolver};
+    use crate::vocabularies::{CompositeKeyword, Keyword, Properties};
     use serde_json::Value;
+    use std::ops::Range;
 
     pub(crate) fn intermediate<'schema>(
         value: &'schema Value,
@@ -69,11 +66,25 @@ pub(crate) mod compile {
                     compile_one(subschema, resolver, global, &mut local)
                 }
                 global.extend(local.into_iter());
-                IntermediateNode::Parent {
-                    keyword: KeywordKind::Properties,
+                IntermediateNode::Composite {
+                    keyword: CompositeKeyword::Properties,
                     children: start..global.len(),
                     value,
                 }
+            }
+            _ => todo!(),
+        }
+    }
+
+    pub(crate) fn to_final(value: &Value, children: Range<usize>) -> Keyword {
+        match value {
+            Value::Object(map) => {
+                let properties = map.keys().cloned().collect::<Vec<String>>();
+                Properties {
+                    properties: properties.into_boxed_slice(),
+                    children,
+                }
+                .into()
             }
             _ => todo!(),
         }
