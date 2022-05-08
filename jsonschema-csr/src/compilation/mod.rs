@@ -8,7 +8,9 @@ use serde_json::Value;
 mod nodes;
 pub mod resolver;
 
-use crate::vocabularies::{applicator::properties, validation::maximum, Keyword};
+use crate::vocabularies::{
+    applicator::properties, ref_, validation::maximum, CompositeKeyword, Keyword, LeafKeyword,
+};
 pub(crate) use nodes::IntermediateNode;
 pub(crate) use resolver::LocalResolver;
 
@@ -21,8 +23,9 @@ impl JsonSchema {
     pub fn compile(schema: &serde_json::Value) -> Self {
         let mut nodes = Vec::with_capacity(32);
         let resolver = LocalResolver::new(schema);
+        compile(schema, &resolver, &mut nodes);
         Self {
-            schema: compile(schema, &resolver, &mut nodes).into_boxed_slice(),
+            schema: resolve_references(nodes).into_boxed_slice(),
         }
     }
 }
@@ -31,7 +34,7 @@ pub(crate) fn compile<'schema>(
     value: &'schema Value,
     resolver: &'schema LocalResolver,
     global: &mut Vec<IntermediateNode<'schema>>,
-) -> Vec<Keyword> {
+) {
     // The input graph may be incomplete:
     //   1. Some nodes are absent because `$ref` can point to remote locations;
     //   2. Edges coming from the `$ref` keywords are unknown as they require resolving;
@@ -47,15 +50,13 @@ pub(crate) fn compile<'schema>(
     //
     // Non-leaf nodes store their edges as a range that points to the same vector
     let mut local = vec![];
-
-    compile_one(value, &resolver, global, &mut local);
+    compile_one(value, resolver, global, &mut local);
     let start = global.len();
     global.extend(local.into_iter());
     global.push(IntermediateNode::Root {
         children: start..global.len(),
         value,
     });
-    vec![]
 }
 
 pub(crate) fn compile_one<'schema>(
@@ -76,7 +77,6 @@ pub(crate) fn compile_one<'schema>(
             } else {
                 for (keyword, value) in object.iter() {
                     match keyword.as_str() {
-                        // "items" => local.push(items::compile(object, subschema, global, context)),
                         "maximum" => local.push(maximum::compile::intermediate(value)),
                         "properties" => {
                             local.push(properties::compile::intermediate(value, global, resolver))
@@ -88,6 +88,57 @@ pub(crate) fn compile_one<'schema>(
         }
         _ => todo!(),
     }
+}
+
+fn resolve_references(nodes: Vec<IntermediateNode>) -> Vec<Keyword> {
+    let mut keywords = Vec::with_capacity(nodes.len());
+    for node in &nodes {
+        match node {
+            IntermediateNode::Root { .. } => continue,
+            IntermediateNode::Composite {
+                keyword,
+                children,
+                value,
+            } => match keyword {
+                CompositeKeyword::ItemsArray => {}
+                CompositeKeyword::Properties => {
+                    keywords.push(properties::compile::to_final(value, children.clone()));
+                    // stack.push(children.clone());
+                }
+            },
+            IntermediateNode::Leaf { keyword, value } => match keyword {
+                LeafKeyword::Maximum => keywords.push(
+                    maximum::Maximum {
+                        limit: value.as_u64().unwrap(),
+                    }
+                    .into(),
+                ),
+                LeafKeyword::Ref => {}
+            },
+            IntermediateNode::Reference(value) => {
+                for (_, node) in nodes.iter().enumerate() {
+                    match node {
+                        IntermediateNode::Root { children, .. }
+                        | IntermediateNode::Composite { children, .. } => {
+                            if std::ptr::eq(node.as_inner() as *const _, *value as *const _) {
+                                keywords.push(
+                                    ref_::Ref {
+                                        reference: "".to_string(),
+                                        range: children.clone(),
+                                    }
+                                    .into(),
+                                );
+                                break;
+                            }
+                        }
+                        IntermediateNode::Leaf { .. } => {}
+                        IntermediateNode::Reference(_) => continue,
+                    }
+                }
+            }
+        }
+    }
+    keywords
 }
 
 #[cfg(test)]
@@ -102,9 +153,7 @@ mod tests {
                 "foo": {"$ref": "#"},
                 "bar": {"maximum": 5}
             },
-            "type": "object"
         });
-        let resolver = LocalResolver::new(&schema);
-        compile(&schema, &resolver, &mut vec![]);
+        let compiled = JsonSchema::compile(&schema);
     }
 }

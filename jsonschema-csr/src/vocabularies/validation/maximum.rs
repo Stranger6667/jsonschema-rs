@@ -4,7 +4,7 @@ use serde_json::Value;
 
 #[derive(Debug)]
 pub struct Maximum {
-    limit: u64,
+    pub(crate) limit: u64,
 }
 
 impl Validate for Maximum {
@@ -25,12 +25,12 @@ impl Validate for Maximum {
 }
 
 pub(crate) mod compile {
-    use crate::{compilation::IntermediateNode, vocabularies::KeywordKind};
+    use crate::{compilation::IntermediateNode, vocabularies::LeafKeyword};
     use serde_json::Value;
 
     pub(crate) fn intermediate(value: &Value) -> IntermediateNode {
         IntermediateNode::Leaf {
-            keyword: KeywordKind::Maximum,
+            keyword: LeafKeyword::Maximum,
             value,
         }
     }

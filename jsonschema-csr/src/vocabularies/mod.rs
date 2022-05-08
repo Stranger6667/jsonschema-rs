@@ -23,9 +23,13 @@ pub enum Keyword {
 }
 
 #[derive(Debug)]
-pub enum KeywordKind {
-    ItemsArray,
+pub enum LeafKeyword {
     Maximum,
-    Properties,
     Ref,
+}
+
+#[derive(Debug)]
+pub enum CompositeKeyword {
+    ItemsArray,
+    Properties,
 }
