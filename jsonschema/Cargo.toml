@@ -29,7 +29,7 @@ ahash = { version = "0.7.6", features = ["serde"] }
 anyhow = "1.0.55"
 base64 = "0.13.0"
 bytecount = { version = "0.6.2", features = ["runtime-dispatch-simd"] }
-fancy-regex = "0.9.0"
+fancy-regex = "0.10.0"
 fraction = { version = "0.10.0", default-features = false, features = ["with-bigint"] }
 iso8601 = "0.4.1"
 itoa = "1.0.1"
