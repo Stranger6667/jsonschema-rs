@@ -64,11 +64,11 @@ impl ValidationError {
             instance_path,
         }
     }
-    fn __str__(&self) -> PyResult<String> {
-        Ok(self.verbose_message.clone())
+    fn __str__(&self) -> String {
+        self.verbose_message.clone()
     }
-    fn __repr__(&self) -> PyResult<String> {
-        Ok(format!("<ValidationError: '{}'>", self.message))
+    fn __repr__(&self) -> String {
+        format!("<ValidationError: '{}'>", self.message)
     }
 }
 
@@ -438,8 +438,8 @@ impl JSONSchema {
     fn iter_errors(&self, py: Python<'_>, instance: &PyAny) -> PyResult<ValidationErrorIter> {
         iter_on_error(py, &self.schema, instance)
     }
-    fn __repr__(&self) -> PyResult<String> {
-        Ok(format!("<JSONSchema: {}>", self.repr))
+    fn __repr__(&self) -> String {
+        format!("<JSONSchema: {}>", self.repr)
     }
 }
 
