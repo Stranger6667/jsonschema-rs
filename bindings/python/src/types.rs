@@ -3,8 +3,7 @@ use pyo3::ffi::{
     PyMapping_GetItemString, PyObject, PyObject_GenericGetDict, PyTuple_New, PyTypeObject,
     PyUnicode_New, Py_DECREF, Py_None, Py_TYPE, Py_True,
 };
-use std::os::raw::c_char;
-use std::sync::Once;
+use std::{os::raw::c_char, sync::Once};
 
 pub static mut TRUE: *mut pyo3::ffi::PyObject = 0 as *mut pyo3::ffi::PyObject;
 

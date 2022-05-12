@@ -21,7 +21,7 @@ use pyo3::{
     exceptions::{self, PyValueError},
     prelude::*,
     types::{PyAny, PyList, PyType},
-    wrap_pyfunction, AsPyPointer, PyIterProtocol, PyObjectProtocol,
+    wrap_pyfunction, AsPyPointer,
 };
 #[macro_use]
 extern crate pyo3_built;
@@ -64,14 +64,10 @@ impl ValidationError {
             instance_path,
         }
     }
-}
-
-#[pyproto]
-impl<'p> PyObjectProtocol<'p> for ValidationError {
-    fn __str__(&'p self) -> PyResult<String> {
+    fn __str__(&self) -> PyResult<String> {
         Ok(self.verbose_message.clone())
     }
-    fn __repr__(&'p self) -> PyResult<String> {
+    fn __repr__(&self) -> PyResult<String> {
         Ok(format!("<ValidationError: '{}'>", self.message))
     }
 }
@@ -80,13 +76,12 @@ impl<'p> PyObjectProtocol<'p> for ValidationError {
 struct ValidationErrorIter {
     iter: std::vec::IntoIter<PyErr>,
 }
-
-#[pyproto]
-impl PyIterProtocol for ValidationErrorIter {
-    fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
+#[pymethods]
+impl ValidationErrorIter {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
-    fn __next__(mut slf: PyRefMut<Self>) -> Option<PyErr> {
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyErr> {
         slf.iter.next()
     }
 }
@@ -328,6 +323,8 @@ struct JSONSchema {
     repr: String,
 }
 
+const SCHEMA_LENGTH_LIMIT: usize = 32;
+
 fn get_schema_repr(schema: &serde_json::Value) -> String {
     // It could be more efficient, without converting the whole Value to a string
     let mut repr = schema.to_string();
@@ -441,12 +438,6 @@ impl JSONSchema {
     fn iter_errors(&self, py: Python<'_>, instance: &PyAny) -> PyResult<ValidationErrorIter> {
         iter_on_error(py, &self.schema, instance)
     }
-}
-
-const SCHEMA_LENGTH_LIMIT: usize = 32;
-
-#[pyproto]
-impl<'p> PyObjectProtocol<'p> for JSONSchema {
     fn __repr__(&self) -> PyResult<String> {
         Ok(format!("<JSONSchema: {}>", self.repr))
     }
