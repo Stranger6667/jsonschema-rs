@@ -32,10 +32,10 @@ impl JsonSchema {
     pub fn new(schema: &Value) -> Self {
         // Fetch all external schemas reachable from the root
         let external = fetch_external(schema);
-        // Build sub-schemas resolution contexts
-        let contexts = build_contexts(&external);
+        // Build resolvers for external schemas
+        let resolvers = build_resolvers(&external);
         // Collect all values and resolve references
-        let (values, mut edges) = collect(schema, &contexts);
+        let (values, mut edges) = collect(schema, &resolvers);
         // Replace all virtual edges with concrete ones and convert JSON values into keywords
         let keywords = concretize(values, &mut edges);
         // And finally, compress the edges into the CSR format
@@ -109,12 +109,12 @@ fn without_fragment(value: &Value) -> Option<Url> {
     }
 }
 
-fn build_contexts(external: &HashMap<Url, Value>) -> HashMap<&str, Resolver> {
-    let mut contexts = HashMap::with_capacity(external.len());
+fn build_resolvers(external: &HashMap<Url, Value>) -> HashMap<&str, Resolver> {
+    let mut resolvers = HashMap::with_capacity(external.len());
     for (scope, document) in external {
-        contexts.insert(scope.as_str(), Resolver::new(document, scope.clone()));
+        resolvers.insert(scope.as_str(), Resolver::new(document, scope.clone()));
     }
-    contexts
+    resolvers
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -135,15 +135,15 @@ pub(crate) enum ValueReference<'schema> {
 /// For example, `properties` sub-schemas are needed only if the input contains matching keys.
 fn collect<'a>(
     schema: &'a Value,
-    contexts: &'a HashMap<&str, Resolver>,
+    resolvers: &'a HashMap<&str, Resolver>,
 ) -> (Vec<ValueReference<'a>>, Vec<RawEdge>) {
     // TODO. idea - store values interleaved with edges to improve cache locality
     // TODO. maybe remove nodes that were not referenced by anything?
     let mut values = vec![];
     let mut edges = vec![];
-    let context = Resolver::new(schema, scope_of(schema));
-    let mut stack = vec![(None, &context, schema)];
-    while let Some((parent_idx, context, value)) = stack.pop() {
+    let resolver = Resolver::new(schema, scope_of(schema));
+    let mut stack = vec![(None, &resolver, schema)];
+    while let Some((parent_idx, resolver, value)) = stack.pop() {
         // TODO.
         //   - validate - there should be no invalid schemas
         //   - Edge labels??? str or usize
@@ -158,15 +158,15 @@ fn collect<'a>(
                             // TODO. what if it has the same scope as the local one?
                             Ok(mut url) => {
                                 url.set_fragment(None);
-                                let context = contexts.get(url.as_str()).unwrap();
-                                let resolved = context.resolve(reference).unwrap();
+                                let resolver = resolvers.get(url.as_str()).unwrap();
+                                let resolved = resolver.resolve(reference).unwrap();
                                 values.push(ValueReference::Virtual(resolved));
                                 // TODO. What if the value was already explored??
-                                stack.push((Some(node_idx), context, resolved));
+                                stack.push((Some(node_idx), resolver, resolved));
                             }
                             // Local reference
                             Err(url::ParseError::RelativeUrlWithoutBase) => {
-                                let resolved = context.resolve(reference).unwrap();
+                                let resolved = resolver.resolve(reference).unwrap();
                                 values.push(ValueReference::Virtual(resolved));
                             }
                             _ => todo!(),
@@ -180,14 +180,14 @@ fn collect<'a>(
                     // so, put the cheapest first
                     values.push(ValueReference::Concrete(value));
                     for (key, value) in object {
-                        stack.push((Some(node_idx), context, value))
+                        stack.push((Some(node_idx), resolver, value))
                     }
                 }
             }
             Value::Array(items) => {
                 values.push(ValueReference::Concrete(value));
                 for item in items {
-                    stack.push((Some(node_idx), context, item))
+                    stack.push((Some(node_idx), resolver, item))
                 }
             }
             _ => {
