@@ -143,9 +143,7 @@ impl Resolver {
     ) -> Result<Resolver, ValidationError<'a>> {
         let mut schemas: AHashMap<String, Arc<Value>> = AHashMap::new();
         // traverse the schema and store all named ones under their canonical ids
-        find_schemas(draft, &schema, scope, &mut |id, schema| {
-            schemas.insert(id, Arc::new(schema.clone()));
-        })?;
+        find_schemas(draft, &schema, scope, &mut schemas)?;
         Ok(Resolver {
             external_resolver,
             root_schema: schema,
@@ -229,16 +227,12 @@ fn join_folders(mut resource: Url, folders: &[&str]) -> Result<Url, url::ParseEr
 }
 
 /// Find all sub-schemas in the document and execute callback on each of them.
-#[inline]
-pub(crate) fn find_schemas<'a, F>(
+pub(crate) fn find_schemas<'a>(
     draft: Draft,
     schema: &'a Value,
     base_url: &Url,
-    callback: &mut F,
-) -> Result<(), url::ParseError>
-where
-    F: FnMut(String, &'a Value),
-{
+    schemas: &mut AHashMap<String, Arc<Value>>,
+) -> Result<(), url::ParseError> {
     match schema {
         Value::Object(item) => {
             if let Some(url) = id_of(draft, schema) {
@@ -247,25 +241,25 @@ where
                 if let Some("") = new_url.fragment() {
                     new_url.set_fragment(None);
                 }
-                callback(new_url.to_string(), schema);
+                schemas.insert(new_url.to_string(), Arc::new(schema.clone()));
                 for (key, subschema) in item {
                     if key == "enum" || key == "const" {
                         continue;
                     }
-                    find_schemas(draft, subschema, &new_url, callback)?;
+                    find_schemas(draft, subschema, &new_url, schemas)?;
                 }
             } else {
                 for (key, subschema) in item {
                     if key == "enum" || key == "const" {
                         continue;
                     }
-                    find_schemas(draft, subschema, base_url, callback)?;
+                    find_schemas(draft, subschema, base_url, schemas)?;
                 }
             }
         }
         Value::Array(items) => {
             for item in items {
-                find_schemas(draft, item, base_url, callback)?
+                find_schemas(draft, item, base_url, schemas)?
             }
         }
         _ => {}
