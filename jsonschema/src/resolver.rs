@@ -145,7 +145,6 @@ impl Resolver {
         // traverse the schema and store all named ones under their canonical ids
         find_schemas(draft, &schema, scope, &mut |id, schema| {
             schemas.insert(id, Arc::new(schema.clone()));
-            None
         })?;
         Ok(Resolver {
             external_resolver,
@@ -236,9 +235,9 @@ pub(crate) fn find_schemas<'a, F>(
     schema: &'a Value,
     base_url: &Url,
     callback: &mut F,
-) -> Result<Option<&'a Value>, url::ParseError>
+) -> Result<(), url::ParseError>
 where
-    F: FnMut(String, &'a Value) -> Option<&'a Value>,
+    F: FnMut(String, &'a Value),
 {
     match schema {
         Value::Object(item) => {
@@ -248,41 +247,30 @@ where
                 if let Some("") = new_url.fragment() {
                     new_url.set_fragment(None);
                 }
-                if let Some(x) = callback(new_url.to_string(), schema) {
-                    return Ok(Some(x));
-                }
+                callback(new_url.to_string(), schema);
                 for (key, subschema) in item {
                     if key == "enum" || key == "const" {
                         continue;
                     }
-                    let result = find_schemas(draft, subschema, &new_url, callback)?;
-                    if result.is_some() {
-                        return Ok(result);
-                    }
+                    find_schemas(draft, subschema, &new_url, callback)?;
                 }
             } else {
                 for (key, subschema) in item {
                     if key == "enum" || key == "const" {
                         continue;
                     }
-                    let result = find_schemas(draft, subschema, base_url, callback)?;
-                    if result.is_some() {
-                        return Ok(result);
-                    }
+                    find_schemas(draft, subschema, base_url, callback)?;
                 }
             }
         }
         Value::Array(items) => {
             for item in items {
-                let result = find_schemas(draft, item, base_url, callback)?;
-                if result.is_some() {
-                    return Ok(result);
-                }
+                find_schemas(draft, item, base_url, callback)?
             }
         }
         _ => {}
     }
-    Ok(None)
+    Ok(())
 }
 
 /// Searching twice is better than unconditionally allocating a String twice
