@@ -17,16 +17,17 @@ use serde_json::Value;
 use std::collections::HashMap;
 use url::Url;
 
-pub mod resolver;
+mod edges;
+mod resolver;
+
+use edges::{label, CompressedEdge, RawEdge};
 
 #[derive(Debug)]
 pub struct JsonSchema {
     keywords: Box<[Keyword]>,
     offsets: Box<[usize]>,
-    edges: Box<[usize]>,
+    edges: Box<[CompressedEdge]>,
 }
-
-type RawEdge = (usize, usize);
 
 impl JsonSchema {
     pub fn new(schema: &Value) -> Self {
@@ -143,10 +144,9 @@ fn collect<'a>(
     let mut edges = vec![];
     let resolver = Resolver::new(schema, scope_of(schema));
     let mut stack = vec![(None, &resolver, schema)];
-    while let Some((parent_idx, resolver, value)) = stack.pop() {
+    while let Some((parent, resolver, value)) = stack.pop() {
         // TODO.
         //   - validate - there should be no invalid schemas
-        //   - Edge labels??? str or usize
         let node_idx = values.len();
         match value {
             Value::Object(object) => {
@@ -162,7 +162,7 @@ fn collect<'a>(
                                 let resolved = resolver.resolve(reference).unwrap();
                                 values.push(ValueReference::Virtual(resolved));
                                 // TODO. What if the value was already explored??
-                                stack.push((Some(node_idx), resolver, resolved));
+                                stack.push((Some((node_idx, label("$ref"))), resolver, resolved));
                             }
                             // Local reference
                             Err(url::ParseError::RelativeUrlWithoutBase) => {
@@ -180,22 +180,22 @@ fn collect<'a>(
                     // so, put the cheapest first
                     values.push(ValueReference::Concrete(value));
                     for (key, value) in object {
-                        stack.push((Some(node_idx), resolver, value))
+                        stack.push((Some((node_idx, label(key))), resolver, value))
                     }
                 }
             }
             Value::Array(items) => {
                 values.push(ValueReference::Concrete(value));
-                for item in items {
-                    stack.push((Some(node_idx), resolver, item))
+                for (idx, item) in items.iter().enumerate() {
+                    stack.push((Some((node_idx, label(idx))), resolver, item))
                 }
             }
             _ => {
                 values.push(ValueReference::Concrete(value));
             }
         };
-        if let Some(parent_idx) = parent_idx {
-            edges.push((parent_idx, node_idx));
+        if let Some((parent_idx, label)) = parent {
+            edges.push(RawEdge::new(parent_idx, node_idx, label));
         }
     }
     (values, edges)
@@ -209,7 +209,7 @@ fn concretize(values: Vec<ValueReference>, edges: &mut Vec<RawEdge>) -> Vec<Keyw
             ValueReference::Concrete(_) => {}
             ValueReference::Virtual(reference) => {
                 // If the target is simple enough, it could be inlined instead. It allows us to
-                // avoid one reference jump during the validation process.
+                // avoid one reference jump during the validation process. TODO. maybe just replace this edge?
                 //
                 // Find the concrete reference by comparing the pointers
                 // All virtual references point to values that are always in the `values` vector
@@ -227,9 +227,13 @@ fn concretize(values: Vec<ValueReference>, edges: &mut Vec<RawEdge>) -> Vec<Keyw
     nodes
 }
 
-fn compress(mut edges: Vec<RawEdge>) -> (Vec<usize>, Vec<usize>) {
-    edges.sort_unstable_by_key(|edge| edge.0);
-    let max_node_id = match edges.iter().map(|(x, y)| std::cmp::max(x, y)).max() {
+fn compress(mut edges: Vec<RawEdge>) -> (Vec<usize>, Vec<CompressedEdge>) {
+    edges.sort_unstable_by_key(|edge| edge.source);
+    let max_node_id = match edges
+        .iter()
+        .map(|edge| std::cmp::max(edge.source, edge.target))
+        .max()
+    {
         None => return (vec![0], vec![]),
         Some(id) => id,
     };
@@ -242,11 +246,10 @@ fn compress(mut edges: Vec<RawEdge>) -> (Vec<usize>, Vec<usize>) {
         *row = start;
         'inner: loop {
             if let Some(edge) = iter.peek() {
-                let (n, m) = *edge;
-                if *n != node {
+                if edge.source != node {
                     break 'inner;
                 }
-                edges.push(*m);
+                edges.push(edge.compress());
                 start += 1;
             } else {
                 break 'outer;
@@ -263,6 +266,7 @@ fn compress(mut edges: Vec<RawEdge>) -> (Vec<usize>, Vec<usize>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::edges::EdgeLabel;
     use serde_json::{json as j, Value};
     use test_case::test_case;
 
@@ -276,6 +280,14 @@ mod tests {
         ($el:tt) => {
             ValueReference::Virtual(&j!($el))
         };
+    }
+
+    pub(crate) fn edge(source: usize, target: usize, label: impl Into<EdgeLabel>) -> RawEdge {
+        RawEdge {
+            source,
+            target,
+            label: label.into(),
+        }
     }
 
     const SELF_REF: &str = "#";
@@ -296,7 +308,7 @@ mod tests {
             c!({"maximum": 5}),
             c!(5),
         ],
-        &[(0, 1)],
+        &[edge(0, 1, "maximum")],
         &[]
     )]
     // Recursive ref
@@ -307,7 +319,7 @@ mod tests {
             v!({"$ref": SELF_REF}),
             c!(SELF_REF),
         ],
-        &[(0, 1)],
+        &[edge(0, 1, "$ref")],
         &[]
     )]
     // Remote ref - not resolved
@@ -318,7 +330,7 @@ mod tests {
             c!({"type": "integer"}),
             c!("integer"),
         ],
-        &[(0, 1), (1, 2)],
+        &[edge(0, 1, "$ref"), edge(1, 2, "type")],
         &[REMOTE_BASE]
     )]
     // Absolute ref to the same schema
