@@ -3,7 +3,6 @@ use serde_json::{Map, Value};
 use std::{borrow::Cow, collections::HashMap};
 use url::{ParseError, Url};
 
-pub(crate) type LocalSchemas<'schema> = HashMap<String, &'schema Value>;
 pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
 pub(crate) static DEFAULT_SCOPE: Lazy<Url> =
     Lazy::new(|| url::Url::parse(DEFAULT_ROOT_URL).expect("Is a valid URL"));
@@ -25,20 +24,19 @@ pub(crate) fn scope_of(schema: &Value) -> Url {
     }
 }
 
-// TODO. maybe `LocalResolver`???
 #[derive(Debug)]
-pub(crate) struct Context<'schema> {
+pub(crate) struct Resolver<'schema> {
     document: &'schema Value,
-    sub_schemas: LocalSchemas<'schema>,
+    schemas: HashMap<String, &'schema Value>,
     scope: Url,
 }
 
-impl<'schema> Context<'schema> {
+impl<'schema> Resolver<'schema> {
     pub(crate) fn new(document: &'schema Value, scope: Url) -> Self {
-        let sub_schemas = collect_schemas(document, scope.clone());
+        let schemas = collect_schemas(document, scope.clone());
         Self {
             document,
-            sub_schemas,
+            schemas,
             scope,
         }
     }
@@ -48,7 +46,7 @@ impl<'schema> Context<'schema> {
         // TODO. is it even needed? Context is always about this document
         let url = self.build_url(reference).unwrap();
         // Then, look for location-independent identifiers in the current schema
-        if let Some(document) = self.sub_schemas.get(url.as_str()) {
+        if let Some(document) = self.schemas.get(url.as_str()) {
             Some(document)
         } else {
             // And resolve the reference in the stored document
@@ -148,7 +146,7 @@ macro_rules! new_schema {
     };
 }
 
-fn collect_schemas(schema: &Value, scope: Url) -> LocalSchemas {
+fn collect_schemas(schema: &Value, scope: Url) -> HashMap<String, &Value> {
     let mut store = HashMap::new();
     let mut scopes = vec![scope];
     let mut stack = Vec::with_capacity(64);

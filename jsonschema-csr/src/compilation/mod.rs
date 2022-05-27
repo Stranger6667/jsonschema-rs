@@ -10,14 +10,14 @@
 //!
 //! TODO. add more theory about how `serde_json::Value` is represented and how CSR is represented
 use crate::{
-    compilation::context::{scope_of, Context},
+    compilation::resolver::{scope_of, Resolver},
     vocabularies::Keyword,
 };
 use serde_json::Value;
 use std::collections::HashMap;
 use url::Url;
 
-pub mod context;
+pub mod resolver;
 
 #[derive(Debug)]
 pub struct JsonSchema {
@@ -109,10 +109,10 @@ fn without_fragment(value: &Value) -> Option<Url> {
     }
 }
 
-fn build_contexts(external: &HashMap<Url, Value>) -> HashMap<&str, Context> {
+fn build_contexts(external: &HashMap<Url, Value>) -> HashMap<&str, Resolver> {
     let mut contexts = HashMap::with_capacity(external.len());
     for (scope, document) in external {
-        contexts.insert(scope.as_str(), Context::new(document, scope.clone()));
+        contexts.insert(scope.as_str(), Resolver::new(document, scope.clone()));
     }
     contexts
 }
@@ -135,13 +135,13 @@ pub(crate) enum ValueReference<'schema> {
 /// For example, `properties` sub-schemas are needed only if the input contains matching keys.
 fn collect<'a>(
     schema: &'a Value,
-    contexts: &'a HashMap<&str, Context>,
+    contexts: &'a HashMap<&str, Resolver>,
 ) -> (Vec<ValueReference<'a>>, Vec<RawEdge>) {
     // TODO. idea - store values interleaved with edges to improve cache locality
     // TODO. maybe remove nodes that were not referenced by anything?
     let mut values = vec![];
     let mut edges = vec![];
-    let context = Context::new(schema, scope_of(schema));
+    let context = Resolver::new(schema, scope_of(schema));
     let mut stack = vec![(None, &context, schema)];
     while let Some((parent_idx, context, value)) = stack.pop() {
         // TODO.
