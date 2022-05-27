@@ -141,9 +141,8 @@ impl Resolver {
         schema: Arc<Value>,
         store: AHashMap<String, Arc<Value>>,
     ) -> Result<Resolver, ValidationError<'a>> {
-        let mut schemas: AHashMap<String, Arc<Value>> = AHashMap::new();
         // traverse the schema and store all named ones under their canonical ids
-        find_schemas(draft, &schema, scope, &mut schemas)?;
+        let schemas = find_schemas(draft, &schema, scope)?;
         Ok(Resolver {
             external_resolver,
             root_schema: schema,
@@ -227,44 +226,50 @@ fn join_folders(mut resource: Url, folders: &[&str]) -> Result<Url, url::ParseEr
 }
 
 /// Find all sub-schemas in the document and execute callback on each of them.
-pub(crate) fn find_schemas<'a>(
+pub(crate) fn find_schemas(
     draft: Draft,
-    schema: &'a Value,
+    schema: &Value,
     base_url: &Url,
-    schemas: &mut AHashMap<String, Arc<Value>>,
-) -> Result<(), url::ParseError> {
-    match schema {
-        Value::Object(item) => {
-            if let Some(url) = id_of(draft, schema) {
-                let mut new_url = base_url.join(url)?;
-                // Empty fragments are discouraged and are not distinguishable absent fragments
-                if let Some("") = new_url.fragment() {
-                    new_url.set_fragment(None);
-                }
-                schemas.insert(new_url.to_string(), Arc::new(schema.clone()));
-                for (key, subschema) in item {
-                    if key == "enum" || key == "const" {
-                        continue;
+) -> Result<AHashMap<String, Arc<Value>>, url::ParseError> {
+    let mut store = AHashMap::new();
+    let mut scopes = vec![base_url.clone()];
+    let mut stack = Vec::with_capacity(64);
+    stack.push((0_usize, schema));
+    while let Some((scope_idx, value)) = stack.pop() {
+        match value {
+            Value::Object(object) => {
+                if let Some(url) = id_of(draft, value) {
+                    let mut scope = scopes[scope_idx].join(url)?;
+                    // Empty fragments are discouraged and are not distinguishable absent fragments
+                    if let Some("") = scope.fragment() {
+                        scope.set_fragment(None);
                     }
-                    find_schemas(draft, subschema, &new_url, schemas)?;
-                }
-            } else {
-                for (key, subschema) in item {
-                    if key == "enum" || key == "const" {
-                        continue;
+                    store.insert(scope.to_string(), Arc::new(value.clone()));
+                    scopes.push(scope);
+                    for (key, subschema) in object {
+                        if key == "enum" || key == "const" {
+                            continue;
+                        }
+                        stack.push((scopes.len() - 1, subschema));
                     }
-                    find_schemas(draft, subschema, base_url, schemas)?;
+                } else {
+                    for (key, subschema) in object {
+                        if key == "enum" || key == "const" {
+                            continue;
+                        }
+                        stack.push((scope_idx, subschema));
+                    }
                 }
             }
-        }
-        Value::Array(items) => {
-            for item in items {
-                find_schemas(draft, item, base_url, schemas)?
+            Value::Array(array) => {
+                for item in array {
+                    stack.push((scope_idx, item));
+                }
             }
+            _ => {}
         }
-        _ => {}
     }
-    Ok(())
+    Ok(store)
 }
 
 /// Searching twice is better than unconditionally allocating a String twice
