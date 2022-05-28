@@ -16,7 +16,7 @@ pub(crate) fn id_of_object(object: &Map<String, Value>) -> Option<&str> {
     object.get("$id").and_then(Value::as_str)
 }
 
-pub(crate) fn scope_of(schema: &Value) -> Url {
+pub fn scope_of(schema: &Value) -> Url {
     if let Some(id) = id_of(schema) {
         Url::parse(id).unwrap()
     } else {
@@ -25,14 +25,14 @@ pub(crate) fn scope_of(schema: &Value) -> Url {
 }
 
 #[derive(Debug)]
-pub(crate) struct Resolver<'schema> {
+pub struct Resolver<'schema> {
     document: &'schema Value,
     schemas: HashMap<String, &'schema Value>,
     scope: Url,
 }
 
 impl<'schema> Resolver<'schema> {
-    pub(crate) fn new(document: &'schema Value, scope: Url) -> Self {
+    pub fn new(document: &'schema Value, scope: Url) -> Self {
         let schemas = collect_schemas(document, scope.clone());
         Self {
             document,
@@ -41,7 +41,7 @@ impl<'schema> Resolver<'schema> {
         }
     }
 
-    pub(crate) fn resolve(&self, reference: &str) -> Option<&'schema Value> {
+    pub fn resolve(&self, reference: &str) -> Option<&'schema Value> {
         // First, build the full URL that is aware of the resolution context
         // TODO. is it even needed? Context is always about this document
         let url = self.build_url(reference).unwrap();

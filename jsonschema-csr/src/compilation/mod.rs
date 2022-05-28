@@ -18,7 +18,7 @@ use std::collections::HashMap;
 use url::Url;
 
 mod edges;
-mod resolver;
+pub mod resolver;
 
 use crate::compilation::edges::EdgeLabel;
 use crate::vocabularies::Maximum;

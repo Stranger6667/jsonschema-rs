@@ -26,6 +26,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
+name = "bench_helpers"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -502,6 +511,7 @@ dependencies = [
 name = "jsonschema-csr"
 version = "0.1.0"
 dependencies = [
+ "bench_helpers",
  "criterion",
  "enum_dispatch",
  "num-cmp",
@@ -940,6 +950,9 @@ name = "serde"
 version = "1.0.137"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61ea8d54c77f8315140a05f4c7237403bf38b72704d031543aa1d16abbf517d1"
+dependencies = [
+ "serde_derive",
+]
 
 [[package]]
 name = "serde_cbor"
