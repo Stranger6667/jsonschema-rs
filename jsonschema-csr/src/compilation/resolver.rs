@@ -366,7 +366,7 @@ mod tests {
     fn location_identifiers(schema: Value, ids: &[&str], pointers: &[&str]) {
         let store = collect_schemas(&schema, scope_of(&schema));
         assert_eq!(store.len(), ids.len());
-        for (id, pointer) in ids.into_iter().zip(pointers.into_iter()) {
+        for (id, pointer) in ids.iter().zip(pointers.iter()) {
             assert_eq!(store[*id], schema.pointer(pointer).unwrap());
         }
     }

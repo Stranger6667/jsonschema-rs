@@ -425,8 +425,8 @@ mod tests {
         edges: &[RawEdge],
         keys: &[&str],
     ) {
-        let mut remote = HashMap::new();
-        let (values_, edges_) = collect(&schema, &mut remote);
+        let remote = HashMap::new();
+        let (values_, edges_) = collect(&schema, &remote);
         assert_eq!(values_, values);
         assert_eq!(edges_, edges);
         assert_eq!(remote.keys().cloned().collect::<Vec<&str>>(), keys);
@@ -456,7 +456,7 @@ mod tests {
         let external = fetch_external(&schema);
         assert!(
             expected
-                .into_iter()
+                .iter()
                 .all(|key| external.contains_key(&Url::parse(key).unwrap())),
             "{:?}",
             external.keys()
