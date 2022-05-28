@@ -37,8 +37,8 @@ impl JsonSchema {
         let resolvers = build_resolvers(&external);
         // Collect all values and resolve references
         let (values, mut edges) = collect(schema, &resolvers);
-        // Replace all virtual edges with concrete ones and convert JSON values into keywords
-        let keywords = concretize(values, &mut edges);
+        // Build a `Keyword` graph together with dropping not needed nodes and edges
+        let keywords = materialize(values, &mut edges);
         // And finally, compress the edges into the CSR format
         let (offsets, edges) = compress(edges);
         JsonSchema {
@@ -201,23 +201,48 @@ fn collect<'a>(
     (values, edges)
 }
 
-/// Build a graph of `Keyword` instances with the same structure as the input one.
-fn concretize(values: Vec<ValueReference>, edges: &mut Vec<RawEdge>) -> Vec<Keyword> {
+/// Build a graph of `Keyword` from an intermediate graph that contain all possible values.
+///
+/// There are a few optimizations happen here:
+///  - Inlining virtual references
+///  - Skipping not needed nodes
+fn materialize(values: Vec<ValueReference>, edges: &mut Vec<RawEdge>) -> Vec<Keyword> {
     let nodes = Vec::with_capacity(values.len());
-    for value in &values {
-        match value {
+    for edge in edges {
+        match &values[edge.target] {
             ValueReference::Concrete(_) => {}
+            // Each node that has an edge to `$ref` could be replaced by a new edge that leads
+            // directly to the $ref target. Example:
+            //
+            //  {
+            //     "integer": {
+            //         "type": "integer"
+            //     },
+            //     "refToInteger": {
+            //         "$ref": "#/integer"
+            //     }
+            // }
+            //
+            // This schema could be represented as:
+            // [
+            //     Concrete(root),                -- 0
+            //     Virtual({"type": "integer"})   -- 1. refToInteger
+            //     Concrete({"type": "integer"})  -- 2. integer
+            //     Concrete("integer")            -- 3. type
+            // ]
+            //
+            // Edges: 0-1 (refToInteger), 0-2 (integer), 2-3 (type)
+            //
+            // Here we change the first edge to 0-2. After all edges leading to this node are
+            // inlined, node #1 is not needed anymore
             ValueReference::Virtual(reference) => {
-                // If the target is simple enough, it could be inlined instead. It allows us to
-                // avoid one reference jump during the validation process. TODO. maybe just replace this edge?
-                //
                 // Find the concrete reference by comparing the pointers
                 // All virtual references point to values that are always in the `values` vector
                 // Therefore this loop should always find such a reference
                 for (target_idx, target) in values.iter().enumerate() {
                     if let ValueReference::Concrete(target) = target {
                         if std::ptr::eq(*reference, *target) {
-                            println!("Target: {}", target_idx)
+                            edge.target = target_idx;
                         }
                     }
                 }
@@ -265,8 +290,8 @@ fn compress(mut edges: Vec<RawEdge>) -> (Vec<usize>, Vec<CompressedEdge>) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::edges::EdgeLabel;
+    use super::*;
     use serde_json::{json as j, Value};
     use test_case::test_case;
 
@@ -287,6 +312,19 @@ mod tests {
             source,
             target,
             label: label.into(),
+        }
+    }
+
+    fn print_values(values: &[ValueReference]) {
+        for (i, v) in values.iter().enumerate() {
+            match v {
+                ValueReference::Concrete(r) => {
+                    println!("C({}): {}", i, r)
+                }
+                ValueReference::Virtual(r) => {
+                    println!("V({}): {}", i, r)
+                }
+            }
         }
     }
 
@@ -416,7 +454,32 @@ mod tests {
 
     #[test]
     fn new_schema() {
-        let schema = j!({"$ref": "http://localhost:1234/subSchemas.json"});
+        let schema = j!({
+            "integer": {
+                "type": "integer"
+            },
+            "refToInteger": {
+                "$ref": "#/integer"
+            }
+        });
         let compiled = JsonSchema::new(&schema);
+    }
+
+    // Single keyword
+    #[test_case(
+        j!({"maximum": 1}),
+        vec![edge(0, 1, "maximum")]
+    )]
+    // Ref to another keyword
+    #[test_case(
+        j!({"foo": {"maximum": 1}, "bar": {"$ref": "#/foo"}}),
+        vec![edge(0, 1, "foo"), edge(1, 2, "maximum"), edge(0, 1, "bar")]
+    )]
+    fn materialization(schema: Value, expected: Vec<RawEdge>) {
+        let resolvers = HashMap::new();
+        let (values, mut edges) = collect(&schema, &resolvers);
+        print_values(&values);
+        materialize(values, &mut edges);
+        assert_eq!(edges, expected)
     }
 }

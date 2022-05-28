@@ -19,6 +19,7 @@ pub(crate) enum EdgeLabel {
     ///
     /// The label for the edge between the top-level array and string "Test" is `0`.
     Index(usize),
+    // TODO. store keywords as a separate variant?
 }
 
 /// Create a new `EdgeLabel`.
