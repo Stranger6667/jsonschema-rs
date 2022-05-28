@@ -7,6 +7,12 @@ pub struct Maximum {
     pub(crate) limit: u64,
 }
 
+impl Maximum {
+    pub(crate) fn build(limit: u64) -> Keyword {
+        Self { limit }.into()
+    }
+}
+
 impl Validate for Maximum {
     fn is_valid(&self, _: &[Keyword], instance: &Value) -> bool {
         if let Value::Number(item) = instance {

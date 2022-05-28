@@ -20,6 +20,8 @@ use url::Url;
 mod edges;
 mod resolver;
 
+use crate::compilation::edges::EdgeLabel;
+use crate::vocabularies::Maximum;
 use edges::{label, CompressedEdge, RawEdge};
 
 #[derive(Debug)]
@@ -207,10 +209,17 @@ fn collect<'a>(
 ///  - Inlining virtual references
 ///  - Skipping not needed nodes
 fn materialize(values: Vec<ValueReference>, edges: &mut Vec<RawEdge>) -> Vec<Keyword> {
-    let nodes = Vec::with_capacity(values.len());
+    let mut nodes = Vec::with_capacity(values.len());
     for edge in edges {
         match &values[edge.target] {
-            ValueReference::Concrete(_) => {}
+            ValueReference::Concrete(value) => match &edge.label {
+                EdgeLabel::Key(key) => match key.as_ref() {
+                    // TODO. it should be at the right index - otherwise the graph is broken
+                    "maximum" => nodes.push(Maximum::build(value.as_u64().unwrap())),
+                    _ => {}
+                },
+                EdgeLabel::Index(_) => {}
+            },
             // Each node that has an edge to `$ref` could be replaced by a new edge that leads
             // directly to the $ref target. Example:
             //
@@ -236,6 +245,8 @@ fn materialize(values: Vec<ValueReference>, edges: &mut Vec<RawEdge>) -> Vec<Key
             // Here we change the first edge to 0-2. After all edges leading to this node are
             // inlined, node #1 is not needed anymore
             ValueReference::Virtual(reference) => {
+                // TODO. detect cycles - get the target unless it is concrete + collect seen idx
+                //   if idx is seen, then it is a cycle or refs without concrete nodes in between
                 // Find the concrete reference by comparing the pointers
                 // All virtual references point to values that are always in the `values` vector
                 // Therefore this loop should always find such a reference
