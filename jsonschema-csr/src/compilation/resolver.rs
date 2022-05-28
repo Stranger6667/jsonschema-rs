@@ -16,12 +16,12 @@ pub(crate) fn id_of_object(object: &Map<String, Value>) -> Option<&str> {
     object.get("$id").and_then(Value::as_str)
 }
 
-pub fn scope_of(schema: &Value) -> Url {
-    if let Some(id) = id_of(schema) {
-        Url::parse(id).unwrap()
-    } else {
-        DEFAULT_SCOPE.clone()
-    }
+/// Get a scope of the given document.
+/// If there is no `$id` key, get the default scope.
+pub fn scope_of(schema: &Value) -> Result<Url, ParseError> {
+    id_of(schema)
+        .map(Url::parse)
+        .unwrap_or_else(|| Ok(DEFAULT_SCOPE.clone()))
 }
 
 #[derive(Debug)]
@@ -41,21 +41,21 @@ impl<'schema> Resolver<'schema> {
         }
     }
 
-    pub fn resolve(&self, reference: &str) -> Option<&'schema Value> {
+    /// Resolve a reference that is known to be local for this resolver.
+    pub fn resolve(&self, reference: &str) -> Result<Option<&'schema Value>, ParseError> {
         // First, build the full URL that is aware of the resolution context
-        // TODO. is it even needed? Context is always about this document
-        let url = self.build_url(reference).unwrap();
+        let url = self.build_url(reference)?;
         // Then, look for location-independent identifiers in the current schema
         if let Some(document) = self.schemas.get(url.as_str()) {
-            Some(document)
+            Ok(Some(document))
         } else {
             // And resolve the reference in the stored document
             let pointer = to_pointer(&url);
             if pointer == "#" {
-                Some(self.document)
+                Ok(Some(self.document))
             } else {
                 // TODO. use a more efficient impl
-                self.document.pointer(&pointer)
+                Ok(self.document.pointer(&pointer))
             }
         }
     }
@@ -364,7 +364,7 @@ mod tests {
         ]
     )]
     fn location_identifiers(schema: Value, ids: &[&str], pointers: &[&str]) {
-        let store = collect_schemas(&schema, scope_of(&schema));
+        let store = collect_schemas(&schema, scope_of(&schema).unwrap());
         assert_eq!(store.len(), ids.len());
         for (id, pointer) in ids.iter().zip(pointers.iter()) {
             assert_eq!(store[*id], schema.pointer(pointer).unwrap());
@@ -387,6 +387,22 @@ mod tests {
     #[test_case(json!({}), DEFAULT_ROOT_URL)]
     #[test_case(json!({"$id": ID}), ID)]
     fn scopes_of(schema: Value, url: &str) {
-        assert_eq!(scope_of(&schema), Url::parse(url).unwrap());
+        assert_eq!(scope_of(&schema).unwrap(), Url::parse(url).unwrap());
+    }
+
+    #[test_case(
+        base_uri_change_folder(),
+        "#/definitions/baz/type",
+        json!("array")
+    )]
+    #[test_case(
+        sub_schema_in_object(),
+        "#foo",
+        json!({"$id": "#foo", "type": "integer"})
+    )]
+    #[test_case(sub_schema_in_object(), "#", sub_schema_in_object())]
+    fn resolving(schema: Value, reference: &str, expected: Value) {
+        let resolver = Resolver::new(&schema, scope_of(&schema).unwrap());
+        assert_eq!(resolver.resolve(reference).unwrap(), Some(&expected));
     }
 }

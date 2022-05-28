@@ -20,8 +20,7 @@ use url::Url;
 mod edges;
 pub mod resolver;
 
-use crate::compilation::edges::EdgeLabel;
-use crate::vocabularies::Maximum;
+use crate::{compilation::edges::EdgeLabel, vocabularies::Maximum};
 use edges::{label, CompressedEdge, RawEdge};
 
 #[derive(Debug)]
@@ -61,7 +60,7 @@ fn fetch_external(schema: &Value) -> HashMap<Url, Value> {
 /// Recursive routine for traversing a schema and fetching external references.
 fn fetch_routine(schema: &Value, store: &mut HashMap<Url, Value>) {
     // Current schema id - if occurs in a reference, then there is no need to resolve it
-    let scope = scope_of(schema);
+    let scope = scope_of(schema).unwrap();
     let mut stack = vec![schema];
     while let Some(value) = stack.pop() {
         match value {
@@ -144,7 +143,7 @@ fn collect<'a>(
     // TODO. maybe remove nodes that were not referenced by anything?
     let mut values = vec![];
     let mut edges = vec![];
-    let resolver = Resolver::new(schema, scope_of(schema));
+    let resolver = Resolver::new(schema, scope_of(schema).unwrap());
     let mut stack = vec![(None, &resolver, schema)];
     while let Some((parent, resolver, value)) = stack.pop() {
         // TODO.
@@ -161,14 +160,14 @@ fn collect<'a>(
                             Ok(mut url) => {
                                 url.set_fragment(None);
                                 let resolver = resolvers.get(url.as_str()).unwrap();
-                                let resolved = resolver.resolve(reference).unwrap();
+                                let resolved = resolver.resolve(reference).unwrap().unwrap();
                                 values.push(ValueReference::Virtual(resolved));
                                 // TODO. What if the value was already explored??
                                 stack.push((Some((node_idx, label("$ref"))), resolver, resolved));
                             }
                             // Local reference
                             Err(url::ParseError::RelativeUrlWithoutBase) => {
-                                let resolved = resolver.resolve(reference).unwrap();
+                                let resolved = resolver.resolve(reference).unwrap().unwrap();
                                 values.push(ValueReference::Virtual(resolved));
                             }
                             _ => todo!(),
@@ -301,8 +300,7 @@ fn compress(mut edges: Vec<RawEdge>) -> (Vec<usize>, Vec<CompressedEdge>) {
 
 #[cfg(test)]
 mod tests {
-    use super::edges::EdgeLabel;
-    use super::*;
+    use super::{edges::EdgeLabel, *};
     use serde_json::{json as j, Value};
     use test_case::test_case;
 

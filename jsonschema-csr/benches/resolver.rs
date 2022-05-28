@@ -11,7 +11,7 @@ fn bench_build(c: &mut Criterion) {
         "fast_schema",
     ] {
         let schema = read_json(&format!("../jsonschema/benches/data/{}.json", name));
-        let scope = scope_of(&schema);
+        let scope = scope_of(&schema).unwrap();
         c.bench_function(&format!("build {}", name), |b| {
             b.iter(|| Resolver::new(&schema, scope.clone()))
         });
@@ -27,8 +27,8 @@ fn bench_resolve(c: &mut Criterion) {
         ("fast_schema", "#/items/3/properties/c/type/1"),
     ] {
         let schema = read_json(&format!("../jsonschema/benches/data/{}.json", name));
-        let resolver = Resolver::new(&schema, scope_of(&schema));
-        assert!(resolver.resolve(reference).is_some());
+        let resolver = Resolver::new(&schema, scope_of(&schema).unwrap());
+        assert!(resolver.resolve(reference).unwrap().is_some());
         c.bench_function(&format!("resolve {}", name), |b| {
             b.iter(|| resolver.resolve(reference))
         });
