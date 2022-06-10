@@ -13,11 +13,13 @@ use crate::{
     schema_node::SchemaNode,
     validator::Validate,
     Draft, ValidationError,
+    compilation::options::KeywordDefinition,
+    keywords::custom_keyword_schema::compile_custom_keyword_validator
 };
 use ahash::AHashMap;
 use context::CompilationContext;
 use options::CompilationOptions;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::sync::Arc;
 use url::Url;
 
@@ -206,7 +208,18 @@ pub(crate) fn compile_validators<'a, 'c>(
                     {
                         validators.push((keyword.clone(), validator?));
                     } else {
-                        unmatched_keywords.insert(keyword.to_string(), subschema.clone());
+                        if let Some(keyword_definition) = context.config.custom_keyword_definition(&keyword) {
+                            let validator = compile_custom_keyword_validator(
+                                object,
+                                subschema,
+                                &context,
+                                keyword.clone(),
+                                keyword_definition.clone()
+                            )?;
+                            validators.push((keyword.clone(), validator));
+                        } else {
+                            unmatched_keywords.insert(keyword.to_string(), subschema.clone());
+                        }
                     }
                 }
                 if is_if {
@@ -247,6 +260,7 @@ mod tests {
     use crate::error::ValidationError;
     use serde_json::{from_str, json, Value};
     use std::{fs::File, io::Read, path::Path};
+    use crate::KeywordDefinition;
 
     fn load(path: &str, idx: usize) -> Value {
         let path = Path::new(path);
@@ -301,5 +315,58 @@ mod tests {
             r#"{"a":3} has less than 2 properties"#
         );
         assert_eq!(errors[1].to_string(), r#""a" is shorter than 3 characters"#);
+    }
+
+    #[test]
+    fn custom_keyword() {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "array",
+                    "byteArray": true,
+                    "minItems": 32,
+                    "maxItems": 32,
+                    "contentMediaType": "application/x.dash.dpp.identifier"
+                },
+            }
+        });
+
+        let json_schema = JSONSchema::options()
+            .add_keyword(
+                "byteArray",
+                KeywordDefinition::Schema(json!({
+                    "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 255,
+                    },
+                })))
+            .compile(&schema)
+            .unwrap();
+
+        let mut value = json!({ "id": [289,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32] });
+
+        let result = json_schema.validate(&value);
+        let errors: Vec<ValidationError> = result.unwrap_err().collect();
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].instance_path.to_string(), "/id/0");
+        assert_eq!(errors[0].schema_path.to_string(), "/properties/id/byteArray/items/maximum");
+        assert_eq!(
+            errors[0].to_string(),
+            r#"289 is greater than the maximum of 255"#
+        );
+
+        let mut value = json!({ "id": ["string",2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32] });
+
+        let result = json_schema.validate(&value);
+        let errors: Vec<ValidationError> = result.unwrap_err().collect();
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].instance_path.to_string(), "/id/0");
+        assert_eq!(errors[0].schema_path.to_string(), "/properties/id/byteArray/items/type");
+        assert_eq!(
+            errors[0].to_string(),
+            r#""string" is not of type "integer""#
+        );
     }
 }
