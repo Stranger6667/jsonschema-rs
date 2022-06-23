@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Add a compilation option (`should_ignore_unknown_formats()`) that allows treating unknown formats as compilation errors.
+
 ## [0.16.0] - 2022-04-21
 
 ### Fixed
@@ -236,7 +240,7 @@
 ### Fixed
 
 - Reject IPv4 addresses with leading zeroes. As per the new test case in the JSONSchema test suite. [More info](https://sick.codes/universal-netmask-npm-package-used-by-270000-projects-vulnerable-to-octal-input-data-server-side-request-forgery-remote-file-inclusion-local-file-inclusion-and-more-cve-2021-28918/)
-- Do not look for sub-schemas inside `const` and `enum` keywords. Fixes an issue checked by [these tests](https://github.com/json-schema-org/JSON-Schema-Test-Suite/pull/471) 
+- Do not look for sub-schemas inside `const` and `enum` keywords. Fixes an issue checked by [these tests](https://github.com/json-schema-org/JSON-Schema-Test-Suite/pull/471)
 - Check all properties in the `required` keyword implementation. [#190](https://github.com/Stranger6667/jsonschema-rs/issues/190)
 
 ### Removed
