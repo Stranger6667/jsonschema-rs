@@ -221,6 +221,7 @@ pub struct CompilationOptions {
     formats: AHashMap<&'static str, fn(&str) -> bool>,
     validate_formats: Option<bool>,
     validate_schema: bool,
+    ignore_unknown_formats: bool,
 }
 
 impl Default for CompilationOptions {
@@ -234,6 +235,7 @@ impl Default for CompilationOptions {
             store: AHashMap::default(),
             formats: AHashMap::default(),
             validate_formats: None,
+            ignore_unknown_formats: true,
         }
     }
 }
@@ -567,6 +569,20 @@ impl CompilationOptions {
     pub(crate) fn validate_formats(&self) -> bool {
         self.validate_formats
             .unwrap_or_else(|| self.draft().validate_formats_by_default())
+    }
+
+    /// Set the `false` if unrecognized formats should be reported as a validation error.
+    /// By default unknown formats are silently ignored.
+    pub fn should_ignore_unknown_formats(
+        &mut self,
+        should_ignore_unknown_formats: bool,
+    ) -> &mut Self {
+        self.ignore_unknown_formats = should_ignore_unknown_formats;
+        self
+    }
+
+    pub(crate) const fn are_unknown_formats_ignored(&self) -> bool {
+        self.ignore_unknown_formats
     }
 }
 // format name & a pointer to a check function
