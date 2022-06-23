@@ -67,7 +67,7 @@ impl<'schema> Resolver<'schema> {
 fn to_pointer(url: &Url) -> Cow<str> {
     percent_encoding::percent_decode_str(url.fragment().unwrap_or(""))
         .decode_utf8()
-        .unwrap()
+        .expect("Input URL is always UTF-8")
 }
 
 macro_rules! push_map {
