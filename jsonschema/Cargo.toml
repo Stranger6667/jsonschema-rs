@@ -30,7 +30,7 @@ anyhow = "1.0.55"
 base64 = "0.13.0"
 bytecount = { version = "0.6.2", features = ["runtime-dispatch-simd"] }
 fancy-regex = "0.10.0"
-fraction = { version = "0.10.0", default-features = false, features = ["with-bigint"] }
+fraction = { version = "0.11.0", default-features = false, features = ["with-bigint"] }
 iso8601 = "0.4.1"
 itoa = "1.0.1"
 lazy_static = "1.4.0"
