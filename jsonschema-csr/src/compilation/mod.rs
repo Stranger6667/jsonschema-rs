@@ -10,7 +10,7 @@
 //!
 //! TODO. add more theory about how `serde_json::Value` is represented and how CSR is represented
 use crate::{
-    compilation::resolver::{scope_of, Resolver},
+    compilation::resolver::{id_of_object, is_default_scope, scope_of, Resolver},
     vocabularies::Keyword,
 };
 use serde_json::Value;
@@ -61,23 +61,28 @@ fn fetch_external(schema: &Value) -> HashMap<Url, Value> {
 fn fetch_routine(schema: &Value, store: &mut HashMap<Url, Value>) {
     // Current schema id - if occurs in a reference, then there is no need to resolve it
     let scope = scope_of(schema).unwrap();
-    let mut stack = vec![schema];
-    while let Some(value) = stack.pop() {
+    let mut stack = vec![(vec![], schema)];
+    while let Some((mut folders, value)) = stack.pop() {
         match value {
             // Only objects may have references to external schemas
             Value::Object(object) => {
+                if let Some(id) = id_of_object(object) {
+                    folders.push(id);
+                }
                 for (key, value) in object {
                     if key == "$ref" {
-                        fetch_external_reference(value, store, &scope);
+                        fetch_external_reference(value, &folders, store, &scope);
                     } else {
                         // Explore any other key
-                        stack.push(value)
+                        stack.push((folders.clone(), value))
                     }
                 }
             }
             // Explore arrays further
             Value::Array(items) => {
-                stack.extend(items.iter());
+                for item in items {
+                    stack.push((folders.clone(), item))
+                }
             }
             // Primitive types do not contain any references, skip
             _ => continue,
@@ -86,18 +91,42 @@ fn fetch_routine(schema: &Value, store: &mut HashMap<Url, Value>) {
 }
 
 /// If reference is pointing to an external resource, then fetch & store it.
-fn fetch_external_reference(value: &Value, store: &mut HashMap<Url, Value>, scope: &Url) {
+fn fetch_external_reference(
+    value: &Value,
+    folders: &[&str],
+    store: &mut HashMap<Url, Value>,
+    scope: &Url,
+) {
     if let Some(location) = without_fragment(value) {
         // Resolve only references that are:
         //   - pointing to another resource
         //   - are not already resolved
-        if location != *scope && !store.contains_key(&location) {
-            let response = reqwest::blocking::get(location.as_str()).unwrap();
-            let document = response.json::<Value>().unwrap();
-            // Make a recursive call to the callee routine
-            fetch_routine(&document, store);
-            store.insert(location, document);
-        };
+        fetch_and_store(store, scope, location);
+    } else if !is_default_scope(scope) {
+        if let Some(reference) = value.as_str() {
+            let location = with_folders(scope, reference, folders).unwrap();
+            fetch_and_store(store, scope, location);
+        }
+    }
+}
+
+fn with_folders(scope: &Url, reference: &str, folders: &[&str]) -> Result<Url, url::ParseError> {
+    let mut location = scope.clone();
+    if folders.len() > 1 {
+        for folder in folders.iter().skip(1) {
+            location = location.join(folder)?;
+        }
+    }
+    location.join(reference)
+}
+
+fn fetch_and_store(store: &mut HashMap<Url, Value>, scope: &Url, location: Url) {
+    if location != *scope && !store.contains_key(&location) {
+        let response = reqwest::blocking::get(location.as_str()).unwrap();
+        let document = response.json::<Value>().unwrap();
+        // Make a recursive call to the callee routine
+        fetch_routine(&document, store);
+        store.insert(location, document);
     }
 }
 
@@ -144,9 +173,9 @@ fn collect<'a>(
     let mut values = vec![];
     let mut edges = vec![];
     let resolver = Resolver::new(schema, scope_of(schema).unwrap());
-    let mut stack = vec![(None, &resolver, schema)];
+    let mut stack = vec![(None, vec![], &resolver, schema)];
     let mut seen = HashSet::new();
-    while let Some((parent, resolver, value)) = stack.pop() {
+    while let Some((parent, mut folders, mut resolver, value)) = stack.pop() {
         seen.insert(value as *const _);
         // TODO.
         //   - validate - there should be no invalid schemas
@@ -154,6 +183,9 @@ fn collect<'a>(
         match value {
             Value::Object(object) => {
                 values.push(ValueReference::Concrete(value));
+                if let Some(id) = id_of_object(object) {
+                    folders.push(id);
+                }
                 // TODO. it could be just an object with key `$ref` - handle it
                 if let Some(reference_value) = object.get("$ref") {
                     if let Value::String(reference) = reference_value {
@@ -163,12 +195,15 @@ fn collect<'a>(
                             // TODO. what if it has the same scope as the local one?
                             Ok(mut url) => {
                                 url.set_fragment(None);
-                                let resolver = resolvers.get(url.as_str()).unwrap_or(resolver);
+                                if let Some(external_resolver) = resolvers.get(url.as_str()) {
+                                    resolver = external_resolver;
+                                }
                                 let resolved = resolver.resolve(reference).unwrap().unwrap();
                                 values.push(ValueReference::Virtual(resolved));
                                 if !seen.contains(&(resolved as *const _)) {
                                     stack.push((
                                         Some((node_idx, label("$ref"))),
+                                        folders.clone(),
                                         resolver,
                                         resolved,
                                     ));
@@ -177,11 +212,29 @@ fn collect<'a>(
                             // Local reference
                             // Example: `#/foo/bar`
                             Err(url::ParseError::RelativeUrlWithoutBase) => {
-                                let resolved = resolver.resolve(reference).unwrap().unwrap();
+                                let resolved = if folders.len() > 1 {
+                                    let location =
+                                        with_folders(resolver.scope(), reference, &folders)
+                                            .unwrap();
+                                    resolver =
+                                        resolvers.get(location.as_str()).unwrap_or_else(|| {
+                                            panic!("Failed to find resolver for `{}`", location)
+                                        });
+                                    let resolved = resolver.resolve(reference).unwrap().unwrap();
+                                    if !seen.contains(&(resolved as *const _)) {
+                                        values.push(ValueReference::Concrete(resolved));
+                                    };
+                                    resolved
+                                } else {
+                                    resolver.resolve(reference).unwrap().unwrap()
+                                };
                                 values.push(ValueReference::Virtual(resolved));
+                                // TODO. should external ones be explored? Likely so - they could
+                                // have references too
                                 if !seen.contains(&(reference_value as *const _)) {
                                     stack.push((
                                         Some((node_idx, label("$ref"))),
+                                        folders.clone(),
                                         resolver,
                                         reference_value,
                                     ));
@@ -197,14 +250,24 @@ fn collect<'a>(
                     // E.g - two keywords, both fail, but for `is_valid` we don't need both
                     // so, put the cheapest first
                     for (key, value) in object {
-                        stack.push((Some((node_idx, label(key))), resolver, value))
+                        stack.push((
+                            Some((node_idx, label(key))),
+                            folders.clone(),
+                            resolver,
+                            value,
+                        ))
                     }
                 }
             }
             Value::Array(items) => {
                 values.push(ValueReference::Concrete(value));
                 for (idx, item) in items.iter().enumerate() {
-                    stack.push((Some((node_idx, label(idx))), resolver, item))
+                    stack.push((
+                        Some((node_idx, label(idx))),
+                        folders.clone(),
+                        resolver,
+                        item,
+                    ))
                 }
             }
             _ => {
@@ -332,6 +395,8 @@ mod tests {
         };
     }
 
+    // TODO: write a helper that any virtual node references a concrete one
+
     pub(crate) fn edge(source: usize, target: usize, label: impl Into<EdgeLabel>) -> RawEdge {
         RawEdge {
             source,
@@ -385,7 +450,6 @@ mod tests {
         &[];
         "Self reference"
     )]
-    // Remote ref - not resolved
     #[test_case(
         j!({"$ref": REMOTE_REF}),
         &[
@@ -398,7 +462,44 @@ mod tests {
         &[REMOTE_BASE];
         "Remote reference"
     )]
-    // Absolute ref to the same schema
+    #[test_case(
+        j!({
+            "$id": "http://localhost:1234/",
+            "items": {
+                "$id": "baseUriChange/",
+                "items": {"$ref": "folderInteger.json"}
+            }
+        }),
+        &[
+            c!({
+                "$id": "http://localhost:1234/",
+                "items": {
+                    "$id": "baseUriChange/",
+                    "items": {"$ref": "folderInteger.json"}
+                }
+            }),
+            c!({
+                "$id": "baseUriChange/",
+                "items": {"$ref": "folderInteger.json"}
+            }),
+            c!({"$ref": "folderInteger.json"}),
+            c!({"type": "integer"}),
+            v!({"type": "integer"}),
+            c!("folderInteger.json"),
+            c!("baseUriChange/"),
+            c!("http://localhost:1234/"),
+        ],
+        &[
+            edge(0, 1, "items"),
+            edge(1, 2, "items"),
+            edge(2, 5, "$ref"),
+            edge(1, 6, "$id"),
+            edge(0, 7, "$id"),
+            // TODO: there should be edges to `{"type": "integer"}`
+        ],
+        &["http://localhost:1234/baseUriChange/folderInteger.json"];
+        "Base URI change"
+    )]
     #[test_case(
         j!({
             "$id": "http://localhost:1234/root",

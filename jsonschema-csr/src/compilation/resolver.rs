@@ -5,7 +5,11 @@ use url::{ParseError, Url};
 
 pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
 pub(crate) static DEFAULT_SCOPE: Lazy<Url> =
-    Lazy::new(|| url::Url::parse(DEFAULT_ROOT_URL).expect("Is a valid URL"));
+    Lazy::new(|| Url::parse(DEFAULT_ROOT_URL).expect("Is a valid URL"));
+
+pub(crate) fn is_default_scope(scope: &Url) -> bool {
+    scope == &*DEFAULT_SCOPE
+}
 
 pub(crate) fn id_of(schema: &Value) -> Option<&str> {
     schema.as_object().and_then(id_of_object)
@@ -39,6 +43,10 @@ impl<'schema> Resolver<'schema> {
             schemas,
             scope,
         }
+    }
+
+    pub fn scope(&self) -> &Url {
+        &self.scope
     }
 
     /// Resolve a reference that is known to be local for this resolver.
