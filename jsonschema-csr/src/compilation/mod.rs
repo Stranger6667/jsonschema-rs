@@ -156,6 +156,23 @@ pub(crate) enum ValueReference<'schema> {
     Virtual(&'schema Value),
 }
 
+#[derive(Debug)]
+struct SeenValues(HashSet<*const Value>);
+
+impl SeenValues {
+    pub(crate) fn new() -> Self {
+        Self(HashSet::new())
+    }
+    #[inline]
+    pub(crate) fn insert(&mut self, value: &Value) -> bool {
+        self.0.insert(value as *const _)
+    }
+    #[inline]
+    pub(crate) fn contains(&mut self, value: &Value) -> bool {
+        self.0.contains(&(value as *const _))
+    }
+}
+
 /// The main goal of this phase is to collect all nodes from the input schema and its remote
 /// dependencies into a single graph where each vertex is a reference to a JSON value from these
 /// schemas. Each edge is represented as a pair indexes into the vertex vector.
@@ -174,15 +191,17 @@ fn collect<'a>(
     let mut edges = vec![];
     let resolver = Resolver::new(schema, scope_of(schema).unwrap());
     let mut stack = vec![(None, vec![], &resolver, schema)];
-    let mut seen = HashSet::new();
+    let mut seen = SeenValues::new();
     while let Some((parent, mut folders, mut resolver, value)) = stack.pop() {
-        seen.insert(value as *const _);
+        let node_idx = values.len();
+        // Mark this value as seen to prevent re-traversing it if any reference leads to it
+        seen.insert(value);
+        values.push(ValueReference::Concrete(value));
         // TODO.
         //   - validate - there should be no invalid schemas
-        let node_idx = values.len();
         match value {
             Value::Object(object) => {
-                values.push(ValueReference::Concrete(value));
+                // Track folder changes within sub-schemas
                 if let Some(id) = id_of_object(object) {
                     folders.push(id);
                 }
@@ -196,23 +215,26 @@ fn collect<'a>(
                             Ok(mut url) => {
                                 url.set_fragment(None);
                                 if let Some(external_resolver) = resolvers.get(url.as_str()) {
-                                    resolver = external_resolver;
-                                }
-                                let resolved = resolver.resolve(reference).unwrap().unwrap();
-                                values.push(ValueReference::Virtual(resolved));
-                                if !seen.contains(&(resolved as *const _)) {
-                                    stack.push((
-                                        Some((node_idx, label("$ref"))),
-                                        folders.clone(),
-                                        resolver,
-                                        resolved,
-                                    ));
-                                }
+                                    let resolved =
+                                        external_resolver.resolve(reference).unwrap().unwrap();
+                                    if !seen.contains(resolved) {
+                                        values.push(ValueReference::Virtual(resolved));
+                                        stack.push((
+                                            Some((node_idx, label("$ref"))),
+                                            folders.clone(),
+                                            external_resolver,
+                                            resolved,
+                                        ));
+                                    };
+                                } else {
+                                    let resolved = resolver.resolve(reference).unwrap().unwrap();
+                                    values.push(ValueReference::Virtual(resolved));
+                                };
                             }
                             // Local reference
                             // Example: `#/foo/bar`
                             Err(url::ParseError::RelativeUrlWithoutBase) => {
-                                let resolved = if folders.len() > 1 {
+                                if folders.len() > 1 {
                                     let location =
                                         with_folders(resolver.scope(), reference, &folders)
                                             .unwrap();
@@ -220,18 +242,18 @@ fn collect<'a>(
                                         resolvers.get(location.as_str()).unwrap_or_else(|| {
                                             panic!("Failed to find resolver for `{}`", location)
                                         });
-                                    let resolved = resolver.resolve(reference).unwrap().unwrap();
-                                    if !seen.contains(&(resolved as *const _)) {
-                                        values.push(ValueReference::Concrete(resolved));
-                                    };
-                                    resolved
-                                } else {
-                                    resolver.resolve(reference).unwrap().unwrap()
                                 };
+                                let resolved = resolver.resolve(reference).unwrap().unwrap();
                                 values.push(ValueReference::Virtual(resolved));
-                                // TODO. should external ones be explored? Likely so - they could
-                                // have references too
-                                if !seen.contains(&(reference_value as *const _)) {
+                                if !seen.contains(resolved) {
+                                    stack.push((
+                                        Some((node_idx, label("$ref"))),
+                                        folders.clone(),
+                                        resolver,
+                                        resolved,
+                                    ));
+                                };
+                                if !seen.contains(reference_value) {
                                     stack.push((
                                         Some((node_idx, label("$ref"))),
                                         folders.clone(),
@@ -260,7 +282,6 @@ fn collect<'a>(
                 }
             }
             Value::Array(items) => {
-                values.push(ValueReference::Concrete(value));
                 for (idx, item) in items.iter().enumerate() {
                     stack.push((
                         Some((node_idx, label(idx))),
@@ -270,9 +291,7 @@ fn collect<'a>(
                     ))
                 }
             }
-            _ => {
-                values.push(ValueReference::Concrete(value));
-            }
+            _ => {}
         };
         if let Some((parent_idx, label)) = parent {
             edges.push(RawEdge::new(parent_idx, node_idx, label));
@@ -328,6 +347,8 @@ fn materialize(values: Vec<ValueReference>, edges: &mut Vec<RawEdge>) -> Vec<Key
                 // Find the concrete reference by comparing the pointers
                 // All virtual references point to values that are always in the `values` vector
                 // Therefore this loop should always find such a reference
+                // TODO: Avoid O^2 - store seen targets & their indices.
+                //       If not seen - check only the right side.
                 for (target_idx, target) in values.iter().enumerate() {
                     if let ValueReference::Concrete(target) = target {
                         if std::ptr::eq(*reference, *target) {
@@ -395,9 +416,55 @@ mod tests {
         };
     }
 
-    // TODO: write a helper that any virtual node references a concrete one
+    /// Ensure every concrete reference is unique
+    fn assert_concrete_references(values: &[ValueReference]) {
+        let mut seen = HashMap::new();
+        for (index, value) in values.iter().enumerate() {
+            if let ValueReference::Virtual(reference) = value {
+                if let Some(existing_index) = seen.insert(*reference as *const _, index) {
+                    panic!(
+                        "Concrete reference `{}` at index {} was already seen at index {}",
+                        reference, index, existing_index
+                    )
+                }
+            }
+        }
+    }
 
-    pub(crate) fn edge(source: usize, target: usize, label: impl Into<EdgeLabel>) -> RawEdge {
+    /// Ensure every virtual reference points to a concrete one.
+    fn assert_virtual_references(values: &[ValueReference]) {
+        'outer: for (reference_index, value) in values.iter().enumerate() {
+            if let ValueReference::Virtual(reference) = value {
+                for (target_index, target) in values.iter().enumerate() {
+                    if let ValueReference::Concrete(target) = target {
+                        println!(
+                            "Compare\n  `{}` ({:p}) at {} vs `{}` ({:p}) at {}",
+                            reference,
+                            *reference as *const _,
+                            reference_index,
+                            target,
+                            *target as *const _,
+                            target_index
+                        );
+                        if std::ptr::eq(*reference, *target) {
+                            // Found! Check the next one
+                            println!(
+                                "Found for `{}` ({:p}) at {}",
+                                reference, *reference as *const _, reference_index
+                            );
+                            continue 'outer;
+                        }
+                    }
+                }
+                panic!(
+                    "Failed to find a concrete reference for a virtual reference `{}` at index {}",
+                    reference, reference_index
+                )
+            }
+        }
+    }
+
+    fn edge(source: usize, target: usize, label: impl Into<EdgeLabel>) -> RawEdge {
         RawEdge {
             source,
             target,
@@ -483,19 +550,21 @@ mod tests {
                 "items": {"$ref": "folderInteger.json"}
             }),
             c!({"$ref": "folderInteger.json"}),
-            c!({"type": "integer"}),
             v!({"type": "integer"}),
             c!("folderInteger.json"),
+            c!({"type": "integer"}),
+            c!("integer"),
             c!("baseUriChange/"),
             c!("http://localhost:1234/"),
         ],
         &[
             edge(0, 1, "items"),
             edge(1, 2, "items"),
+            edge(2, 4, "$ref"),
             edge(2, 5, "$ref"),
-            edge(1, 6, "$id"),
-            edge(0, 7, "$id"),
-            // TODO: there should be edges to `{"type": "integer"}`
+            edge(5, 6, "type"),
+            edge(1, 7, "$id"),
+            edge(0, 8, "$id"),
         ],
         &["http://localhost:1234/baseUriChange/folderInteger.json"];
         "Base URI change"
@@ -512,10 +581,14 @@ mod tests {
             c!({"$ref":"#/integer"}),
             v!({"type":"integer"}),
             c!("#/integer"),
+            c!({"type":"integer"}),
+            c!("integer"),
         ],
         &[
             edge(0, 2, "$ref"),
             edge(2, 4, "$ref"),
+            edge(2, 5, "$ref"),
+            edge(5, 6, "type"),
         ],
         &["http://localhost:1234/subSchemas.json"];
         "Reference within remote reference"
@@ -574,6 +647,8 @@ mod tests {
         let (values_, edges_) = collect(&schema, &resolvers);
         print_values(&values_);
         assert_eq!(values_, values);
+        assert_concrete_references(&values_);
+        assert_virtual_references(&values_);
         assert_eq!(edges_, edges);
         assert_eq!(resolvers.keys().cloned().collect::<Vec<&str>>(), keys);
     }
