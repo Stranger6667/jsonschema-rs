@@ -442,24 +442,24 @@ mod tests {
         assert_eq!(resolvers.keys().cloned().collect::<Vec<&str>>(), keys);
     }
 
-    // One remote
     #[test_case(
         j!({"$ref": "http://localhost:1234/subSchemas.json"}),
-        &["http://localhost:1234/subSchemas.json"]
+        &["http://localhost:1234/subSchemas.json"];
+        "One remote"
     )]
-    // One + two remote
     #[test_case(
         j!({"$ref": "http://localhost:1234/draft2019-09/metaschema-no-validation.json"}),
         &[
             "http://localhost:1234/draft2019-09/metaschema-no-validation.json",
             "https://json-schema.org/draft/2019-09/meta/applicator",
             "https://json-schema.org/draft/2019-09/meta/core"
-        ]
+        ];
+        "One + two remote"
     )]
-    // Absolute ref to the root schema - is not a remote
     #[test_case(
         j!({"$id": REMOTE_BASE, "defs": {"type": "string"}, "$ref": REMOTE_BASE}),
-        &[]
+        &[];
+        "Absolute reference to the root schema which is not a remote"
     )]
     // TODO. Remote without ID
     fn external_schemas(schema: Value, expected: &[&str]) {
@@ -486,21 +486,21 @@ mod tests {
         let compiled = JsonSchema::new(&schema);
     }
 
-    // Single keyword
     #[test_case(
         j!({"maximum": 1}),
-        vec![edge(0, 1, "maximum")]
+        vec![edge(0, 1, "maximum")];
+        "Single keyword"
     )]
-    // Ref to another keyword
     #[test_case(
         j!({"foo": {"maximum": 1}, "bar": {"$ref": "#/foo"}}),
-        vec![edge(0, 1, "foo"), edge(1, 2, "maximum"), edge(0, 1, "bar")]
+        vec![edge(0, 1, "foo"), edge(1, 2, "maximum"), edge(0, 1, "bar")];
+        "Reference to another keyword"
     )]
     fn materialization(schema: Value, expected: Vec<RawEdge>) {
         let resolvers = HashMap::new();
         let (values, mut edges) = collect(&schema, &resolvers);
         print_values(&values);
-        materialize(values, &mut edges);
+        let _ = materialize(values, &mut edges);
         assert_eq!(edges, expected)
     }
 }
