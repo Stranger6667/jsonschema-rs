@@ -151,6 +151,7 @@ fn collect<'a>(
         let node_idx = values.len();
         match value {
             Value::Object(object) => {
+                values.push(ValueReference::Concrete(value));
                 // TODO. it could be just an object with key `$ref` - handle it
                 if let Some(reference_value) = object.get("$ref") {
                     if let Value::String(reference) = reference_value {
@@ -188,7 +189,6 @@ fn collect<'a>(
                     // TODO. Order - some keywords might work better if they are first
                     // E.g - two keywords, both fail, but for `is_valid` we don't need both
                     // so, put the cheapest first
-                    values.push(ValueReference::Concrete(value));
                     for (key, value) in object {
                         stack.push((Some((node_idx, label(key))), resolver, value))
                     }
@@ -371,10 +371,11 @@ mod tests {
     #[test_case(
         j!({"$ref": SELF_REF}),
         &[
+            c!({"$ref": SELF_REF}),
             v!({"$ref": SELF_REF}),
             c!(SELF_REF),
         ],
-        &[edge(0, 1, "$ref")],
+        &[edge(0, 2, "$ref")],
         &[];
         "Self reference"
     )]
@@ -382,11 +383,12 @@ mod tests {
     #[test_case(
         j!({"$ref": REMOTE_REF}),
         &[
+            c!({"$ref": REMOTE_REF}),
             v!({"type": "integer"}),
             c!({"type": "integer"}),
             c!("integer"),
         ],
-        &[edge(0, 1, "$ref"), edge(1, 2, "type")],
+        &[edge(0, 2, "$ref"), edge(2, 3, "type")],
         &[REMOTE_BASE];
         "Remote reference"
     )]
@@ -437,6 +439,7 @@ mod tests {
         let external = fetch_external(&schema);
         let resolvers = build_resolvers(&external);
         let (values_, edges_) = collect(&schema, &resolvers);
+        print_values(&values_);
         assert_eq!(values_, values);
         assert_eq!(edges_, edges);
         assert_eq!(resolvers.keys().cloned().collect::<Vec<&str>>(), keys);
@@ -493,7 +496,12 @@ mod tests {
     )]
     #[test_case(
         j!({"foo": {"maximum": 1}, "bar": {"$ref": "#/foo"}}),
-        vec![edge(0, 1, "foo"), edge(1, 2, "maximum"), edge(0, 1, "bar")];
+        vec![
+            edge(0, 1, "foo"),
+            edge(1, 2, "maximum"),
+            edge(0, 3, "bar"),
+            edge(3, 5, "$ref"),
+        ];
         "Reference to another keyword"
     )]
     fn materialization(schema: Value, expected: Vec<RawEdge>) {
