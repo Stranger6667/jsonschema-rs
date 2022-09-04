@@ -7,6 +7,7 @@ use crate::{
 use ahash::{AHashSet, AHasher};
 use serde_json::{Map, Value};
 
+use crate::compilation::ValidatorArena;
 use crate::paths::{InstancePath, JSONPointer};
 use std::hash::{Hash, Hasher};
 
@@ -138,6 +139,7 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
     if let Value::Bool(value) = schema {
         if *value {

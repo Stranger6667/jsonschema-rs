@@ -1,3 +1,4 @@
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{no_error, ErrorIterator},
@@ -19,15 +20,16 @@ impl IfThenValidator {
         schema: &'a Value,
         then_schema: &'a Value,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         Ok(Box::new(IfThenValidator {
             schema: {
                 let if_context = context.with_path("if");
-                compile_validators(schema, &if_context)?
+                compile_validators(schema, &if_context, arena)?
             },
             then_schema: {
                 let then_context = context.with_path("then");
-                compile_validators(then_schema, &then_context)?
+                compile_validators(then_schema, &then_context, arena)?
             },
         }))
     }
@@ -94,15 +96,16 @@ impl IfElseValidator {
         schema: &'a Value,
         else_schema: &'a Value,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         Ok(Box::new(IfElseValidator {
             schema: {
                 let if_context = context.with_path("if");
-                compile_validators(schema, &if_context)?
+                compile_validators(schema, &if_context, arena)?
             },
             else_schema: {
                 let else_context = context.with_path("else");
-                compile_validators(else_schema, &else_context)?
+                compile_validators(else_schema, &else_context, arena)?
             },
         }))
     }
@@ -171,19 +174,20 @@ impl IfThenElseValidator {
         then_schema: &'a Value,
         else_schema: &'a Value,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         Ok(Box::new(IfThenElseValidator {
             schema: {
                 let if_context = context.with_path("if");
-                compile_validators(schema, &if_context)?
+                compile_validators(schema, &if_context, arena)?
             },
             then_schema: {
                 let then_context = context.with_path("then");
-                compile_validators(then_schema, &then_context)?
+                compile_validators(then_schema, &then_context, arena)?
             },
             else_schema: {
                 let else_context = context.with_path("else");
-                compile_validators(else_schema, &else_context)?
+                compile_validators(else_schema, &else_context, arena)?
             },
         }))
     }
@@ -247,6 +251,7 @@ pub(crate) fn compile<'a>(
     parent: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
     let then = parent.get("then");
     let else_ = parent.get("else");
@@ -256,9 +261,20 @@ pub(crate) fn compile<'a>(
             then_schema,
             else_schema,
             context,
+            arena,
         )),
-        (None, Some(else_schema)) => Some(IfElseValidator::compile(schema, else_schema, context)),
-        (Some(then_schema), None) => Some(IfThenValidator::compile(schema, then_schema, context)),
+        (None, Some(else_schema)) => Some(IfElseValidator::compile(
+            schema,
+            else_schema,
+            context,
+            arena,
+        )),
+        (Some(then_schema), None) => Some(IfThenValidator::compile(
+            schema,
+            then_schema,
+            context,
+            arena,
+        )),
         (None, None) => None,
     }
 }

@@ -1,3 +1,4 @@
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{no_error, ErrorIterator, ValidationError},
@@ -19,6 +20,7 @@ impl PropertiesValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         match schema {
             Value::Object(map) => {
@@ -28,7 +30,7 @@ impl PropertiesValidator {
                     let property_context = context.with_path(key.clone());
                     properties.push((
                         key.clone(),
-                        compile_validators(subschema, &property_context)?,
+                        compile_validators(subschema, &property_context, arena)?,
                     ));
                 }
                 Ok(Box::new(PropertiesValidator { properties }))
@@ -118,11 +120,12 @@ pub(crate) fn compile<'a>(
     parent: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
     match parent.get("additionalProperties") {
         // This type of `additionalProperties` validator handles `properties` logic
         Some(Value::Bool(false)) | Some(Value::Object(_)) => None,
-        _ => Some(PropertiesValidator::compile(schema, context)),
+        _ => Some(PropertiesValidator::compile(schema, context, arena)),
     }
 }
 

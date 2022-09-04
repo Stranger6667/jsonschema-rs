@@ -1,4 +1,5 @@
 //! Validators for `contentMediaType` and `contentEncoding` keywords.
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::context::CompilationContext,
     content_encoding::{ContentEncodingCheckType, ContentEncodingConverterType},
@@ -219,6 +220,7 @@ pub(crate) fn compile_media_type<'a>(
     schema: &'a Map<String, Value>,
     subschema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
     match subschema {
         Value::String(media_type) => {
@@ -273,6 +275,7 @@ pub(crate) fn compile_content_encoding<'a>(
     schema: &'a Map<String, Value>,
     subschema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
     // Performed during media type validation
     if schema.get("contentMediaType").is_some() {

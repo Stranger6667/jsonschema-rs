@@ -4,6 +4,7 @@
 pub(crate) mod context;
 pub(crate) mod options;
 
+use crate::keywords::BoxedValidator;
 use crate::{
     error::ErrorIterator,
     keywords,
@@ -32,6 +33,19 @@ pub struct JSONSchema {
 
 lazy_static::lazy_static! {
     pub static ref DEFAULT_SCOPE: Url = url::Url::parse(DEFAULT_ROOT_URL).expect("Is a valid URL");
+}
+
+pub(crate) struct ValidatorArena(Vec<BoxedValidator>);
+
+impl ValidatorArena {
+    pub(crate) fn new() -> Self {
+        Self(Vec::new())
+    }
+    pub(crate) fn push(&mut self, validator: impl Validate + 'static) -> usize {
+        let index = self.0.len();
+        self.0.push(Box::new(validator));
+        index
+    }
 }
 
 impl JSONSchema {
@@ -139,6 +153,7 @@ impl JSONSchema {
 pub(crate) fn compile_validators<'a, 'c>(
     schema: &'a Value,
     context: &'c CompilationContext,
+    arena: &'c mut ValidatorArena,
 ) -> Result<SchemaNode, ValidationError<'a>> {
     let context = context.push(schema)?;
     let relative_path = context.clone().into_pointer();
@@ -202,7 +217,7 @@ pub(crate) fn compile_validators<'a, 'c>(
                         .config
                         .draft()
                         .get_validator(keyword)
-                        .and_then(|f| f(object, subschema, &context))
+                        .and_then(|f| f(object, subschema, &context, arena))
                     {
                         validators.push((keyword.clone(), validator?));
                     } else {
@@ -243,8 +258,9 @@ pub(crate) fn compile_validators<'a, 'c>(
 
 #[cfg(test)]
 mod tests {
-    use super::JSONSchema;
+    use super::*;
     use crate::error::ValidationError;
+    use crate::keywords::boolean::FalseValidator;
     use serde_json::{from_str, json, Value};
     use std::{fs::File, io::Read, path::Path};
 
@@ -301,5 +317,14 @@ mod tests {
             r#"{"a":3} has less than 2 properties"#
         );
         assert_eq!(errors[1].to_string(), r#""a" is shorter than 3 characters"#);
+    }
+
+    #[test]
+    fn arena() {
+        let mut arena = ValidatorArena::new();
+        let idx = arena.push(FalseValidator {
+            schema_path: Default::default(),
+        });
+        assert_eq!(idx, 0)
     }
 }

@@ -1,3 +1,4 @@
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{error, no_error, ErrorIterator, ValidationError},
@@ -17,10 +18,11 @@ impl PropertyNamesObjectValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("propertyNames");
         Ok(Box::new(PropertyNamesObjectValidator {
-            node: compile_validators(schema, &keyword_context)?,
+            node: compile_validators(schema, &keyword_context, arena)?,
         }))
     }
 }
@@ -146,9 +148,12 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
     match schema {
-        Value::Object(_) => Some(PropertyNamesObjectValidator::compile(schema, context)),
+        Value::Object(_) => Some(PropertyNamesObjectValidator::compile(
+            schema, context, arena,
+        )),
         Value::Bool(false) => Some(PropertyNamesBooleanValidator::compile(context)),
         _ => None,
     }

@@ -1,3 +1,4 @@
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{ErrorIterator, ValidationError},
@@ -20,12 +21,13 @@ impl AllOfValidator {
     pub(crate) fn compile<'a>(
         items: &'a [Value],
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("allOf");
         let mut schemas = Vec::with_capacity(items.len());
         for (idx, item) in items.iter().enumerate() {
             let item_context = keyword_context.with_path(idx);
-            let validators = compile_validators(item, &item_context)?;
+            let validators = compile_validators(item, &item_context, arena)?;
             schemas.push(validators)
         }
         Ok(Box::new(AllOfValidator { schemas }))
@@ -82,10 +84,11 @@ impl SingleValueAllOfValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("allOf");
         let item_context = keyword_context.with_path(0);
-        let node = compile_validators(schema, &item_context)?;
+        let node = compile_validators(schema, &item_context, arena)?;
         Ok(Box::new(SingleValueAllOfValidator { node }))
     }
 }
@@ -122,13 +125,14 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
     if let Value::Array(items) = schema {
         if items.len() == 1 {
             let value = items.iter().next().expect("Vec is not empty");
-            Some(SingleValueAllOfValidator::compile(value, context))
+            Some(SingleValueAllOfValidator::compile(value, context, arena))
         } else {
-            Some(AllOfValidator::compile(items, context))
+            Some(AllOfValidator::compile(items, context, arena))
         }
     } else {
         Some(Err(ValidationError::single_type_error(

@@ -1,3 +1,4 @@
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
@@ -123,6 +124,7 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
     if let Value::Number(multiple_of) = schema {
         let multiple_of = multiple_of.as_f64().expect("Always valid");

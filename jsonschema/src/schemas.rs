@@ -1,3 +1,4 @@
+use crate::compilation::ValidatorArena;
 use crate::{compilation::context::CompilationContext, keywords};
 use serde_json::{Map, Value};
 
@@ -44,6 +45,7 @@ type CompileFunc<'a> = fn(
     &'a Map<String, Value>,
     &'a Value,
     &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<keywords::CompilationResult<'a>>;
 
 impl Draft {

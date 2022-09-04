@@ -1,3 +1,4 @@
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{no_error, ErrorIterator, ValidationError},
@@ -19,12 +20,13 @@ impl PrefixItemsValidator {
     pub(crate) fn compile<'a>(
         items: &'a [Value],
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("prefixItems");
         let mut schemas = Vec::with_capacity(items.len());
         for (idx, item) in items.iter().enumerate() {
             let item_context = keyword_context.with_path(idx);
-            let validators = compile_validators(item, &item_context)?;
+            let validators = compile_validators(item, &item_context, arena)?;
             schemas.push(validators)
         }
         Ok(Box::new(PrefixItemsValidator { schemas }))
@@ -112,9 +114,10 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
     if let Value::Array(items) = schema {
-        Some(PrefixItemsValidator::compile(items, context))
+        Some(PrefixItemsValidator::compile(items, context, arena))
     } else {
         Some(Err(ValidationError::single_type_error(
             JSONPointer::default(),

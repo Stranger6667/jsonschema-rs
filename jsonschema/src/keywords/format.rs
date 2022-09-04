@@ -6,6 +6,7 @@ use serde_json::{Map, Value};
 use url::Url;
 use uuid::Uuid;
 
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
@@ -421,6 +422,7 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
     if !context.config.validate_formats() {
         return None;

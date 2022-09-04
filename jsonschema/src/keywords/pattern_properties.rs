@@ -1,3 +1,4 @@
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{no_error, ErrorIterator, ValidationError},
@@ -20,6 +21,7 @@ impl PatternPropertiesValidator {
     pub(crate) fn compile<'a>(
         map: &'a Map<String, Value>,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("patternProperties");
         let mut patterns = Vec::with_capacity(map.len());
@@ -37,7 +39,7 @@ impl PatternPropertiesValidator {
                         ))
                     }
                 },
-                compile_validators(subschema, &pattern_context)?,
+                compile_validators(subschema, &pattern_context, arena)?,
             ));
         }
         Ok(Box::new(PatternPropertiesValidator { patterns }))
@@ -133,6 +135,7 @@ impl SingleValuePatternPropertiesValidator {
         pattern: &'a str,
         schema: &'a Value,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("patternProperties");
         let pattern_context = keyword_context.with_path(pattern.to_string());
@@ -148,7 +151,7 @@ impl SingleValuePatternPropertiesValidator {
                     ))
                 }
             },
-            node: compile_validators(schema, &pattern_context)?,
+            node: compile_validators(schema, &pattern_context, arena)?,
         }))
     }
 }
@@ -225,6 +228,7 @@ pub(crate) fn compile<'a>(
     parent: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
     match parent.get("additionalProperties") {
         // This type of `additionalProperties` validator handles `patternProperties` logic
@@ -234,10 +238,10 @@ pub(crate) fn compile<'a>(
                 if map.len() == 1 {
                     let (key, value) = map.iter().next().expect("Map is not empty");
                     Some(SingleValuePatternPropertiesValidator::compile(
-                        key, value, context,
+                        key, value, context, arena,
                     ))
                 } else {
-                    Some(PatternPropertiesValidator::compile(map, context))
+                    Some(PatternPropertiesValidator::compile(map, context, arena))
                 }
             } else {
                 Some(Err(ValidationError::single_type_error(

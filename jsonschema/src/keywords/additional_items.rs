@@ -1,3 +1,4 @@
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{error, no_error, ErrorIterator, ValidationError},
@@ -19,8 +20,9 @@ impl AdditionalItemsObjectValidator {
         schema: &'a Value,
         items_count: usize,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
-        let node = compile_validators(schema, context)?;
+        let node = compile_validators(schema, context, arena)?;
         Ok(Box::new(AdditionalItemsObjectValidator {
             node,
             items_count,
@@ -78,6 +80,7 @@ impl AdditionalItemsBooleanValidator {
     pub(crate) fn compile<'a>(
         items_count: usize,
         schema_path: JSONPointer,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalItemsBooleanValidator {
             items_count,
@@ -124,6 +127,7 @@ pub(crate) fn compile<'a>(
     parent: &Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
     if let Some(items) = parent.get("items") {
         match items {
@@ -136,10 +140,12 @@ pub(crate) fn compile<'a>(
                         schema,
                         items_count,
                         &keyword_context,
+                        arena,
                     )),
                     Value::Bool(false) => Some(AdditionalItemsBooleanValidator::compile(
                         items_count,
                         keyword_context.into_pointer(),
+                        arena,
                     )),
                     _ => None,
                 }

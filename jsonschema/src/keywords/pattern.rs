@@ -8,6 +8,7 @@ use crate::{
 };
 use serde_json::{Map, Value};
 
+use crate::compilation::ValidatorArena;
 use crate::paths::JSONPointer;
 use std::ops::Index;
 
@@ -164,6 +165,7 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
     Some(PatternValidator::compile(schema, context))
 }

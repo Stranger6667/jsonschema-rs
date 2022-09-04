@@ -1,3 +1,4 @@
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{error, no_error, ErrorIterator, ValidationError},
@@ -22,10 +23,11 @@ impl ContainsValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("contains");
         Ok(Box::new(ContainsValidator {
-            node: compile_validators(schema, &keyword_context)?,
+            node: compile_validators(schema, &keyword_context, arena)?,
             schema_path: keyword_context.into_pointer(),
         }))
     }
@@ -118,10 +120,11 @@ impl MinContainsValidator {
         schema: &'a Value,
         context: &CompilationContext,
         min_contains: u64,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("minContains");
         Ok(Box::new(MinContainsValidator {
-            node: compile_validators(schema, context)?,
+            node: compile_validators(schema, context, arena)?,
             min_contains,
             schema_path: keyword_context.into_pointer(),
         }))
@@ -216,10 +219,11 @@ impl MaxContainsValidator {
         schema: &'a Value,
         context: &CompilationContext,
         max_contains: u64,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("maxContains");
         Ok(Box::new(MaxContainsValidator {
-            node: compile_validators(schema, context)?,
+            node: compile_validators(schema, context, arena)?,
             max_contains,
             schema_path: keyword_context.into_pointer(),
         }))
@@ -324,9 +328,10 @@ impl MinMaxContainsValidator {
         context: &CompilationContext,
         min_contains: u64,
         max_contains: u64,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         Ok(Box::new(MinMaxContainsValidator {
-            node: compile_validators(schema, context)?,
+            node: compile_validators(schema, context, arena)?,
             min_contains,
             max_contains,
             schema_path: context.schema_path.clone().into(),
@@ -413,13 +418,14 @@ pub(crate) fn compile<'a>(
     parent: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
     match context.config.draft() {
         Draft::Draft4 | Draft::Draft6 | Draft::Draft7 => {
-            Some(ContainsValidator::compile(schema, context))
+            Some(ContainsValidator::compile(schema, context, arena))
         }
         #[cfg(all(feature = "draft201909", feature = "draft202012"))]
-        Draft::Draft201909 | Draft::Draft202012 => compile_contains(parent, schema, context),
+        Draft::Draft201909 | Draft::Draft202012 => compile_contains(parent, schema, context, arena),
         #[cfg(all(feature = "draft201909", not(feature = "draft202012")))]
         Draft::Draft201909 => compile_contains(parent, schema, context),
         #[cfg(all(feature = "draft202012", not(feature = "draft201909")))]
@@ -433,6 +439,7 @@ fn compile_contains<'a>(
     parent: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
     let min_contains = match map_get_u64(parent, context, "minContains").transpose() {
         Ok(n) => n,
@@ -444,10 +451,12 @@ fn compile_contains<'a>(
     };
 
     match (min_contains, max_contains) {
-        (Some(min), Some(max)) => Some(MinMaxContainsValidator::compile(schema, context, min, max)),
-        (Some(min), None) => Some(MinContainsValidator::compile(schema, context, min)),
-        (None, Some(max)) => Some(MaxContainsValidator::compile(schema, context, max)),
-        (None, None) => Some(ContainsValidator::compile(schema, context)),
+        (Some(min), Some(max)) => Some(MinMaxContainsValidator::compile(
+            schema, context, min, max, arena,
+        )),
+        (Some(min), None) => Some(MinContainsValidator::compile(schema, context, min, arena)),
+        (None, Some(max)) => Some(MaxContainsValidator::compile(schema, context, max, arena)),
+        (None, None) => Some(ContainsValidator::compile(schema, context, arena)),
     }
 }
 

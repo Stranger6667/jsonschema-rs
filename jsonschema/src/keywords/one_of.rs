@@ -1,3 +1,4 @@
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{error, no_error, ErrorIterator, ValidationError},
@@ -20,13 +21,14 @@ impl OneOfValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         if let Value::Array(items) = schema {
             let keyword_context = context.with_path("oneOf");
             let mut schemas = Vec::with_capacity(items.len());
             for (idx, item) in items.iter().enumerate() {
                 let item_context = keyword_context.with_path(idx);
-                let node = compile_validators(item, &item_context)?;
+                let node = compile_validators(item, &item_context, arena)?;
                 schemas.push(node)
             }
             Ok(Box::new(OneOfValidator {
@@ -135,8 +137,9 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
-    Some(OneOfValidator::compile(schema, context))
+    Some(OneOfValidator::compile(schema, context, arena))
 }
 
 #[cfg(test)]

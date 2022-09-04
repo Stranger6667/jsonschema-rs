@@ -8,7 +8,7 @@ use crate::{
 use serde_json::Value;
 
 pub(crate) struct FalseValidator {
-    schema_path: JSONPointer,
+    pub(crate) schema_path: JSONPointer,
 }
 impl FalseValidator {
     #[inline]

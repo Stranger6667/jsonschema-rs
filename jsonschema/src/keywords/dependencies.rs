@@ -1,3 +1,4 @@
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{no_error, ErrorIterator, ValidationError},
@@ -18,6 +19,7 @@ impl DependenciesValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         if let Value::Object(map) = schema {
             let keyword_context = context.with_path("dependencies");
@@ -33,7 +35,7 @@ impl DependenciesValidator {
                         .expect("The required validator compilation does not return None")?];
                         SchemaNode::new_from_array(&keyword_context, validators)
                     }
-                    _ => compile_validators(subschema, &item_context)?,
+                    _ => compile_validators(subschema, &item_context, arena)?,
                 };
                 dependencies.push((key.clone(), s))
             }
@@ -101,6 +103,7 @@ impl DependentRequiredValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         if let Value::Object(map) = schema {
             let keyword_context = context.with_path("dependentRequired");
@@ -191,13 +194,14 @@ impl DependentSchemasValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         if let Value::Object(map) = schema {
             let keyword_context = context.with_path("dependentSchemas");
             let mut dependencies = Vec::with_capacity(map.len());
             for (key, subschema) in map {
                 let item_context = keyword_context.with_path(key.to_string());
-                let schema_nodes = compile_validators(subschema, &item_context)?;
+                let schema_nodes = compile_validators(subschema, &item_context, arena)?;
                 dependencies.push((key.clone(), schema_nodes));
             }
             Ok(Box::new(DependentSchemasValidator { dependencies }))
@@ -255,24 +259,27 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
-    Some(DependenciesValidator::compile(schema, context))
+    Some(DependenciesValidator::compile(schema, context, arena))
 }
 #[inline]
 pub(crate) fn compile_dependent_required<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
-    Some(DependentRequiredValidator::compile(schema, context))
+    Some(DependentRequiredValidator::compile(schema, context, arena))
 }
 #[inline]
 pub(crate) fn compile_dependent_schemas<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
-    Some(DependentSchemasValidator::compile(schema, context))
+    Some(DependentSchemasValidator::compile(schema, context, arena))
 }
 #[cfg(test)]
 mod tests {

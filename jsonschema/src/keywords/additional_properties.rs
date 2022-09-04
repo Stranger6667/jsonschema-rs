@@ -6,6 +6,7 @@
 //!   - `patternProperties`
 //!
 //! Each valid combination of these keywords has a validator here.
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{error, no_error, ErrorIterator, ValidationError},
@@ -127,6 +128,7 @@ macro_rules! validate {
 fn compile_small_map<'a>(
     map: &'a Map<String, Value>,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Result<SmallValidatorsMap, ValidationError<'a>> {
     let mut properties = Vec::with_capacity(map.len());
     let keyword_context = context.with_path("properties");
@@ -134,7 +136,7 @@ fn compile_small_map<'a>(
         let property_context = keyword_context.with_path(key.clone());
         properties.push((
             key.clone(),
-            compile_validators(subschema, &property_context)?,
+            compile_validators(subschema, &property_context, arena)?,
         ));
     }
     Ok(properties)
@@ -142,6 +144,7 @@ fn compile_small_map<'a>(
 fn compile_big_map<'a>(
     map: &'a Map<String, Value>,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Result<BigValidatorsMap, ValidationError<'a>> {
     let mut properties = AHashMap::with_capacity(map.len());
     let keyword_context = context.with_path("properties");
@@ -149,7 +152,7 @@ fn compile_big_map<'a>(
         let property_context = keyword_context.with_path(key.clone());
         properties.insert(
             key.clone(),
-            compile_validators(subschema, &property_context)?,
+            compile_validators(subschema, &property_context, arena)?,
         );
     }
     Ok(properties)
@@ -178,10 +181,11 @@ impl AdditionalPropertiesValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("additionalProperties");
         Ok(Box::new(AdditionalPropertiesValidator {
-            node: compile_validators(schema, &keyword_context)?,
+            node: compile_validators(schema, &keyword_context, arena)?,
         }))
     }
 }
@@ -324,9 +328,10 @@ impl AdditionalPropertiesNotEmptyFalseValidator<SmallValidatorsMap> {
     pub(crate) fn compile<'a>(
         map: &'a Map<String, Value>,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
-            properties: compile_small_map(map, context)?,
+            properties: compile_small_map(map, context, arena)?,
             schema_path: context.as_pointer_with("additionalProperties"),
         }))
     }
@@ -336,9 +341,10 @@ impl AdditionalPropertiesNotEmptyFalseValidator<BigValidatorsMap> {
     pub(crate) fn compile<'a>(
         map: &'a Map<String, Value>,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
-            properties: compile_big_map(map, context)?,
+            properties: compile_big_map(map, context, arena)?,
             schema_path: context.as_pointer_with("additionalProperties"),
         }))
     }
@@ -460,11 +466,12 @@ impl AdditionalPropertiesNotEmptyValidator<SmallValidatorsMap> {
         map: &'a Map<String, Value>,
         schema: &'a Value,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("additionalProperties");
         Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
-            properties: compile_small_map(map, context)?,
-            node: compile_validators(schema, &keyword_context)?,
+            properties: compile_small_map(map, context, arena)?,
+            node: compile_validators(schema, &keyword_context, arena)?,
         }))
     }
 }
@@ -474,11 +481,12 @@ impl AdditionalPropertiesNotEmptyValidator<BigValidatorsMap> {
         map: &'a Map<String, Value>,
         schema: &'a Value,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("additionalProperties");
         Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
-            properties: compile_big_map(map, context)?,
-            node: compile_validators(schema, &keyword_context)?,
+            properties: compile_big_map(map, context, arena)?,
+            node: compile_validators(schema, &keyword_context, arena)?,
         }))
     }
 }
@@ -596,9 +604,10 @@ impl AdditionalPropertiesWithPatternsValidator {
         schema: &'a Value,
         patterns: PatternedValidators,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalPropertiesWithPatternsValidator {
-            node: compile_validators(schema, &context.with_path("additionalProperties"))?,
+            node: compile_validators(schema, &context.with_path("additionalProperties"), arena)?,
             patterns,
             pattern_keyword_path: context.as_pointer_with("patternProperties"),
             pattern_keyword_absolute_path: context
@@ -896,12 +905,13 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator<SmallValidatorsMap> {
         schema: &'a Value,
         patterns: PatternedValidators,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("additionalProperties");
         Ok(Box::new(
             AdditionalPropertiesWithPatternsNotEmptyValidator {
-                node: compile_validators(schema, &keyword_context)?,
-                properties: compile_small_map(map, context)?,
+                node: compile_validators(schema, &keyword_context, arena)?,
+                properties: compile_small_map(map, context, arena)?,
                 patterns,
             },
         ))
@@ -914,12 +924,13 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator<BigValidatorsMap> {
         schema: &'a Value,
         patterns: PatternedValidators,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("additionalProperties");
         Ok(Box::new(
             AdditionalPropertiesWithPatternsNotEmptyValidator {
-                node: compile_validators(schema, &keyword_context)?,
-                properties: compile_big_map(map, context)?,
+                node: compile_validators(schema, &keyword_context, arena)?,
+                properties: compile_big_map(map, context, arena)?,
                 patterns,
             },
         ))
@@ -1088,10 +1099,11 @@ impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator<SmallValidatorsMap> 
         map: &'a Map<String, Value>,
         patterns: PatternedValidators,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         Ok(Box::new(
             AdditionalPropertiesWithPatternsNotEmptyFalseValidator::<SmallValidatorsMap> {
-                properties: compile_small_map(map, context)?,
+                properties: compile_small_map(map, context, arena)?,
                 patterns,
                 schema_path: context.schema_path.push("additionalProperties").into(),
             },
@@ -1104,10 +1116,11 @@ impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator<BigValidatorsMap> {
         map: &'a Map<String, Value>,
         patterns: PatternedValidators,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         Ok(Box::new(
             AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
-                properties: compile_big_map(map, context)?,
+                properties: compile_big_map(map, context, arena)?,
                 patterns,
                 schema_path: context.schema_path.push("additionalProperties").into(),
             },
@@ -1253,12 +1266,13 @@ pub(crate) fn compile<'a>(
     parent: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
     let properties = parent.get("properties");
     if let Some(patterns) = parent.get("patternProperties") {
         if let Value::Object(obj) = patterns {
             // Compile all patterns & their validators to avoid doing work in the `patternProperties` validator
-            if let Ok(compiled_patterns) = compile_patterns(obj, context) {
+            if let Ok(compiled_patterns) = compile_patterns(obj, context, arena) {
                 match schema {
                     Value::Bool(true) => None, // "additionalProperties" are "true" by default
                     Value::Bool(false) => {
@@ -1267,7 +1281,8 @@ pub(crate) fn compile<'a>(
                                 AdditionalPropertiesWithPatternsNotEmptyFalseValidator,
                                 properties,
                                 compiled_patterns,
-                                context
+                                context,
+                                arena,
                             )
                         } else {
                             Some(AdditionalPropertiesWithPatternsFalseValidator::compile(
@@ -1283,13 +1298,15 @@ pub(crate) fn compile<'a>(
                                 properties,
                                 schema,
                                 compiled_patterns,
-                                context
+                                context,
+                                arena,
                             )
                         } else {
                             Some(AdditionalPropertiesWithPatternsValidator::compile(
                                 schema,
                                 compiled_patterns,
                                 context,
+                                arena,
                             ))
                         }
                     }
@@ -1308,7 +1325,8 @@ pub(crate) fn compile<'a>(
                     dynamic_map!(
                         AdditionalPropertiesNotEmptyFalseValidator,
                         properties,
-                        context
+                        context,
+                        arena,
                     )
                 } else {
                     let schema_path = context.as_pointer_with("additionalProperties");
@@ -1321,10 +1339,13 @@ pub(crate) fn compile<'a>(
                         AdditionalPropertiesNotEmptyValidator,
                         properties,
                         schema,
-                        context
+                        context,
+                        arena,
                     )
                 } else {
-                    Some(AdditionalPropertiesValidator::compile(schema, context))
+                    Some(AdditionalPropertiesValidator::compile(
+                        schema, context, arena,
+                    ))
                 }
             }
         }
@@ -1336,13 +1357,14 @@ pub(crate) fn compile<'a>(
 fn compile_patterns<'a>(
     obj: &'a Map<String, Value>,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Result<PatternedValidators, ValidationError<'a>> {
     let keyword_context = context.with_path("patternProperties");
     let mut compiled_patterns = Vec::with_capacity(obj.len());
     for (pattern, subschema) in obj {
         let pattern_context = keyword_context.with_path(pattern.to_string());
         if let Ok(compiled_pattern) = Regex::new(pattern) {
-            let node = compile_validators(subschema, &pattern_context)?;
+            let node = compile_validators(subschema, &pattern_context, arena)?;
             compiled_patterns.push((compiled_pattern, node));
         } else {
             return Err(ValidationError::format(

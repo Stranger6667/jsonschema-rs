@@ -1,3 +1,4 @@
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{error, ErrorIterator},
@@ -59,7 +60,8 @@ impl Validate for RefValidator {
                 Arc::clone(&self.config),
                 Arc::clone(&self.resolver),
             );
-            if let Ok(node) = compile_validators(&resolved, &context) {
+            let mut arena = ValidatorArena::new();
+            if let Ok(node) = compile_validators(&resolved, &context, &mut arena) {
                 let result = node.is_valid(instance);
                 *self.sub_nodes.write() = Some(node);
                 return result;
@@ -91,7 +93,8 @@ impl Validate for RefValidator {
                     Arc::clone(&self.config),
                     Arc::clone(&self.resolver),
                 );
-                match compile_validators(&resolved, &context) {
+                let mut arena = ValidatorArena::new();
+                match compile_validators(&resolved, &context, &mut arena) {
                     Ok(node) => {
                         let result = Box::new(
                             node.err_iter(instance, instance_path)

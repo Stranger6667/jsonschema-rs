@@ -1,3 +1,4 @@
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema, DEFAULT_SCOPE},
     content_encoding::{
@@ -294,7 +295,8 @@ impl CompilationOptions {
             }
         }
 
-        let node = compile_validators(schema, &context)?;
+        let mut validators = ValidatorArena::new();
+        let node = compile_validators(schema, &context, &mut validators)?;
 
         Ok(JSONSchema { node, config })
     }

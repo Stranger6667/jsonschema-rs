@@ -1,3 +1,4 @@
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{error, no_error, ErrorIterator, ValidationError},
@@ -20,11 +21,12 @@ impl NotValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("not");
         Ok(Box::new(NotValidator {
             original: schema.clone(),
-            node: compile_validators(schema, &keyword_context)?,
+            node: compile_validators(schema, &keyword_context, arena)?,
             schema_path: keyword_context.into_pointer(),
         }))
     }
@@ -64,8 +66,9 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
-    Some(NotValidator::compile(schema, context))
+    Some(NotValidator::compile(schema, context, arena))
 }
 
 #[cfg(test)]

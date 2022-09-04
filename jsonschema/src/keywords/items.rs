@@ -1,3 +1,4 @@
+use crate::compilation::ValidatorArena;
 use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{no_error, ErrorIterator},
@@ -16,12 +17,13 @@ impl ItemsArrayValidator {
     pub(crate) fn compile<'a>(
         schemas: &'a [Value],
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("items");
         let mut items = Vec::with_capacity(schemas.len());
         for (idx, item) in schemas.iter().enumerate() {
             let item_context = keyword_context.with_path(idx);
-            let validators = compile_validators(item, &item_context)?;
+            let validators = compile_validators(item, &item_context, arena)?;
             items.push(validators)
         }
         Ok(Box::new(ItemsArrayValidator { items }))
@@ -78,9 +80,10 @@ impl ItemsObjectValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("items");
-        let node = compile_validators(schema, &keyword_context)?;
+        let node = compile_validators(schema, &keyword_context, arena)?;
         Ok(Box::new(ItemsObjectValidator { node }))
     }
 }
@@ -154,9 +157,10 @@ impl ItemsObjectSkipPrefixValidator {
         schema: &'a Value,
         skip_prefix: usize,
         context: &CompilationContext,
+        arena: &mut ValidatorArena,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("items");
-        let node = compile_validators(schema, &keyword_context)?;
+        let node = compile_validators(schema, &keyword_context, arena)?;
         Ok(Box::new(ItemsObjectSkipPrefixValidator {
             node,
             skip_prefix,
@@ -233,9 +237,10 @@ pub(crate) fn compile<'a>(
     parent: &'a Map<String, Value>,
     schema: &'a Value,
     context: &CompilationContext,
+    arena: &mut ValidatorArena,
 ) -> Option<CompilationResult<'a>> {
     match schema {
-        Value::Array(items) => Some(ItemsArrayValidator::compile(items, context)),
+        Value::Array(items) => Some(ItemsArrayValidator::compile(items, context, arena)),
         Value::Object(_) | Value::Bool(false) => {
             #[cfg(feature = "draft202012")]
             if let Some(Value::Array(prefix_items)) = parent.get("prefixItems") {
@@ -243,9 +248,10 @@ pub(crate) fn compile<'a>(
                     schema,
                     prefix_items.len(),
                     context,
+                    arena,
                 ));
             }
-            Some(ItemsObjectValidator::compile(schema, context))
+            Some(ItemsObjectValidator::compile(schema, context, arena))
         }
         _ => None,
     }
