@@ -156,19 +156,28 @@ fn collect<'a>(
                     if let Value::String(reference) = reference_value {
                         match Url::parse(reference) {
                             // Remote reference
+                            // Example: `http://localhost:1234/subSchemas.json#/integer`
                             // TODO. what if it has the same scope as the local one?
                             Ok(mut url) => {
                                 url.set_fragment(None);
-                                let resolver = resolvers.get(url.as_str()).unwrap();
+                                let resolver = resolvers.get(url.as_str()).unwrap_or_else(|| {
+                                    panic!("Failed to get a resolver for `{}`", url)
+                                });
                                 let resolved = resolver.resolve(reference).unwrap().unwrap();
                                 values.push(ValueReference::Virtual(resolved));
                                 // TODO. What if the value was already explored??
                                 stack.push((Some((node_idx, label("$ref"))), resolver, resolved));
                             }
                             // Local reference
+                            // Example: `#/foo/bar`
                             Err(url::ParseError::RelativeUrlWithoutBase) => {
                                 let resolved = resolver.resolve(reference).unwrap().unwrap();
                                 values.push(ValueReference::Virtual(resolved));
+                                stack.push((
+                                    Some((node_idx, label("$ref"))),
+                                    resolver,
+                                    reference_value,
+                                ));
                             }
                             _ => todo!(),
                         }
@@ -341,14 +350,13 @@ mod tests {
     const REMOTE_REF: &str = "http://localhost:1234/subSchemas.json#/integer";
     const REMOTE_BASE: &str = "http://localhost:1234/subSchemas.json";
 
-    // Boolean schema
     #[test_case(
         j!(true),
         &[c!(true)],
         &[],
-        &[]
+        &[];
+        "Boolean schema"
     )]
-    // No references
     #[test_case(
         j!({"maximum": 5}),
         &[
@@ -356,9 +364,9 @@ mod tests {
             c!(5),
         ],
         &[edge(0, 1, "maximum")],
-        &[]
+        &[];
+        "No reference"
     )]
-    // Recursive ref
     // TODO. the root schema should be present in the values
     #[test_case(
         j!({"$ref": SELF_REF}),
@@ -367,7 +375,8 @@ mod tests {
             c!(SELF_REF),
         ],
         &[edge(0, 1, "$ref")],
-        &[]
+        &[];
+        "Self reference"
     )]
     // Remote ref - not resolved
     #[test_case(
@@ -378,7 +387,8 @@ mod tests {
             c!("integer"),
         ],
         &[edge(0, 1, "$ref"), edge(1, 2, "type")],
-        &[REMOTE_BASE]
+        &[REMOTE_BASE];
+        "Remote reference"
     )]
     // Absolute ref to the same schema
     #[test_case(
@@ -414,7 +424,8 @@ mod tests {
             })
         ],
         &[],
-        &[REMOTE_BASE]
+        &[REMOTE_BASE];
+        "Absolute reference to the same schema"
     )]
     // TODO. refs without # - see `root_schema_id` test for context
     fn values_and_edges(
@@ -423,11 +434,12 @@ mod tests {
         edges: &[RawEdge],
         keys: &[&str],
     ) {
-        let remote = HashMap::new();
-        let (values_, edges_) = collect(&schema, &remote);
+        let external = fetch_external(&schema);
+        let resolvers = build_resolvers(&external);
+        let (values_, edges_) = collect(&schema, &resolvers);
         assert_eq!(values_, values);
         assert_eq!(edges_, edges);
-        assert_eq!(remote.keys().cloned().collect::<Vec<&str>>(), keys);
+        assert_eq!(resolvers.keys().cloned().collect::<Vec<&str>>(), keys);
     }
 
     // One remote
