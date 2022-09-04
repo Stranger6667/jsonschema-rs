@@ -502,6 +502,26 @@ mod tests {
     )]
     #[test_case(
         j!({
+            "$ref": "http://localhost:1234/subSchemas.json#/refToInteger"
+        }),
+        &[
+            c!({
+                "$ref": "http://localhost:1234/subSchemas.json#/refToInteger"
+            }),
+            v!({"$ref":"#/integer"}),
+            c!({"$ref":"#/integer"}),
+            v!({"type":"integer"}),
+            c!("#/integer"),
+        ],
+        &[
+            edge(0, 2, "$ref"),
+            edge(2, 4, "$ref"),
+        ],
+        &["http://localhost:1234/subSchemas.json"];
+        "Reference within remote reference"
+    )]
+    #[test_case(
+        j!({
             "$id": "http://localhost:1234/root",
             "properties": {
                 "A": {
@@ -542,7 +562,6 @@ mod tests {
         &[];
         "Absolute reference to the same schema"
     )]
-    // TODO. Directory change
     // TODO. refs without # - see `root_schema_id` test for context
     fn values_and_edges(
         schema: Value,
