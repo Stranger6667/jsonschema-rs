@@ -14,7 +14,7 @@ use crate::{
     vocabularies::Keyword,
 };
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use url::Url;
 
 mod edges;
@@ -145,7 +145,9 @@ fn collect<'a>(
     let mut edges = vec![];
     let resolver = Resolver::new(schema, scope_of(schema).unwrap());
     let mut stack = vec![(None, &resolver, schema)];
+    let mut seen = HashSet::new();
     while let Some((parent, resolver, value)) = stack.pop() {
+        seen.insert(value as *const _);
         // TODO.
         //   - validate - there should be no invalid schemas
         let node_idx = values.len();
@@ -161,24 +163,29 @@ fn collect<'a>(
                             // TODO. what if it has the same scope as the local one?
                             Ok(mut url) => {
                                 url.set_fragment(None);
-                                let resolver = resolvers.get(url.as_str()).unwrap_or_else(|| {
-                                    panic!("Failed to get a resolver for `{}`", url)
-                                });
+                                let resolver = resolvers.get(url.as_str()).unwrap_or(resolver);
                                 let resolved = resolver.resolve(reference).unwrap().unwrap();
                                 values.push(ValueReference::Virtual(resolved));
-                                // TODO. What if the value was already explored??
-                                stack.push((Some((node_idx, label("$ref"))), resolver, resolved));
+                                if !seen.contains(&(resolved as *const _)) {
+                                    stack.push((
+                                        Some((node_idx, label("$ref"))),
+                                        resolver,
+                                        resolved,
+                                    ));
+                                }
                             }
                             // Local reference
                             // Example: `#/foo/bar`
                             Err(url::ParseError::RelativeUrlWithoutBase) => {
                                 let resolved = resolver.resolve(reference).unwrap().unwrap();
                                 values.push(ValueReference::Virtual(resolved));
-                                stack.push((
-                                    Some((node_idx, label("$ref"))),
-                                    resolver,
-                                    reference_value,
-                                ));
+                                if !seen.contains(&(reference_value as *const _)) {
+                                    stack.push((
+                                        Some((node_idx, label("$ref"))),
+                                        resolver,
+                                        reference_value,
+                                    ));
+                                }
                             }
                             _ => todo!(),
                         }
@@ -367,7 +374,6 @@ mod tests {
         &[];
         "No reference"
     )]
-    // TODO. the root schema should be present in the values
     #[test_case(
         j!({"$ref": SELF_REF}),
         &[
@@ -416,6 +422,7 @@ mod tests {
                     "$ref": "http://localhost:1234/root"
                 }
             }),
+            c!({"$ref": "http://localhost:1234/root"}),
             v!({
                 "$id": "http://localhost:1234/root",
                 "properties": {
@@ -423,12 +430,18 @@ mod tests {
                         "$ref": "http://localhost:1234/root"
                     }
                 }
-            })
+            }),
+            c!("http://localhost:1234/root"),
         ],
-        &[],
-        &[REMOTE_BASE];
+        &[
+            edge(0, 1, "properties"),
+            edge(1, 2, "A"),
+            edge(0, 4, "$id"),
+        ],
+        &[];
         "Absolute reference to the same schema"
     )]
+    // TODO. Directory change
     // TODO. refs without # - see `root_schema_id` test for context
     fn values_and_edges(
         schema: Value,
