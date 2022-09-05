@@ -21,7 +21,7 @@ mod edges;
 pub mod resolver;
 
 use crate::{compilation::edges::EdgeLabel, vocabularies::Maximum};
-use edges::{label, CompressedEdge, RawEdge};
+use edges::{CompressedEdge, RawEdge};
 
 #[derive(Debug)]
 pub struct JsonSchema {
@@ -57,6 +57,8 @@ fn fetch_external(schema: &Value) -> HashMap<Url, Value> {
     store
 }
 
+const REF: &str = "$ref";
+
 /// Recursive routine for traversing a schema and fetching external references.
 fn fetch_routine(schema: &Value, store: &mut HashMap<Url, Value>) {
     // Current schema id - if occurs in a reference, then there is no need to resolve it
@@ -70,7 +72,12 @@ fn fetch_routine(schema: &Value, store: &mut HashMap<Url, Value>) {
                     folders.push(id);
                 }
                 for (key, value) in object {
-                    if key == "$ref" {
+                    if key == REF
+                        // TODO. Add test case
+                        && value
+                            .as_str()
+                            .map_or(false, |value| !is_local_reference(value))
+                    {
                         fetch_external_reference(value, &folders, store, &scope);
                     } else {
                         // Explore any other key
@@ -117,7 +124,9 @@ fn with_folders(scope: &Url, reference: &str, folders: &[&str]) -> Result<Url, u
             location = location.join(folder)?;
         }
     }
-    location.join(reference)
+    location = location.join(reference)?;
+    location.set_fragment(None);
+    Ok(location)
 }
 
 fn fetch_and_store(store: &mut HashMap<Url, Value>, scope: &Url, location: Url) {
@@ -173,6 +182,49 @@ impl SeenValues {
     }
 }
 
+#[derive(Debug)]
+struct Values<'a>(Vec<ValueReference<'a>>);
+
+impl<'a> Values<'a> {
+    pub(crate) fn new() -> Self {
+        Self(Vec::new())
+    }
+    pub(crate) fn add_concrete(&mut self, value: &'a Value) {
+        self.0.push(ValueReference::Concrete(value))
+    }
+    pub(crate) fn add_virtual(&mut self, value: &'a Value) {
+        self.0.push(ValueReference::Virtual(value))
+    }
+    pub(crate) fn len(&self) -> usize {
+        self.0.len()
+    }
+    pub(crate) fn into_inner(self) -> Vec<ValueReference<'a>> {
+        self.0
+    }
+}
+
+fn is_local_reference(reference: &str) -> bool {
+    reference.starts_with('#')
+}
+
+fn fail_to_find_resolver(location: &Url) -> ! {
+    panic!("Failed to find resolver for `{}`", location)
+}
+
+macro_rules! push {
+    ($stack: expr, $idx: expr, $value: expr, $label: expr, $seen: expr, $resolver: expr, $folders: expr) => {
+        // TODO: Should it be always `insert` to avoid pushing two values?
+        if !$seen.contains($value) {
+            $stack.push((
+                Some(($idx, crate::compilation::edges::label($label))),
+                $folders.clone(),
+                $resolver,
+                $value,
+            ));
+        }
+    };
+}
+
 /// The main goal of this phase is to collect all nodes from the input schema and its remote
 /// dependencies into a single graph where each vertex is a reference to a JSON value from these
 /// schemas. Each edge is represented as a pair indexes into the vertex vector.
@@ -187,7 +239,7 @@ fn collect<'a>(
 ) -> (Vec<ValueReference<'a>>, Vec<RawEdge>) {
     // TODO. idea - store values interleaved with edges to improve cache locality
     // TODO. maybe remove nodes that were not referenced by anything?
-    let mut values = vec![];
+    let mut values = Values::new();
     let mut edges = vec![];
     let resolver = Resolver::new(schema, scope_of(schema).unwrap());
     let mut stack = vec![(None, vec![], &resolver, schema)];
@@ -196,7 +248,7 @@ fn collect<'a>(
         let node_idx = values.len();
         // Mark this value as seen to prevent re-traversing it if any reference leads to it
         seen.insert(value);
-        values.push(ValueReference::Concrete(value));
+        values.add_concrete(value);
         // TODO.
         //   - validate - there should be no invalid schemas
         match value {
@@ -206,7 +258,7 @@ fn collect<'a>(
                     folders.push(id);
                 }
                 // TODO. it could be just an object with key `$ref` - handle it
-                if let Some(reference_value) = object.get("$ref") {
+                if let Some(reference_value) = object.get(REF) {
                     if let Value::String(reference) = reference_value {
                         match Url::parse(reference) {
                             // Remote reference
@@ -214,52 +266,32 @@ fn collect<'a>(
                             // TODO. what if it has the same scope as the local one?
                             Ok(mut url) => {
                                 url.set_fragment(None);
-                                if let Some(external_resolver) = resolvers.get(url.as_str()) {
-                                    let resolved =
-                                        external_resolver.resolve(reference).unwrap().unwrap();
-                                    if !seen.contains(resolved) {
-                                        values.push(ValueReference::Virtual(resolved));
-                                        stack.push((
-                                            Some((node_idx, label("$ref"))),
-                                            folders.clone(),
-                                            external_resolver,
-                                            resolved,
-                                        ));
-                                    };
-                                } else {
+                                let resolved = if let Some(resolver) = resolvers.get(url.as_str()) {
                                     let resolved = resolver.resolve(reference).unwrap().unwrap();
-                                    values.push(ValueReference::Virtual(resolved));
+                                    push!(stack, node_idx, resolved, REF, seen, resolver, folders);
+                                    resolved
+                                } else {
+                                    resolver.resolve(reference).unwrap().unwrap()
                                 };
+                                values.add_virtual(resolved);
                             }
                             // Local reference
                             // Example: `#/foo/bar`
                             Err(url::ParseError::RelativeUrlWithoutBase) => {
-                                if folders.len() > 1 {
+                                if !is_local_reference(reference) {
                                     let location =
                                         with_folders(resolver.scope(), reference, &folders)
                                             .unwrap();
-                                    resolver =
-                                        resolvers.get(location.as_str()).unwrap_or_else(|| {
-                                            panic!("Failed to find resolver for `{}`", location)
-                                        });
+                                    resolver = resolvers
+                                        .get(location.as_str())
+                                        .unwrap_or_else(|| fail_to_find_resolver(&location));
                                 };
                                 let resolved = resolver.resolve(reference).unwrap().unwrap();
-                                values.push(ValueReference::Virtual(resolved));
-                                if !seen.contains(resolved) {
-                                    stack.push((
-                                        Some((node_idx, label("$ref"))),
-                                        folders.clone(),
-                                        resolver,
-                                        resolved,
-                                    ));
-                                };
-                                if !seen.contains(reference_value) {
-                                    stack.push((
-                                        Some((node_idx, label("$ref"))),
-                                        folders.clone(),
-                                        resolver,
-                                        reference_value,
-                                    ));
+                                values.add_virtual(resolved);
+                                // Push the resolved value & the reference itself onto the stack
+                                // to explore them further
+                                for value in [resolved, reference_value] {
+                                    push!(stack, node_idx, value, REF, seen, resolver, folders);
                                 }
                             }
                             _ => todo!(),
@@ -272,23 +304,15 @@ fn collect<'a>(
                     // E.g - two keywords, both fail, but for `is_valid` we don't need both
                     // so, put the cheapest first
                     for (key, value) in object {
-                        stack.push((
-                            Some((node_idx, label(key))),
-                            folders.clone(),
-                            resolver,
-                            value,
-                        ))
+                        // TODO. Add test case for `contains`
+                        push!(stack, node_idx, value, key, seen, resolver, folders);
                     }
                 }
             }
             Value::Array(items) => {
                 for (idx, item) in items.iter().enumerate() {
-                    stack.push((
-                        Some((node_idx, label(idx))),
-                        folders.clone(),
-                        resolver,
-                        item,
-                    ))
+                    // TODO. Add test case for `contains`
+                    push!(stack, node_idx, item, idx, seen, resolver, folders);
                 }
             }
             _ => {}
@@ -297,7 +321,7 @@ fn collect<'a>(
             edges.push(RawEdge::new(parent_idx, node_idx, label));
         }
     }
-    (values, edges)
+    (values.into_inner(), edges)
 }
 
 /// Build a graph of `Keyword` from an intermediate graph that contain all possible values.
@@ -401,7 +425,9 @@ fn compress(mut edges: Vec<RawEdge>) -> (Vec<usize>, Vec<CompressedEdge>) {
 #[cfg(test)]
 mod tests {
     use super::{edges::EdgeLabel, *};
+    use bench_helpers::read_json;
     use serde_json::{json as j, Value};
+    use std::fs;
     use test_case::test_case;
 
     macro_rules! c {
@@ -416,11 +442,13 @@ mod tests {
         };
     }
 
+    // TODO: assert all schema nodes are present as concrete refs
+
     /// Ensure every concrete reference is unique
     fn assert_concrete_references(values: &[ValueReference]) {
         let mut seen = HashMap::new();
         for (index, value) in values.iter().enumerate() {
-            if let ValueReference::Virtual(reference) = value {
+            if let ValueReference::Concrete(reference) = value {
                 if let Some(existing_index) = seen.insert(*reference as *const _, index) {
                     panic!(
                         "Concrete reference `{}` at index {} was already seen at index {}",
@@ -651,6 +679,32 @@ mod tests {
         assert_virtual_references(&values_);
         assert_eq!(edges_, edges);
         assert_eq!(resolvers.keys().cloned().collect::<Vec<&str>>(), keys);
+    }
+
+    #[test]
+    fn all_schemas() {
+        for draft in &[7] {
+            let paths =
+                fs::read_dir(format!("../jsonschema/tests/suite/tests/draft{}", draft)).unwrap();
+            for path in paths {
+                let entry = path.unwrap();
+                let path = entry.path();
+                if path.is_file() && path.extension().unwrap().to_str().unwrap() == "json" {
+                    println!("File: {}", path.display());
+                    let data = read_json(path.as_path().to_str().unwrap());
+                    for (idx, case) in data.as_array().unwrap().iter().enumerate() {
+                        println!("Case: {}", idx);
+                        let schema = &case["schema"];
+                        let external = fetch_external(schema);
+                        let resolvers = build_resolvers(&external);
+                        let (values_, _) = collect(&schema, &resolvers);
+                        print_values(&values_);
+                        assert_concrete_references(&values_);
+                        assert_virtual_references(&values_);
+                    }
+                }
+            }
+        }
     }
 
     #[test_case(

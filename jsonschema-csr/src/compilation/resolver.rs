@@ -62,7 +62,7 @@ impl<'schema> Resolver<'schema> {
             if pointer == "#" {
                 Ok(Some(self.document))
             } else {
-                // TODO. use a more efficient impl
+                // TODO. use a more efficient impl + track folders
                 Ok(self.document.pointer(&pointer))
             }
         }
