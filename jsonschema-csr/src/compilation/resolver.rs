@@ -49,6 +49,10 @@ impl<'schema> Resolver<'schema> {
         &self.scope
     }
 
+    pub fn contains_location_independent_identifier(&self, key: &str) -> bool {
+        self.schemas.contains_key(key)
+    }
+
     /// Resolve a reference that is known to be local for this resolver.
     pub fn resolve(
         &self,

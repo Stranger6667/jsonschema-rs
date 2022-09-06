@@ -32,8 +32,11 @@ pub struct JsonSchema {
 
 impl JsonSchema {
     pub fn new(schema: &Value) -> Self {
+        // Resolver for the root schema - needed to resolve location-independent references during
+        // the initial resolving step
+        let root_resolver = Resolver::new(schema, scope_of(schema).unwrap());
         // Fetch all external schemas reachable from the root
-        let external = fetch_external(schema);
+        let external = fetch_external(schema, &root_resolver);
         // Build resolvers for external schemas
         let resolvers = build_resolvers(&external);
         // Collect all values and resolve references
@@ -51,16 +54,16 @@ impl JsonSchema {
 }
 
 /// Fetch all external schemas reachable from the root.
-fn fetch_external(schema: &Value) -> HashMap<Url, Value> {
+fn fetch_external(schema: &Value, resolver: &Resolver) -> HashMap<Url, Value> {
     let mut store = HashMap::new();
-    fetch_routine(schema, &mut store);
+    fetch_routine(schema, &mut store, resolver);
     store
 }
 
 const REF: &str = "$ref";
 
 /// Recursive routine for traversing a schema and fetching external references.
-fn fetch_routine(schema: &Value, store: &mut HashMap<Url, Value>) {
+fn fetch_routine(schema: &Value, store: &mut HashMap<Url, Value>, resolver: &Resolver) {
     // Current schema id - if occurs in a reference, then there is no need to resolve it
     let scope = scope_of(schema).unwrap();
     let mut stack = vec![(vec![], schema)];
@@ -78,7 +81,12 @@ fn fetch_routine(schema: &Value, store: &mut HashMap<Url, Value>) {
                             .as_str()
                             .map_or(false, |value| !is_local_reference(value))
                     {
-                        fetch_external_reference(value, &folders, store, &scope);
+                        if let Some(reference) = value.as_str() {
+                            if resolver.contains_location_independent_identifier(reference) {
+                                continue;
+                            }
+                        }
+                        fetch_external_reference(value, &folders, store, &scope, resolver);
                     } else {
                         // Explore any other key
                         stack.push((folders.clone(), value))
@@ -103,16 +111,17 @@ fn fetch_external_reference(
     folders: &[&str],
     store: &mut HashMap<Url, Value>,
     scope: &Url,
+    resolver: &Resolver,
 ) {
     if let Some(location) = without_fragment(value) {
         // Resolve only references that are:
         //   - pointing to another resource
         //   - are not already resolved
-        fetch_and_store(store, scope, location);
+        fetch_and_store(store, scope, location, resolver);
     } else if !is_default_scope(scope) {
         if let Some(reference) = value.as_str() {
             let location = with_folders(scope, reference, folders).unwrap();
-            fetch_and_store(store, scope, location);
+            fetch_and_store(store, scope, location, resolver);
         }
     }
 }
@@ -124,17 +133,23 @@ fn with_folders(scope: &Url, reference: &str, folders: &[&str]) -> Result<Url, u
             location = location.join(folder)?;
         }
     }
-    location = location.join(reference)?;
-    location.set_fragment(None);
-    Ok(location)
+    location.join(reference)
 }
 
-fn fetch_and_store(store: &mut HashMap<Url, Value>, scope: &Url, location: Url) {
-    if location != *scope && !store.contains_key(&location) {
+fn fetch_and_store(
+    store: &mut HashMap<Url, Value>,
+    scope: &Url,
+    location: Url,
+    resolver: &Resolver,
+) {
+    if location != *scope
+        && !store.contains_key(&location)
+        && !resolver.contains_location_independent_identifier(location.as_str())
+    {
         let response = reqwest::blocking::get(location.as_str()).unwrap();
         let document = response.json::<Value>().unwrap();
         // Make a recursive call to the callee routine
-        fetch_routine(&document, store);
+        fetch_routine(&document, store, resolver);
         store.insert(location, document);
     }
 }
@@ -279,9 +294,13 @@ fn collect<'a>(
                                     let location =
                                         with_folders(resolver.scope(), reference, &folders)
                                             .unwrap();
-                                    resolver = resolvers
-                                        .get(location.as_str())
-                                        .unwrap_or_else(|| fail_to_find_resolver(&location));
+                                    if !resolver
+                                        .contains_location_independent_identifier(location.as_str())
+                                    {
+                                        resolver = resolvers
+                                            .get(location.as_str())
+                                            .unwrap_or_else(|| fail_to_find_resolver(&location));
+                                    }
                                 };
                                 let (folders_, resolved) =
                                     resolver.resolve(reference).unwrap().unwrap();
@@ -669,7 +688,8 @@ mod tests {
         edges: &[RawEdge],
         keys: &[&str],
     ) {
-        let external = fetch_external(&schema);
+        let root = Resolver::new(&schema, scope_of(&schema).unwrap());
+        let external = fetch_external(&schema, &root);
         let resolvers = build_resolvers(&external);
         let (values_, edges_) = collect(&schema, &resolvers);
         print_values(&values_);
@@ -694,7 +714,8 @@ mod tests {
                     for (idx, case) in data.as_array().unwrap().iter().enumerate() {
                         println!("Case: {}", idx);
                         let schema = &case["schema"];
-                        let external = fetch_external(schema);
+                        let root = Resolver::new(&schema, scope_of(&schema).unwrap());
+                        let external = fetch_external(schema, &root);
                         let resolvers = build_resolvers(&external);
                         let (values_, _) = collect(&schema, &resolvers);
                         print_values(&values_);
@@ -727,7 +748,8 @@ mod tests {
     )]
     // TODO. Remote without ID
     fn external_schemas(schema: Value, expected: &[&str]) {
-        let external = fetch_external(&schema);
+        let root = Resolver::new(&schema, scope_of(&schema).unwrap());
+        let external = fetch_external(&schema, &root);
         assert!(
             expected
                 .iter()
