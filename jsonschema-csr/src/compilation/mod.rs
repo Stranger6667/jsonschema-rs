@@ -269,9 +269,9 @@ fn collect<'a>(
                     folders.push(id);
                 }
                 // TODO. it could be just an object with key `$ref` - handle it
-                if let Some(reference_value) = object.get(REF) {
-                    if let Value::String(reference) = reference_value {
-                        match Url::parse(reference) {
+                if let Some(ref_value) = object.get(REF) {
+                    if let Value::String(ref_string) = ref_value {
+                        match Url::parse(ref_string) {
                             // Remote reference
                             // Example: `http://localhost:1234/subSchemas.json#/integer`
                             // TODO. what if it has the same scope as the local one?
@@ -279,20 +279,21 @@ fn collect<'a>(
                                 url.set_fragment(None);
                                 let resolved = if let Some(resolver) = resolvers.get(url.as_str()) {
                                     let (folders_, resolved) =
-                                        resolver.resolve(reference).unwrap().unwrap();
+                                        resolver.resolve(ref_string).unwrap().unwrap();
                                     push!(stack, node_idx, resolved, REF, seen, resolver, folders_);
                                     resolved
                                 } else {
-                                    resolver.resolve(reference).unwrap().unwrap().1
+                                    resolver.resolve(ref_string).unwrap().unwrap().1
                                 };
                                 values.add_virtual(resolved);
+                                push!(stack, node_idx, ref_value, REF, seen, resolver, folders);
                             }
                             // Local reference
                             // Example: `#/foo/bar`
                             Err(url::ParseError::RelativeUrlWithoutBase) => {
-                                if !is_local_reference(reference) {
+                                if !is_local_reference(ref_string) {
                                     let location =
-                                        with_folders(resolver.scope(), reference, &folders)
+                                        with_folders(resolver.scope(), ref_string, &folders)
                                             .unwrap();
                                     if !resolver
                                         .contains_location_independent_identifier(location.as_str())
@@ -303,11 +304,11 @@ fn collect<'a>(
                                     }
                                 };
                                 let (folders_, resolved) =
-                                    resolver.resolve(reference).unwrap().unwrap();
+                                    resolver.resolve(ref_string).unwrap().unwrap();
                                 values.add_virtual(resolved);
                                 // Push the resolved value & the reference itself onto the stack
                                 // to explore them further
-                                for value in [resolved, reference_value] {
+                                for value in [resolved, ref_value] {
                                     push!(stack, node_idx, value, REF, seen, resolver, folders_);
                                 }
                             }
@@ -460,7 +461,25 @@ mod tests {
         };
     }
 
-    // TODO: assert all schema nodes are present as concrete refs
+    /// All schema nodes are present as concrete references
+    fn assert_all_schema_nodes(schema: &Value, values: &[ValueReference]) {
+        let mut stack = vec![schema];
+        'outer: while let Some(value) = stack.pop() {
+            match value {
+                Value::Object(object) => stack.extend(object.values()),
+                Value::Array(items) => stack.extend(items.iter()),
+                _ => {}
+            }
+            for reference in values {
+                if let ValueReference::Concrete(target) = reference {
+                    if std::ptr::eq(value, *target) {
+                        continue 'outer;
+                    }
+                }
+            }
+            panic!("Value `{}` is not found as a concrete reference", value)
+        }
+    }
 
     /// Ensure every concrete reference is unique
     fn assert_concrete_references(values: &[ValueReference]) {
@@ -568,10 +587,15 @@ mod tests {
         &[
             c!({"$ref": REMOTE_REF}),
             v!({"type": "integer"}),
+            c!(REMOTE_REF),
             c!({"type": "integer"}),
             c!("integer"),
         ],
-        &[edge(0, 2, "$ref"), edge(2, 3, "type")],
+        &[
+            edge(0, 2, "$ref"),
+            edge(0, 3, "$ref"),
+            edge(3, 4, "type")
+        ],
         &[REMOTE_BASE];
         "Remote reference"
     )]
@@ -624,6 +648,7 @@ mod tests {
                 "$ref": "http://localhost:1234/subSchemas.json#/refToInteger"
             }),
             v!({"$ref":"#/integer"}),
+            c!("http://localhost:1234/subSchemas.json#/refToInteger"),
             c!({"$ref":"#/integer"}),
             v!({"type":"integer"}),
             c!("#/integer"),
@@ -632,9 +657,10 @@ mod tests {
         ],
         &[
             edge(0, 2, "$ref"),
-            edge(2, 4, "$ref"),
-            edge(2, 5, "$ref"),
-            edge(5, 6, "type"),
+            edge(0, 3, "$ref"),
+            edge(3, 5, "$ref"),
+            edge(3, 6, "$ref"),
+            edge(6, 7, "type"),
         ],
         &["http://localhost:1234/subSchemas.json"];
         "Reference within remote reference"
@@ -672,11 +698,13 @@ mod tests {
                 }
             }),
             c!("http://localhost:1234/root"),
+            c!("http://localhost:1234/root"),
         ],
         &[
             edge(0, 1, "properties"),
             edge(1, 2, "A"),
-            edge(0, 4, "$id"),
+            edge(2, 4, "$ref"),
+            edge(0, 5, "$id"),
         ],
         &[];
         "Absolute reference to the same schema"
@@ -694,6 +722,7 @@ mod tests {
         let (values_, edges_) = collect(&schema, &resolvers);
         print_values(&values_);
         assert_eq!(values_, values);
+        assert_all_schema_nodes(&schema, &values_);
         assert_concrete_references(&values_);
         assert_virtual_references(&values_);
         assert_eq!(edges_, edges);
@@ -719,6 +748,8 @@ mod tests {
                         let resolvers = build_resolvers(&external);
                         let (values_, _) = collect(&schema, &resolvers);
                         print_values(&values_);
+                        // TODO: re-enable
+                        // assert_all_schema_nodes(&schema, &values_);
                         assert_concrete_references(&values_);
                         assert_virtual_references(&values_);
                     }
