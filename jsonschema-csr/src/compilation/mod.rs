@@ -176,10 +176,6 @@ impl SeenValues {
     pub(crate) fn insert(&mut self, value: &Value) -> bool {
         self.0.insert(value as *const _)
     }
-    #[inline]
-    pub(crate) fn contains(&mut self, value: &Value) -> bool {
-        self.0.contains(&(value as *const _))
-    }
 }
 
 #[derive(Debug)]
@@ -213,8 +209,8 @@ fn fail_to_find_resolver(location: &Url) -> ! {
 
 macro_rules! push {
     ($stack: expr, $idx: expr, $value: expr, $label: expr, $seen: expr, $resolver: expr, $folders: expr) => {
-        // TODO: Should it be always `insert` to avoid pushing two values?
-        if !$seen.contains($value) {
+        // TODO. Explicit test case when two refs point to the same direction
+        if $seen.insert($value) {
             $stack.push((
                 Some(($idx, crate::compilation::edges::label($label))),
                 $folders.clone(),
@@ -267,11 +263,12 @@ fn collect<'a>(
                             Ok(mut url) => {
                                 url.set_fragment(None);
                                 let resolved = if let Some(resolver) = resolvers.get(url.as_str()) {
-                                    let resolved = resolver.resolve(reference).unwrap().unwrap();
-                                    push!(stack, node_idx, resolved, REF, seen, resolver, folders);
+                                    let (folders_, resolved) =
+                                        resolver.resolve(reference).unwrap().unwrap();
+                                    push!(stack, node_idx, resolved, REF, seen, resolver, folders_);
                                     resolved
                                 } else {
-                                    resolver.resolve(reference).unwrap().unwrap()
+                                    resolver.resolve(reference).unwrap().unwrap().1
                                 };
                                 values.add_virtual(resolved);
                             }
@@ -286,18 +283,20 @@ fn collect<'a>(
                                         .get(location.as_str())
                                         .unwrap_or_else(|| fail_to_find_resolver(&location));
                                 };
-                                let resolved = resolver.resolve(reference).unwrap().unwrap();
+                                let (folders_, resolved) =
+                                    resolver.resolve(reference).unwrap().unwrap();
                                 values.add_virtual(resolved);
                                 // Push the resolved value & the reference itself onto the stack
                                 // to explore them further
                                 for value in [resolved, reference_value] {
-                                    push!(stack, node_idx, value, REF, seen, resolver, folders);
+                                    push!(stack, node_idx, value, REF, seen, resolver, folders_);
                                 }
                             }
                             _ => todo!(),
                         }
                     } else {
-                        todo!()
+                        push!(stack, node_idx, value, REF, seen, resolver, folders);
+                        // TODO. Explicit test case
                     }
                 } else {
                     // TODO. Order - some keywords might work better if they are first

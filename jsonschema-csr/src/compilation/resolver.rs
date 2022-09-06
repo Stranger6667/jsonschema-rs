@@ -50,25 +50,76 @@ impl<'schema> Resolver<'schema> {
     }
 
     /// Resolve a reference that is known to be local for this resolver.
-    pub fn resolve(&self, reference: &str) -> Result<Option<&'schema Value>, ParseError> {
+    pub fn resolve(
+        &self,
+        reference: &str,
+    ) -> Result<Option<(Vec<&str>, &'schema Value)>, ParseError> {
         // First, build the full URL that is aware of the resolution context
         let url = self.build_url(reference)?;
         // Then, look for location-independent identifiers in the current schema
         if let Some(document) = self.schemas.get(url.as_str()) {
-            Ok(Some(document))
+            Ok(Some((vec![], document)))
         } else {
             // And resolve the reference in the stored document
-            let pointer = to_pointer(&url);
-            if pointer == "#" {
-                Ok(Some(self.document))
+            let raw_pointer = to_pointer(&url);
+            if raw_pointer == "#" {
+                Ok(Some((vec![], self.document)))
             } else {
                 // TODO. use a more efficient impl + track folders
-                Ok(self.document.pointer(&pointer))
+                if let Some((folders, resolved)) = pointer(self.document, &raw_pointer) {
+                    Ok(Some((folders, resolved)))
+                } else {
+                    Ok(None)
+                }
             }
         }
     }
     pub(crate) fn build_url(&self, reference: &str) -> Result<Url, ParseError> {
         Url::options().base_url(Some(&self.scope)).parse(reference)
+    }
+}
+
+/// Based on `serde_json`, but tracks folders in the traversed documents.
+pub(crate) fn pointer<'a, 'b>(
+    document: &'a Value,
+    pointer: &'b str,
+) -> Option<(Vec<&'a str>, &'a Value)> {
+    if pointer.is_empty() {
+        return Some((vec![], document));
+    }
+    let tokens = pointer
+        .split('/')
+        .skip(1)
+        // TODO. use `maybe_replace`
+        .map(|x| x.replace("~1", "/").replace("~0", "~"));
+    let mut target = document;
+    let mut folders = vec![];
+
+    for token in tokens {
+        let target_opt = match *target {
+            Value::Object(ref map) => {
+                if let Some(id) = id_of(target) {
+                    folders.push(id);
+                }
+                map.get(&*token)
+            }
+            Value::Array(ref list) => parse_index(&token).and_then(|x| list.get(x)),
+            _ => return None,
+        };
+        if let Some(t) = target_opt {
+            target = t;
+        } else {
+            return None;
+        }
+    }
+    Some((folders, target))
+}
+
+fn parse_index(s: &str) -> Option<usize> {
+    if s.starts_with('+') || (s.starts_with('0') && s.len() != 1) {
+        None
+    } else {
+        s.parse().ok()
     }
 }
 
@@ -411,6 +462,7 @@ mod tests {
     #[test_case(sub_schema_in_object(), "#", sub_schema_in_object())]
     fn resolving(schema: Value, reference: &str, expected: Value) {
         let resolver = Resolver::new(&schema, scope_of(&schema).unwrap());
-        assert_eq!(resolver.resolve(reference).unwrap(), Some(&expected));
+        let (_, resolved) = resolver.resolve(reference).unwrap().unwrap();
+        assert_eq!(resolved, &expected);
     }
 }
