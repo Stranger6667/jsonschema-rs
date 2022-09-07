@@ -1,7 +1,8 @@
+use super::error::Result;
 use once_cell::sync::Lazy;
 use serde_json::{Map, Value};
 use std::{borrow::Cow, collections::HashMap};
-use url::{ParseError, Url};
+use url::Url;
 
 pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
 pub(crate) static DEFAULT_SCOPE: Lazy<Url> =
@@ -22,10 +23,12 @@ pub(crate) fn id_of_object(object: &Map<String, Value>) -> Option<&str> {
 
 /// Get a scope of the given document.
 /// If there is no `$id` key, get the default scope.
-pub fn scope_of(schema: &Value) -> Result<Url, ParseError> {
-    id_of(schema)
-        .map(Url::parse)
-        .unwrap_or_else(|| Ok(DEFAULT_SCOPE.clone()))
+pub fn scope_of(schema: &Value) -> Result<Url> {
+    if let Some(id) = id_of(schema).map(Url::parse) {
+        Ok(id?)
+    } else {
+        Ok(DEFAULT_SCOPE.clone())
+    }
 }
 
 #[derive(Debug)]
@@ -54,10 +57,7 @@ impl<'schema> Resolver<'schema> {
     }
 
     /// Resolve a reference that is known to be local for this resolver.
-    pub fn resolve(
-        &self,
-        reference: &str,
-    ) -> Result<Option<(Vec<&str>, &'schema Value)>, ParseError> {
+    pub fn resolve(&self, reference: &str) -> Result<Option<(Vec<&str>, &'schema Value)>> {
         // First, build the full URL that is aware of the resolution context
         let url = self.build_url(reference)?;
         // Then, look for location-independent identifiers in the current schema
@@ -69,7 +69,7 @@ impl<'schema> Resolver<'schema> {
             if raw_pointer == "#" {
                 Ok(Some((vec![], self.document)))
             } else {
-                // TODO. use a more efficient impl + track folders
+                // TODO. use a more efficient impl
                 if let Some((folders, resolved)) = pointer(self.document, &raw_pointer) {
                     Ok(Some((folders, resolved)))
                 } else {
@@ -78,8 +78,10 @@ impl<'schema> Resolver<'schema> {
             }
         }
     }
-    pub(crate) fn build_url(&self, reference: &str) -> Result<Url, ParseError> {
-        Url::options().base_url(Some(&self.scope)).parse(reference)
+    pub(crate) fn build_url(&self, reference: &str) -> Result<Url> {
+        Ok(Url::options()
+            .base_url(Some(&self.scope))
+            .parse(reference)?)
     }
 }
 
@@ -199,7 +201,7 @@ macro_rules! push_array_unrolled {
 
 macro_rules! new_schema {
     ($store:expr, $scopes:expr, $scope_idx:expr, $id:expr, $value:expr) => {
-        let mut scope = $scopes[$scope_idx].join($id).unwrap();
+        let mut scope = $scopes[$scope_idx].join($id).expect("Invalid scope id");
         // Empty fragments are discouraged and are not distinguishable absent fragments
         if let Some("") = scope.fragment() {
             scope.set_fragment(None);

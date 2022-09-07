@@ -18,7 +18,9 @@ use std::collections::{HashMap, HashSet};
 use url::Url;
 
 mod edges;
+mod error;
 pub mod resolver;
+use error::Result;
 
 use crate::{compilation::edges::EdgeLabel, vocabularies::Maximum};
 use edges::{CompressedEdge, RawEdge};
@@ -38,41 +40,45 @@ pub struct JsonSchema {
 }
 
 impl JsonSchema {
-    pub fn new(schema: &Value) -> Self {
+    pub fn new(schema: &Value) -> Result<Self> {
         // Resolver for the root schema - needed to resolve location-independent references during
         // the initial resolving step
-        let root_resolver = Resolver::new(schema, scope_of(schema).unwrap());
+        let root_resolver = Resolver::new(schema, scope_of(schema)?);
         // Fetch all external schemas reachable from the root
-        let external = fetch_external(schema, &root_resolver);
+        let external = fetch_external(schema, &root_resolver)?;
         // Build resolvers for external schemas
         let resolvers = build_resolvers(&external);
         // Collect all values and resolve references
-        let (values, mut edges) = collect(schema, &resolvers);
+        let (values, mut edges) = collect(schema, &resolvers)?;
         // Build a `Keyword` graph together with dropping not needed nodes and edges
         let keywords = materialize(values, &mut edges);
         // And finally, compress the edges into the CSR format
         let (offsets, edges) = compress(edges);
-        JsonSchema {
+        Ok(JsonSchema {
             keywords: keywords.into_boxed_slice(),
             offsets: offsets.into_boxed_slice(),
             edges: edges.into_boxed_slice(),
-        }
+        })
     }
 }
 
 /// Fetch all external schemas reachable from the root.
-fn fetch_external(schema: &Value, resolver: &Resolver) -> HashMap<Url, Value> {
+fn fetch_external(schema: &Value, resolver: &Resolver) -> Result<HashMap<Url, Value>> {
     let mut store = HashMap::new();
-    fetch_routine(schema, &mut store, resolver);
-    store
+    fetch_routine(schema, &mut store, resolver)?;
+    Ok(store)
 }
 
 const REF: &str = "$ref";
 
 /// Recursive routine for traversing a schema and fetching external references.
-fn fetch_routine(schema: &Value, store: &mut HashMap<Url, Value>, resolver: &Resolver) {
+fn fetch_routine(
+    schema: &Value,
+    store: &mut HashMap<Url, Value>,
+    resolver: &Resolver,
+) -> Result<()> {
     // Current schema id - if occurs in a reference, then there is no need to resolve it
-    let scope = scope_of(schema).unwrap();
+    let scope = scope_of(schema)?;
     let mut stack = vec![(vec![], schema)];
     while let Some((mut folders, value)) = stack.pop() {
         match value {
@@ -93,7 +99,7 @@ fn fetch_routine(schema: &Value, store: &mut HashMap<Url, Value>, resolver: &Res
                                 continue;
                             }
                         }
-                        fetch_external_reference(value, &folders, store, &scope, resolver);
+                        fetch_external_reference(value, &folders, store, &scope, resolver)?;
                     } else {
                         // Explore any other key
                         stack.push((folders.clone(), value))
@@ -110,6 +116,7 @@ fn fetch_routine(schema: &Value, store: &mut HashMap<Url, Value>, resolver: &Res
             _ => continue,
         }
     }
+    Ok(())
 }
 
 /// If reference is pointing to an external resource, then fetch & store it.
@@ -119,28 +126,29 @@ fn fetch_external_reference(
     store: &mut HashMap<Url, Value>,
     scope: &Url,
     resolver: &Resolver,
-) {
+) -> Result<()> {
     if let Some(location) = without_fragment(value) {
         // Resolve only references that are:
         //   - pointing to another resource
         //   - are not already resolved
-        fetch_and_store(store, scope, location, resolver);
+        fetch_and_store(store, scope, location, resolver)?;
     } else if !is_default_scope(scope) {
         if let Some(reference) = value.as_str() {
-            let location = with_folders(scope, reference, folders).unwrap();
-            fetch_and_store(store, scope, location, resolver);
+            let location = with_folders(scope, reference, folders)?;
+            fetch_and_store(store, scope, location, resolver)?;
         }
     }
+    Ok(())
 }
 
-fn with_folders(scope: &Url, reference: &str, folders: &[&str]) -> Result<Url, url::ParseError> {
+fn with_folders(scope: &Url, reference: &str, folders: &[&str]) -> Result<Url> {
     let mut location = scope.clone();
     if folders.len() > 1 {
         for folder in folders.iter().skip(1) {
             location = location.join(folder)?;
         }
     }
-    location.join(reference)
+    Ok(location.join(reference)?)
 }
 
 fn fetch_and_store(
@@ -148,7 +156,7 @@ fn fetch_and_store(
     scope: &Url,
     location: Url,
     resolver: &Resolver,
-) {
+) -> Result<()> {
     if location != *scope
         && !store.contains_key(&location)
         && !resolver.contains_location_independent_identifier(location.as_str())
@@ -156,9 +164,10 @@ fn fetch_and_store(
         let response = reqwest::blocking::get(location.as_str()).unwrap();
         let document = response.json::<Value>().unwrap();
         // Make a recursive call to the callee routine
-        fetch_routine(&document, store, resolver);
+        fetch_routine(&document, store, resolver)?;
         store.insert(location, document);
     }
+    Ok(())
 }
 
 /// Extract a fragment-less URL from the reference value.
@@ -197,9 +206,6 @@ impl SeenValues {
     #[inline]
     pub(crate) fn insert(&mut self, value: &Value) -> bool {
         self.0.insert(value as *const _)
-    }
-    pub(crate) fn contains(&mut self, value: &Value) -> bool {
-        self.0.contains(&(value as *const _))
     }
 }
 
@@ -254,10 +260,10 @@ macro_rules! push {
 fn collect<'a>(
     schema: &'a Value,
     resolvers: &'a HashMap<&str, Resolver>,
-) -> (Vec<ValueReference<'a>>, Vec<RawEdge>) {
+) -> Result<(Vec<ValueReference<'a>>, Vec<RawEdge>)> {
     let mut values = Values::new();
     let mut edges = vec![];
-    let resolver = Resolver::new(schema, scope_of(schema).unwrap());
+    let resolver = Resolver::new(schema, scope_of(schema)?);
     let mut stack = vec![(None, vec![], &resolver, schema)];
     let mut seen = SeenValues::new();
     while let Some((parent, mut folders, mut resolver, value)) = stack.pop() {
@@ -298,8 +304,7 @@ fn collect<'a>(
                             Err(url::ParseError::RelativeUrlWithoutBase) => {
                                 if !is_local_reference(ref_string) {
                                     let location =
-                                        with_folders(resolver.scope(), ref_string, &folders)
-                                            .unwrap();
+                                        with_folders(resolver.scope(), ref_string, &folders)?;
                                     if !resolver
                                         .contains_location_independent_identifier(location.as_str())
                                     {
@@ -339,7 +344,7 @@ fn collect<'a>(
             edges.push(RawEdge::new(parent_idx, node_idx, label));
         }
     }
-    (values.into_inner(), edges)
+    Ok((values.into_inner(), edges))
 }
 
 /// Build a graph of `Keyword` from an intermediate graph that contain all possible values.
@@ -765,9 +770,9 @@ mod tests {
         keys: &[&str],
     ) {
         let root = Resolver::new(&schema, scope_of(&schema).unwrap());
-        let external = fetch_external(&schema, &root);
+        let external = fetch_external(&schema, &root).unwrap();
         let resolvers = build_resolvers(&external);
-        let (values_, edges_) = collect(&schema, &resolvers);
+        let (values_, edges_) = collect(&schema, &resolvers).unwrap();
         print_values(&values_);
         assert_eq!(values_, values);
         assert_all_schema_nodes(&schema, &values_);
@@ -792,9 +797,9 @@ mod tests {
                         println!("Case: {}", idx);
                         let schema = &case["schema"];
                         let root = Resolver::new(&schema, scope_of(&schema).unwrap());
-                        let external = fetch_external(schema, &root);
+                        let external = fetch_external(schema, &root).unwrap();
                         let resolvers = build_resolvers(&external);
-                        let (values_, _) = collect(&schema, &resolvers);
+                        let (values_, _) = collect(&schema, &resolvers).unwrap();
                         print_values(&values_);
                         // TODO: re-enable
                         // assert_all_schema_nodes(&schema, &values_);
@@ -828,7 +833,7 @@ mod tests {
     // TODO. Remote without ID
     fn external_schemas(schema: Value, expected: &[&str]) {
         let root = Resolver::new(&schema, scope_of(&schema).unwrap());
-        let external = fetch_external(&schema, &root);
+        let external = fetch_external(&schema, &root).unwrap();
         assert!(
             expected
                 .iter()
@@ -848,7 +853,7 @@ mod tests {
                 "$ref": "#/integer"
             }
         });
-        let compiled = JsonSchema::new(&schema);
+        let compiled = JsonSchema::new(&schema).unwrap();
     }
 
     #[test_case(
@@ -868,7 +873,7 @@ mod tests {
     )]
     fn materialization(schema: Value, expected: Vec<RawEdge>) {
         let resolvers = HashMap::new();
-        let (values, mut edges) = collect(&schema, &resolvers);
+        let (values, mut edges) = collect(&schema, &resolvers).unwrap();
         print_values(&values);
         let _ = materialize(values, &mut edges);
         assert_eq!(edges, expected)
