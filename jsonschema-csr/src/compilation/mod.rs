@@ -22,6 +22,7 @@ mod error;
 pub mod resolver;
 use error::Result;
 
+use crate::compilation::resolver::{parse_reference, Reference};
 use crate::{compilation::edges::EdgeLabel, vocabularies::Maximum};
 use edges::{CompressedEdge, RawEdge};
 
@@ -95,7 +96,7 @@ fn fetch_routine(
                             .map_or(false, |value| !is_local_reference(value))
                     {
                         if let Some(reference) = value.as_str() {
-                            if resolver.contains_location_independent_identifier(reference) {
+                            if resolver.contains(reference) {
                                 continue;
                             }
                         }
@@ -157,9 +158,7 @@ fn fetch_and_store(
     location: Url,
     resolver: &Resolver,
 ) -> Result<()> {
-    if location != *scope
-        && !store.contains_key(&location)
-        && !resolver.contains_location_independent_identifier(location.as_str())
+    if location != *scope && !store.contains_key(&location) && !resolver.contains(location.as_str())
     {
         let response = reqwest::blocking::get(location.as_str())?;
         let document = response.json::<Value>()?;
@@ -281,37 +280,32 @@ fn collect<'a>(
                 }
                 if let Some(ref_value) = object.get(REF) {
                     if let Value::String(ref_string) = ref_value {
-                        match Url::parse(ref_string) {
-                            // Remote reference:
-                            //   `http://localhost:1234/subSchemas.json#/integer`
-                            // Location-independent identifier with an absolute URI:
-                            //   `http://localhost:1234/bar#foo`
-                            Ok(mut url) => {
-                                url.set_fragment(None);
-                                let resolved = if let Some(resolver) = resolvers.get(url.as_str()) {
-                                    let (folders, resolved) =
-                                        resolver.resolve(ref_string)?.unwrap();
+                        match parse_reference(ref_string)? {
+                            Reference::Absolute(location) => {
+                                let resolved = if let Some(resolver) =
+                                    resolvers.get(location.as_str())
+                                {
+                                    let (folders, resolved) = resolver.resolve(ref_string)?;
                                     push!(stack, node_idx, resolved, REF, seen, resolver, folders);
                                     resolved
                                 } else {
-                                    resolver.resolve(ref_string)?.unwrap().1
+                                    let (_, resolved) = resolver.resolve(ref_string)?;
+                                    resolved
                                 };
                                 values.add_virtual(resolved);
                                 push!(stack, node_idx, ref_value, REF, seen, resolver, folders);
                             }
-                            // Location-independent identifier:
-                            //   `#foo`
-                            Err(url::ParseError::RelativeUrlWithoutBase) => {
-                                if !is_local_reference(ref_string) {
+                            Reference::Relative(location) => {
+                                if !is_local_reference(location) {
                                     let location =
-                                        with_folders(resolver.scope(), ref_string, &folders)?;
-                                    if !resolver
-                                        .contains_location_independent_identifier(location.as_str())
-                                    {
-                                        resolver = resolvers.get(location.as_str()).unwrap();
+                                        with_folders(resolver.scope(), location, &folders)?;
+                                    if !resolver.contains(location.as_str()) {
+                                        resolver = resolvers
+                                            .get(location.as_str())
+                                            .expect("Unknown reference");
                                     }
                                 };
-                                let (folders, resolved) = resolver.resolve(ref_string)?.unwrap();
+                                let (folders, resolved) = resolver.resolve(location)?;
                                 values.add_virtual(resolved);
                                 // Push the resolved value & the reference itself onto the stack
                                 // to explore them further
@@ -319,7 +313,6 @@ fn collect<'a>(
                                     push!(stack, node_idx, value, REF, seen, resolver, folders);
                                 }
                             }
-                            _ => todo!(),
                         }
                     } else {
                         // The `$ref` value is not a string - explore it further

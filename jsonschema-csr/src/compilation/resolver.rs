@@ -1,4 +1,5 @@
 use super::error::Result;
+use crate::compilation::error::Error;
 use once_cell::sync::Lazy;
 use serde_json::{Map, Value};
 use std::{borrow::Cow, collections::HashMap};
@@ -31,6 +32,28 @@ pub fn scope_of(schema: &Value) -> Result<Url> {
     }
 }
 
+pub(crate) enum Reference<'a> {
+    Absolute(Url),
+    Relative(&'a str),
+}
+
+pub(crate) fn parse_reference(value: &str) -> Result<Reference> {
+    match Url::parse(value) {
+        // Remote reference:
+        //   `http://localhost:1234/subSchemas.json#/integer`
+        // Location-independent identifier with an absolute URI:
+        //   `http://localhost:1234/bar#foo`
+        Ok(mut location) => {
+            location.set_fragment(None);
+            Ok(Reference::Absolute(location))
+        }
+        // Location-independent identifier:
+        //   `#foo`
+        Err(url::ParseError::RelativeUrlWithoutBase) => Ok(Reference::Relative(value)),
+        Err(error) => Err(Error::InvalidUrl(error)),
+    }
+}
+
 #[derive(Debug)]
 pub struct Resolver<'schema> {
     document: &'schema Value,
@@ -52,28 +75,28 @@ impl<'schema> Resolver<'schema> {
         &self.scope
     }
 
-    pub fn contains_location_independent_identifier(&self, key: &str) -> bool {
+    pub fn contains(&self, key: &str) -> bool {
         self.schemas.contains_key(key)
     }
 
     /// Resolve a reference that is known to be local for this resolver.
-    pub fn resolve(&self, reference: &str) -> Result<Option<(Vec<&str>, &'schema Value)>> {
+    pub fn resolve(&self, reference: &str) -> Result<(Vec<&str>, &'schema Value)> {
         // First, build the full URL that is aware of the resolution context
         let url = self.build_url(reference)?;
         // Then, look for location-independent identifiers in the current schema
         if let Some(document) = self.schemas.get(url.as_str()) {
-            Ok(Some((vec![], document)))
+            Ok((vec![], document))
         } else {
             // And resolve the reference in the stored document
             let raw_pointer = to_pointer(&url);
             if raw_pointer == "#" {
-                Ok(Some((vec![], self.document)))
+                Ok((vec![], self.document))
             } else {
                 // TODO. use a more efficient impl
                 if let Some((folders, resolved)) = pointer(self.document, &raw_pointer) {
-                    Ok(Some((folders, resolved)))
+                    Ok((folders, resolved))
                 } else {
-                    Ok(None)
+                    panic!("Failed to resolve: {}", reference)
                 }
             }
         }
@@ -468,7 +491,7 @@ mod tests {
     #[test_case(sub_schema_in_object(), "#", sub_schema_in_object())]
     fn resolving(schema: Value, reference: &str, expected: Value) {
         let resolver = Resolver::new(&schema, scope_of(&schema).unwrap());
-        let (_, resolved) = resolver.resolve(reference).unwrap().unwrap();
+        let (_, resolved) = resolver.resolve(reference).unwrap();
         assert_eq!(resolved, &expected);
     }
 }
