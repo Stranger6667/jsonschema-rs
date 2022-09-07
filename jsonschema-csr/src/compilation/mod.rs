@@ -26,6 +26,9 @@ use edges::{CompressedEdge, RawEdge};
 // TODO. Optimization ideas:
 //   - Values ordering. "Cheaper" keywords might work better if they are executed first.
 //     Example: `anyOf` where some items are very cheap and common to pass validation
+//   - Interleave values & edges in the same struct. Might improve cache locality.
+//   - Remove nodes that are not references by anything & not needed for validation.
+//     Might reduce the graph size.
 
 #[derive(Debug)]
 pub struct JsonSchema {
@@ -225,10 +228,6 @@ fn is_local_reference(reference: &str) -> bool {
     reference.starts_with('#')
 }
 
-fn fail_to_find_resolver(location: &Url) -> ! {
-    panic!("Failed to find resolver for `{}`", location)
-}
-
 macro_rules! push {
     ($stack: expr, $idx: expr, $value: expr, $label: expr, $seen: expr, $resolver: expr, $folders: expr) => {
         // Push the new value only if it wasn't seen yet.
@@ -256,8 +255,6 @@ fn collect<'a>(
     schema: &'a Value,
     resolvers: &'a HashMap<&str, Resolver>,
 ) -> (Vec<ValueReference<'a>>, Vec<RawEdge>) {
-    // TODO. idea - store values interleaved with edges to improve cache locality
-    // TODO. maybe remove nodes that were not referenced by anything?
     let mut values = Values::new();
     let mut edges = vec![];
     let resolver = Resolver::new(schema, scope_of(schema).unwrap());
@@ -276,19 +273,19 @@ fn collect<'a>(
                 if let Some(id) = id_of_object(object) {
                     folders.push(id);
                 }
-                // TODO. it could be just an object with key `$ref` - handle it
                 if let Some(ref_value) = object.get(REF) {
                     if let Value::String(ref_string) = ref_value {
                         match Url::parse(ref_string) {
-                            // Remote reference
-                            // Example: `http://localhost:1234/subSchemas.json#/integer`
-                            // TODO. what if it has the same scope as the local one?
+                            // Remote reference:
+                            //   `http://localhost:1234/subSchemas.json#/integer`
+                            // Location-independent identifier with an absolute URI:
+                            //   `http://localhost:1234/bar#foo`
                             Ok(mut url) => {
                                 url.set_fragment(None);
                                 let resolved = if let Some(resolver) = resolvers.get(url.as_str()) {
-                                    let (folders_, resolved) =
+                                    let (folders, resolved) =
                                         resolver.resolve(ref_string).unwrap().unwrap();
-                                    push!(stack, node_idx, resolved, REF, seen, resolver, folders_);
+                                    push!(stack, node_idx, resolved, REF, seen, resolver, folders);
                                     resolved
                                 } else {
                                     resolver.resolve(ref_string).unwrap().unwrap().1
@@ -296,8 +293,8 @@ fn collect<'a>(
                                 values.add_virtual(resolved);
                                 push!(stack, node_idx, ref_value, REF, seen, resolver, folders);
                             }
-                            // Local reference
-                            // Example: `#/foo/bar`
+                            // Location-independent identifier:
+                            //   `#foo`
                             Err(url::ParseError::RelativeUrlWithoutBase) => {
                                 if !is_local_reference(ref_string) {
                                     let location =
@@ -306,18 +303,16 @@ fn collect<'a>(
                                     if !resolver
                                         .contains_location_independent_identifier(location.as_str())
                                     {
-                                        resolver = resolvers
-                                            .get(location.as_str())
-                                            .unwrap_or_else(|| fail_to_find_resolver(&location));
+                                        resolver = resolvers.get(location.as_str()).unwrap();
                                     }
                                 };
-                                let (folders_, resolved) =
+                                let (folders, resolved) =
                                     resolver.resolve(ref_string).unwrap().unwrap();
                                 values.add_virtual(resolved);
                                 // Push the resolved value & the reference itself onto the stack
                                 // to explore them further
                                 for value in [resolved, ref_value] {
-                                    push!(stack, node_idx, value, REF, seen, resolver, folders_);
+                                    push!(stack, node_idx, value, REF, seen, resolver, folders);
                                 }
                             }
                             _ => todo!(),
@@ -327,6 +322,7 @@ fn collect<'a>(
                         push!(stack, node_idx, ref_value, REF, seen, resolver, folders);
                     }
                 } else {
+                    // No `$ref` in the object
                     for (key, value) in object {
                         push!(stack, node_idx, value, key, seen, resolver, folders);
                     }
