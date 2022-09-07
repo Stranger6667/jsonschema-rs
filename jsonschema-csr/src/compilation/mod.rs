@@ -161,8 +161,8 @@ fn fetch_and_store(
         && !store.contains_key(&location)
         && !resolver.contains_location_independent_identifier(location.as_str())
     {
-        let response = reqwest::blocking::get(location.as_str()).unwrap();
-        let document = response.json::<Value>().unwrap();
+        let response = reqwest::blocking::get(location.as_str())?;
+        let document = response.json::<Value>()?;
         // Make a recursive call to the callee routine
         fetch_routine(&document, store, resolver)?;
         store.insert(location, document);
@@ -290,11 +290,11 @@ fn collect<'a>(
                                 url.set_fragment(None);
                                 let resolved = if let Some(resolver) = resolvers.get(url.as_str()) {
                                     let (folders, resolved) =
-                                        resolver.resolve(ref_string).unwrap().unwrap();
+                                        resolver.resolve(ref_string)?.unwrap();
                                     push!(stack, node_idx, resolved, REF, seen, resolver, folders);
                                     resolved
                                 } else {
-                                    resolver.resolve(ref_string).unwrap().unwrap().1
+                                    resolver.resolve(ref_string)?.unwrap().1
                                 };
                                 values.add_virtual(resolved);
                                 push!(stack, node_idx, ref_value, REF, seen, resolver, folders);
@@ -311,8 +311,7 @@ fn collect<'a>(
                                         resolver = resolvers.get(location.as_str()).unwrap();
                                     }
                                 };
-                                let (folders, resolved) =
-                                    resolver.resolve(ref_string).unwrap().unwrap();
+                                let (folders, resolved) = resolver.resolve(ref_string)?.unwrap();
                                 values.add_virtual(resolved);
                                 // Push the resolved value & the reference itself onto the stack
                                 // to explore them further
