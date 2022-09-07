@@ -265,62 +265,63 @@ fn collect<'a>(
     let resolver = Resolver::new(schema, scope_of(schema)?);
     let mut stack = vec![(None, vec![], &resolver, schema)];
     let mut seen = SeenValues::new();
-    while let Some((parent, mut folders, mut resolver, value)) = stack.pop() {
+    while let Some((parent, mut folders, mut resolver, node)) = stack.pop() {
         let node_idx = values.len();
         // Mark this value as seen to prevent re-traversing it if any reference leads to it
-        seen.insert(value);
-        values.add_concrete(value);
+        seen.insert(node);
+        values.add_concrete(node);
         // TODO.
         //   - validate - there should be no invalid schemas
-        match value {
+        match node {
             Value::Object(object) => {
                 // Track folder changes within sub-schemas
                 if let Some(id) = id_of_object(object) {
                     folders.push(id);
                 }
-                if let Some(ref_value) = object.get(REF) {
-                    if let Value::String(ref_string) = ref_value {
-                        match parse_reference(ref_string)? {
-                            Reference::Absolute(location) => {
-                                let resolved = if let Some(resolver) =
-                                    resolvers.get(location.as_str())
-                                {
-                                    let (folders, resolved) = resolver.resolve(ref_string)?;
-                                    push!(stack, node_idx, resolved, REF, seen, resolver, folders);
-                                    resolved
-                                } else {
-                                    let (_, resolved) = resolver.resolve(ref_string)?;
-                                    resolved
-                                };
-                                values.add_virtual(resolved);
-                                push!(stack, node_idx, ref_value, REF, seen, resolver, folders);
-                            }
-                            Reference::Relative(location) => {
-                                if !is_local_reference(location) {
-                                    let location =
-                                        with_folders(resolver.scope(), location, &folders)?;
-                                    if !resolver.contains(location.as_str()) {
-                                        resolver = resolvers
-                                            .get(location.as_str())
-                                            .expect("Unknown reference");
-                                    }
-                                };
-                                let (folders, resolved) = resolver.resolve(location)?;
-                                values.add_virtual(resolved);
-                                // Push the resolved value & the reference itself onto the stack
-                                // to explore them further
-                                for value in [resolved, ref_value] {
+                for (key, value) in object {
+                    if key == REF {
+                        if let Value::String(ref_string) = value {
+                            match parse_reference(ref_string)? {
+                                Reference::Absolute(location) => {
+                                    let resolved = if let Some(resolver) =
+                                        resolvers.get(location.as_str())
+                                    {
+                                        let (folders, resolved) = resolver.resolve(ref_string)?;
+                                        push!(
+                                            stack, node_idx, resolved, REF, seen, resolver, folders
+                                        );
+                                        resolved
+                                    } else {
+                                        let (_, resolved) = resolver.resolve(ref_string)?;
+                                        resolved
+                                    };
+                                    values.add_virtual(resolved);
                                     push!(stack, node_idx, value, REF, seen, resolver, folders);
                                 }
+                                Reference::Relative(location) => {
+                                    if !is_local_reference(location) {
+                                        let location =
+                                            with_folders(resolver.scope(), location, &folders)?;
+                                        if !resolver.contains(location.as_str()) {
+                                            resolver = resolvers
+                                                .get(location.as_str())
+                                                .expect("Unknown reference");
+                                        }
+                                    };
+                                    let (folders, resolved) = resolver.resolve(location)?;
+                                    values.add_virtual(resolved);
+                                    // Push the resolved value & the reference itself onto the stack
+                                    // to explore them further
+                                    for value in [resolved, value] {
+                                        push!(stack, node_idx, value, REF, seen, resolver, folders);
+                                    }
+                                }
                             }
-                        }
+                        } else {
+                            // The `$ref` value is not a string - explore it further
+                            push!(stack, node_idx, value, REF, seen, resolver, folders);
+                        };
                     } else {
-                        // The `$ref` value is not a string - explore it further
-                        push!(stack, node_idx, ref_value, REF, seen, resolver, folders);
-                    }
-                } else {
-                    // No `$ref` in the object
-                    for (key, value) in object {
                         push!(stack, node_idx, value, key, seen, resolver, folders);
                     }
                 }
@@ -793,8 +794,7 @@ mod tests {
                         let resolvers = build_resolvers(&external);
                         let (values_, _) = collect(&schema, &resolvers).unwrap();
                         print_values(&values_);
-                        // TODO: re-enable
-                        // assert_all_schema_nodes(&schema, &values_);
+                        assert_all_schema_nodes(&schema, &values_);
                         assert_concrete_references(&values_);
                         assert_virtual_references(&values_);
                     }
