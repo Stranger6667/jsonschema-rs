@@ -191,6 +191,9 @@ impl SeenValues {
     pub(crate) fn insert(&mut self, value: &Value) -> bool {
         self.0.insert(value as *const _)
     }
+    pub(crate) fn contains(&mut self, value: &Value) -> bool {
+        self.0.contains(&(value as *const _))
+    }
 }
 
 #[derive(Debug)]
@@ -224,7 +227,8 @@ fn fail_to_find_resolver(location: &Url) -> ! {
 
 macro_rules! push {
     ($stack: expr, $idx: expr, $value: expr, $label: expr, $seen: expr, $resolver: expr, $folders: expr) => {
-        // TODO. Explicit test case when two refs point to the same direction
+        // Push the new value only if it wasn't seen yet.
+        // Insert it immediately to avoid pushing references to the same target from multiple places
         if $seen.insert($value) {
             $stack.push((
                 Some(($idx, crate::compilation::edges::label($label))),
@@ -708,6 +712,33 @@ mod tests {
         ],
         &[];
         "Absolute reference to the same schema"
+    )]
+    #[test_case(
+        j!({
+            "allOf": [
+                {"$ref": "#/allOf/1"},
+                {"$ref": "#/allOf/0"}
+            ]
+        }),
+        &[
+            c!({"allOf":[{"$ref":"#/allOf/1"},{"$ref":"#/allOf/0"}]}),
+            c!([{"$ref":"#/allOf/1"},{"$ref":"#/allOf/0"}]),
+            c!({"$ref":"#/allOf/0"}),
+            v!({"$ref":"#/allOf/1"}),
+            c!("#/allOf/0"),
+            c!({"$ref":"#/allOf/1"}),
+            v!({"$ref":"#/allOf/0"}),
+            c!("#/allOf/1"),
+        ],
+        &[
+            edge(0, 1, "allOf"),
+            edge(1, 2, 1),
+            edge(2, 4, "$ref"),
+            edge(1, 5, 0),
+            edge(5, 7, "$ref"),
+        ],
+        &[];
+        "Multiple references to the same target"
     )]
     // TODO. refs without # - see `root_schema_id` test for context
     fn values_and_edges(
