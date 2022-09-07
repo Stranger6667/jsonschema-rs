@@ -23,6 +23,10 @@ pub mod resolver;
 use crate::{compilation::edges::EdgeLabel, vocabularies::Maximum};
 use edges::{CompressedEdge, RawEdge};
 
+// TODO. Optimization ideas:
+//   - Values ordering. "Cheaper" keywords might work better if they are executed first.
+//     Example: `anyOf` where some items are very cheap and common to pass validation
+
 #[derive(Debug)]
 pub struct JsonSchema {
     keywords: Box<[Keyword]>,
@@ -319,22 +323,17 @@ fn collect<'a>(
                             _ => todo!(),
                         }
                     } else {
-                        push!(stack, node_idx, value, REF, seen, resolver, folders);
-                        // TODO. Explicit test case
+                        // The `$ref` value is not a string - explore it further
+                        push!(stack, node_idx, ref_value, REF, seen, resolver, folders);
                     }
                 } else {
-                    // TODO. Order - some keywords might work better if they are first
-                    // E.g - two keywords, both fail, but for `is_valid` we don't need both
-                    // so, put the cheapest first
                     for (key, value) in object {
-                        // TODO. Add test case for `contains`
                         push!(stack, node_idx, value, key, seen, resolver, folders);
                     }
                 }
             }
             Value::Array(items) => {
                 for (idx, item) in items.iter().enumerate() {
-                    // TODO. Add test case for `contains`
                     push!(stack, node_idx, item, idx, seen, resolver, folders);
                 }
             }
@@ -574,6 +573,28 @@ mod tests {
         &[edge(0, 1, "maximum")],
         &[];
         "No reference"
+    )]
+    #[test_case(
+        j!({
+            "properties": {
+                "$ref": {
+                    "type": "string"
+                }
+            }
+        }),
+        &[
+            c!({"properties":{"$ref":{"type":"string"}}}),
+            c!({"$ref":{"type":"string"}}),
+            c!({"type":"string"}),
+            c!("string"),
+        ],
+        &[
+            edge(0, 1, "properties"),
+            edge(1, 2, "$ref"),
+            edge(2, 3, "type"),
+        ],
+        &[];
+        "Not a reference"
     )]
     #[test_case(
         j!({"$ref": SELF_REF}),
