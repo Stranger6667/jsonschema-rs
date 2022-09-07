@@ -90,7 +90,6 @@ fn fetch_routine(
                 }
                 for (key, value) in object {
                     if key == REF
-                        // TODO. Add test case
                         && value
                             .as_str()
                             .map_or(false, |value| !is_local_reference(value))
@@ -660,6 +659,45 @@ mod tests {
     )]
     #[test_case(
         j!({
+            "$id": "http://localhost:1234/scope_change_defs1.json",
+            "properties": {
+                "list": {"$ref": "#/definitions"}
+            },
+            "definitions": {
+                "$id": "baseUriChangeFolder/",
+            }
+        }),
+        &[
+            c!({
+                "$id": "http://localhost:1234/scope_change_defs1.json",
+                "properties": {
+                    "list": {"$ref": "#/definitions"}
+                },
+                "definitions": {
+                    "$id": "baseUriChangeFolder/",
+                }
+            }),
+            c!({"list":{"$ref":"#/definitions"}}),
+            c!({"$ref":"#/definitions"}),
+            v!({"$id":"baseUriChangeFolder/"}),
+            c!("#/definitions"),
+            c!({"$id":"baseUriChangeFolder/"}),
+            c!("baseUriChangeFolder/"),
+            c!("http://localhost:1234/scope_change_defs1.json"),
+        ],
+        &[
+            edge(0, 1, "properties"),
+            edge(1, 2, "list"),
+            edge(2, 4, "$ref"),
+            edge(0, 5, "definitions"),
+            edge(5, 6, "$id"),
+            edge(0, 7, "$id"),
+        ],
+        &[];
+        "Base URI change - change folder"
+    )]
+    #[test_case(
+        j!({
             "$ref": "http://localhost:1234/subSchemas.json#/refToInteger"
         }),
         &[
@@ -755,7 +793,43 @@ mod tests {
         &[];
         "Multiple references to the same target"
     )]
-    // TODO. refs without # - see `root_schema_id` test for context
+    #[test_case(
+        j!({
+            "$id": "http://localhost:1234/tree",
+            "d": {
+                "$id": "http://localhost:1234/node",
+                "s": {
+                    "$ref": "tree"
+                },
+            },
+            "n": {
+                "$ref": "node"
+            }
+        }),
+        &[
+            c!({"$id":"http://localhost:1234/tree","d":{"$id":"http://localhost:1234/node","s":{"$ref":"tree"}},"n":{"$ref":"node"}}),
+            c!({"$ref":"node"}),
+            v!({"$id":"http://localhost:1234/node","s":{"$ref":"tree"}}),
+            c!("node"),
+            c!({"$id":"http://localhost:1234/node","s":{"$ref":"tree"}}),
+            c!({"$ref":"tree"}),
+            v!({"$id":"http://localhost:1234/tree","d":{"$id":"http://localhost:1234/node","s":{"$ref":"tree"}},"n":{"$ref":"node"}}),
+            c!("tree"),
+            c!("http://localhost:1234/node"),
+            c!("http://localhost:1234/tree"),
+        ],
+        &[
+            edge(0, 1, "n"),
+            edge(1, 3, "$ref"),
+            edge(0, 4, "d"),
+            edge(4, 5, "s"),
+            edge(5, 7, "$ref"),
+            edge(4, 8, "$id"),
+            edge(0, 9, "$id"),
+        ],
+        &[];
+        "Recursive references between schemas"
+    )]
     fn values_and_edges(
         schema: Value,
         values: &[ValueReference],
