@@ -24,3 +24,7 @@ benchmark-internals = []
 [[bench]]
 harness = false
 name = "resolver"
+
+[[bench]]
+harness = false
+name = "validation"

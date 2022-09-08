@@ -1,11 +1,14 @@
-use crate::vocabularies::{Keyword, Validate};
+use crate::vocabularies::{Validate, Vocabulary};
 use serde_json::Value;
 
 #[derive(Debug)]
 pub struct Properties {}
 
 impl Validate for Properties {
-    fn is_valid(&self, _: &[Keyword], _: &Value) -> bool {
+    fn vocabulary(&self) -> Vocabulary {
+        Vocabulary::Applicator
+    }
+    fn is_valid(&self, _: &Value) -> bool {
         todo!()
     }
 }

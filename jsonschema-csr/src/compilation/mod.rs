@@ -22,8 +22,13 @@ mod error;
 pub mod resolver;
 use error::Result;
 
-use crate::compilation::resolver::{parse_reference, Reference};
-use crate::{compilation::edges::EdgeLabel, vocabularies::Maximum};
+use crate::{
+    compilation::{
+        edges::EdgeLabel,
+        resolver::{parse_reference, Reference},
+    },
+    vocabularies::{Maximum, Validate, Vocabulary},
+};
 use edges::{CompressedEdge, RawEdge};
 
 // TODO. Optimization ideas:
@@ -32,6 +37,50 @@ use edges::{CompressedEdge, RawEdge};
 //   - Interleave values & edges in the same struct. Might improve cache locality.
 //   - Remove nodes that are not references by anything & not needed for validation.
 //     Might reduce the graph size.
+//   - Store root's keywords explicitly upfront to avoid calculation for small schemas
+
+#[derive(Debug)]
+pub struct Scope<'a> {
+    node_idx: usize,
+    offset: usize,
+    instance: &'a Value,
+}
+
+impl<'a> Scope<'a> {
+    pub(crate) fn new(node_idx: usize, instance: &'a Value) -> Self {
+        Self {
+            node_idx,
+            offset: 0,
+            instance,
+        }
+    }
+
+    pub(crate) fn edges<'b>(
+        &mut self,
+        offsets: &'b [usize],
+        edges: &'b [CompressedEdge],
+    ) -> &'b [CompressedEdge] {
+        let start = offsets[self.node_idx];
+        let end = offsets[self.node_idx + 1];
+        let edges = &edges[start + self.offset..end];
+        self.offset += 1;
+        edges
+    }
+}
+
+struct ScopeStack<'a>(Vec<Scope<'a>>);
+
+impl<'a> ScopeStack<'a> {
+    pub(crate) fn new() -> Self {
+        Self(Vec::new())
+    }
+    pub(crate) fn push(&mut self, idx: usize, instance: &'a Value) {
+        self.0.push(Scope::new(idx, instance))
+    }
+    pub(crate) fn pop(&mut self) -> Option<Scope<'a>> {
+        self.0.pop()
+    }
+}
 
 #[derive(Debug)]
 pub struct JsonSchema {
@@ -60,6 +109,69 @@ impl JsonSchema {
             offsets: offsets.into_boxed_slice(),
             edges: edges.into_boxed_slice(),
         })
+    }
+
+    #[inline]
+    fn edges_of(&self, node_idx: usize) -> &[CompressedEdge] {
+        let start = self.offsets[node_idx];
+        let end = self.offsets[node_idx + 1];
+        &self.edges[start..end]
+    }
+
+    pub fn is_valid(&self, instance: &Value) -> bool {
+        // Validation is a DFS graph traversal with a manual stack management where each scope
+        // refers to a keyword and keeps its execution state.
+        //
+        // Each keyword has its own execution rules:
+        //   - validation keywords return the result immediately
+        //   - applicator keywords depend on their children keywords execution
+        // TODO. track the root state? Any keyword fails validation - return
+        for edge in self.edges_of(0) {
+            let keyword = &self.keywords[edge.target - 1];
+            match keyword.vocabulary() {
+                Vocabulary::Validation => {
+                    if !keyword.is_valid(instance) {
+                        return false;
+                    }
+                }
+                Vocabulary::Applicator => {}
+                Vocabulary::Core => {}
+            }
+        }
+        // Traverse the graph
+        // every edge leads to some node - a keyword impl
+        //   1. It can just take the instance & validate it
+        //   2. It can change the scope - move the execution to another edges + change the current value
+        //      In this case, the current scope should be paused - current edge + current value should be paused until scope gets back
+        //      State - edge offset on the current level + reference to the value
+        let mut stack = ScopeStack::new();
+        while let Some(mut scope) = stack.pop() {
+            // Iterate over edges coming from this scope
+            for edge in scope.edges(&self.offsets, &self.edges) {
+                let target_idx = edge.target - 1;
+                let _keyword = &self.keywords[target_idx];
+                // TODO: Move to DFS - some keywords like `oneOf` need to evaluate children first
+                //       the parent scope need to be stored & children result should be popped up
+                //   - `properties` - each child should be VALID
+                // For each keyword schedule next scopes
+                for next in self.edges_of(target_idx) {
+                    match (&next.label, scope.instance) {
+                        (EdgeLabel::Key(key), Value::Object(object)) => {
+                            if let Some(target) = object.get(key) {
+                                stack.push(target_idx, target)
+                            }
+                        }
+                        (EdgeLabel::Index(index), Value::Array(array)) => {
+                            if let Some(target) = array.get(*index) {
+                                stack.push(target_idx, target)
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        true
     }
 }
 
@@ -352,6 +464,8 @@ fn materialize(values: Vec<ValueReference>, edges: &mut Vec<RawEdge>) -> Vec<Key
                 EdgeLabel::Key(key) => match key.as_ref() {
                     // TODO. it should be at the right index - otherwise the graph is broken
                     "maximum" => nodes.push(Maximum::build(value.as_u64().unwrap())),
+                    // TODO. maybe `properties` are not needed at all??
+                    // "properties" => nodes.push(Properties::build(value.as_u64().unwrap())),
                     _ => {}
                 },
                 EdgeLabel::Index(_) => {}
@@ -909,19 +1023,6 @@ mod tests {
         )
     }
 
-    #[test]
-    fn new_schema() {
-        let schema = j!({
-            "integer": {
-                "type": "integer"
-            },
-            "refToInteger": {
-                "$ref": "#/integer"
-            }
-        });
-        let compiled = JsonSchema::new(&schema).unwrap();
-    }
-
     #[test_case(
         j!({"maximum": 1}),
         vec![edge(0, 1, "maximum")];
@@ -943,5 +1044,14 @@ mod tests {
         print_values(&values);
         let _ = materialize(values, &mut edges);
         assert_eq!(edges, expected)
+    }
+
+    #[test]
+    fn is_valid() {
+        // TODO. parametrize & add more examples with simple keywords
+        let schema = j!({"maximum": 5});
+        let compiled = JsonSchema::new(&schema).unwrap();
+        assert!(compiled.is_valid(&j!(4)));
+        assert!(!compiled.is_valid(&j!(6)));
     }
 }

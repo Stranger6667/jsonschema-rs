@@ -28,7 +28,7 @@ fn bench_resolve(c: &mut Criterion) {
     ] {
         let schema = read_json(&format!("../jsonschema/benches/data/{}.json", name));
         let resolver = Resolver::new(&schema, scope_of(&schema).unwrap());
-        assert!(resolver.resolve(reference).unwrap().is_some());
+        assert!(resolver.resolve(reference).is_ok());
         c.bench_function(&format!("resolve {}", name), |b| {
             b.iter(|| resolver.resolve(reference))
         });

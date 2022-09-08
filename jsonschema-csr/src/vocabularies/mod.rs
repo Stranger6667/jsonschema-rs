@@ -8,9 +8,16 @@ pub(crate) use applicator::{items::ItemsArray, properties::Properties};
 pub(crate) use ref_::Ref;
 pub(crate) use validation::maximum::Maximum;
 
+pub enum Vocabulary {
+    Validation,
+    Applicator,
+    Core,
+}
+
 #[enum_dispatch]
 pub trait Validate {
-    fn is_valid(&self, keywords: &[Keyword], instance: &serde_json::Value) -> bool;
+    fn vocabulary(&self) -> Vocabulary;
+    fn is_valid(&self, instance: &serde_json::Value) -> bool;
 }
 
 #[enum_dispatch(Validate)]
