@@ -1,9 +1,6 @@
 pub(crate) mod applicator;
-pub(crate) mod ref_;
+pub(crate) mod core;
 pub(crate) mod validation;
-
-pub(crate) use applicator::{items::ItemsArray, properties::Properties};
-pub(crate) use ref_::Ref;
 
 pub enum Vocabulary {
     Validation,
@@ -17,14 +14,14 @@ pub trait Validate {
 
 #[derive(Debug)]
 pub enum Keyword {
-    ItemsArray(ItemsArray),
+    ItemsArray(applicator::ItemsArray),
     Maximum(validation::Maximum),
-    Properties(Properties),
-    Ref(Ref),
+    Properties(applicator::Properties),
+    Ref(core::Ref),
 }
 
-impl From<ItemsArray> for Keyword {
-    fn from(v: ItemsArray) -> Keyword {
+impl From<applicator::ItemsArray> for Keyword {
+    fn from(v: applicator::ItemsArray) -> Keyword {
         Keyword::ItemsArray(v)
     }
 }
@@ -33,13 +30,13 @@ impl From<validation::Maximum> for Keyword {
         Keyword::Maximum(v)
     }
 }
-impl From<Properties> for Keyword {
-    fn from(v: Properties) -> Keyword {
+impl From<applicator::Properties> for Keyword {
+    fn from(v: applicator::Properties) -> Keyword {
         Keyword::Properties(v)
     }
 }
-impl From<Ref> for Keyword {
-    fn from(v: Ref) -> Keyword {
+impl From<core::Ref> for Keyword {
+    fn from(v: core::Ref) -> Keyword {
         Keyword::Ref(v)
     }
 }
