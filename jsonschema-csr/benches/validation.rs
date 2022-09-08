@@ -1,4 +1,3 @@
-use bench_helpers::read_json;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use jsonschema_csr::JsonSchema;
 use serde_json::json;

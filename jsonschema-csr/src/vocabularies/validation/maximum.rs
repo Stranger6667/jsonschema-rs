@@ -1,4 +1,4 @@
-use crate::vocabularies::{Keyword, Validate, Vocabulary};
+use crate::vocabularies::{Keyword, Validate};
 use num_cmp::NumCmp;
 use serde_json::Value;
 
@@ -14,10 +14,6 @@ impl Maximum {
 }
 
 impl Validate for Maximum {
-    fn vocabulary(&self) -> Vocabulary {
-        Vocabulary::Validation
-    }
-
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Number(item) = instance {
             if let Some(item) = item.as_u64() {

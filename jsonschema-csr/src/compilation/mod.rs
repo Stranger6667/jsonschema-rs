@@ -27,7 +27,7 @@ use crate::{
         edges::EdgeLabel,
         resolver::{parse_reference, Reference},
     },
-    vocabularies::{Maximum, Validate, Vocabulary},
+    vocabularies::{validation, Vocabulary},
 };
 use edges::{CompressedEdge, RawEdge};
 
@@ -463,7 +463,7 @@ fn materialize(values: Vec<ValueReference>, edges: &mut Vec<RawEdge>) -> Vec<Key
             ValueReference::Concrete(value) => match &edge.label {
                 EdgeLabel::Key(key) => match key.as_ref() {
                     // TODO. it should be at the right index - otherwise the graph is broken
-                    "maximum" => nodes.push(Maximum::build(value.as_u64().unwrap())),
+                    "maximum" => nodes.push(validation::Maximum::build(value.as_u64().unwrap())),
                     // TODO. maybe `properties` are not needed at all??
                     // "properties" => nodes.push(Properties::build(value.as_u64().unwrap())),
                     _ => {}
