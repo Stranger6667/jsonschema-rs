@@ -27,7 +27,7 @@ use crate::{
         edges::EdgeLabel,
         resolver::{parse_reference, Reference},
     },
-    vocabularies::{validation, Vocabulary},
+    vocabularies::{applicator, validation, Vocabulary},
 };
 use edges::{CompressedEdge, RawEdge};
 
@@ -47,6 +47,7 @@ pub struct Scope<'a> {
 }
 
 impl<'a> Scope<'a> {
+    #[inline]
     pub(crate) fn new(node_idx: usize, instance: &'a Value) -> Self {
         Self {
             node_idx,
@@ -55,14 +56,14 @@ impl<'a> Scope<'a> {
         }
     }
 
-    pub(crate) fn edges<'b>(
+    pub(crate) unsafe fn edges<'b>(
         &mut self,
         offsets: &'b [usize],
         edges: &'b [CompressedEdge],
     ) -> &'b [CompressedEdge] {
-        let start = offsets[self.node_idx];
-        let end = offsets[self.node_idx + 1];
-        let edges = &edges[start + self.offset..end];
+        let start = *offsets.get_unchecked(self.node_idx);
+        let end = *offsets.get_unchecked(self.node_idx + 1);
+        let edges = edges.get_unchecked(start + self.offset..end);
         self.offset += 1;
         edges
     }
@@ -71,12 +72,15 @@ impl<'a> Scope<'a> {
 struct ScopeStack<'a>(Vec<Scope<'a>>);
 
 impl<'a> ScopeStack<'a> {
+    #[inline]
     pub(crate) fn new() -> Self {
         Self(Vec::new())
     }
+    #[inline]
     pub(crate) fn push(&mut self, idx: usize, instance: &'a Value) {
         self.0.push(Scope::new(idx, instance))
     }
+    #[inline]
     pub(crate) fn pop(&mut self) -> Option<Scope<'a>> {
         self.0.pop()
     }
@@ -118,6 +122,29 @@ impl JsonSchema {
         &self.edges[start..end]
     }
 
+    #[inline]
+    fn descend<'a, 'b>(
+        &self,
+        stack: &'a mut ScopeStack<'b>,
+        target_idx: usize,
+        instance: &'b Value,
+    ) {
+        for next in self.edges_of(target_idx) {
+            match &next.label {
+                EdgeLabel::Key(key) => {
+                    if let Some(target) = instance.get(key) {
+                        stack.push(target_idx, target)
+                    }
+                }
+                EdgeLabel::Index(idx) => {
+                    if let Some(target) = instance.get(idx) {
+                        stack.push(target_idx, target)
+                    }
+                }
+            }
+        }
+    }
+
     pub fn is_valid(&self, instance: &Value) -> bool {
         // Validation is a DFS graph traversal with a manual stack management where each scope
         // refers to a keyword and keeps its execution state.
@@ -125,6 +152,8 @@ impl JsonSchema {
         // Each keyword has its own execution rules:
         //   - validation keywords return the result immediately
         //   - applicator keywords depend on their children keywords execution
+        // TODO. Consider to use actual stack instead - heap is quite slow
+        let mut stack = ScopeStack::new();
         // TODO. track the root state? Any keyword fails validation - return
         for edge in self.edges_of(0) {
             let keyword = &self.keywords[edge.target - 1];
@@ -134,7 +163,9 @@ impl JsonSchema {
                         return false;
                     }
                 }
-                Vocabulary::Applicator => {}
+                Vocabulary::Applicator => {
+                    self.descend(&mut stack, edge.target, &instance);
+                }
                 Vocabulary::Core => {}
             }
         }
@@ -144,30 +175,19 @@ impl JsonSchema {
         //   2. It can change the scope - move the execution to another edges + change the current value
         //      In this case, the current scope should be paused - current edge + current value should be paused until scope gets back
         //      State - edge offset on the current level + reference to the value
-        let mut stack = ScopeStack::new();
-        while let Some(mut scope) = stack.pop() {
-            // Iterate over edges coming from this scope
-            for edge in scope.edges(&self.offsets, &self.edges) {
-                let target_idx = edge.target - 1;
-                let _keyword = &self.keywords[target_idx];
-                // TODO: Move to DFS - some keywords like `oneOf` need to evaluate children first
-                //       the parent scope need to be stored & children result should be popped up
-                //   - `properties` - each child should be VALID
-                // For each keyword schedule next scopes
-                for next in self.edges_of(target_idx) {
-                    match (&next.label, scope.instance) {
-                        (EdgeLabel::Key(key), Value::Object(object)) => {
-                            if let Some(target) = object.get(key) {
-                                stack.push(target_idx, target)
-                            }
-                        }
-                        (EdgeLabel::Index(index), Value::Array(array)) => {
-                            if let Some(target) = array.get(*index) {
-                                stack.push(target_idx, target)
-                            }
-                        }
-                        _ => {}
-                    }
+        unsafe {
+            while let Some(mut scope) = stack.pop() {
+                let keyword = self.keywords.get_unchecked(scope.node_idx);
+                if !keyword.is_valid(scope.instance) {
+                    return false;
+                }
+                // Iterate over edges coming from this scope
+                for edge in scope.edges(&self.offsets, &self.edges) {
+                    // TODO: Move to DFS - some keywords like `oneOf` need to evaluate children first
+                    //       the parent scope need to be stored & children result should be popped up
+                    //   - `properties` - each child should be VALID
+                    // For each keyword schedule next scopes
+                    self.descend(&mut stack, edge.target, &scope.instance);
                 }
             }
         }
@@ -465,7 +485,7 @@ fn materialize(values: Vec<ValueReference>, edges: &mut Vec<RawEdge>) -> Vec<Key
                     // TODO. it should be at the right index - otherwise the graph is broken
                     "maximum" => nodes.push(validation::Maximum::build(value.as_u64().unwrap())),
                     // TODO. maybe `properties` are not needed at all??
-                    // "properties" => nodes.push(Properties::build(value.as_u64().unwrap())),
+                    "properties" => nodes.push(applicator::Properties::build()),
                     _ => {}
                 },
                 EdgeLabel::Index(_) => {}
@@ -1046,12 +1066,11 @@ mod tests {
         assert_eq!(edges, expected)
     }
 
-    #[test]
-    fn is_valid() {
-        // TODO. parametrize & add more examples with simple keywords
-        let schema = j!({"maximum": 5});
+    #[test_case(j!({"maximum": 5}), j!(4), j!(6))]
+    #[test_case(j!({"properties": {"A": {"maximum": 5}}}), j!({"A": 4}), j!({"A": 6}))]
+    fn is_valid(schema: Value, valid: Value, invalid: Value) {
         let compiled = JsonSchema::new(&schema).unwrap();
-        assert!(compiled.is_valid(&j!(4)));
-        assert!(!compiled.is_valid(&j!(6)));
+        assert!(compiled.is_valid(&valid));
+        assert!(!compiled.is_valid(&invalid));
     }
 }
