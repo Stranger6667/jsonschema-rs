@@ -1,4 +1,7 @@
-use crate::vocabularies::{Keyword, Validate};
+use crate::{
+    vocabularies::{Keyword, Validate},
+    JsonSchema,
+};
 use num_cmp::NumCmp;
 use serde_json::Value;
 
@@ -14,7 +17,7 @@ impl Maximum {
 }
 
 impl Validate for Maximum {
-    fn is_valid(&self, instance: &Value) -> bool {
+    fn is_valid(&self, _: &JsonSchema, instance: &Value) -> bool {
         if let Value::Number(item) = instance {
             if let Some(item) = item.as_u64() {
                 !NumCmp::num_gt(item, self.limit)

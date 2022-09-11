@@ -17,7 +17,7 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use url::Url;
 
-mod edges;
+pub(crate) mod edges;
 mod error;
 pub mod resolver;
 use error::Result;
@@ -27,7 +27,7 @@ use crate::{
         edges::EdgeLabel,
         resolver::{parse_reference, Reference},
     },
-    vocabularies::{applicator, validation, Vocabulary},
+    vocabularies::{applicator, validation},
 };
 use edges::{CompressedEdge, RawEdge};
 
@@ -40,55 +40,8 @@ use edges::{CompressedEdge, RawEdge};
 //   - Store root's keywords explicitly upfront to avoid calculation for small schemas
 
 #[derive(Debug)]
-pub struct Scope<'a> {
-    node_idx: usize,
-    offset: usize,
-    instance: &'a Value,
-}
-
-impl<'a> Scope<'a> {
-    #[inline]
-    pub(crate) fn new(node_idx: usize, instance: &'a Value) -> Self {
-        Self {
-            node_idx,
-            offset: 0,
-            instance,
-        }
-    }
-
-    pub(crate) fn edges<'b>(
-        &mut self,
-        offsets: &'b [usize],
-        edges: &'b [CompressedEdge],
-    ) -> &'b [CompressedEdge] {
-        let start = offsets[self.node_idx];
-        let end = offsets[self.node_idx + 1];
-        let edges = &edges[start + self.offset..end];
-        self.offset += 1;
-        edges
-    }
-}
-
-struct ScopeStack<'a>(Vec<Scope<'a>>);
-
-impl<'a> ScopeStack<'a> {
-    #[inline]
-    pub(crate) fn new() -> Self {
-        Self(Vec::new())
-    }
-    #[inline]
-    pub(crate) fn push(&mut self, idx: usize, instance: &'a Value) {
-        self.0.push(Scope::new(idx, instance))
-    }
-    #[inline]
-    pub(crate) fn pop(&mut self) -> Option<Scope<'a>> {
-        self.0.pop()
-    }
-}
-
-#[derive(Debug)]
 pub struct JsonSchema {
-    keywords: Box<[Keyword]>,
+    pub(crate) keywords: Box<[Keyword]>,
     offsets: Box<[usize]>,
     edges: Box<[CompressedEdge]>,
 }
@@ -116,80 +69,15 @@ impl JsonSchema {
     }
 
     #[inline]
-    fn edges_of(&self, node_idx: usize) -> &[CompressedEdge] {
+    pub(crate) fn edges_of(&self, node_idx: usize) -> impl Iterator<Item = &CompressedEdge> {
         let start = self.offsets[node_idx];
         let end = self.offsets[node_idx + 1];
-        &self.edges[start..end]
-    }
-
-    #[inline]
-    fn descend<'a, 'b>(
-        &self,
-        stack: &'a mut ScopeStack<'b>,
-        target_idx: usize,
-        instance: &'b Value,
-    ) {
-        for next in self.edges_of(target_idx) {
-            match &next.label {
-                EdgeLabel::Key(key) => {
-                    if let Some(target) = instance.get(key) {
-                        stack.push(target_idx, target)
-                    }
-                }
-                EdgeLabel::Index(idx) => {
-                    if let Some(target) = instance.get(idx) {
-                        stack.push(target_idx, target)
-                    }
-                }
-            }
-        }
+        self.edges[start..end].iter()
     }
 
     pub fn is_valid(&self, instance: &Value) -> bool {
-        // Validation is a DFS graph traversal with a manual stack management where each scope
-        // refers to a keyword and keeps its execution state.
-        //
-        // Each keyword has its own execution rules:
-        //   - validation keywords return the result immediately
-        //   - applicator keywords depend on their children keywords execution
-        // TODO. Consider to use actual stack instead - heap is quite slow
-        let mut stack = ScopeStack::new();
-        // TODO. track the root state? Any keyword fails validation - return
-        for edge in self.edges_of(0) {
-            let keyword = &self.keywords[edge.target - 1];
-            match keyword.vocabulary() {
-                Vocabulary::Validation => {
-                    if !keyword.is_valid(instance) {
-                        return false;
-                    }
-                }
-                Vocabulary::Applicator => {
-                    self.descend(&mut stack, edge.target, instance);
-                }
-                Vocabulary::Core => {}
-            }
-        }
-        // Traverse the graph
-        // every edge leads to some node - a keyword impl
-        //   1. It can just take the instance & validate it
-        //   2. It can change the scope - move the execution to another edges + change the current value
-        //      In this case, the current scope should be paused - current edge + current value should be paused until scope gets back
-        //      State - edge offset on the current level + reference to the value
-        while let Some(mut scope) = stack.pop() {
-            let keyword = &self.keywords[scope.node_idx];
-            if !keyword.is_valid(scope.instance) {
-                return false;
-            }
-            // Iterate over edges coming from this scope
-            for edge in scope.edges(&self.offsets, &self.edges) {
-                // TODO: Move to DFS - some keywords like `oneOf` need to evaluate children first
-                //       the parent scope need to be stored & children result should be popped up
-                //   - `properties` - each child should be VALID
-                // For each keyword schedule next scopes
-                self.descend(&mut stack, edge.target, scope.instance);
-            }
-        }
-        true
+        self.edges_of(0)
+            .all(|edge| self.keywords[edge.target - 1].is_valid(self, instance))
     }
 }
 
