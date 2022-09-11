@@ -56,14 +56,14 @@ impl<'a> Scope<'a> {
         }
     }
 
-    pub(crate) unsafe fn edges<'b>(
+    pub(crate) fn edges<'b>(
         &mut self,
         offsets: &'b [usize],
         edges: &'b [CompressedEdge],
     ) -> &'b [CompressedEdge] {
-        let start = *offsets.get_unchecked(self.node_idx);
-        let end = *offsets.get_unchecked(self.node_idx + 1);
-        let edges = edges.get_unchecked(start + self.offset..end);
+        let start = offsets[self.node_idx];
+        let end = offsets[self.node_idx + 1];
+        let edges = &edges[start + self.offset..end];
         self.offset += 1;
         edges
     }
@@ -164,7 +164,7 @@ impl JsonSchema {
                     }
                 }
                 Vocabulary::Applicator => {
-                    self.descend(&mut stack, edge.target, &instance);
+                    self.descend(&mut stack, edge.target, instance);
                 }
                 Vocabulary::Core => {}
             }
@@ -175,20 +175,18 @@ impl JsonSchema {
         //   2. It can change the scope - move the execution to another edges + change the current value
         //      In this case, the current scope should be paused - current edge + current value should be paused until scope gets back
         //      State - edge offset on the current level + reference to the value
-        unsafe {
-            while let Some(mut scope) = stack.pop() {
-                let keyword = self.keywords.get_unchecked(scope.node_idx);
-                if !keyword.is_valid(scope.instance) {
-                    return false;
-                }
-                // Iterate over edges coming from this scope
-                for edge in scope.edges(&self.offsets, &self.edges) {
-                    // TODO: Move to DFS - some keywords like `oneOf` need to evaluate children first
-                    //       the parent scope need to be stored & children result should be popped up
-                    //   - `properties` - each child should be VALID
-                    // For each keyword schedule next scopes
-                    self.descend(&mut stack, edge.target, &scope.instance);
-                }
+        while let Some(mut scope) = stack.pop() {
+            let keyword = &self.keywords[scope.node_idx];
+            if !keyword.is_valid(scope.instance) {
+                return false;
+            }
+            // Iterate over edges coming from this scope
+            for edge in scope.edges(&self.offsets, &self.edges) {
+                // TODO: Move to DFS - some keywords like `oneOf` need to evaluate children first
+                //       the parent scope need to be stored & children result should be popped up
+                //   - `properties` - each child should be VALID
+                // For each keyword schedule next scopes
+                self.descend(&mut stack, edge.target, scope.instance);
             }
         }
         true
