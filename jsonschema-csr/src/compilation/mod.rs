@@ -59,7 +59,8 @@ impl JsonSchema {
         // Collect all values and resolve references
         let (values, mut edges) = collect(schema, &resolvers)?;
         // Build a `Keyword` graph together with dropping not needed nodes and edges
-        let values = materialize(values, &mut edges);
+        let mut values = materialize(values, &mut edges);
+        minimize(&mut values, &mut edges);
         let (head_end, keywords, edges) = build(values, &mut edges);
         // And finally, compress the edges into the CSR format
         let (offsets, edges) = compress(edges);
@@ -316,7 +317,6 @@ fn collect<'a>(
                                         resolved
                                     };
                                     values.add_virtual(resolved);
-                                    push!(stack, node_idx, value, REF, seen, resolver, folders);
                                 }
                                 Reference::Relative(location) => {
                                     if !is_local_reference(location) {
@@ -330,11 +330,8 @@ fn collect<'a>(
                                     };
                                     let (folders, resolved) = resolver.resolve(location)?;
                                     values.add_virtual(resolved);
-                                    // Push the resolved value & the reference itself onto the stack
-                                    // to explore them further
-                                    for value in [resolved, value] {
-                                        push!(stack, node_idx, value, REF, seen, resolver, folders);
-                                    }
+                                    // Push the resolved value onto the stack to explore them further
+                                    push!(stack, node_idx, resolved, REF, seen, resolver, folders);
                                 }
                             };
                             edges.push(RawEdge::new(node_idx, values.len() - 1, REF.into()));
@@ -409,6 +406,9 @@ fn materialize<'a>(values: Vec<ValueReference<'a>>, edges: &mut Vec<RawEdge>) ->
     edges.dedup();
     concrete
 }
+
+/// Remove not needed values & edges.
+fn minimize(values: &mut Vec<&Value>, edges: &mut Vec<RawEdge>) {}
 
 /// Build a keyword graph.
 fn build(values: Vec<&Value>, edges: &mut Vec<RawEdge>) -> (usize, Vec<Keyword>, Vec<RawEdge>) {
@@ -498,26 +498,6 @@ mod tests {
         ($el:tt) => {
             ValueReference::Virtual(&j!($el))
         };
-    }
-
-    /// All schema nodes are present as concrete references
-    fn assert_all_schema_nodes(schema: &Value, values: &[ValueReference]) {
-        let mut stack = vec![schema];
-        'outer: while let Some(value) = stack.pop() {
-            match value {
-                Value::Object(object) => stack.extend(object.values()),
-                Value::Array(items) => stack.extend(items.iter()),
-                _ => {}
-            }
-            for reference in values {
-                if let ValueReference::Concrete(target) = reference {
-                    if std::ptr::eq(value, *target) {
-                        continue 'outer;
-                    }
-                }
-            }
-            panic!("Value `{}` is not found as a concrete reference", value)
-        }
     }
 
     /// Ensure every concrete reference is unique
@@ -652,19 +632,15 @@ mod tests {
         &[
             c!({"$ref": SELF_REF}),
             v!({"$ref": SELF_REF}),
-            c!(SELF_REF),
         ],
         &[
             edge(0, 1, "$ref"),
-            edge(0, 2, "$ref"),
         ],
         &[
             j!({"$ref": SELF_REF}),
-            j!(SELF_REF),
         ],
         &[
             edge(0, 0, "$ref"),
-            edge(0, 1, "$ref"),
         ],
         &[];
         "Self reference"
@@ -674,26 +650,22 @@ mod tests {
         &[
             c!({"$ref": REMOTE_REF}),
             v!({"type": "integer"}),
-            c!(REMOTE_REF),
             c!({"type": "integer"}),
             c!("integer"),
         ],
         &[
             edge(0, 1, "$ref"),
             edge(0, 2, "$ref"),
-            edge(0, 3, "$ref"),
-            edge(3, 4, "type")
+            edge(2, 3, "type")
         ],
         &[
             j!({"$ref": REMOTE_REF}),
-            j!(REMOTE_REF),
             j!({"type": "integer"}),
             j!("integer"),
         ],
         &[
             edge(0, 1, "$ref"),
-            edge(0, 2, "$ref"),
-            edge(2, 3, "type")
+            edge(1, 2, "type")
         ],
         &[REMOTE_BASE];
         "Remote reference"
@@ -720,7 +692,6 @@ mod tests {
             }),
             c!({"$ref": "folderInteger.json"}),
             v!({"type": "integer"}),
-            c!("folderInteger.json"),
             c!({"type": "integer"}),
             c!("integer"),
             c!("baseUriChange/"),
@@ -731,10 +702,9 @@ mod tests {
             edge(2, 3, "$ref"),
             edge(1, 2, "items"),
             edge(2, 4, "$ref"),
-            edge(2, 5, "$ref"),
-            edge(5, 6, "type"),
-            edge(1, 7, "$id"),
-            edge(0, 8, "$id"),
+            edge(4, 5, "type"),
+            edge(1, 6, "$id"),
+            edge(0, 7, "$id"),
         ],
         &[
             j!({
@@ -749,7 +719,6 @@ mod tests {
                 "items": {"$ref": "folderInteger.json"}
             }),
             j!({"$ref": "folderInteger.json"}),
-            j!("folderInteger.json"),
             j!({"type": "integer"}),
             j!("integer"),
             j!("baseUriChange/"),
@@ -757,12 +726,11 @@ mod tests {
         ],
         &[
             edge(0, 1, "items"),
-            edge(0, 7, "$id"),
+            edge(0, 6, "$id"),
             edge(1, 2, "items"),
-            edge(1, 6, "$id"),
+            edge(1, 5, "$id"),
             edge(2, 3, "$ref"),
-            edge(2, 4, "$ref"),
-            edge(4, 5, "type"),
+            edge(3, 4, "type"),
         ],
         &["http://localhost:1234/baseUriChange/folderInteger.json"];
         "Base URI change"
@@ -790,7 +758,6 @@ mod tests {
             c!({"list":{"$ref":"#/definitions"}}),
             c!({"$ref":"#/definitions"}),
             v!({"$id":"baseUriChangeFolder/"}),
-            c!("#/definitions"),
             c!({"$id":"baseUriChangeFolder/"}),
             c!("baseUriChangeFolder/"),
             c!("http://localhost:1234/scope_change_defs1.json"),
@@ -799,10 +766,9 @@ mod tests {
             edge(0, 1, "properties"),
             edge(2, 3, "$ref"),
             edge(1, 2, "list"),
-            edge(2, 4, "$ref"),
-            edge(0, 5, "definitions"),
-            edge(5, 6, "$id"),
-            edge(0, 7, "$id"),
+            edge(0, 4, "definitions"),
+            edge(4, 5, "$id"),
+            edge(0, 6, "$id"),
         ],
         &[
             j!({
@@ -816,19 +782,17 @@ mod tests {
             }),
             j!({"list":{"$ref":"#/definitions"}}),
             j!({"$ref":"#/definitions"}),
-            j!("#/definitions"),
             j!({"$id":"baseUriChangeFolder/"}),
             j!("baseUriChangeFolder/"),
             j!("http://localhost:1234/scope_change_defs1.json"),
         ],
         &[
             edge(0, 1, "properties"),
-            edge(0, 4, "definitions"),
-            edge(0, 6, "$id"),
+            edge(0, 3, "definitions"),
+            edge(0, 5, "$id"),
             edge(1, 2, "list"),
             edge(2, 3, "$ref"),
-            edge(2, 4, "$ref"),
-            edge(4, 5, "$id"),
+            edge(3, 4, "$id"),
         ],
         &[];
         "Base URI change - change folder"
@@ -838,40 +802,30 @@ mod tests {
             "$ref": "http://localhost:1234/subSchemas.json#/refToInteger"
         }),
         &[
-            c!({
-                "$ref": "http://localhost:1234/subSchemas.json#/refToInteger"
-            }),
+            c!({"$ref": "http://localhost:1234/subSchemas.json#/refToInteger"}),
             v!({"$ref":"#/integer"}),
-            c!("http://localhost:1234/subSchemas.json#/refToInteger"),
             c!({"$ref":"#/integer"}),
             v!({"type":"integer"}),
-            c!("#/integer"),
             c!({"type":"integer"}),
             c!("integer"),
         ],
         &[
             edge(0, 1, "$ref"),
+            edge(2, 3, "$ref"),
             edge(0, 2, "$ref"),
-            edge(3, 4, "$ref"),
-            edge(0, 3, "$ref"),
-            edge(3, 5, "$ref"),
-            edge(3, 6, "$ref"),
-            edge(6, 7, "type"),
+            edge(2, 4, "$ref"),
+            edge(4, 5, "type"),
         ],
         &[
             j!({"$ref": "http://localhost:1234/subSchemas.json#/refToInteger"}),
-            j!("http://localhost:1234/subSchemas.json#/refToInteger"),
             j!({"$ref":"#/integer"}),
-            j!("#/integer"),
             j!({"type":"integer"}),
             j!("integer"),
         ],
         &[
             edge(0, 1, "$ref"),
-            edge(0, 2, "$ref"),
-            edge(2, 3, "$ref"),
-            edge(2, 4, "$ref"),
-            edge(4, 5, "type"),
+            edge(1, 2, "$ref"),
+            edge(2, 3, "type"),
         ],
         &["http://localhost:1234/subSchemas.json"];
         "Reference within remote reference"
@@ -909,14 +863,12 @@ mod tests {
                 }
             }),
             c!("http://localhost:1234/root"),
-            c!("http://localhost:1234/root"),
         ],
         &[
             edge(0, 1, "properties"),
             edge(2, 3, "$ref"),
             edge(1, 2, "A"),
-            edge(2, 4, "$ref"),
-            edge(0, 5, "$id"),
+            edge(0, 4, "$id"),
         ],
         &[
             j!({
@@ -934,14 +886,12 @@ mod tests {
             }),
             j!({"$ref": "http://localhost:1234/root"}),
             j!("http://localhost:1234/root"),
-            j!("http://localhost:1234/root"),
         ],
         &[
             edge(0, 1, "properties"),
-            edge(0, 4, "$id"),
+            edge(0, 3, "$id"),
             edge(1, 2, "A"),
             edge(2, 0, "$ref"),
-            edge(2, 3, "$ref"),
         ],
         &[];
         "Absolute reference to the same schema"
@@ -958,36 +908,28 @@ mod tests {
             c!([{"$ref":"#/allOf/1"},{"$ref":"#/allOf/0"}]),
             c!({"$ref":"#/allOf/0"}),
             v!({"$ref":"#/allOf/1"}),
-            c!("#/allOf/0"),
             c!({"$ref":"#/allOf/1"}),
             v!({"$ref":"#/allOf/0"}),
-            c!("#/allOf/1"),
         ],
         &[
             edge(0, 1, "allOf"),
             edge(2, 3, "$ref"),
             edge(1, 2, 1),
-            edge(2, 4, "$ref"),
-            edge(5, 6, "$ref"),
-            edge(1, 5, 0),
-            edge(5, 7, "$ref"),
+            edge(4, 5, "$ref"),
+            edge(1, 4, 0),
         ],
         &[
             j!({"allOf":[{"$ref":"#/allOf/1"},{"$ref":"#/allOf/0"}]}),
             j!([{"$ref":"#/allOf/1"},{"$ref":"#/allOf/0"}]),
             j!({"$ref":"#/allOf/0"}),
-            j!("#/allOf/0"),
             j!({"$ref":"#/allOf/1"}),
-            j!("#/allOf/1"),
         ],
         &[
             edge(0, 1, "allOf"),
             edge(1, 2, 1),
-            edge(1, 4, 0),
+            edge(1, 3, 0),
             edge(2, 3, "$ref"),
-            edge(2, 4, "$ref"),
-            edge(4, 2, "$ref"),
-            edge(4, 5, "$ref"),
+            edge(3, 2, "$ref"),
         ],
         &[];
         "Multiple references to the same target"
@@ -1009,45 +951,37 @@ mod tests {
             c!({"$id":"http://localhost:1234/tree","d":{"$id":"http://localhost:1234/node","s":{"$ref":"tree"}},"n":{"$ref":"node"}}),
             c!({"$ref":"node"}),
             v!({"$id":"http://localhost:1234/node","s":{"$ref":"tree"}}),
-            c!("node"),
             c!({"$id":"http://localhost:1234/node","s":{"$ref":"tree"}}),
             c!({"$ref":"tree"}),
             v!({"$id":"http://localhost:1234/tree","d":{"$id":"http://localhost:1234/node","s":{"$ref":"tree"}},"n":{"$ref":"node"}}),
-            c!("tree"),
             c!("http://localhost:1234/node"),
             c!("http://localhost:1234/tree"),
         ],
         &[
             edge(1, 2, "$ref"),
             edge(0, 1, "n"),
-            edge(1, 3, "$ref"),
-            edge(0, 4, "d"),
-            edge(5, 6, "$ref"),
-            edge(4, 5, "s"),
-            edge(5, 7, "$ref"),
-            edge(4, 8, "$id"),
-            edge(0, 9, "$id"),
+            edge(0, 3, "d"),
+            edge(4, 5, "$ref"),
+            edge(3, 4, "s"),
+            edge(3, 6, "$id"),
+            edge(0, 7, "$id"),
         ],
         &[
             j!({"$id":"http://localhost:1234/tree","d":{"$id":"http://localhost:1234/node","s":{"$ref":"tree"}},"n":{"$ref":"node"}}),
             j!({"$ref":"node"}),
-            j!("node"),
             j!({"$id":"http://localhost:1234/node","s":{"$ref":"tree"}}),
             j!({"$ref":"tree"}),
-            j!("tree"),
             j!("http://localhost:1234/node"),
             j!("http://localhost:1234/tree"),
         ],
         &[
             edge(0, 1, "n"),
-            edge(0, 3, "d"),
-            edge(0, 7, "$id"),
+            edge(0, 2, "d"),
+            edge(0, 5, "$id"),
             edge(1, 2, "$ref"),
-            edge(1, 3, "$ref"),
-            edge(3, 4, "s"),
-            edge(3, 6, "$id"),
-            edge(4, 0, "$ref"),
-            edge(4, 5, "$ref"),
+            edge(2, 3, "s"),
+            edge(2, 4, "$id"),
+            edge(3, 0, "$ref"),
         ],
         &[];
         "Recursive references between schemas"
@@ -1066,16 +1000,16 @@ mod tests {
         let (values_, mut edges_) = collect(&schema, &resolvers).unwrap();
         print_values(&values_);
         assert_eq!(values_, values);
-        assert_all_schema_nodes(&schema, &values_);
         assert_concrete_references(&values_);
         assert_virtual_references(&values_);
         assert_eq!(edges_, edges);
         assert_eq!(resolvers.keys().cloned().collect::<Vec<&str>>(), keys);
-        let values: Vec<Value> = materialize(values_, &mut edges_)
-            .into_iter()
-            .cloned()
-            .collect();
-        assert_eq!(values, concrete_values);
+        let mut values = materialize(values_, &mut edges_);
+        minimize(&mut values, &mut edges_);
+        assert_eq!(
+            values.into_iter().cloned().collect::<Vec<Value>>(),
+            concrete_values
+        );
         assert_eq!(edges_, concrete_edges);
     }
 
@@ -1098,7 +1032,6 @@ mod tests {
                         let resolvers = build_resolvers(&external);
                         let (values_, _) = collect(&schema, &resolvers).unwrap();
                         print_values(&values_);
-                        assert_all_schema_nodes(&schema, &values_);
                         assert_concrete_references(&values_);
                         assert_virtual_references(&values_);
                     }
