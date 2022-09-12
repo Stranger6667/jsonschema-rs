@@ -43,7 +43,7 @@ use edges::{CompressedEdge, RawEdge};
 pub struct JsonSchema {
     pub(crate) keywords: Box<[Keyword]>,
     offsets: Box<[usize]>,
-    edges: Box<[CompressedEdge]>,
+    pub(crate) edges: Box<[CompressedEdge]>,
 }
 
 impl JsonSchema {
@@ -76,8 +76,9 @@ impl JsonSchema {
     }
 
     pub fn is_valid(&self, instance: &Value) -> bool {
-        self.edges_of(0)
-            .all(|edge| self.keywords[edge.target - 1].is_valid(self, instance))
+        self.keywords[0..1]
+            .iter()
+            .all(|k| k.is_valid(self, instance))
     }
 }
 
@@ -370,7 +371,6 @@ fn materialize(values: Vec<ValueReference>, edges: &mut Vec<RawEdge>) -> Vec<Key
                 EdgeLabel::Key(key) => match key.as_ref() {
                     // TODO. it should be at the right index - otherwise the graph is broken
                     "maximum" => nodes.push(validation::Maximum::build(value.as_u64().unwrap())),
-                    // TODO. maybe `properties` are not needed at all??
                     "properties" => nodes.push(applicator::Properties::build()),
                     _ => {}
                 },

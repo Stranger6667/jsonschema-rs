@@ -18,14 +18,16 @@ impl Properties {
 impl Validate for Properties {
     fn is_valid(&self, schema: &JsonSchema, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
-            schema.edges_of(1).all(|next| {
+            // TODO. edges are known upfront - no need to calculate offsets
+            schema.edges[1..2].iter().all(|next| {
                 if let Some(value) = match &next.label {
                     EdgeLabel::Key(key) => item.get(key),
                     EdgeLabel::Index(_) => unreachable!(),
                 } {
-                    schema
-                        .edges_of(next.target - 1)
-                        .all(|e| schema.keywords[e.target - 1].is_valid(schema, value))
+                    // TODO: The keyword range is also known upfront for each edge - store it there
+                    schema.keywords[1..2]
+                        .iter()
+                        .all(|k| k.is_valid(schema, value))
                 } else {
                     true
                 }
