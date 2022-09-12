@@ -42,6 +42,7 @@ use edges::{CompressedEdge, RawEdge};
 #[derive(Debug)]
 pub struct JsonSchema {
     pub(crate) keywords: Box<[Keyword]>,
+    head_end: usize,
     offsets: Box<[usize]>,
     pub(crate) edges: Box<[CompressedEdge]>,
 }
@@ -58,11 +59,12 @@ impl JsonSchema {
         // Collect all values and resolve references
         let (values, mut edges) = collect(schema, &resolvers)?;
         // Build a `Keyword` graph together with dropping not needed nodes and edges
-        let keywords = materialize(values, &mut edges);
+        let (keywords, edges) = materialize(values, &mut edges);
         // And finally, compress the edges into the CSR format
         let (offsets, edges) = compress(edges);
         Ok(JsonSchema {
             keywords: keywords.into_boxed_slice(),
+            head_end: 1,
             offsets: offsets.into_boxed_slice(),
             edges: edges.into_boxed_slice(),
         })
@@ -76,9 +78,10 @@ impl JsonSchema {
     }
 
     pub fn is_valid(&self, instance: &Value) -> bool {
-        self.keywords[0..1]
+        self.keywords[..self.head_end]
+            // TODO. each keyword should know its position, so it can find its edges
             .iter()
-            .all(|k| k.is_valid(self, instance))
+            .all(|keyword| keyword.is_valid(self, instance))
     }
 }
 
@@ -288,8 +291,6 @@ fn collect<'a>(
         // Mark this value as seen to prevent re-traversing it if any reference leads to it
         seen.insert(node);
         values.add_concrete(node);
-        // TODO.
-        //   - validate - there should be no invalid schemas
         match node {
             Value::Object(object) => {
                 // Track folder changes within sub-schemas
@@ -363,15 +364,22 @@ fn collect<'a>(
 /// There are a few optimizations happen here:
 ///  - Inlining virtual references
 ///  - Skipping not needed nodes
-fn materialize(values: Vec<ValueReference>, edges: &mut Vec<RawEdge>) -> Vec<Keyword> {
-    let mut nodes = Vec::with_capacity(values.len());
+fn materialize(
+    values: Vec<ValueReference>,
+    edges: &mut Vec<RawEdge>,
+) -> (Vec<Keyword>, Vec<RawEdge>) {
+    // TODO: edges should also be new - input ones refer to the original graph
+    // TODO: Some edges are useless - they don't represent any useful keyword
+    let new_edges = vec![];
+    let mut keywords = Vec::with_capacity(values.len());
     for edge in edges {
+        // TODO. check the keyword first before checking the value - in some cases, values are not needed if keyword is skipped
         match &values[edge.target] {
             ValueReference::Concrete(value) => match &edge.label {
                 EdgeLabel::Key(key) => match key.as_ref() {
                     // TODO. it should be at the right index - otherwise the graph is broken
-                    "maximum" => nodes.push(validation::Maximum::build(value.as_u64().unwrap())),
-                    "properties" => nodes.push(applicator::Properties::build()),
+                    "maximum" => keywords.push(validation::Maximum::build(value.as_u64().unwrap())),
+                    "properties" => keywords.push(applicator::Properties::build()),
                     _ => {}
                 },
                 EdgeLabel::Index(_) => {}
@@ -418,7 +426,7 @@ fn materialize(values: Vec<ValueReference>, edges: &mut Vec<RawEdge>) -> Vec<Key
             }
         }
     }
-    nodes
+    (keywords, new_edges)
 }
 
 fn compress(mut edges: Vec<RawEdge>) -> (Vec<usize>, Vec<CompressedEdge>) {
@@ -459,7 +467,7 @@ fn compress(mut edges: Vec<RawEdge>) -> (Vec<usize>, Vec<CompressedEdge>) {
 
 #[cfg(test)]
 mod tests {
-    use super::{edges::EdgeLabel, *};
+    use super::{applicator::Properties, edges::EdgeLabel, validation::Maximum, *};
     use bench_helpers::read_json;
     use serde_json::{json as j, Value};
     use std::fs;
@@ -474,6 +482,12 @@ mod tests {
     macro_rules! v {
         ($el:tt) => {
             ValueReference::Virtual(&j!($el))
+        };
+    }
+
+    macro_rules! k {
+        ($el:expr) => {
+            Keyword::from($el)
         };
     }
 
@@ -931,25 +945,34 @@ mod tests {
 
     #[test_case(
         j!({"maximum": 1}),
-        vec![edge(0, 1, "maximum")];
+        vec![
+            k!(Maximum::build(1)),
+        ],
+        vec![];
         "Single keyword"
     )]
     #[test_case(
-        j!({"foo": {"maximum": 1}, "bar": {"$ref": "#/foo"}}),
+        j!({"properties": {"A": {"maximum": 1}}}),
         vec![
-            edge(0, 1, "foo"),
-            edge(1, 2, "maximum"),
-            edge(0, 3, "bar"),
-            edge(3, 5, "$ref"),
+            k!(Properties::build()),
+            k!(Maximum::build(1)),
+        ],
+        vec![
+            edge(0, 1, "A"),
         ];
-        "Reference to another keyword"
+        "Applicator with validator"
     )]
-    fn materialization(schema: Value, expected: Vec<RawEdge>) {
+    fn materialization(
+        schema: Value,
+        expected_keywords: Vec<Keyword>,
+        expected_edges: Vec<RawEdge>,
+    ) {
         let resolvers = HashMap::new();
         let (values, mut edges) = collect(&schema, &resolvers).unwrap();
         print_values(&values);
-        let _ = materialize(values, &mut edges);
-        assert_eq!(edges, expected)
+        let (keywords, edges) = materialize(values, &mut edges);
+        assert_eq!(edges, expected_edges);
+        assert_eq!(keywords, expected_keywords);
     }
 
     #[test_case(j!({"maximum": 5}), j!(4), j!(6))]

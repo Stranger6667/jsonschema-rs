@@ -8,7 +8,7 @@ pub trait Validate {
     fn is_valid(&self, schema: &JsonSchema, instance: &serde_json::Value) -> bool;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Keyword {
     ItemsArray(applicator::ItemsArray),
     Maximum(validation::Maximum),

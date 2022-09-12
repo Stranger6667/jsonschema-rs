@@ -5,7 +5,7 @@ use crate::{
 };
 use serde_json::Value;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 // TODO: Maybe store start / end of child keywords
 pub struct Properties {}
 

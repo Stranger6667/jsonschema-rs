@@ -5,7 +5,7 @@ use crate::{
 use num_cmp::NumCmp;
 use serde_json::Value;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Maximum {
     pub(crate) limit: u64,
 }

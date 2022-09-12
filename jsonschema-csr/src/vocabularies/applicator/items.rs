@@ -1,6 +1,6 @@
 use crate::{vocabularies::Validate, JsonSchema};
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct ItemsArray {}
 
 impl Validate for ItemsArray {
