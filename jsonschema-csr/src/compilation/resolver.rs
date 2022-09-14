@@ -32,6 +32,20 @@ pub fn scope_of(schema: &Value) -> Result<Url> {
     }
 }
 
+pub(crate) fn is_local_reference(reference: &str) -> bool {
+    reference.starts_with('#')
+}
+
+pub(crate) fn with_folders(scope: &Url, reference: &str, folders: &[&str]) -> Result<Url> {
+    let mut location = scope.clone();
+    if folders.len() > 1 {
+        for folder in folders.iter().skip(1) {
+            location = location.join(folder)?;
+        }
+    }
+    Ok(location.join(reference)?)
+}
+
 pub(crate) enum Reference<'a> {
     Absolute(Url),
     Relative(&'a str),

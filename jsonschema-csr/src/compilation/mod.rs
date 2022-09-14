@@ -17,9 +17,11 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use url::Url;
 
+mod collection;
 pub(crate) mod edges;
 mod error;
 pub mod resolver;
+
 use error::Result;
 
 use crate::{
@@ -321,6 +323,7 @@ fn collect<'a>(
 ) -> Result<(Vec<ValueReference<'a>>, Vec<RawEdge>)> {
     let mut values = Values::new();
     let mut edges = vec![];
+    // todo - reuse resolver
     let resolver = Resolver::new(schema, scope_of(schema)?);
     let mut stack = vec![(Scope::Schema, None, vec![], &resolver, schema)];
     let mut seen = SeenValues::new();
