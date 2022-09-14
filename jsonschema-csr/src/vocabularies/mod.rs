@@ -8,6 +8,14 @@ pub trait Validate {
     fn is_valid(&self, schema: &JsonSchema, instance: &serde_json::Value) -> bool;
 }
 
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub(crate) enum KeywordName {
+    ItemsArray,
+    Maximum,
+    Properties,
+    Ref,
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum Keyword {
     ItemsArray(applicator::ItemsArray),

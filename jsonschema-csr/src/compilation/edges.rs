@@ -1,3 +1,5 @@
+use crate::vocabularies::KeywordName;
+
 /// A label on an edge between two JSON values.
 /// It could be either a key name or an index.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -9,8 +11,17 @@ pub(crate) enum EdgeLabel {
     ///           name
     /// object ---------> "Test"
     ///
-    /// The label for the edge between the top-level object and string "Test" is `name`.
+    /// The label for the edge between the top-level object and string "Test" is `name` if it is not
+    /// a JSON Schema keyword.
     Key(String),
+    /// # Example
+    ///
+    /// `{"maximum": 5}` has `KeywordName::Maximum` as its edge label.
+    /// `{"properties": {"maximum": true}}` has "maximum" as its inner edge label.
+    ///
+    /// A separate variant is needed to distinguish between regular properties and keywords.
+    Keyword(KeywordName),
+    /// # Example
     ///
     /// `["Test"]` could be represented as:
     ///
@@ -19,7 +30,6 @@ pub(crate) enum EdgeLabel {
     ///
     /// The label for the edge between the top-level array and string "Test" is `0`.
     Index(usize),
-    // TODO. store keywords as a separate variant?
 }
 
 /// Create a new `EdgeLabel`.
@@ -45,6 +55,11 @@ impl From<&str> for EdgeLabel {
 impl From<&String> for EdgeLabel {
     fn from(value: &String) -> Self {
         EdgeLabel::Key(value.to_owned())
+    }
+}
+impl From<KeywordName> for EdgeLabel {
+    fn from(value: KeywordName) -> Self {
+        EdgeLabel::Keyword(value)
     }
 }
 

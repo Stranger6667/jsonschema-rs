@@ -22,7 +22,7 @@ impl Validate for Properties {
             schema.edges[1..2].iter().all(|next| {
                 if let Some(value) = match &next.label {
                     EdgeLabel::Key(key) => item.get(key),
-                    EdgeLabel::Index(_) => unreachable!(),
+                    EdgeLabel::Index(_) | EdgeLabel::Keyword(_) => unreachable!(),
                 } {
                     // TODO: The keyword range is also known upfront for each edge - store it there
                     schema.keywords[1..2]

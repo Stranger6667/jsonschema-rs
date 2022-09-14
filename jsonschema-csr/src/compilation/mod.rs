@@ -27,7 +27,7 @@ use crate::{
         edges::EdgeLabel,
         resolver::{parse_reference, Reference},
     },
-    vocabularies::{applicator, validation},
+    vocabularies::{applicator, validation, KeywordName},
 };
 use edges::{CompressedEdge, RawEdge};
 
@@ -257,11 +257,12 @@ fn is_local_reference(reference: &str) -> bool {
 }
 
 macro_rules! push {
-    ($stack: expr, $idx: expr, $value: expr, $label: expr, $seen: expr, $resolver: expr, $folders: expr) => {
+    ($stack: expr, $scope: expr, $idx: expr, $value: expr, $label: expr, $seen: expr, $resolver: expr, $folders: expr) => {
         // Push the new value only if it wasn't seen yet.
         // Insert it immediately to avoid pushing references to the same target from multiple places
         if $seen.insert($value) {
             $stack.push((
+                $scope,
                 Some(($idx, crate::compilation::edges::label($label))),
                 $folders.clone(),
                 $resolver,
@@ -269,6 +270,41 @@ macro_rules! push {
             ));
         }
     };
+}
+
+macro_rules! push_schema {
+    ($stack: expr, $idx: expr, $value: expr, $label: expr, $seen: expr, $resolver: expr, $folders: expr) => {
+        push!(
+            $stack,
+            crate::compilation::Scope::Schema,
+            $idx,
+            $value,
+            $label,
+            $seen,
+            $resolver,
+            $folders
+        )
+    };
+}
+
+macro_rules! push_not_schema {
+    ($stack: expr, $idx: expr, $value: expr, $label: expr, $seen: expr, $resolver: expr, $folders: expr) => {
+        push!(
+            $stack,
+            crate::compilation::Scope::NotSchema,
+            $idx,
+            $value,
+            $label,
+            $seen,
+            $resolver,
+            $folders
+        )
+    };
+}
+
+enum Scope {
+    Schema,
+    NotSchema,
 }
 
 /// The main goal of this phase is to collect all nodes from the input schema and its remote
@@ -286,9 +322,9 @@ fn collect<'a>(
     let mut values = Values::new();
     let mut edges = vec![];
     let resolver = Resolver::new(schema, scope_of(schema)?);
-    let mut stack = vec![(None, vec![], &resolver, schema)];
+    let mut stack = vec![(Scope::Schema, None, vec![], &resolver, schema)];
     let mut seen = SeenValues::new();
-    while let Some((parent, mut folders, mut resolver, node)) = stack.pop() {
+    while let Some((scope, parent, mut folders, mut resolver, node)) = stack.pop() {
         let node_idx = values.len();
         // Mark this value as seen to prevent re-traversing it if any reference leads to it
         seen.insert(node);
@@ -300,53 +336,82 @@ fn collect<'a>(
                     folders.push(id);
                 }
                 for (key, value) in object {
-                    if key == REF {
-                        if let Value::String(ref_string) = value {
-                            match parse_reference(ref_string)? {
-                                Reference::Absolute(location) => {
-                                    let resolved = if let Some(resolver) =
-                                        resolvers.get(location.as_str())
-                                    {
-                                        let (folders, resolved) = resolver.resolve(ref_string)?;
-                                        push!(
+                    match key.as_str() {
+                        "$ref" => {
+                            if let Value::String(ref_string) = value {
+                                match parse_reference(ref_string)? {
+                                    Reference::Absolute(location) => {
+                                        let resolved = if let Some(resolver) =
+                                            resolvers.get(location.as_str())
+                                        {
+                                            let (folders, resolved) =
+                                                resolver.resolve(ref_string)?;
+                                            push_schema!(
+                                                stack, node_idx, resolved, REF, seen, resolver,
+                                                folders
+                                            );
+                                            resolved
+                                        } else {
+                                            let (_, resolved) = resolver.resolve(ref_string)?;
+                                            resolved
+                                        };
+                                        values.add_virtual(resolved);
+                                    }
+                                    Reference::Relative(location) => {
+                                        if !is_local_reference(location) {
+                                            let location =
+                                                with_folders(resolver.scope(), location, &folders)?;
+                                            if !resolver.contains(location.as_str()) {
+                                                resolver = resolvers
+                                                    .get(location.as_str())
+                                                    .expect("Unknown reference");
+                                            }
+                                        };
+                                        let (folders, resolved) = resolver.resolve(location)?;
+                                        values.add_virtual(resolved);
+                                        // Push the resolved value onto the stack to explore them further
+                                        push_schema!(
                                             stack, node_idx, resolved, REF, seen, resolver, folders
                                         );
-                                        resolved
-                                    } else {
-                                        let (_, resolved) = resolver.resolve(ref_string)?;
-                                        resolved
-                                    };
-                                    values.add_virtual(resolved);
-                                }
-                                Reference::Relative(location) => {
-                                    if !is_local_reference(location) {
-                                        let location =
-                                            with_folders(resolver.scope(), location, &folders)?;
-                                        if !resolver.contains(location.as_str()) {
-                                            resolver = resolvers
-                                                .get(location.as_str())
-                                                .expect("Unknown reference");
-                                        }
-                                    };
-                                    let (folders, resolved) = resolver.resolve(location)?;
-                                    values.add_virtual(resolved);
-                                    // Push the resolved value onto the stack to explore them further
-                                    push!(stack, node_idx, resolved, REF, seen, resolver, folders);
-                                }
+                                    }
+                                };
+                                edges.push(RawEdge::new(node_idx, values.len() - 1, REF.into()));
+                            } else {
+                                // The `$ref` value is not a string - explore it further
+                                push_schema!(stack, node_idx, value, REF, seen, resolver, folders);
                             };
-                            edges.push(RawEdge::new(node_idx, values.len() - 1, REF.into()));
-                        } else {
-                            // The `$ref` value is not a string - explore it further
-                            push!(stack, node_idx, value, REF, seen, resolver, folders);
-                        };
-                    } else {
-                        push!(stack, node_idx, value, key, seen, resolver, folders);
+                        }
+                        "maximum" => {
+                            push_not_schema!(
+                                stack,
+                                node_idx,
+                                value,
+                                KeywordName::Maximum,
+                                seen,
+                                resolver,
+                                folders
+                            );
+                        }
+                        "properties" => {
+                            push_not_schema!(
+                                stack,
+                                node_idx,
+                                value,
+                                KeywordName::Properties,
+                                seen,
+                                resolver,
+                                folders
+                            );
+                        }
+                        unknown => {
+                            println!("Unknown keyword: {}", unknown)
+                        }
                     }
                 }
             }
             Value::Array(items) => {
                 for (idx, item) in items.iter().enumerate() {
-                    push!(stack, node_idx, item, idx, seen, resolver, folders);
+                    push_schema!(stack, node_idx, item, idx, seen, resolver, folders);
                 }
             }
             _ => {}
@@ -420,25 +485,20 @@ fn build(values: Vec<&Value>, edges: &mut Vec<RawEdge>) -> (usize, Vec<Keyword>,
     let mut head_end = 0_usize;
     for edge in edges {
         match &edge.label {
-            EdgeLabel::Key(key) => match key.as_ref() {
-                "maximum" => {
-                    if edge.source == 0 {
-                        head_end += 1;
-                    }
-                    let value = values[edge.target];
-                    keywords.push(validation::Maximum::build(value.as_u64().unwrap()))
+            EdgeLabel::Keyword(KeywordName::Maximum) => {
+                if edge.source == 0 {
+                    head_end += 1;
                 }
-                "properties" => {
-                    if edge.source == 0 {
-                        head_end += 1;
-                    }
-                    keywords.push(applicator::Properties::build())
+                let value = values[edge.target];
+                keywords.push(validation::Maximum::build(value.as_u64().unwrap()))
+            }
+            EdgeLabel::Keyword(KeywordName::Properties) => {
+                if edge.source == 0 {
+                    head_end += 1;
                 }
-                other => {
-                    println!("OTHER: {}", other)
-                }
-            },
-            EdgeLabel::Index(_) => {}
+                keywords.push(applicator::Properties::build())
+            }
+            _ => {}
         }
     }
     (head_end, keywords, new_edges)
@@ -588,11 +648,27 @@ mod tests {
             c!({"maximum": 5}),
             c!(5),
         ],
-        &[edge(0, 1, "maximum")],
+        &[edge(0, 1, KeywordName::Maximum)],
         &[j!({"maximum": 5}), j!(5)],
-        &[edge(0, 1, "maximum")],
+        &[edge(0, 1, KeywordName::Maximum)],
         &[];
         "No reference"
+    )]
+    #[test_case(
+        j!({"properties": {"maximum": true}}),
+        &[
+            c!({"properties": {"maximum": true}}),
+            c!({"maximum": true}),
+            c!(true),
+        ],
+        &[
+            edge(0, 1, KeywordName::Properties),
+            edge(1, 2, "maximum"),
+        ],
+        &[j!({"maximum": 5}), j!(5)],
+        &[edge(0, 1, KeywordName::Maximum)],
+        &[];
+        "Not a keyword"
     )]
     #[test_case(
         j!({
