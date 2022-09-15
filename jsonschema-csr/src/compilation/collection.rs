@@ -152,7 +152,17 @@ impl<'s> Collector<'s> {
             let node_id = self.add_concrete(scope.node);
             // Traverse composite variants
             match scope.node {
-                Value::Object(object) => self.collect_object(object, node_id, &mut scope)?,
+                Value::Object(object) => {
+                    match &scope.parent {
+                        // Some keywords expect values to be schemas.
+                        // For example, all values inside the `properties` keyword.
+                        Some((_, EdgeLabel::Keyword(KeywordName::Properties))) => {}
+                        // Parent is not a keyword - do not traverse it.
+                        Some(_) => {}
+                        // Root - it is a schema
+                        None => self.collect_schema(object, node_id, &mut scope)?,
+                    }
+                }
                 Value::Array(array) => self.collect_array(array, node_id, &scope),
                 _ => {}
             };
@@ -164,7 +174,7 @@ impl<'s> Collector<'s> {
         Ok((self.nodes, self.edges))
     }
 
-    fn collect_object(
+    fn collect_schema(
         &mut self,
         object: &'s Map<String, Value>,
         parent_id: usize,
@@ -214,6 +224,24 @@ impl<'s> Collector<'s> {
             }
         }
         Ok(())
+    }
+
+    fn collect_object(
+        &mut self,
+        object: &'s Map<String, Value>,
+        parent_id: usize,
+        scope: &mut CollectionScope<'s>,
+    ) {
+        for (key, value) in object {
+            self.push(
+                ScopeKind::Schema,
+                value,
+                parent_id,
+                key,
+                scope.folders.clone(),
+                scope.resolver,
+            );
+        }
     }
 
     /// Collect JSON array values.
