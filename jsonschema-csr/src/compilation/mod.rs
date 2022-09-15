@@ -14,7 +14,7 @@ use crate::{
     vocabularies::Keyword,
 };
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use url::Url;
 
 mod collection;
@@ -27,7 +27,7 @@ use error::Result;
 use crate::{
     compilation::{
         edges::EdgeLabel,
-        resolver::{parse_reference, Reference},
+        resolver::{is_local_reference, with_folders},
     },
     vocabularies::{applicator, validation, KeywordName},
 };
@@ -59,7 +59,7 @@ impl JsonSchema {
         // Build resolvers for external schemas
         let resolvers = build_resolvers(&external);
         // Collect all values and resolve references
-        let (values, mut edges) = collect(schema, &resolvers)?;
+        let (values, mut edges) = collection::collect(schema, &root_resolver, &resolvers)?;
         // Build a `Keyword` graph together with dropping not needed nodes and edges
         let mut values = materialize(values, &mut edges);
         minimize(&mut values, &mut edges);
@@ -167,16 +167,6 @@ fn fetch_external_reference(
     Ok(())
 }
 
-fn with_folders(scope: &Url, reference: &str, folders: &[&str]) -> Result<Url> {
-    let mut location = scope.clone();
-    if folders.len() > 1 {
-        for folder in folders.iter().skip(1) {
-            location = location.join(folder)?;
-        }
-    }
-    Ok(location.join(reference)?)
-}
-
 fn fetch_and_store(
     store: &mut HashMap<Url, Value>,
     scope: &Url,
@@ -218,212 +208,6 @@ pub(crate) enum ValueReference<'schema> {
     Concrete(&'schema Value),
     /// Resolved `$ref` to a JSON value.
     Virtual(&'schema Value),
-}
-
-#[derive(Debug)]
-struct SeenValues(HashSet<*const Value>);
-
-impl SeenValues {
-    pub(crate) fn new() -> Self {
-        Self(HashSet::new())
-    }
-    #[inline]
-    pub(crate) fn insert(&mut self, value: &Value) -> bool {
-        self.0.insert(value as *const _)
-    }
-}
-
-#[derive(Debug)]
-struct Values<'a>(Vec<ValueReference<'a>>);
-
-impl<'a> Values<'a> {
-    pub(crate) fn new() -> Self {
-        Self(Vec::new())
-    }
-    pub(crate) fn add_concrete(&mut self, value: &'a Value) {
-        self.0.push(ValueReference::Concrete(value))
-    }
-    pub(crate) fn add_virtual(&mut self, value: &'a Value) {
-        self.0.push(ValueReference::Virtual(value))
-    }
-    pub(crate) fn len(&self) -> usize {
-        self.0.len()
-    }
-    pub(crate) fn into_inner(self) -> Vec<ValueReference<'a>> {
-        self.0
-    }
-}
-
-fn is_local_reference(reference: &str) -> bool {
-    reference.starts_with('#')
-}
-
-macro_rules! push {
-    ($stack: expr, $scope: expr, $idx: expr, $value: expr, $label: expr, $seen: expr, $resolver: expr, $folders: expr) => {
-        // Push the new value only if it wasn't seen yet.
-        // Insert it immediately to avoid pushing references to the same target from multiple places
-        if $seen.insert($value) {
-            $stack.push((
-                $scope,
-                Some(($idx, crate::compilation::edges::label($label))),
-                $folders.clone(),
-                $resolver,
-                $value,
-            ));
-        }
-    };
-}
-
-macro_rules! push_schema {
-    ($stack: expr, $idx: expr, $value: expr, $label: expr, $seen: expr, $resolver: expr, $folders: expr) => {
-        push!(
-            $stack,
-            crate::compilation::Scope::Schema,
-            $idx,
-            $value,
-            $label,
-            $seen,
-            $resolver,
-            $folders
-        )
-    };
-}
-
-macro_rules! push_not_schema {
-    ($stack: expr, $idx: expr, $value: expr, $label: expr, $seen: expr, $resolver: expr, $folders: expr) => {
-        push!(
-            $stack,
-            crate::compilation::Scope::NotSchema,
-            $idx,
-            $value,
-            $label,
-            $seen,
-            $resolver,
-            $folders
-        )
-    };
-}
-
-enum Scope {
-    Schema,
-    NotSchema,
-}
-
-/// The main goal of this phase is to collect all nodes from the input schema and its remote
-/// dependencies into a single graph where each vertex is a reference to a JSON value from these
-/// schemas. Each edge is represented as a pair indexes into the vertex vector.
-///
-/// This representation format is efficient to construct the schema graph, but not for input
-/// validation. Input requires arbitrary traversal order from the root node, because it depends on
-/// the input value - certain schema branches are needed only for certain types or values.
-/// For example, `properties` sub-schemas are needed only if the input contains matching keys.
-fn collect<'a>(
-    schema: &'a Value,
-    resolvers: &'a HashMap<&str, Resolver>,
-) -> Result<(Vec<ValueReference<'a>>, Vec<RawEdge>)> {
-    let mut values = Values::new();
-    let mut edges = vec![];
-    // todo - reuse resolver
-    let resolver = Resolver::new(schema, scope_of(schema)?);
-    let mut stack = vec![(Scope::Schema, None, vec![], &resolver, schema)];
-    let mut seen = SeenValues::new();
-    while let Some((scope, parent, mut folders, mut resolver, node)) = stack.pop() {
-        let node_idx = values.len();
-        // Mark this value as seen to prevent re-traversing it if any reference leads to it
-        seen.insert(node);
-        values.add_concrete(node);
-        match node {
-            Value::Object(object) => {
-                // Track folder changes within sub-schemas
-                if let Some(id) = id_of_object(object) {
-                    folders.push(id);
-                }
-                for (key, value) in object {
-                    match key.as_str() {
-                        "$ref" => {
-                            if let Value::String(ref_string) = value {
-                                match parse_reference(ref_string)? {
-                                    Reference::Absolute(location) => {
-                                        let resolved = if let Some(resolver) =
-                                            resolvers.get(location.as_str())
-                                        {
-                                            let (folders, resolved) =
-                                                resolver.resolve(ref_string)?;
-                                            push_schema!(
-                                                stack, node_idx, resolved, REF, seen, resolver,
-                                                folders
-                                            );
-                                            resolved
-                                        } else {
-                                            let (_, resolved) = resolver.resolve(ref_string)?;
-                                            resolved
-                                        };
-                                        values.add_virtual(resolved);
-                                    }
-                                    Reference::Relative(location) => {
-                                        if !is_local_reference(location) {
-                                            let location =
-                                                with_folders(resolver.scope(), location, &folders)?;
-                                            if !resolver.contains(location.as_str()) {
-                                                resolver = resolvers
-                                                    .get(location.as_str())
-                                                    .expect("Unknown reference");
-                                            }
-                                        };
-                                        let (folders, resolved) = resolver.resolve(location)?;
-                                        values.add_virtual(resolved);
-                                        // Push the resolved value onto the stack to explore them further
-                                        push_schema!(
-                                            stack, node_idx, resolved, REF, seen, resolver, folders
-                                        );
-                                    }
-                                };
-                                edges.push(RawEdge::new(node_idx, values.len() - 1, REF.into()));
-                            } else {
-                                // The `$ref` value is not a string - explore it further
-                                push_schema!(stack, node_idx, value, REF, seen, resolver, folders);
-                            };
-                        }
-                        "maximum" => {
-                            push_not_schema!(
-                                stack,
-                                node_idx,
-                                value,
-                                KeywordName::Maximum,
-                                seen,
-                                resolver,
-                                folders
-                            );
-                        }
-                        "properties" => {
-                            push_not_schema!(
-                                stack,
-                                node_idx,
-                                value,
-                                KeywordName::Properties,
-                                seen,
-                                resolver,
-                                folders
-                            );
-                        }
-                        unknown => {
-                            println!("Unknown keyword: {}", unknown)
-                        }
-                    }
-                }
-            }
-            Value::Array(items) => {
-                for (idx, item) in items.iter().enumerate() {
-                    push_schema!(stack, node_idx, item, idx, seen, resolver, folders);
-                }
-            }
-            _ => {}
-        };
-        if let Some((parent_idx, label)) = parent {
-            edges.push(RawEdge::new(parent_idx, node_idx, label));
-        }
-    }
-    Ok((values.into_inner(), edges))
 }
 
 /// Make all virtual edges point to concrete values.
@@ -1076,7 +860,7 @@ mod tests {
         let root = Resolver::new(&schema, scope_of(&schema).unwrap());
         let external = fetch_external(&schema, &root).unwrap();
         let resolvers = build_resolvers(&external);
-        let (values_, mut edges_) = collect(&schema, &resolvers).unwrap();
+        let (values_, mut edges_) = collection::collect(&schema, &root, &resolvers).unwrap();
         print_values(&values_);
         assert_eq!(values_, values);
         assert_concrete_references(&values_);
@@ -1109,7 +893,7 @@ mod tests {
                         let root = Resolver::new(&schema, scope_of(&schema).unwrap());
                         let external = fetch_external(schema, &root).unwrap();
                         let resolvers = build_resolvers(&external);
-                        let (values_, _) = collect(&schema, &resolvers).unwrap();
+                        let (values_, _) = collection::collect(&schema, &root, &resolvers).unwrap();
                         print_values(&values_);
                         assert_concrete_references(&values_);
                         assert_virtual_references(&values_);
