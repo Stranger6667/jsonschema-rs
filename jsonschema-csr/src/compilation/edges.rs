@@ -32,14 +32,6 @@ pub(crate) enum EdgeLabel {
     Index(usize),
 }
 
-/// Create a new `EdgeLabel`.
-///
-/// We can use the `Into` trait directly, but a separate constructor allows us to avoid
-/// specifying types on containers.
-pub(crate) fn label(value: impl Into<EdgeLabel>) -> EdgeLabel {
-    value.into()
-}
-
 impl From<usize> for EdgeLabel {
     fn from(value: usize) -> Self {
         EdgeLabel::Index(value)

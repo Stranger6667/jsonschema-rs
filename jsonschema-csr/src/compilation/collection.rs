@@ -2,9 +2,8 @@ use super::{
     super::vocabularies::KeywordName,
     edges::{EdgeLabel, RawEdge},
     error::Result,
-    resolver::{
-        id_of_object, is_local_reference, parse_reference, with_folders, Reference, Resolver,
-    },
+    references::{self, Reference},
+    resolving::{id_of_object, with_folders, Resolver},
     ValueReference,
 };
 use serde_json::{Map, Value};
@@ -264,7 +263,7 @@ impl<'s> Collector<'s> {
         node_id: usize,
         scope: &mut CollectionScope<'s>,
     ) -> Result<()> {
-        let next_id = match parse_reference(reference)? {
+        let next_id = match Reference::try_from(reference)? {
             Reference::Absolute(location) => {
                 let resolved = if let Some(resolver) = self.resolvers.get(location.as_str()) {
                     let (folders, resolved) = resolver.resolve(reference)?;
@@ -285,7 +284,7 @@ impl<'s> Collector<'s> {
             }
             Reference::Relative(location) => {
                 let mut resolver = scope.resolver;
-                if !is_local_reference(location) {
+                if !references::is_local(location) {
                     let location = with_folders(resolver.scope(), location, &scope.folders)?;
                     if !resolver.contains(location.as_str()) {
                         resolver = self

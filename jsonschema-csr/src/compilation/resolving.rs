@@ -1,19 +1,18 @@
-use super::error::Result;
-use crate::compilation::error::Error;
+use super::{error::Result, references};
 use once_cell::sync::Lazy;
 use serde_json::{Map, Value};
 use std::{borrow::Cow, collections::HashMap};
 use url::Url;
 
-pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
-pub(crate) static DEFAULT_SCOPE: Lazy<Url> =
+const DEFAULT_ROOT_URL: &str = "json-schema:///";
+static DEFAULT_SCOPE: Lazy<Url> =
     Lazy::new(|| Url::parse(DEFAULT_ROOT_URL).expect("Is a valid URL"));
 
-pub(crate) fn is_default_scope(scope: &Url) -> bool {
+fn is_default_scope(scope: &Url) -> bool {
     scope == &*DEFAULT_SCOPE
 }
 
-pub(crate) fn id_of(schema: &Value) -> Option<&str> {
+fn id_of(schema: &Value) -> Option<&str> {
     schema.as_object().and_then(id_of_object)
 }
 
@@ -32,10 +31,6 @@ pub fn scope_of(schema: &Value) -> Result<Url> {
     }
 }
 
-pub(crate) fn is_local_reference(reference: &str) -> bool {
-    reference.starts_with('#')
-}
-
 pub(crate) fn with_folders(scope: &Url, reference: &str, folders: &[&str]) -> Result<Url> {
     let mut location = scope.clone();
     if folders.len() > 1 {
@@ -46,28 +41,6 @@ pub(crate) fn with_folders(scope: &Url, reference: &str, folders: &[&str]) -> Re
     Ok(location.join(reference)?)
 }
 
-pub(crate) enum Reference<'a> {
-    Absolute(Url),
-    Relative(&'a str),
-}
-
-pub(crate) fn parse_reference(value: &str) -> Result<Reference> {
-    match Url::parse(value) {
-        // Remote reference:
-        //   `http://localhost:1234/subSchemas.json#/integer`
-        // Location-independent identifier with an absolute URI:
-        //   `http://localhost:1234/bar#foo`
-        Ok(mut location) => {
-            location.set_fragment(None);
-            Ok(Reference::Absolute(location))
-        }
-        // Location-independent identifier:
-        //   `#foo`
-        Err(url::ParseError::RelativeUrlWithoutBase) => Ok(Reference::Relative(value)),
-        Err(error) => Err(Error::InvalidUrl(error)),
-    }
-}
-
 #[derive(Debug)]
 pub struct Resolver<'schema> {
     document: &'schema Value,
@@ -76,7 +49,12 @@ pub struct Resolver<'schema> {
 }
 
 impl<'schema> Resolver<'schema> {
-    pub fn new(document: &'schema Value, scope: Url) -> Self {
+    /// Create a new resolver with automatic scope detection.
+    pub fn new(document: &'schema Value) -> Result<Self> {
+        Ok(Self::with_scope(document, scope_of(document)?))
+    }
+    /// Create a resolver with an explicit scope.
+    pub fn with_scope(document: &'schema Value, scope: Url) -> Self {
         let schemas = collect_schemas(document, scope.clone());
         Self {
             document,
@@ -105,13 +83,10 @@ impl<'schema> Resolver<'schema> {
             let raw_pointer = to_pointer(&url);
             if raw_pointer == "#" {
                 Ok((vec![], self.document))
+            } else if let Some((folders, resolved)) = pointer(self.document, &raw_pointer) {
+                Ok((folders, resolved))
             } else {
-                // TODO. use a more efficient impl
-                if let Some((folders, resolved)) = pointer(self.document, &raw_pointer) {
-                    Ok((folders, resolved))
-                } else {
-                    panic!("Failed to resolve: {}", reference)
-                }
+                panic!("Failed to resolve: {}", reference)
             }
         }
     }
@@ -270,6 +245,120 @@ fn collect_schemas(schema: &Value, scope: Url) -> HashMap<String, &Value> {
         }
     }
     store
+}
+
+/// Fetch all external schemas reachable from the root.
+pub(crate) fn fetch_external(schema: &Value, resolver: &Resolver) -> Result<HashMap<Url, Value>> {
+    let mut store = HashMap::new();
+    fetch_routine(schema, &mut store, resolver)?;
+    Ok(store)
+}
+
+/// Recursive routine for traversing a schema and fetching external references.
+fn fetch_routine(
+    schema: &Value,
+    store: &mut HashMap<Url, Value>,
+    resolver: &Resolver,
+) -> Result<()> {
+    // Current schema id - if occurs in a reference, then there is no need to resolve it
+    let scope = scope_of(schema)?;
+    let mut stack = vec![(vec![], schema)];
+    while let Some((mut folders, value)) = stack.pop() {
+        match value {
+            // Only objects may have references to external schemas
+            Value::Object(object) => {
+                if let Some(id) = id_of_object(object) {
+                    folders.push(id);
+                }
+                for (key, value) in object {
+                    if key == "$ref"
+                        && value
+                            .as_str()
+                            .map_or(false, |value| !references::is_local(value))
+                    {
+                        if let Some(reference) = value.as_str() {
+                            if resolver.contains(reference) {
+                                continue;
+                            }
+                        }
+                        fetch_external_reference(value, &folders, store, &scope, resolver)?;
+                    } else {
+                        // Explore any other key
+                        stack.push((folders.clone(), value))
+                    }
+                }
+            }
+            // Explore arrays further
+            Value::Array(items) => {
+                for item in items {
+                    stack.push((folders.clone(), item))
+                }
+            }
+            // Primitive types do not contain any references, skip
+            _ => continue,
+        }
+    }
+    Ok(())
+}
+
+/// If reference is pointing to an external resource, then fetch & store it.
+fn fetch_external_reference(
+    value: &Value,
+    folders: &[&str],
+    store: &mut HashMap<Url, Value>,
+    scope: &Url,
+    resolver: &Resolver,
+) -> Result<()> {
+    if let Some(location) = without_fragment(value) {
+        // Resolve only references that are:
+        //   - pointing to another resource
+        //   - are not already resolved
+        fetch_and_store(store, scope, location, resolver)?;
+    } else if !is_default_scope(scope) {
+        if let Some(reference) = value.as_str() {
+            let location = with_folders(scope, reference, folders)?;
+            fetch_and_store(store, scope, location, resolver)?;
+        }
+    }
+    Ok(())
+}
+
+fn fetch_and_store(
+    store: &mut HashMap<Url, Value>,
+    scope: &Url,
+    location: Url,
+    resolver: &Resolver,
+) -> Result<()> {
+    if location != *scope && !store.contains_key(&location) && !resolver.contains(location.as_str())
+    {
+        let response = reqwest::blocking::get(location.as_str())?;
+        let document = response.json::<Value>()?;
+        // Make a recursive call to the callee routine
+        fetch_routine(&document, store, resolver)?;
+        store.insert(location, document);
+    }
+    Ok(())
+}
+
+/// Extract a fragment-less URL from the reference value.
+fn without_fragment(value: &Value) -> Option<Url> {
+    if let Some(Ok(mut location)) = value.as_str().map(Url::parse) {
+        location.set_fragment(None);
+        Some(location)
+    } else {
+        None
+    }
+}
+
+pub(crate) fn build_resolvers(external: &HashMap<Url, Value>) -> HashMap<&str, Resolver> {
+    let mut resolvers = HashMap::with_capacity(external.len());
+    for (scope, document) in external {
+        resolvers.insert(
+            scope.as_str(),
+            Resolver::with_scope(document, scope.clone()),
+        );
+    }
+    resolvers
 }
 
 #[cfg(test)]
@@ -504,7 +593,7 @@ mod tests {
     )]
     #[test_case(sub_schema_in_object(), "#", sub_schema_in_object())]
     fn resolving(schema: Value, reference: &str, expected: Value) {
-        let resolver = Resolver::new(&schema, scope_of(&schema).unwrap());
+        let resolver = Resolver::new(&schema).unwrap();
         let (_, resolved) = resolver.resolve(reference).unwrap();
         assert_eq!(resolved, &expected);
     }
