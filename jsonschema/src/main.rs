@@ -6,24 +6,24 @@ use std::{
     process,
 };
 
+use clap::Parser;
 use jsonschema::JSONSchema;
-use structopt::StructOpt;
 
 type BoxErrorResult<T> = Result<T, Box<dyn Error>>;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "jsonschema")]
+#[derive(Parser)]
+#[clap(name = "jsonschema")]
 struct Cli {
     /// A path to a JSON instance (i.e. filename.json) to validate (may be specified multiple times).
-    #[structopt(short = "i", long = "instance")]
+    #[clap(short = 'i', long = "instance")]
     instances: Option<Vec<PathBuf>>,
 
     /// The JSON Schema to validate with (i.e. schema.json).
-    #[structopt(parse(from_os_str), required_unless("version"))]
+    #[clap(parse(from_os_str), required_unless("version"))]
     schema: Option<PathBuf>,
 
     /// Show program's version number and exit.
-    #[structopt(short = "v", long = "version")]
+    #[clap(short = 'v', long = "version")]
     version: bool,
 }
 
