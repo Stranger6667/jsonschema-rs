@@ -21,6 +21,8 @@ mod collection;
 pub(crate) mod edges;
 mod error;
 pub mod resolver;
+#[cfg(test)]
+mod testing;
 
 use error::Result;
 
@@ -347,73 +349,8 @@ mod tests {
         };
     }
 
-    /// Ensure every concrete reference is unique
-    fn assert_concrete_references(values: &[ValueReference]) {
-        let mut seen = HashMap::new();
-        for (index, value) in values.iter().enumerate() {
-            if let ValueReference::Concrete(reference) = value {
-                if let Some(existing_index) = seen.insert(*reference as *const _, index) {
-                    panic!(
-                        "Concrete reference `{}` at index {} was already seen at index {}",
-                        reference, index, existing_index
-                    )
-                }
-            }
-        }
-    }
-
-    /// Ensure every virtual reference points to a concrete one.
-    fn assert_virtual_references(values: &[ValueReference]) {
-        'outer: for (reference_index, value) in values.iter().enumerate() {
-            if let ValueReference::Virtual(reference) = value {
-                for (target_index, target) in values.iter().enumerate() {
-                    if let ValueReference::Concrete(target) = target {
-                        println!(
-                            "Compare\n  `{}` ({:p}) at {} vs `{}` ({:p}) at {}",
-                            reference,
-                            *reference as *const _,
-                            reference_index,
-                            target,
-                            *target as *const _,
-                            target_index
-                        );
-                        if std::ptr::eq(*reference, *target) {
-                            // Found! Check the next one
-                            println!(
-                                "Found for `{}` ({:p}) at {}",
-                                reference, *reference as *const _, reference_index
-                            );
-                            continue 'outer;
-                        }
-                    }
-                }
-                panic!(
-                    "Failed to find a concrete reference for a virtual reference `{}` at index {}",
-                    reference, reference_index
-                )
-            }
-        }
-    }
-
     fn edge(source: usize, target: usize, label: impl Into<EdgeLabel>) -> RawEdge {
-        RawEdge {
-            source,
-            target,
-            label: label.into(),
-        }
-    }
-
-    fn print_values(values: &[ValueReference]) {
-        for (i, v) in values.iter().enumerate() {
-            match v {
-                ValueReference::Concrete(r) => {
-                    println!("C({}): {}", i, r)
-                }
-                ValueReference::Virtual(r) => {
-                    println!("V({}): {}", i, r)
-                }
-            }
-        }
+        RawEdge::new(source, target, label.into())
     }
 
     const SELF_REF: &str = "#";
@@ -861,10 +798,10 @@ mod tests {
         let external = fetch_external(&schema, &root).unwrap();
         let resolvers = build_resolvers(&external);
         let (values_, mut edges_) = collection::collect(&schema, &root, &resolvers).unwrap();
-        print_values(&values_);
+        testing::print_values(&values_);
         assert_eq!(values_, values);
-        assert_concrete_references(&values_);
-        assert_virtual_references(&values_);
+        testing::assert_concrete_references(&values_);
+        testing::assert_virtual_references(&values_);
         assert_eq!(edges_, edges);
         assert_eq!(resolvers.keys().cloned().collect::<Vec<&str>>(), keys);
         let mut values = materialize(values_, &mut edges_);
@@ -894,9 +831,9 @@ mod tests {
                         let external = fetch_external(schema, &root).unwrap();
                         let resolvers = build_resolvers(&external);
                         let (values_, _) = collection::collect(&schema, &root, &resolvers).unwrap();
-                        print_values(&values_);
-                        assert_concrete_references(&values_);
-                        assert_virtual_references(&values_);
+                        testing::print_values(&values_);
+                        testing::assert_concrete_references(&values_);
+                        testing::assert_virtual_references(&values_);
                     }
                 }
             }
