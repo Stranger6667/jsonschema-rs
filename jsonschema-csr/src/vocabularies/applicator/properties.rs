@@ -1,8 +1,4 @@
-use crate::{
-    compilation::edges::EdgeLabel,
-    vocabularies::{Keyword, Validate},
-    JsonSchema,
-};
+use crate::{compilation::edges::EdgeLabel, vocabularies::Keyword, JsonSchema};
 use serde_json::Value;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -15,8 +11,8 @@ impl Properties {
     }
 }
 
-impl Validate for Properties {
-    fn is_valid(&self, schema: &JsonSchema, instance: &Value) -> bool {
+impl Properties {
+    pub(crate) fn is_valid(&self, schema: &JsonSchema, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             // TODO. edges are known upfront - no need to calculate offsets
             schema.edges[1..2].iter().all(|next| {

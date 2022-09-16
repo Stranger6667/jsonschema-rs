@@ -180,6 +180,14 @@ impl<'s> Collector<'s> {
         scope: &mut CollectionScope<'s>,
     ) -> Result<()> {
         scope.track_folder(object);
+        // Keyword - what is its value
+        // - $ref - a schema
+        // - properties - object where each value is a schema
+        // - items - object/array where each value is a schema | bool
+        // - anyOf - array where each value is a schema
+        // - if - schema
+        // - maximum - simple value
+        // - enum - simple value
         for (key, value) in object {
             match key.as_str() {
                 "$ref" => {
