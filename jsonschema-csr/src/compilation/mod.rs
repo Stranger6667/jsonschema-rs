@@ -9,6 +9,17 @@
 //!   - Virtual edges are using the `$ref` keyword to do this.
 //!
 //! TODO. add more theory about how `serde_json::Value` is represented and how CSR is represented
+//!
+//! Here is a high-level algorithm used for building a compact schema representation:
+//!   1. Recursively fetch all external schemas reachable from the input schema via references.
+//!   2. Build reference resolvers for all schemas. At this point any reference in this set of
+//!      schemas is resolvable locally without re-fetching.
+//!   3. Traverse the input schema, and collect all reachable nodes into two vectors (nodes & edges).
+//!      Traversal includes nodes referenced via `$ref`, and retain the original node types.
+//!   4. The intermediate graph is minimized by removing nodes & edges that are not needed for
+//!      validation, or represent default behavior (e.g. `uniqueItems: false`).
+//!   5. Re-build the graph by transforming the input nodes into ones that contain pre-processed
+//!      data needed for validation and do not depend on the original input type.
 mod collection;
 pub(crate) mod edges;
 mod error;
