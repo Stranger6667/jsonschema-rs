@@ -4,7 +4,6 @@ use super::{
     error::Result,
     references::{self, Reference},
     resolving::{id_of_object, with_folders, Resolver},
-    ValueReference,
 };
 use serde_json::{Map, Value};
 use std::collections::{HashMap, HashSet};
@@ -29,17 +28,7 @@ pub(crate) fn collect<'s>(
     Collector::new(schema, root_resolver, resolvers).collect()
 }
 
-// TODO. maybe it is easier to check the parent? I.e. if it is `properties`, then
-/// Defines JSON Schema specific semantic for the currently traversed value.
-enum ScopeKind {
-    Default,
-    /// The traversed object is a JSON Schema.
-    /// All its keys should be treated as JSON Schema keywords.
-    Schema,
-}
-
 struct CollectionScope<'s> {
-    kind: ScopeKind,
     parent: Option<(usize, EdgeLabel)>,
     folders: Vec<&'s str>,
     resolver: &'s Resolver<'s>,
@@ -60,7 +49,6 @@ struct CollectionStack<'s>(Vec<CollectionScope<'s>>);
 impl<'s> CollectionStack<'s> {
     pub(crate) fn new(node: &'s Value, resolver: &'s Resolver<'s>) -> Self {
         Self(vec![CollectionScope {
-            kind: ScopeKind::Schema,
             parent: None,
             folders: vec![],
             resolver,
@@ -124,7 +112,6 @@ impl<'s> Collector<'s> {
 
     fn push(
         &mut self,
-        kind: ScopeKind,
         node: &'s Value,
         index: usize,
         label: impl Into<EdgeLabel>,
@@ -133,7 +120,6 @@ impl<'s> Collector<'s> {
     ) {
         if self.mark_seen(node) {
             self.stack.push(CollectionScope {
-                kind,
                 parent: Some((index, label.into())),
                 folders,
                 resolver,
@@ -149,22 +135,41 @@ impl<'s> Collector<'s> {
             // the `$ref` keyword, it is possible to reach this node from multiple nodes
             self.mark_seen(scope.node);
             let node_id = self.add_concrete(scope.node);
-            // Traverse composite variants
-            match scope.node {
-                Value::Object(object) => {
-                    match &scope.parent {
-                        // Some keywords expect values to be schemas.
-                        // For example, all values inside the `properties` keyword.
-                        Some((_, EdgeLabel::Keyword(KeywordName::Properties))) => {}
-                        // Parent is not a keyword - do not traverse it.
-                        Some(_) => {}
-                        // Root - it is a schema
-                        None => self.collect_schema(object, node_id, &mut scope)?,
+            // Depending on the parent node, collect values differently. In some cases, `maximum`
+            // is a keyword, and is a property name in others:
+            //
+            //   {"maximum": 1}
+            //
+            // vs.
+            //
+            //   {"properties": {"maximum": true}}
+            // TODO. track folders properly
+            match &scope.parent {
+                // Some keywords expect values to be schemas.
+                // For example, all values inside the `properties` keyword.
+                // TODO: refactor to support different value types without duplication
+                //       `items` can accept array & object & bool
+                Some((_, EdgeLabel::Keyword(KeywordName::Properties | KeywordName::Items))) => {
+                    if let Value::Object(object) = scope.node {
+                        for (key, value) in object {
+                            self.mark_seen(value);
+                            let value_id = self.add_concrete(value);
+                            self.add_edge(node_id, value_id, key);
+                            if let Value::Object(object) = value {
+                                self.collect_schema(object, value_id, &mut scope)?;
+                            }
+                        }
                     }
                 }
-                Value::Array(array) => self.collect_array(array, node_id, &scope),
-                _ => {}
-            };
+                // Referenced schemas & root
+                Some((_, EdgeLabel::Keyword(KeywordName::Ref))) | None => {
+                    if let Value::Object(object) = scope.node {
+                        self.collect_schema(object, node_id, &mut scope)?
+                    }
+                }
+                // Parent is not a keyword or keyword does not imply sub-schemas
+                Some(_) => {}
+            }
             // Add an edge between the parent node and this one
             if let Some((parent_id, label)) = scope.parent {
                 self.add_edge(parent_id, node_id, label);
@@ -189,79 +194,37 @@ impl<'s> Collector<'s> {
         // - maximum - simple value
         // - enum - simple value
         for (key, value) in object {
-            match key.as_str() {
-                "$ref" => {
-                    if let Value::String(reference) = value {
-                        self.collect_reference(reference, parent_id, scope)?;
-                    } else {
-                        // The `$ref` value is not a string - explore it further
-                        self.push(
-                            ScopeKind::Schema,
-                            value,
-                            parent_id,
-                            "$ref",
-                            scope.folders.clone(),
-                            scope.resolver,
-                        );
-                    };
+            if key == "$ref" {
+                if let Value::String(reference) = value {
+                    self.collect_reference(reference, parent_id, scope)?;
                 }
-                "maximum" => {
-                    self.push(
-                        ScopeKind::Default,
-                        value,
-                        parent_id,
-                        KeywordName::Maximum,
-                        scope.folders.clone(),
-                        scope.resolver,
-                    );
-                }
-                "properties" => {
-                    self.push(
-                        ScopeKind::Default,
-                        value,
-                        parent_id,
-                        KeywordName::Properties,
-                        scope.folders.clone(),
-                        scope.resolver,
-                    );
-                }
-                unknown => {
-                    println!("Unknown keyword: {}", unknown)
-                }
+            } else {
+                let keyword = match key.as_str() {
+                    "items" => KeywordName::Items,
+                    "maximum" => KeywordName::Maximum,
+                    "properties" => KeywordName::Properties,
+                    "type" => KeywordName::Type,
+                    unknown => {
+                        println!("Unknown keyword: {}", unknown);
+                        continue;
+                    }
+                };
+                self.push(
+                    value,
+                    parent_id,
+                    keyword,
+                    scope.folders.clone(),
+                    scope.resolver,
+                );
             }
         }
         Ok(())
     }
 
-    fn collect_object(
-        &mut self,
-        object: &'s Map<String, Value>,
-        parent_id: usize,
-        scope: &mut CollectionScope<'s>,
-    ) {
-        for (key, value) in object {
-            self.push(
-                ScopeKind::Schema,
-                value,
-                parent_id,
-                key,
-                scope.folders.clone(),
-                scope.resolver,
-            );
-        }
-    }
-
     /// Collect JSON array values.
     fn collect_array(&mut self, array: &'s [Value], parent_id: usize, scope: &CollectionScope<'s>) {
         for (id, item) in array.iter().enumerate() {
-            self.push(
-                ScopeKind::Default,
-                item,
-                parent_id,
-                id,
-                scope.folders.clone(),
-                scope.resolver,
-            );
+            self.push(item, parent_id, id, scope.folders.clone(), scope.resolver);
         }
     }
 
@@ -276,7 +239,6 @@ impl<'s> Collector<'s> {
                 let resolved = if let Some(resolver) = self.resolvers.get(location.as_str()) {
                     let (folders, resolved) = resolver.resolve(reference)?;
                     self.push(
-                        ScopeKind::Schema,
                         resolved,
                         node_id,
                         KeywordName::Ref,
@@ -304,7 +266,6 @@ impl<'s> Collector<'s> {
                 let (folders, resolved) = resolver.resolve(location)?;
                 // Push the resolved value onto the stack to explore them further
                 self.push(
-                    ScopeKind::Schema,
                     resolved,
                     node_id,
                     KeywordName::Ref,
@@ -317,4 +278,12 @@ impl<'s> Collector<'s> {
         self.add_edge(node_id, next_id, KeywordName::Ref);
         Ok(())
     }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) enum ValueReference<'schema> {
+    /// Reference to a concrete JSON value.
+    Concrete(&'schema Value),
+    /// Resolved `$ref` to a JSON value.
+    Virtual(&'schema Value),
 }

@@ -1,4 +1,4 @@
-use crate::{vocabularies::Keyword, JsonSchema};
+use crate::vocabularies::Keyword;
 use num_cmp::NumCmp;
 use serde_json::Value;
 

@@ -1,4 +1,4 @@
-use crate::compilation::ValueReference;
+use crate::compilation::collection::ValueReference;
 use std::collections::HashMap;
 
 /// Ensure every concrete reference is unique.

@@ -5,9 +5,10 @@ pub(crate) mod validation;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub(crate) enum KeywordName {
-    ItemsArray,
+    Items,
     Maximum,
     Properties,
+    Type,
     Ref,
 }
 
