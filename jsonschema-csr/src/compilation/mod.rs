@@ -65,7 +65,6 @@ impl JsonSchema {
         // Collect all values and resolve references
         let (values, mut edges) = collection::collect(schema, &root_resolver, &resolvers)?;
         // Build a `Keyword` graph together with dropping not needed nodes and edges
-        // let values = materialize(values, &mut edges);
         let (head_end, keywords) = build(values, &mut edges);
         // And finally, compress the edges into the CSR format
         let (offsets, edges) = compress(edges);
@@ -77,16 +76,8 @@ impl JsonSchema {
         })
     }
 
-    #[inline]
-    pub(crate) fn edges_of(&self, node_idx: usize) -> impl Iterator<Item = &CompressedEdge> {
-        let start = self.offsets[node_idx];
-        let end = self.offsets[node_idx + 1];
-        self.edges[start..end].iter()
-    }
-
     pub fn is_valid(&self, instance: &Value) -> bool {
         self.keywords[..self.head_end]
-            // TODO. each keyword should know its position, so it can find its edges
             .iter()
             .all(|keyword| keyword.is_valid(self, instance))
     }
@@ -94,7 +85,6 @@ impl JsonSchema {
 
 /// Build a keyword graph.
 fn build(values: Vec<&Value>, edges: &mut Vec<RawEdge>) -> (usize, Vec<Keyword>) {
-    // TODO: Some edges are useless - they don't represent any useful keyword
     let mut keywords = Vec::with_capacity(values.len());
     edges.sort_unstable_by_key(|edge| edge.source);
     let mut head_end = 0_usize;
@@ -111,7 +101,7 @@ fn build(values: Vec<&Value>, edges: &mut Vec<RawEdge>) -> (usize, Vec<Keyword>)
                 if edge.source == 0 {
                     head_end += 1;
                 }
-                keywords.push(applicator::Properties::build())
+                keywords.push(applicator::Properties::build(1, 2))
             }
             _ => {}
         }
