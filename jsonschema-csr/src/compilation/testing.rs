@@ -21,3 +21,5 @@ pub(crate) fn print_values(values: &[&Value]) {
         println!("[{}]: {}", id, value)
     }
 }
+
+// TODO. check that all edges point to proper keywords

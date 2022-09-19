@@ -16,13 +16,12 @@ impl Properties {
 impl Properties {
     pub(crate) fn is_valid(&self, schema: &JsonSchema, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
-            schema.edges[self.edges.clone()].iter().all(|next| {
-                if let Some(value) = match &next.label {
+            schema.edges[self.edges.clone()].iter().all(|edge| {
+                if let Some(value) = match &edge.label {
                     EdgeLabel::Key(key) => item.get(key),
                     EdgeLabel::Index(_) | EdgeLabel::Keyword(_) => unreachable!(),
                 } {
-                    // TODO: The keyword range is also known upfront for each edge - store it there
-                    schema.keywords[1..2]
+                    schema.keywords[edge.keywords.clone()]
                         .iter()
                         .all(|k| k.is_valid(schema, value))
                 } else {

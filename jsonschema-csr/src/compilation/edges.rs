@@ -1,4 +1,7 @@
 use crate::vocabularies::KeywordName;
+use std::ops::Range;
+
+// TODO: Split key/index + keyword
 
 /// A label on an edge between two JSON values.
 /// It could be either a key name or an index.
@@ -56,7 +59,7 @@ impl From<KeywordName> for EdgeLabel {
 }
 
 /// An edge between two JSON values stored in a non-compressed graph.
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub(crate) struct RawEdge {
     pub(crate) source: usize,
     pub(crate) target: usize,
@@ -71,17 +74,18 @@ impl RawEdge {
             label,
         }
     }
-    pub(crate) fn compress(&self) -> CompressedEdge {
-        CompressedEdge {
-            target: self.target,
-            label: self.label.clone(),
-        }
-    }
 }
 
-/// An edge between two JSON values stored in the compressed sparse row format.
-#[derive(Debug)]
-pub(crate) struct CompressedEdge {
-    pub(crate) target: usize,
+/// An edge between two JSON values stored in a non-compressed graph.
+#[derive(Debug, Eq, PartialEq, Hash)]
+pub(crate) struct Edge {
     pub(crate) label: EdgeLabel,
+    pub(crate) keywords: Range<usize>,
+}
+
+pub(crate) fn edge(label: impl Into<EdgeLabel>, keywords: Range<usize>) -> Edge {
+    Edge {
+        label: label.into(),
+        keywords,
+    }
 }
