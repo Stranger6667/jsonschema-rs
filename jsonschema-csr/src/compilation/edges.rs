@@ -2,7 +2,7 @@ use crate::vocabularies::KeywordName;
 
 /// A label on an edge between two JSON values.
 /// It could be either a key name or an index.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) enum EdgeLabel {
     /// # Example
     ///
@@ -56,7 +56,7 @@ impl From<KeywordName> for EdgeLabel {
 }
 
 /// An edge between two JSON values stored in a non-compressed graph.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Hash)]
 pub(crate) struct RawEdge {
     pub(crate) source: usize,
     pub(crate) target: usize,

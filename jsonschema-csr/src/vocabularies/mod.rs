@@ -3,13 +3,14 @@ use crate::JsonSchema;
 pub(crate) mod applicator;
 pub(crate) mod validation;
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
 pub(crate) enum KeywordName {
+    AllOf,
     Items,
     Maximum,
     Properties,
-    Type,
     Ref,
+    Type,
 }
 
 #[derive(Debug, Eq, PartialEq)]

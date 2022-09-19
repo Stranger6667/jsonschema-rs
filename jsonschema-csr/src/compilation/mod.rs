@@ -32,14 +32,14 @@ use crate::{
     compilation::edges::EdgeLabel,
     vocabularies::{applicator, validation, Keyword, KeywordName},
 };
-use collection::ValueReference;
 use edges::{CompressedEdge, RawEdge};
 use error::Result;
 use serde_json::Value;
 
 // TODO. Optimization ideas:
 //   - Values ordering. "Cheaper" keywords might work better if they are executed first.
-//     Example: `anyOf` where some items are very cheap and common to pass validation
+//     Example: `anyOf` where some items are very cheap and common to pass validation.
+//     collect average distance between two subsequent array accesses to measure it
 //   - Interleave values & edges in the same struct. Might improve cache locality.
 //   - Remove nodes that are not references by anything & not needed for validation.
 //     Might reduce the graph size.
@@ -65,8 +65,8 @@ impl JsonSchema {
         // Collect all values and resolve references
         let (values, mut edges) = collection::collect(schema, &root_resolver, &resolvers)?;
         // Build a `Keyword` graph together with dropping not needed nodes and edges
-        let values = materialize(values, &mut edges);
-        let (head_end, keywords, edges) = build(values, &mut edges);
+        // let values = materialize(values, &mut edges);
+        let (head_end, keywords, _) = build(values, &mut edges);
         // And finally, compress the edges into the CSR format
         let (offsets, edges) = compress(edges);
         Ok(JsonSchema {
@@ -90,55 +90,6 @@ impl JsonSchema {
             .iter()
             .all(|keyword| keyword.is_valid(self, instance))
     }
-}
-
-/// Make all virtual edges point to concrete values.
-fn materialize<'a>(values: Vec<ValueReference<'a>>, edges: &mut Vec<RawEdge>) -> Vec<&'a Value> {
-    let mut concrete = vec![];
-    for edge in edges.iter_mut() {
-        if let ValueReference::Virtual(reference) = &values[edge.target] {
-            // Find the concrete reference by comparing the pointers
-            // All virtual references point to values that are always in the `values` vector
-            // Therefore this loop should always find such a reference
-            // TODO: Avoid O^2 - store seen targets & their indices.
-            //       If not seen - check only the right side.
-            for (target_idx, target) in values.iter().enumerate() {
-                if let ValueReference::Concrete(target) = target {
-                    if std::ptr::eq(*reference, *target) {
-                        edge.target = target_idx;
-                    }
-                }
-            }
-        }
-    }
-    // Build a new vector of value by pushing only concrete values
-    // When a virtual one occurs, then all further concrete nodes will have a smaller index
-    let mut should_shift = false;
-    for value in &values {
-        match value {
-            ValueReference::Concrete(reference) => {
-                concrete.push(*reference);
-                if should_shift {
-                    for edge in &mut *edges {
-                        if edge.source >= concrete.len() {
-                            edge.source -= 1;
-                        }
-                        if edge.target >= concrete.len() {
-                            edge.target -= 1;
-                        }
-                    }
-                    should_shift = false;
-                }
-            }
-            ValueReference::Virtual(_) => {
-                should_shift = true;
-            }
-        }
-    }
-    // TODO. Is it possible to avoid deduplication?
-    edges.sort_unstable_by_key(|edge| (edge.source, edge.target));
-    edges.dedup();
-    concrete
 }
 
 /// Build a keyword graph.
@@ -214,18 +165,6 @@ mod tests {
     use std::fs;
     use test_case::test_case;
 
-    macro_rules! c {
-        ($el:tt) => {
-            ValueReference::Concrete(&j!($el))
-        };
-    }
-
-    macro_rules! v {
-        ($el:tt) => {
-            ValueReference::Virtual(&j!($el))
-        };
-    }
-
     fn edge(source: usize, target: usize, label: impl Into<EdgeLabel>) -> RawEdge {
         RawEdge::new(source, target, label.into())
     }
@@ -236,38 +175,31 @@ mod tests {
 
     #[test_case(
         j!(true),
-        &[c!(true)],
-        &[],
         &[j!(true)],
+        &[],
         &[];
         "Boolean schema"
     )]
     #[test_case(
         j!({"maximum": 5}),
         &[
-            c!({"maximum": 5}),
-            c!(5),
+            j!({"maximum": 5}),
+            j!(5),
         ],
         &[edge(0, 1, KeywordName::Maximum)],
-        &[j!({"maximum": 5}), j!(5)],
         &[];
         "No reference"
     )]
     #[test_case(
         j!({"properties": {"maximum": true}}),
         &[
-            c!({"properties": {"maximum": true}}),
-            c!({"maximum": true}),
-            c!(true),
-        ],
-        &[
-            edge(1, 2, "maximum"),
-            edge(0, 1, KeywordName::Properties),
-        ],
-        &[
             j!({"properties": {"maximum": true}}),
             j!({"maximum": true}),
             j!(true),
+        ],
+        &[
+            edge(0, 1, KeywordName::Properties),
+            edge(1, 2, "maximum"),
         ],
         &[];
         "Not a keyword"
@@ -281,21 +213,15 @@ mod tests {
             }
         }),
         &[
-            c!({"properties":{"$ref":{"maximum": 5}}}),
-            c!({"$ref":{"maximum": 5}}),
-            c!({"maximum": 5}),
-            c!(5),
-        ],
-        &[
-            edge(1, 2, "$ref"),
-            edge(0, 1, KeywordName::Properties),
-            edge(2, 3, KeywordName::Maximum),
-        ],
-        &[
             j!({"properties":{"$ref":{"maximum": 5}}}),
             j!({"$ref":{"maximum": 5}}),
             j!({"maximum": 5}),
             j!(5),
+        ],
+        &[
+            edge(0, 1, KeywordName::Properties),
+            edge(1, 2, "$ref"),
+            edge(2, 3, KeywordName::Maximum),
         ],
         &[];
         "Not a reference"
@@ -303,14 +229,10 @@ mod tests {
     #[test_case(
         j!({"$ref": SELF_REF}),
         &[
-            c!({"$ref": SELF_REF}),
-            v!({"$ref": SELF_REF}),
-        ],
-        &[
-            edge(0, 1, KeywordName::Ref),
-        ],
-        &[
             j!({"$ref": SELF_REF}),
+        ],
+        &[
+            edge(0, 0, KeywordName::Ref),
         ],
         &[];
         "Self reference"
@@ -318,20 +240,13 @@ mod tests {
     #[test_case(
         j!({"$ref": REMOTE_REF}),
         &[
-            c!({"$ref": REMOTE_REF}),
-            v!({"type": "integer"}),
-            c!({"type": "integer"}),
-            c!("integer"),
-        ],
-        &[
-            edge(0, 1, KeywordName::Ref),
-            edge(0, 2, KeywordName::Ref),
-            edge(2, 3, KeywordName::Type),
-        ],
-        &[
             j!({"$ref": REMOTE_REF}),
             j!({"type": "integer"}),
             j!("integer"),
+        ],
+        &[
+            edge(1, 2, KeywordName::Type),
+            edge(0, 1, KeywordName::Ref),
         ],
         &[REMOTE_BASE];
         "Remote reference"
@@ -344,34 +259,6 @@ mod tests {
                 "items": {"$ref": "folderInteger.json"}
             }
         }),
-        &[
-            c!({
-                "$id": "http://localhost:1234/",
-                "items": {
-                    "$id": "baseUriChange/",
-                    "items": {"$ref": "folderInteger.json"}
-                }
-            }),
-            c!({
-                "$id": "baseUriChange/",
-                "items": {"$ref": "folderInteger.json"}
-            }),
-            c!({"$ref": "folderInteger.json"}),
-            v!({"type": "integer"}),
-            c!({"type": "integer"}),
-            c!("integer"),
-            c!("baseUriChange/"),
-            c!("http://localhost:1234/"),
-        ],
-        &[
-            edge(0, 1, "items"),
-            edge(2, 3, "$ref"),
-            edge(1, 2, "items"),
-            edge(2, 4, "$ref"),
-            edge(4, 5, "type"),
-            edge(1, 6, "$id"),
-            edge(0, 7, "$id"),
-        ],
         &[
             j!({
                 "$id": "http://localhost:1234/",
@@ -387,8 +274,12 @@ mod tests {
             j!({"$ref": "folderInteger.json"}),
             j!({"type": "integer"}),
             j!("integer"),
-            j!("baseUriChange/"),
-            j!("http://localhost:1234/"),
+        ],
+        &[
+            edge(0, 1, KeywordName::Items),
+            edge(1, 2, KeywordName::Items),
+            edge(3, 4, KeywordName::Type),
+            edge(2, 3, KeywordName::Ref),
         ],
         &["http://localhost:1234/baseUriChange/folderInteger.json"];
         "Base URI change"
@@ -404,31 +295,6 @@ mod tests {
             }
         }),
         &[
-            c!({
-                "$id": "http://localhost:1234/scope_change_defs1.json",
-                "properties": {
-                    "list": {"$ref": "#/definitions"}
-                },
-                "definitions": {
-                    "$id": "baseUriChangeFolder/",
-                }
-            }),
-            c!({"list":{"$ref":"#/definitions"}}),
-            c!({"$ref":"#/definitions"}),
-            v!({"$id":"baseUriChangeFolder/"}),
-            c!({"$id":"baseUriChangeFolder/"}),
-            c!("baseUriChangeFolder/"),
-            c!("http://localhost:1234/scope_change_defs1.json"),
-        ],
-        &[
-            edge(0, 1, "properties"),
-            edge(2, 3, "$ref"),
-            edge(1, 2, "list"),
-            edge(0, 4, "definitions"),
-            edge(4, 5, "$id"),
-            edge(0, 6, "$id"),
-        ],
-        &[
             j!({
                 "$id": "http://localhost:1234/scope_change_defs1.json",
                 "properties": {
@@ -441,8 +307,11 @@ mod tests {
             j!({"list":{"$ref":"#/definitions"}}),
             j!({"$ref":"#/definitions"}),
             j!({"$id":"baseUriChangeFolder/"}),
-            j!("baseUriChangeFolder/"),
-            j!("http://localhost:1234/scope_change_defs1.json"),
+        ],
+        &[
+            edge(0, 1, KeywordName::Properties),
+            edge(1, 2, "list"),
+            edge(2, 3, KeywordName::Ref),
         ],
         &[];
         "Base URI change - change folder"
@@ -452,25 +321,15 @@ mod tests {
             "$ref": "http://localhost:1234/subSchemas.json#/refToInteger"
         }),
         &[
-            c!({"$ref": "http://localhost:1234/subSchemas.json#/refToInteger"}),
-            v!({"$ref":"#/integer"}),
-            c!({"$ref":"#/integer"}),
-            v!({"type":"integer"}),
-            c!({"type":"integer"}),
-            c!("integer"),
-        ],
-        &[
-            edge(0, 1, "$ref"),
-            edge(2, 3, "$ref"),
-            edge(0, 2, "$ref"),
-            edge(2, 4, "$ref"),
-            edge(4, 5, "type"),
-        ],
-        &[
             j!({"$ref": "http://localhost:1234/subSchemas.json#/refToInteger"}),
             j!({"$ref":"#/integer"}),
             j!({"type":"integer"}),
             j!("integer"),
+        ],
+        &[
+            edge(2, 3, KeywordName::Type),
+            edge(1, 2, KeywordName::Ref),
+            edge(0, 1, KeywordName::Ref),
         ],
         &["http://localhost:1234/subSchemas.json"];
         "Reference within remote reference"
@@ -484,37 +343,6 @@ mod tests {
                 }
             }
         }),
-        &[
-            c!({
-                "$id": "http://localhost:1234/root",
-                "properties": {
-                    "A": {
-                        "$ref": "http://localhost:1234/root"
-                    }
-                }
-            }),
-            c!({
-                "A": {
-                    "$ref": "http://localhost:1234/root"
-                }
-            }),
-            c!({"$ref": "http://localhost:1234/root"}),
-            v!({
-                "$id": "http://localhost:1234/root",
-                "properties": {
-                    "A": {
-                        "$ref": "http://localhost:1234/root"
-                    }
-                }
-            }),
-            c!("http://localhost:1234/root"),
-        ],
-        &[
-            edge(0, 1, "properties"),
-            edge(2, 3, "$ref"),
-            edge(1, 2, "A"),
-            edge(0, 4, "$id"),
-        ],
         &[
             j!({
                 "$id": "http://localhost:1234/root",
@@ -530,7 +358,11 @@ mod tests {
                 }
             }),
             j!({"$ref": "http://localhost:1234/root"}),
-            j!("http://localhost:1234/root"),
+        ],
+        &[
+            edge(0, 1, KeywordName::Properties),
+            edge(1, 2, "A"),
+            edge(2, 0, KeywordName::Ref),
         ],
         &[];
         "Absolute reference to the same schema"
@@ -543,25 +375,17 @@ mod tests {
             ]
         }),
         &[
-            c!({"allOf":[{"$ref":"#/allOf/1"},{"$ref":"#/allOf/0"}]}),
-            c!([{"$ref":"#/allOf/1"},{"$ref":"#/allOf/0"}]),
-            c!({"$ref":"#/allOf/0"}),
-            v!({"$ref":"#/allOf/1"}),
-            c!({"$ref":"#/allOf/1"}),
-            v!({"$ref":"#/allOf/0"}),
-        ],
-        &[
-            edge(0, 1, "allOf"),
-            edge(2, 3, "$ref"),
-            edge(1, 2, 1),
-            edge(4, 5, "$ref"),
-            edge(1, 4, 0),
-        ],
-        &[
             j!({"allOf":[{"$ref":"#/allOf/1"},{"$ref":"#/allOf/0"}]}),
             j!([{"$ref":"#/allOf/1"},{"$ref":"#/allOf/0"}]),
-            j!({"$ref":"#/allOf/0"}),
             j!({"$ref":"#/allOf/1"}),
+            j!({"$ref":"#/allOf/0"}),
+        ],
+        &[
+            edge(0, 1, KeywordName::AllOf),
+            edge(1, 2, 0),
+            edge(3, 2, KeywordName::Ref),
+            edge(2, 3, KeywordName::Ref),
+            edge(1, 3, 1),
         ],
         &[];
         "Multiple references to the same target"
@@ -569,68 +393,52 @@ mod tests {
     #[test_case(
         j!({
             "$id": "http://localhost:1234/tree",
-            "d": {
-                "$id": "http://localhost:1234/node",
-                "s": {
-                    "$ref": "tree"
-                },
+            "properties": {
+                "nodes": {
+                    "items": {"$ref": "node"}
+                }
             },
-            "n": {
-                "$ref": "node"
+            "definitions": {
+                "node": {
+                    "$id": "http://localhost:1234/node",
+                    "properties": {
+                        "subtree": {"$ref": "tree"}
+                    }
+                }
             }
         }),
         &[
-            c!({"$id":"http://localhost:1234/tree","d":{"$id":"http://localhost:1234/node","s":{"$ref":"tree"}},"n":{"$ref":"node"}}),
-            c!({"$ref":"node"}),
-            v!({"$id":"http://localhost:1234/node","s":{"$ref":"tree"}}),
-            c!({"$id":"http://localhost:1234/node","s":{"$ref":"tree"}}),
-            c!({"$ref":"tree"}),
-            v!({"$id":"http://localhost:1234/tree","d":{"$id":"http://localhost:1234/node","s":{"$ref":"tree"}},"n":{"$ref":"node"}}),
-            c!("http://localhost:1234/node"),
-            c!("http://localhost:1234/tree"),
-        ],
-        &[
-            edge(1, 2, "$ref"),
-            edge(0, 1, "n"),
-            edge(0, 3, "d"),
-            edge(4, 5, "$ref"),
-            edge(3, 4, "s"),
-            edge(3, 6, "$id"),
-            edge(0, 7, "$id"),
-        ],
-        &[
-            j!({"$id":"http://localhost:1234/tree","d":{"$id":"http://localhost:1234/node","s":{"$ref":"tree"}},"n":{"$ref":"node"}}),
+            j!({"$id":"http://localhost:1234/tree","definitions":{"node":{"$id":"http://localhost:1234/node","properties":{"subtree":{"$ref":"tree"}}}},"properties":{"nodes":{"items":{"$ref":"node"}}}}),
+            j!({"nodes":{"items":{"$ref":"node"}}}),
+            j!({"items":{"$ref":"node"}}),
             j!({"$ref":"node"}),
-            j!({"$id":"http://localhost:1234/node","s":{"$ref":"tree"}}),
+            j!({"$id":"http://localhost:1234/node","properties":{"subtree":{"$ref":"tree"}}}),
+            j!({"subtree":{"$ref":"tree"}}),
             j!({"$ref":"tree"}),
-            j!("http://localhost:1234/node"),
-            j!("http://localhost:1234/tree"),
+        ],
+        &[
+            edge(0, 1, KeywordName::Properties),
+            edge(1, 2, "nodes"),
+            edge(2, 3, KeywordName::Items),
+            edge(4, 5, KeywordName::Properties),
+            edge(5, 6, "subtree"),
+            edge(6, 0, KeywordName::Ref),
+            edge(3, 4, KeywordName::Ref),
         ],
         &[];
         "Recursive references between schemas"
     )]
-    fn values_and_edges(
-        schema: Value,
-        values: &[ValueReference],
-        edges: &[RawEdge],
-        concrete_values: &[Value],
-        keys: &[&str],
-    ) {
+    fn values_and_edges(schema: Value, values: &[Value], edges: &[RawEdge], keys: &[&str]) {
         let root = resolving::Resolver::new(&schema).unwrap();
         let external = resolving::fetch_external(&schema, &root).unwrap();
         let resolvers = resolving::build_resolvers(&external);
-        let (values_, mut edges_) = collection::collect(&schema, &root, &resolvers).unwrap();
+        let (values_, edges_) = collection::collect(&schema, &root, &resolvers).unwrap();
         testing::print_values(&values_);
-        assert_eq!(values_, values);
-        testing::assert_concrete_references(&values_);
-        testing::assert_virtual_references(&values_);
+        let concrete_values = values_.into_iter().cloned().collect::<Vec<Value>>();
+        assert_eq!(concrete_values, values);
         assert_eq!(edges_, edges);
+        testing::assert_unique_edges(&edges_);
         assert_eq!(resolvers.keys().cloned().collect::<Vec<&str>>(), keys);
-        let mut values = materialize(values_, &mut edges_);
-        assert_eq!(
-            values.into_iter().cloned().collect::<Vec<Value>>(),
-            concrete_values
-        );
     }
 
     #[test]
@@ -650,10 +458,8 @@ mod tests {
                         let root = resolving::Resolver::new(schema).unwrap();
                         let external = resolving::fetch_external(schema, &root).unwrap();
                         let resolvers = resolving::build_resolvers(&external);
-                        let (values_, _) = collection::collect(schema, &root, &resolvers).unwrap();
-                        testing::print_values(&values_);
-                        testing::assert_concrete_references(&values_);
-                        testing::assert_virtual_references(&values_);
+                        let (_, edges) = collection::collect(schema, &root, &resolvers).unwrap();
+                        testing::assert_unique_edges(&edges);
                     }
                 }
             }
@@ -679,7 +485,6 @@ mod tests {
         &[];
         "Absolute reference to the root schema which is not a remote"
     )]
-    // TODO. Remote without ID
     fn external_schemas(schema: Value, expected: &[&str]) {
         let root = resolving::Resolver::new(&schema).unwrap();
         let external = resolving::fetch_external(&schema, &root).unwrap();
