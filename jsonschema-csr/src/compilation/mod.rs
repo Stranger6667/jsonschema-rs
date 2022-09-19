@@ -24,7 +24,7 @@ mod collection;
 pub(crate) mod edges;
 mod error;
 mod references;
-mod resolving;
+pub mod resolving;
 #[cfg(test)]
 mod testing;
 
@@ -66,7 +66,7 @@ impl JsonSchema {
         let (values, mut edges) = collection::collect(schema, &root_resolver, &resolvers)?;
         // Build a `Keyword` graph together with dropping not needed nodes and edges
         // let values = materialize(values, &mut edges);
-        let (head_end, keywords, _) = build(values, &mut edges);
+        let (head_end, keywords) = build(values, &mut edges);
         // And finally, compress the edges into the CSR format
         let (offsets, edges) = compress(edges);
         Ok(JsonSchema {
@@ -93,10 +93,8 @@ impl JsonSchema {
 }
 
 /// Build a keyword graph.
-fn build(values: Vec<&Value>, edges: &mut Vec<RawEdge>) -> (usize, Vec<Keyword>, Vec<RawEdge>) {
-    // TODO: edges should also be new - input ones refer to the original graph
+fn build(values: Vec<&Value>, edges: &mut Vec<RawEdge>) -> (usize, Vec<Keyword>) {
     // TODO: Some edges are useless - they don't represent any useful keyword
-    let mut new_edges = vec![];
     let mut keywords = Vec::with_capacity(values.len());
     edges.sort_unstable_by_key(|edge| edge.source);
     let mut head_end = 0_usize;
@@ -118,7 +116,7 @@ fn build(values: Vec<&Value>, edges: &mut Vec<RawEdge>) -> (usize, Vec<Keyword>,
             _ => {}
         }
     }
-    (head_end, keywords, new_edges)
+    (head_end, keywords)
 }
 
 fn compress(mut edges: Vec<RawEdge>) -> (Vec<usize>, Vec<CompressedEdge>) {
