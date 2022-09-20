@@ -13,7 +13,7 @@ url = "2.2.2"
 
 [dev-dependencies]
 bench_helpers = { path = "../bench_helpers" }
-criterion = "0.3.5"
+criterion = { version = "0.4.0", features = [], default-features = false }
 test-case = "2.0.2"
 
 [features]
