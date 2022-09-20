@@ -9,7 +9,7 @@ pub(crate) fn is_local(reference: &str) -> bool {
 pub(crate) enum Reference<'a> {
     /// Absolute reference.
     /// Example: `http://localhost:1234/subSchemas.json#/integer`
-    Absolute(Url),
+    Absolute(String),
     /// Relative reference.
     /// Example: `#foo`
     Relative(&'a str),
@@ -22,7 +22,7 @@ impl<'a> TryFrom<&'a str> for Reference<'a> {
         match Url::parse(value) {
             Ok(mut location) => {
                 location.set_fragment(None);
-                Ok(Self::Absolute(location))
+                Ok(Self::Absolute(location.to_string()))
             }
             Err(url::ParseError::RelativeUrlWithoutBase) => Ok(Self::Relative(value)),
             Err(error) => Err(Error::InvalidUrl(error)),

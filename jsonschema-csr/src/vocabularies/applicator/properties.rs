@@ -17,6 +17,7 @@ impl Properties {
     pub(crate) fn is_valid(&self, schema: &JsonSchema, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             schema.edges[self.edges.clone()].iter().all(|edge| {
+                // TODO. split edges to String / usize to avoid `match` on each one
                 if let Some(value) = match &edge.label {
                     EdgeLabel::Key(key) => item.get(&**key),
                     EdgeLabel::Index(_) => None,
