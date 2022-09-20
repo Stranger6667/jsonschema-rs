@@ -42,9 +42,6 @@ use std::collections::BTreeMap;
 //     Example: `anyOf` where some items are very cheap and common to pass validation.
 //     collect average distance between two subsequent array accesses to measure it
 //   - Interleave values & edges in the same struct. Might improve cache locality.
-//   - Remove nodes that are not references by anything & not needed for validation.
-//     Might reduce the graph size.
-//   - Store root's keywords explicitly upfront to avoid calculation for small schemas
 
 #[derive(Debug)]
 pub struct JsonSchema {
@@ -65,7 +62,7 @@ impl JsonSchema {
         // Collect all values and resolve references
         let (values, edges) = collection::collect(schema, &root_resolver, &resolvers)?;
         // Build a `Keyword` graph
-        let (head_end, keywords, edges) = build(values, edges);
+        let (head_end, keywords, edges) = build(&values, edges);
         Ok(JsonSchema {
             keywords: keywords.into_boxed_slice(),
             head_end,
@@ -80,7 +77,7 @@ impl JsonSchema {
     }
 }
 
-fn build(values: Vec<&Value>, raw_edges: Vec<RawEdge>) -> (usize, Vec<Keyword>, Vec<Edge>) {
+fn build(values: &[&Value], raw_edges: Vec<RawEdge>) -> (usize, Vec<Keyword>, Vec<Edge>) {
     let mut keywords_of: BTreeMap<usize, Vec<(usize, KeywordName)>> = BTreeMap::new();
     let mut edges_of: BTreeMap<usize, Vec<RawEdge>> = BTreeMap::new();
     let mut keywords = vec![];
@@ -519,7 +516,7 @@ mod tests {
         expected_keywords: Vec<Keyword>,
         expected_edges: Vec<Edge>,
     ) {
-        let (head, keywords, edges_) = build(values, edges);
+        let (head, keywords, edges_) = build(&values, edges);
         assert_eq!(head, expected_head);
         assert_eq!(keywords, expected_keywords);
         assert_eq!(edges_, expected_edges);
