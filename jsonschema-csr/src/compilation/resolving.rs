@@ -63,7 +63,7 @@ impl<'schema> Resolver<'schema> {
         }
     }
 
-    pub fn scope(&self) -> &Url {
+    pub const fn scope(&self) -> &Url {
         &self.scope
     }
 

@@ -6,11 +6,12 @@ use super::{
     resolving::{id_of_object, with_folders, Resolver},
 };
 use serde_json::{Map, Value};
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{hash_map::Entry, BTreeMap, HashMap};
 use KeywordName::{AllOf, Items, Maximum, Properties, Ref, Type};
 
-// TODO:
-//   - Document all things
+pub(crate) type KeywordNode<'s> = (usize, &'s Value, KeywordName);
+pub(crate) type KeywordMap<'s> = BTreeMap<usize, Vec<KeywordNode<'s>>>;
+pub(crate) type EdgeMap = BTreeMap<usize, Vec<RawEdge>>;
 
 /// The main goal of this phase is to collect all nodes from the input schema and its remote
 /// dependencies into a single graph where each vertex is a reference to a JSON value from these
@@ -19,7 +20,7 @@ pub(crate) fn collect<'s>(
     schema: &'s Value,
     root_resolver: &'s Resolver,
     resolvers: &'s HashMap<&str, Resolver>,
-) -> Result<(Vec<&'s Value>, Vec<RawEdge>)> {
+) -> Result<(KeywordMap<'s>, EdgeMap)> {
     Collector::new(resolvers).collect(schema, root_resolver)
 }
 
@@ -55,8 +56,8 @@ pub(crate) struct Collector<'s> {
     resolvers: &'s HashMap<&'s str, Resolver<'s>>,
     /// Nodes of the input schema.
     nodes: Vec<&'s Value>,
-    /// Edges between graph nodes.
-    edges: Vec<RawEdge>,
+    keywords: BTreeMap<usize, Vec<(usize, &'s Value, KeywordName)>>,
+    edges: BTreeMap<usize, Vec<RawEdge>>,
     /// Nodes already seen during collection.
     seen: HashMap<*const Value, usize>,
 }
@@ -67,7 +68,8 @@ impl<'s> Collector<'s> {
         Self {
             resolvers,
             nodes: vec![],
-            edges: vec![],
+            keywords: BTreeMap::new(),
+            edges: BTreeMap::new(),
             seen: HashMap::default(),
         }
     }
@@ -75,7 +77,7 @@ impl<'s> Collector<'s> {
     /// Push a value to the tree.
     /// If value already exists there - return its index.
     fn push(&mut self, value: &'s Value) -> (ValueEntry, usize) {
-        match self.seen.entry(value as *const _) {
+        match self.seen.entry(value) {
             Entry::Occupied(entry) => (Occupied, *entry.get()),
             Entry::Vacant(entry) => {
                 let node_id = self.nodes.len();
@@ -85,29 +87,43 @@ impl<'s> Collector<'s> {
             }
         }
     }
-    fn add_edge(&mut self, source: usize, target: usize, label: impl Into<EdgeLabel>) {
-        self.edges.push(RawEdge::new(source, target, label.into()));
-    }
+
     fn add_value(
         &mut self,
         source: usize,
         value: &'s Value,
         label: impl Into<EdgeLabel>,
     ) -> (ValueEntry, usize) {
-        let (entry, target_id) = self.push(value);
-        self.add_edge(source, target_id, label);
-        (entry, target_id)
+        let (entry, target) = self.push(value);
+        self.edges
+            .entry(source)
+            .or_insert_with(Vec::new)
+            .push(RawEdge::new(source, target, label.into()));
+        (entry, target)
+    }
+    fn add_keyword(
+        &mut self,
+        source: usize,
+        value: &'s Value,
+        keyword: KeywordName,
+    ) -> (ValueEntry, usize) {
+        let (entry, target) = self.push(value);
+        self.keywords
+            .entry(source)
+            .or_insert_with(Vec::new)
+            .push((target, value, keyword));
+        (entry, target)
     }
 
     pub(crate) fn collect(
         mut self,
         node: &'s Value,
         resolver: &'s Resolver,
-    ) -> Result<(Vec<&'s Value>, Vec<RawEdge>)> {
+    ) -> Result<(KeywordMap<'s>, EdgeMap)> {
         let mut scope = CollectionScope::new(resolver);
         let (_, node_id) = self.push(node);
         self.collect_schema(node, node_id, &mut scope)?;
-        Ok((self.nodes, self.edges))
+        Ok((self.keywords, self.edges))
     }
 
     fn collect_schema(
@@ -126,13 +142,13 @@ impl<'s> Collector<'s> {
                         }
                     }
                     "maximum" => {
-                        self.add_value(parent_id, value, Maximum);
+                        self.add_keyword(parent_id, value, Maximum);
                     }
                     "type" => {
-                        self.add_value(parent_id, value, Type);
+                        self.add_keyword(parent_id, value, Type);
                     }
                     "allOf" => {
-                        if let (Vacant, source) = self.add_value(parent_id, value, AllOf) {
+                        if let (Vacant, source) = self.add_keyword(parent_id, value, AllOf) {
                             if let Value::Array(items) = value {
                                 for (id, schema) in items.iter().enumerate() {
                                     if let (Vacant, id) = self.add_value(source, schema, id) {
@@ -143,12 +159,12 @@ impl<'s> Collector<'s> {
                         }
                     }
                     "items" => {
-                        if let (Vacant, id) = self.add_value(parent_id, value, Items) {
+                        if let (Vacant, id) = self.add_keyword(parent_id, value, Items) {
                             self.collect_schema(value, id, scope)?;
                         }
                     }
                     "properties" => {
-                        if let (Vacant, source) = self.add_value(parent_id, value, Properties) {
+                        if let (Vacant, source) = self.add_keyword(parent_id, value, Properties) {
                             if let Value::Object(object) = value {
                                 for (key, schema) in object {
                                     if let (Vacant, id) = self.add_value(source, schema, key) {
@@ -172,17 +188,17 @@ impl<'s> Collector<'s> {
         scope: &mut CollectionScope<'s>,
     ) -> Result<()> {
         // Resolve reference & traverse it.
-        let target = match Reference::try_from(reference)? {
+        let (target, resolved) = match Reference::try_from(reference)? {
             Reference::Absolute(location) => {
                 if let Some(resolver) = self.resolvers.get(location.as_str()) {
                     let (folders, resolved) = resolver.resolve(reference)?;
                     let (_, target) = self.push(resolved);
                     let mut scope = CollectionScope::with_folders(resolver, folders);
                     self.collect_schema(resolved, target, &mut scope)?;
-                    target
+                    (target, resolved)
                 } else {
                     let (_, resolved) = scope.resolver.resolve(reference)?;
-                    self.push(resolved).1
+                    (self.push(resolved).1, resolved)
                 }
             }
             Reference::Relative(location) => {
@@ -202,13 +218,16 @@ impl<'s> Collector<'s> {
                     (Vacant, target) => {
                         let mut scope = CollectionScope::with_folders(resolver, folders);
                         self.collect_schema(resolved, target, &mut scope)?;
-                        target
+                        (target, resolved)
                     }
-                    (Occupied, target) => target,
+                    (Occupied, target) => (target, resolved),
                 }
             }
         };
-        self.add_edge(source, target, Ref);
+        self.keywords
+            .entry(source)
+            .or_insert_with(Vec::new)
+            .push((target, resolved, Ref));
         Ok(())
     }
 }

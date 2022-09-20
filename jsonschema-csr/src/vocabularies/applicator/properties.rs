@@ -19,7 +19,7 @@ impl Properties {
             schema.edges[self.edges.clone()].iter().all(|edge| {
                 if let Some(value) = match &edge.label {
                     EdgeLabel::Key(key) => item.get(&**key),
-                    EdgeLabel::Index(_) | EdgeLabel::Keyword(_) => unreachable!(),
+                    EdgeLabel::Index(_) => None,
                 } {
                     schema.keywords[edge.keywords.clone()]
                         .iter()

@@ -1,7 +1,4 @@
-use crate::vocabularies::KeywordName;
 use std::ops::Range;
-
-// TODO: Split key/index + keyword
 
 /// A label on an edge between two JSON values.
 /// It could be either a key name or an index.
@@ -17,13 +14,6 @@ pub(crate) enum EdgeLabel {
     /// The label for the edge between the top-level object and string "Test" is `name` if it is not
     /// a JSON Schema keyword.
     Key(Box<str>),
-    /// # Example
-    ///
-    /// `{"maximum": 5}` has `KeywordName::Maximum` as its edge label.
-    /// `{"properties": {"maximum": true}}` has "maximum" as its inner edge label.
-    ///
-    /// A separate variant is needed to distinguish between regular properties and keywords.
-    Keyword(KeywordName),
     /// # Example
     ///
     /// `["Test"]` could be represented as:
@@ -52,11 +42,6 @@ impl From<&String> for EdgeLabel {
         EdgeLabel::Key(value.to_owned().into_boxed_str())
     }
 }
-impl From<KeywordName> for EdgeLabel {
-    fn from(value: KeywordName) -> Self {
-        EdgeLabel::Keyword(value)
-    }
-}
 
 /// An edge between two JSON values stored in a non-compressed graph.
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
@@ -67,7 +52,7 @@ pub(crate) struct RawEdge {
 }
 
 impl RawEdge {
-    pub(crate) fn new(source: usize, target: usize, label: EdgeLabel) -> Self {
+    pub(crate) const fn new(source: usize, target: usize, label: EdgeLabel) -> Self {
         Self {
             source,
             target,
@@ -83,9 +68,11 @@ pub(crate) struct Edge {
     pub(crate) keywords: Range<usize>,
 }
 
-pub(crate) fn edge(label: impl Into<EdgeLabel>, keywords: Range<usize>) -> Edge {
-    Edge {
-        label: label.into(),
-        keywords,
+impl Edge {
+    pub(crate) fn new(label: impl Into<EdgeLabel>, keywords: Range<usize>) -> Self {
+        Self {
+            label: label.into(),
+            keywords,
+        }
     }
 }
