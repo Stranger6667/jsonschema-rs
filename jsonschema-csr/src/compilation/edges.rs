@@ -16,7 +16,7 @@ pub(crate) enum EdgeLabel {
     ///
     /// The label for the edge between the top-level object and string "Test" is `name` if it is not
     /// a JSON Schema keyword.
-    Key(String),
+    Key(Box<str>),
     /// # Example
     ///
     /// `{"maximum": 5}` has `KeywordName::Maximum` as its edge label.
@@ -43,13 +43,13 @@ impl From<usize> for EdgeLabel {
 
 impl From<&str> for EdgeLabel {
     fn from(value: &str) -> Self {
-        EdgeLabel::Key(value.to_string())
+        EdgeLabel::Key(value.to_string().into_boxed_str())
     }
 }
 
 impl From<&String> for EdgeLabel {
     fn from(value: &String) -> Self {
-        EdgeLabel::Key(value.to_owned())
+        EdgeLabel::Key(value.to_owned().into_boxed_str())
     }
 }
 impl From<KeywordName> for EdgeLabel {
