@@ -1,20 +1,40 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use jsonschema_csr::JsonSchema;
-use serde_json::json;
+use serde_json::{json, Value};
+
+fn run_bench(c: &mut Criterion, name: &str, schema: Value, instance: &Value) {
+    let compiled = JsonSchema::new(&schema).unwrap();
+    let instance = black_box(instance);
+    c.bench_function(name, |b| b.iter(|| compiled.is_valid(&instance)));
+}
 
 fn bench_is_valid(c: &mut Criterion) {
-    c.bench_function("is_valid maximum", |b| {
-        let schema = json!({"maximum": 5});
-        let instance = black_box(json!(4));
-        let compiled = JsonSchema::new(&schema).unwrap();
-        b.iter(|| compiled.is_valid(&instance))
-    });
-    c.bench_function("is_valid properties", |b| {
-        let schema = json!({"properties": {"A": {"maximum": 5}}});
-        let instance = black_box(json!({"A": 4}));
-        let compiled = JsonSchema::new(&schema).unwrap();
-        b.iter(|| compiled.is_valid(&instance))
-    });
+    run_bench(c, "is_valid maximum", json!({"maximum": 5}), &json!(4));
+    run_bench(
+        c,
+        "is_valid properties",
+        json!({"properties": {"A": {"maximum": 5}}}),
+        &json!({"A": 4}),
+    );
+    run_bench(
+        c,
+        "is_valid many properties",
+        json!({
+            "properties": {
+                "1": {"maximum": 5},
+                "2": {"maximum": 5},
+                "3": {"maximum": 5},
+                "4": {"maximum": 5},
+                "5": {"maximum": 5},
+                "6": {"maximum": 5},
+                "7": {"maximum": 5},
+                "8": {"maximum": 5},
+                "9": {"maximum": 5},
+                "10": {"maximum": 5},
+            }
+        }),
+        &json!({"A": 4}),
+    );
 }
 
 criterion_group!(benches, bench_is_valid);

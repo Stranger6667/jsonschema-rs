@@ -65,7 +65,7 @@ impl JsonSchema {
         // Collect all values and resolve references
         let (values, edges) = collection::collect(schema, &root_resolver, &resolvers)?;
         // Build a `Keyword` graph
-        let (head_end, keywords, edges) = build(values.clone(), edges);
+        let (head_end, keywords, edges) = build(values, edges);
         Ok(JsonSchema {
             keywords: keywords.into_boxed_slice(),
             head_end,
