@@ -61,43 +61,6 @@ pub(crate) struct Collector<'s> {
     seen: HashMap<*const Value, usize>,
 }
 
-// Validation process
-//   - Iterate over head layer
-// Head layer should be sorted, so it always includes keywords from the top schema
-// Goal: use ranges to refer to child nodes, otherwise it will require a vector to store indexes
-//
-// Keywords
-//  [
-//    properties (0..2)
-//    type
-//    -- 0..2
-//     * A - type
-//     * A - maximum
-//       -- 2..4
-//     * B - type
-//     * B - properties (2..3)
-//       -- 4..6
-//     * B1 - type
-//     * B1 - maxLength
-//       -- 6..8
-//  ]
-//
-// Edges:
-//  [
-//    ("A", 2..4),
-//    ("B", 4..6),
-//    ("B1", 6..8),
-//  ]
-//
-// 1. access the head layer
-// 2. properties should know how to get to "A - type" & "A - maximum". Could be either
-// Is it possible to build such a graph on the go? without sorting later
-//  - For each applicator you need to know label + keyword range for each child. Can't guess keyword range upfront
-//  - Maybe it could work with intermediate vectors, that then are appended to the main one.
-//    For each applicator create a vec & put all keywords there there.
-// How to build such a layout:
-//   -
-
 impl<'s> Collector<'s> {
     /// Create a new collector.
     pub(crate) fn new(resolvers: &'s HashMap<&str, Resolver>) -> Self {

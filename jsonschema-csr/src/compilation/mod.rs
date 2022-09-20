@@ -115,11 +115,11 @@ fn build(values: &[&Value], raw_edges: Vec<RawEdge>) -> (usize, Vec<Keyword>, Ve
                         edges.len() + edges_of[target].len(),
                     ));
                     let mut offset = 0;
-                    for e1 in &edges_of[target] {
+                    for raw_edge in &edges_of[target] {
                         let start = keywords.len() + offset;
-                        let children_length = keywords_of[&e1.target].len();
+                        let children_length = keywords_of[&raw_edge.target].len();
                         let end = start + children_length;
-                        edges.push(edge(e1.label.clone(), start..end));
+                        edges.push(edge(raw_edge.label.clone(), start..end));
                         offset += children_length;
                     }
                 }
