@@ -89,7 +89,7 @@ fn build(values: &[&Value], raw_edges: Vec<RawEdge>) -> (usize, Vec<Keyword>, Ve
                 edges_of
                     .entry(edge.source)
                     .or_insert_with(Vec::new)
-                    .push(edge.clone());
+                    .push(edge);
             }
             EdgeLabel::Keyword(keyword) => {
                 keywords_of
