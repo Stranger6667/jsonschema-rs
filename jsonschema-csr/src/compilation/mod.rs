@@ -1,4 +1,6 @@
-//! Compressed sparse row format for JSON Schema.
+//! Packed JSON Schema representation.  
+//!
+//! This approach represents JSON Schema as a set of nodes & edges stored compactly in vectors.
 //!
 //! Fast and cache efficient validation requires fast iteration over the schema, therefore a
 //! representation like `serde_json::Value` should be converted to a more compact one.
@@ -7,8 +9,6 @@
 //! It contains two types of edges:
 //!   - Concrete edges are regular Rust references that connect two JSON values;
 //!   - Virtual edges are using the `$ref` keyword to do this.
-//!
-//! TODO. add more theory about how `serde_json::Value` is represented and how CSR is represented
 //!
 //! Here is a high-level algorithm used for building a compact schema representation:
 //!   1. Recursively fetch all external schemas reachable from the input schema via references.
@@ -68,9 +68,13 @@ impl JsonSchema {
     }
 
     pub fn is_valid(&self, instance: &Value) -> bool {
-        self.keywords[..self.head_end]
-            .iter()
-            .all(|keyword| keyword.is_valid(self, instance))
+        if let [keyword] = &self.keywords[..] {
+            keyword.is_valid(self, instance)
+        } else {
+            self.keywords[..self.head_end]
+                .iter()
+                .all(|keyword| keyword.is_valid(self, instance))
+        }
     }
 }
 
