@@ -56,8 +56,8 @@ pub(crate) struct Collector<'s> {
     resolvers: &'s HashMap<&'s str, Resolver<'s>>,
     /// Nodes of the input schema.
     nodes: Vec<&'s Value>,
-    keywords: BTreeMap<usize, Vec<(usize, &'s Value, KeywordName)>>,
-    edges: BTreeMap<usize, Vec<RawEdge>>,
+    keywords: KeywordMap<'s>,
+    edges: EdgeMap,
     /// Nodes already seen during collection.
     seen: HashMap<*const Value, usize>,
 }
@@ -68,8 +68,8 @@ impl<'s> Collector<'s> {
         Self {
             resolvers,
             nodes: vec![],
-            keywords: BTreeMap::new(),
-            edges: BTreeMap::new(),
+            keywords: BTreeMap::default(),
+            edges: BTreeMap::default(),
             seen: HashMap::default(),
         }
     }
