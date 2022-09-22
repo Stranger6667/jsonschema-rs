@@ -15,11 +15,17 @@ pub(crate) enum KeywordName {
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Keyword {
+    AllOf(applicator::AllOf),
     ItemsArray(applicator::ItemsArray),
     Maximum(validation::Maximum),
     Properties(applicator::Properties),
 }
 
+impl From<applicator::AllOf> for Keyword {
+    fn from(v: applicator::AllOf) -> Keyword {
+        Keyword::AllOf(v)
+    }
+}
 impl From<applicator::ItemsArray> for Keyword {
     fn from(v: applicator::ItemsArray) -> Keyword {
         Keyword::ItemsArray(v)
@@ -47,6 +53,7 @@ impl Keyword {
         //     _ => {}
         // }
         match self {
+            Keyword::AllOf(inner) => inner.is_valid(schema, instance),
             Keyword::ItemsArray(inner) => inner.is_valid(schema, instance),
             Keyword::Maximum(inner) => inner.is_valid(instance),
             Keyword::Properties(inner) => inner.is_valid(schema, instance),

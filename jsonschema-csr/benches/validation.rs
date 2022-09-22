@@ -33,7 +33,33 @@ fn bench_is_valid(c: &mut Criterion) {
                 "10": {"maximum": 5},
             }
         }),
-        &json!({"A": 4}),
+        &json!({
+            "1": 4,
+            "2": 4,
+            "3": 4,
+            "4": 4,
+            "5": 4,
+            "6": 4,
+            "7": 4,
+            "8": 4,
+            "9": 4,
+            "10": 4
+        }),
+    );
+    run_bench(
+        c,
+        "is_valid ref",
+        json!({
+            "properties": {
+                "1": {"$ref": "#/definitions/1"},
+            },
+            "definitions": {
+                "1": {
+                    "maximum": 5
+                }
+            }
+        }),
+        &json!({"1": 4}),
     );
 }
 

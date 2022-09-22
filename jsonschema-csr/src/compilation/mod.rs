@@ -1,4 +1,4 @@
-//! Packed JSON Schema representation.  
+//! Packed JSON Schema representation.
 //!
 //! This approach represents JSON Schema as a set of nodes & edges stored compactly in vectors.
 //!
@@ -83,9 +83,16 @@ fn build(keyword_map: &KeywordMap<'_>, edge_map: &EdgeMap) -> (usize, Vec<Keywor
     let mut edges = vec![];
     let head = keyword_map.get(&0).map_or(0, |kwords| kwords.len());
     for node_keywords in keyword_map.values() {
+        let next_keyword_layer_start_idx = keywords.len() + node_keywords.len();
         for (target, value, keyword) in node_keywords {
             match keyword {
-                KeywordName::AllOf => {}
+                KeywordName::AllOf => {
+                    // TODO: child keywords should go immediately after this one, otherwise there is a gap
+                    keywords.push(applicator::AllOf::build(
+                        next_keyword_layer_start_idx,
+                        next_keyword_layer_start_idx + edge_map[target].len(),
+                    ));
+                }
                 KeywordName::Items => {}
                 KeywordName::Maximum => {
                     keywords.push(validation::Maximum::build(value.as_u64().unwrap()))
@@ -556,11 +563,17 @@ mod tests {
         )
     }
 
-    #[test_case(j!({"maximum": 5}), j!(4), j!(6))]
-    #[test_case(j!({"properties": {"A": {"maximum": 5}}}), j!({"A": 4}), j!({"A": 6}))]
-    #[test_case(j!({"properties": {"A": {"properties": {"B": {"maximum": 5}}}}}), j!({"A": {"B": 4}}), j!({"A": {"B": 6}}))]
+    // #[test_case(j!({"maximum": 5}), j!(4), j!(6))]
+    // #[test_case(j!({"properties": {"A": {"maximum": 5}}}), j!({"A": 4}), j!({"A": 6}))]
+    // #[test_case(j!({"properties": {"A": {"properties": {"B": {"maximum": 5}}}}}), j!({"A": {"B": 4}}), j!({"A": {"B": 6}}))]
+    #[test_case(
+        j!({"allOf": [{"properties": {"A": {"maximum": 5}}}, {"properties": {"B": {"maximum": 7}}}]}),
+        j!({"A": 4, "B": 6}),
+        j!({"A": 4, "B": 9})
+    )]
     fn is_valid(schema: Value, valid: Value, invalid: Value) {
         let compiled = JsonSchema::new(&schema).unwrap();
+        println!("{:?}", compiled);
         assert!(compiled.is_valid(&valid));
         assert!(!compiled.is_valid(&invalid));
     }
