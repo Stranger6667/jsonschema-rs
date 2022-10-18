@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Raise `ValueError` on validating dicts with non-string keys. [#386](https://github.com/Stranger6667/jsonschema-rs/issues/386)
+
 ## [0.16.0] - 2022-05-12
 
 ### Added
