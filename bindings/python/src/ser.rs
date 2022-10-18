@@ -18,7 +18,7 @@ use std::ffi::CStr;
 
 pub const RECURSION_LIMIT: u8 = 255;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ObjectType {
     Str,
     Int,
@@ -140,6 +140,15 @@ impl Serialize for SerializePyObject {
                     for _ in 0..length {
                         unsafe {
                             pyo3::ffi::PyDict_Next(self.object, &mut pos, &mut key, &mut value);
+                        }
+                        match get_object_type_from_object(key) {
+                            ObjectType::Str => {}
+                            object_type => {
+                                return Err(ser::Error::custom(format!(
+                                    "Supported only str key type. Provided type '{:?}'",
+                                    object_type
+                                )))
+                            }
                         }
                         let uni = unsafe { string::read_utf8_from_str(key, &mut str_size) };
                         let slice = unsafe {
