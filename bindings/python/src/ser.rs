@@ -18,7 +18,7 @@ use std::ffi::CStr;
 
 pub const RECURSION_LIMIT: u8 = 255;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum ObjectType {
     Str,
     Int,
