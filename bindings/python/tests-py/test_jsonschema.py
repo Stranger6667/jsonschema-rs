@@ -1,3 +1,4 @@
+import uuid
 from collections import namedtuple
 from contextlib import suppress
 from enum import Enum
@@ -236,7 +237,7 @@ def test_enums(type_, value, expected):
 
 def test_dict_with_non_str_keys():
     schema = {"type": "object"}
-    instance = {1234567: "foo"}
+    instance = {uuid.uuid4(): "foo"}
     with pytest.raises(ValueError) as exec_info:
         validate(schema, instance)
-    assert exec_info.value.args[0] == "Supported only str key type. Provided type 'Int'"
+    assert exec_info.value.args[0] == "Dict key must be str. Got 'UUID'"
