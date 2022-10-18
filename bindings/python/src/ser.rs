@@ -74,9 +74,8 @@ fn get_object_type_from_object(object: *mut pyo3::ffi::PyObject) -> ObjectType {
     }
 }
 
-fn get_type_name(object_type: *mut pyo3::ffi::PyTypeObject) -> String {
-    let type_name = unsafe { CStr::from_ptr((*object_type).tp_name).to_string_lossy() };
-    type_name.to_string()
+fn get_type_name(object_type: *mut pyo3::ffi::PyTypeObject) -> std::borrow::Cow<'static, str> {
+    unsafe { CStr::from_ptr((*object_type).tp_name).to_string_lossy() }
 }
 
 #[inline]
@@ -112,7 +111,7 @@ pub fn get_object_type(object_type: *mut pyo3::ffi::PyTypeObject) -> ObjectType 
     } else if is_enum_subclass(object_type) {
         ObjectType::Enum
     } else {
-        ObjectType::Unknown(get_type_name(object_type))
+        ObjectType::Unknown(get_type_name(object_type).to_string())
     }
 }
 
