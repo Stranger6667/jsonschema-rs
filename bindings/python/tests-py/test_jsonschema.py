@@ -232,3 +232,11 @@ def test_enums(type_, value, expected):
     schema = {"properties": {"foo": {"type": type_}}}
     instance = {"foo": value}
     assert is_valid(schema, instance) is expected
+
+
+def test_dict_with_non_str_keys():
+    schema = {"type": "object"}
+    instance = {1234567: "foo"}
+    with pytest.raises(ValueError) as exec_info:
+        validate(schema, instance)
+    assert exec_info.value.args[0] == "Supported only str key type. Provided type 'Int'"
