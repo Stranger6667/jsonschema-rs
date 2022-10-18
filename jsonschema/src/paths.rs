@@ -214,7 +214,7 @@ impl From<&[PathChunk]> for JSONPointer {
 }
 
 /// An absolute reference
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AbsolutePath(url::Url);
 
 impl AbsolutePath {
