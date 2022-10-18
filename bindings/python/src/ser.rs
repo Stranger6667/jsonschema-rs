@@ -74,6 +74,22 @@ fn get_object_type_from_object(object: *mut pyo3::ffi::PyObject) -> ObjectType {
     }
 }
 
+fn get_type_name(object_type: *mut pyo3::ffi::PyTypeObject) -> std::borrow::Cow<'static, str> {
+    unsafe { CStr::from_ptr((*object_type).tp_name).to_string_lossy() }
+}
+
+#[inline]
+fn check_type_is_str<E: ser::Error>(object: *mut pyo3::ffi::PyObject) -> Result<(), E> {
+    let object_type = unsafe { Py_TYPE(object) };
+    if object_type != unsafe { types::STR_TYPE } {
+        return Err(ser::Error::custom(format!(
+            "Dict key must be str. Got '{}'",
+            get_type_name(object_type)
+        )));
+    }
+    Ok(())
+}
+
 #[inline]
 pub fn get_object_type(object_type: *mut pyo3::ffi::PyTypeObject) -> ObjectType {
     if object_type == unsafe { types::STR_TYPE } {
@@ -95,8 +111,7 @@ pub fn get_object_type(object_type: *mut pyo3::ffi::PyTypeObject) -> ObjectType 
     } else if is_enum_subclass(object_type) {
         ObjectType::Enum
     } else {
-        let type_name = unsafe { CStr::from_ptr((*object_type).tp_name).to_string_lossy() };
-        ObjectType::Unknown(type_name.to_string())
+        ObjectType::Unknown(get_type_name(object_type).to_string())
     }
 }
 
@@ -141,6 +156,7 @@ impl Serialize for SerializePyObject {
                         unsafe {
                             pyo3::ffi::PyDict_Next(self.object, &mut pos, &mut key, &mut value);
                         }
+                        check_type_is_str(key)?;
                         let uni = unsafe { string::read_utf8_from_str(key, &mut str_size) };
                         let slice = unsafe {
                             std::str::from_utf8_unchecked(std::slice::from_raw_parts(

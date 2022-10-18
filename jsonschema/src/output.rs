@@ -199,7 +199,7 @@ impl<'a> FromIterator<BasicOutput<'a>> for PartialApplication<'a> {
 /// value will be an [`Annotations`] and for errors it will be an
 /// [`ErrorDescription`]. See the documentation for [`Output::basic`] for a
 /// detailed example.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OutputUnit<T> {
     keyword_location: JSONPointer,
     instance_location: JSONPointer,
@@ -315,7 +315,7 @@ impl<'a> From<serde_json::Value> for Annotations<'a> {
 }
 
 /// An error associated with an `OutputUnit`
-#[derive(serde::Serialize, Debug, Clone, PartialEq)]
+#[derive(serde::Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ErrorDescription(String);
 
 impl fmt::Display for ErrorDescription {
@@ -385,7 +385,7 @@ impl<'a> serde::Serialize for OutputUnit<Annotations<'a>> {
     }
 }
 
-impl<'a> serde::Serialize for OutputUnit<ErrorDescription> {
+impl serde::Serialize for OutputUnit<ErrorDescription> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
