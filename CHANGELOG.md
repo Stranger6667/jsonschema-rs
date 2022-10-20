@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.16.1] - 2022-10-20
+
 ### Added
 
 - Add a compilation option (`should_ignore_unknown_formats()`) that allows treating unknown formats as compilation errors.
@@ -394,7 +396,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.16.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.16.1...HEAD
+[0.16.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.16.0...rust-v0.16.1
 [0.16.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.2...rust-v0.16.0
 [0.15.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.1...rust-v0.15.2
 [0.15.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.0...rust-v0.15.1
