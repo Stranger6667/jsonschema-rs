@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.16.1] - 2022-10-20
+
 ### Changed
 
 - Raise `ValueError` on validating dicts with non-string keys. [#386](https://github.com/Stranger6667/jsonschema-rs/issues/386)
@@ -278,7 +280,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.1...HEAD
+[0.16.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.0...python-v0.16.1
 [0.16.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.14.0...python-v0.16.0
 [0.14.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.13.1...python-v0.14.0
 [0.13.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.13.0...python-v0.13.1
