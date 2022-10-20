@@ -12,23 +12,23 @@ use jsonschema::JSONSchema;
 type BoxErrorResult<T> = Result<T, Box<dyn Error>>;
 
 #[derive(Parser)]
-#[clap(name = "jsonschema")]
+#[command(name = "jsonschema")]
 struct Cli {
     /// A path to a JSON instance (i.e. filename.json) to validate (may be specified multiple times).
-    #[clap(short = 'i', long = "instance")]
+    #[arg(short = 'i', long = "instance")]
     instances: Option<Vec<PathBuf>>,
 
     /// The JSON Schema to validate with (i.e. schema.json).
-    #[clap(parse(from_os_str), required_unless("version"))]
+    #[arg(value_parser, required_unless_present("version"))]
     schema: Option<PathBuf>,
 
     /// Show program's version number and exit.
-    #[clap(short = 'v', long = "version")]
+    #[arg(short = 'v', long = "version")]
     version: bool,
 }
 
 pub fn main() -> BoxErrorResult<()> {
-    let config = Cli::from_args();
+    let config = Cli::parse();
 
     if config.version {
         println!(concat!("Version: ", env!("CARGO_PKG_VERSION")));
