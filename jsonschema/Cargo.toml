@@ -29,9 +29,9 @@ ahash = { version = "0.8", features = ["serde"] }
 anyhow = "1.0"
 base64 = "0.13"
 bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
-clap = { version = "3.2", features = ["derive"], optional = true }
+clap = { version = "4.0", features = ["derive"], optional = true }
 fancy-regex = "0.10"
-fraction = { version = "0.11", default-features = false, features = ["with-bigint"] }
+fraction = { version = "0.12", default-features = false, features = ["with-bigint"] }
 iso8601 = "0.5"
 itoa = "1"
 lazy_static = "1.4"
@@ -49,7 +49,7 @@ uuid = "1"
 
 [dev-dependencies]
 bench_helpers = { path = "../bench_helpers" }
-criterion = "0.3"
+criterion = { version = "0.4.0", features = [], default-features = false }
 json_schema_test_suite = { version = "0.3.0", path = "../jsonschema-test-suite" }
 jsonschema-valid = "0.5"
 mockito = "0.31"
