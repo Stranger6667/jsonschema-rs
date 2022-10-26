@@ -1,4 +1,4 @@
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, TypeVar
 from collections.abc import Iterator
 
 _SchemaT = TypeVar('_SchemaT', bool, dict[str, Any])
@@ -7,24 +7,24 @@ _SchemaT = TypeVar('_SchemaT', bool, dict[str, Any])
 def is_valid(
         schema: _SchemaT,
         instance: Any,
-        draft: Optional[int] = None,
-        with_meta_schemas: Optional[bool] = None
+        draft: int | None = None,
+        with_meta_schemas: bool | None = None
 ) -> bool:
     pass
 
 def validate(
         schema: _SchemaT,
         instance: Any,
-        draft: Optional[int] = None,
-        with_meta_schemas: Optional[bool] = None
+        draft: int | None = None,
+        with_meta_schemas: bool | None = None
 ) -> None:
     pass
 
 def iter_errors(
         schema: _SchemaT,
         instance: Any,
-        draft: Optional[int] = None,
-        with_meta_schemas: Optional[bool] = None
+        draft: int | None = None,
+        with_meta_schemas: bool | None = None
 ) -> Iterator[ValidationError]:
     pass
 
@@ -34,8 +34,8 @@ class JSONSchema:
     def __init__(
             self,
             schema: _SchemaT,
-            draft: Optional[int] = None,
-            with_meta_schemas: Optional[bool] = None
+            draft: int | None = None,
+            with_meta_schemas: bool | None = None
     ) -> None:
         pass
 
@@ -43,8 +43,8 @@ class JSONSchema:
     def from_str(
             cls,
             schema: str,
-            draft: Optional[int] = None,
-            with_meta_schemas: Optional[bool] = None
+            draft: int | None = None,
+            with_meta_schemas: bool | None = None
     ) -> 'JSONSchema':
         pass
 
@@ -60,8 +60,8 @@ class JSONSchema:
 
 class ValidationError(Exception):
     message: str
-    schema_path: list[Union[str, int]]
-    instance_path: list[Union[str, int]]
+    schema_path: list[str | int]
+    instance_path: list[str | int]
 
 
 Draft4: int
