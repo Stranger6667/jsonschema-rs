@@ -58,7 +58,7 @@ class JSONSchema:
         pass
 
 
-class ValidationError(Exception):
+class ValidationError(ValueError):
     message: str
     schema_path: list[str | int]
     instance_path: list[str | int]
