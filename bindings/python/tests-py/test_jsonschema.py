@@ -65,7 +65,7 @@ def test_validate(func):
 
 def test_from_str_error():
     with pytest.raises(ValueError, match="Expected string, got int"):
-        JSONSchema.from_str(42)
+        JSONSchema.from_str(42)  # type: ignore
 
 
 @pytest.mark.parametrize(
