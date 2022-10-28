@@ -21,6 +21,7 @@ def call_setup():
     setup(
         name="jsonschema_rs",
         version="0.16.1",
+        packages=["jsonschema_rs"],
         description="Fast JSON Schema validation for Python implemented in Rust",
         long_description=open("README.rst", encoding="utf-8").read(),
         long_description_content_type="text/x-rst",
@@ -32,7 +33,8 @@ def call_setup():
         python_requires=">=3.7",
         url="https://github.com/Stranger6667/jsonschema-rs/tree/master/python",
         license="MIT",
-        rust_extensions=[RustExtension("jsonschema_rs", binding=Binding.PyO3)],
+        rust_extensions=[RustExtension("jsonschema_rs._jsonschema_rs", binding=Binding.PyO3)],
+        include_package_data=True,
         classifiers=[
             "Development Status :: 3 - Alpha",
             "Intended Audience :: Developers",

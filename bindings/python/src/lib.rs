@@ -450,7 +450,7 @@ mod build {
 
 /// JSON Schema validation for Python written in Rust.
 #[pymodule]
-fn jsonschema_rs(py: Python<'_>, module: &PyModule) -> PyResult<()> {
+fn _jsonschema_rs(py: Python<'_>, module: &PyModule) -> PyResult<()> {
     // To provide proper signatures for PyCharm, all the functions have their signatures as the
     // first line in docstrings. The idea is taken from NumPy.
     types::init();
