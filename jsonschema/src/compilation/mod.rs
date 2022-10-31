@@ -6,7 +6,7 @@ pub(crate) mod options;
 
 use crate::{
     error::ErrorIterator,
-    keywords,
+    keywords::{self, custom_keyword::compile_custom_keyword_validator},
     output::Output,
     paths::{InstancePath, JSONPointer},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
@@ -205,6 +205,16 @@ pub(crate) fn compile_validators<'a>(
                         .and_then(|f| f(object, subschema, &context))
                     {
                         validators.push((keyword.clone(), validator?));
+                    } else if let Some(keyword_definition) =
+                        context.config.get_custom_keyword_definition(keyword)
+                    {
+                        let validator = compile_custom_keyword_validator(
+                            &context,
+                            keyword.clone(),
+                            keyword_definition,
+                            subschema.clone(),
+                        )?;
+                        validators.push((keyword.clone(), validator));
                     } else {
                         unmatched_keywords.insert(keyword.to_string(), subschema.clone());
                     }
@@ -244,9 +254,15 @@ pub(crate) fn compile_validators<'a>(
 #[cfg(test)]
 mod tests {
     use super::JSONSchema;
-    use crate::error::ValidationError;
+    use crate::{
+        compilation::options::CustomKeywordDefinition,
+        error::{TypeKind, ValidationError},
+        paths::JSONPointer,
+        primitive_type::PrimitiveType,
+        ErrorIterator,
+    };
     use serde_json::{from_str, json, Value};
-    use std::{fs::File, io::Read, path::Path};
+    use std::{borrow::Cow, fs::File, io::Read, path::Path, sync::Arc};
 
     fn load(path: &str, idx: usize) -> Value {
         let path = Path::new(path);
@@ -301,5 +317,78 @@ mod tests {
             r#"{"a":3} has less than 2 properties"#
         );
         assert_eq!(errors[1].to_string(), r#""a" is shorter than 3 characters"#);
+    }
+
+    #[test]
+    fn custom_keyword_defintion() {
+        // Define a custom validator that verifies the object's keys consist of
+        // only ASCII representable characters.
+        fn custom_object_validator(
+            instance: &Value,
+            instance_path: JSONPointer,
+            schema: Arc<Value>,
+            schema_path: JSONPointer,
+        ) -> ErrorIterator<'_> {
+            if schema.as_str().map_or(true, |str| str != "ascii-keys") {
+                let error = ValidationError {
+                    instance: Cow::Borrowed(instance),
+                    kind: crate::error::ValidationErrorKind::Schema,
+                    instance_path: instance_path.clone(),
+                    schema_path: schema_path.clone(),
+                };
+                return Box::new(Some(error).into_iter()); // Invalid schema
+            }
+            let mut errors = vec![];
+            for (key, _value) in instance.as_object().unwrap() {
+                if !key.is_ascii() {
+                    let error = ValidationError {
+                        instance: Cow::Borrowed(instance),
+                        kind: crate::error::ValidationErrorKind::Format { format: "ASCII" },
+                        instance_path: instance_path.clone(),
+                        schema_path: schema_path.clone(),
+                    };
+                    errors.push(error);
+                }
+            }
+            Box::new(errors.into_iter())
+        }
+        fn is_custom_object_valid(instance: &Value, schema: &Value) -> bool {
+            if schema.as_str().map_or(true, |str| str != "ascii-keys") {
+                return false; // Invalid schema
+            }
+            for (key, _value) in instance.as_object().unwrap() {
+                if !key.is_ascii() {
+                    return false;
+                }
+            }
+            true
+        }
+        let definition = CustomKeywordDefinition::Validator {
+            validate: custom_object_validator,
+            is_valid: is_custom_object_valid,
+        };
+
+        // Define a JSON schema that enforces the top level object has ASCII keys and has at least 1 property
+        let schema =
+            json!({ "custom-object-type": "ascii-keys", "type": "object", "minProperties": 1 });
+        let json_schema = JSONSchema::options()
+            .with_custom_keyword("custom-object-type", definition)
+            .compile(&schema)
+            .unwrap();
+
+        // Verify schema validation detects object with too few properties
+        let instance_err_not_object = json!({});
+        assert!(json_schema.validate(&instance_err_not_object).is_err());
+        assert!(!json_schema.is_valid(&instance_err_not_object));
+
+        // Verify validator succeeds on a valid custom-object-type
+        let instance_ok = json!({ "a" : 1 });
+        assert!(json_schema.validate(&instance_ok).is_ok());
+        assert!(json_schema.is_valid(&instance_ok));
+
+        // Verify validator detects invalid custom-object-type
+        let instance_err_non_ascii_keys = json!({ "å" : 1 });
+        assert!(json_schema.validate(&instance_err_non_ascii_keys).is_err());
+        assert!(!json_schema.is_valid(&instance_err_non_ascii_keys));
     }
 }
