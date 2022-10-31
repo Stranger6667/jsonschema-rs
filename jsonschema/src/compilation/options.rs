@@ -5,6 +5,7 @@ use crate::{
         DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS,
     },
     content_media_type::{ContentMediaTypeCheckType, DEFAULT_CONTENT_MEDIA_TYPE_CHECKS},
+    keywords::custom_keyword::{CustomIsValidFn, CustomValidateFn},
     resolver::{DefaultResolver, Resolver, SchemaResolver},
     schemas, ValidationError,
 };
@@ -275,6 +276,7 @@ pub struct CompilationOptions {
     validate_formats: Option<bool>,
     validate_schema: bool,
     ignore_unknown_formats: bool,
+    custom_keywords: AHashMap<String, CustomKeywordDefinition>,
 }
 
 impl Default for CompilationOptions {
@@ -289,6 +291,7 @@ impl Default for CompilationOptions {
             formats: AHashMap::default(),
             validate_formats: None,
             ignore_unknown_formats: true,
+            custom_keywords: AHashMap::default(),
         }
     }
 }
@@ -637,6 +640,50 @@ impl CompilationOptions {
     pub(crate) const fn are_unknown_formats_ignored(&self) -> bool {
         self.ignore_unknown_formats
     }
+
+    /// Register a custom keyword definition.
+    ///
+    /// Examples
+    ///
+    /// ```rust
+    /// # use jsonschema::{CustomKeywordDefinition, ErrorIterator, JSONSchema, paths::JSONPointer};
+    /// # use serde_json::{json, Value};
+    /// # use std::sync::Arc;
+    ///
+    /// fn validate(
+    ///     instance: &Value,
+    ///     instance_path: JSONPointer,
+    ///     schema: Arc<Value>,
+    ///     schema_path: JSONPointer,
+    /// ) -> ErrorIterator {
+    ///     // ... validate instance ...
+    ///     Box::new(None.into_iter())
+    /// }
+    /// fn is_valid(instance: &Value, schema: &Value) -> bool {
+    ///     // ... determine if instance is valid ...
+    ///     return true;
+    /// }
+    /// let definition = CustomKeywordDefinition::Validator { validate, is_valid };
+    /// assert!(JSONSchema::options()
+    ///     .with_custom_keyword("my-type", definition)
+    ///     .compile(&json!({ "my-type": "my-schema"}))
+    ///     .expect("A valid schema")
+    ///     .is_valid(&json!({ "a": "b"})));
+    /// ```
+    pub fn with_custom_keyword<T>(mut self, keyword: T, definition: CustomKeywordDefinition) -> Self
+    where
+        T: Into<String>,
+    {
+        self.custom_keywords.insert(keyword.into(), definition);
+        self
+    }
+
+    pub(crate) fn get_custom_keyword_definition(
+        &self,
+        keyword: &str,
+    ) -> Option<&CustomKeywordDefinition> {
+        self.custom_keywords.get(keyword)
+    }
 }
 // format name & a pointer to a check function
 type FormatKV<'a> = Option<(&'a &'static str, &'a fn(&str) -> bool)>;
@@ -651,6 +698,34 @@ impl fmt::Debug for CompilationOptions {
                 &self.content_encoding_checks_and_converters.keys(),
             )
             .finish()
+    }
+}
+
+/// Define a custom keyword validation
+///
+/// Currently supports validation functions.
+/// Schema based custom validation is a potential future addition.
+#[derive(Clone)]
+pub enum CustomKeywordDefinition {
+    /// Validate [instance](serde_json::Value) according to a custom specification
+    ///
+    /// A custom keyword validator may be used when a validation that cannot, or
+    /// cannot be be easily or efficiently expressed in JSON schema.
+    ///
+    /// The custom validation is applied in addition to the JSON schema validation.
+    Validator {
+        /// Validate an instance returning any and all detected validation errors
+        validate: CustomValidateFn,
+        /// Determine if an instance is valid
+        is_valid: CustomIsValidFn,
+    },
+}
+
+impl fmt::Debug for CustomKeywordDefinition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Validator { .. } => write!(f, "CustomKeywordDefinition::Validator"),
+        }
     }
 }
 
