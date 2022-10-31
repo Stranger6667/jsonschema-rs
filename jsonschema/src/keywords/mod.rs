@@ -6,6 +6,7 @@ pub(crate) mod boolean;
 pub(crate) mod const_;
 pub(crate) mod contains;
 pub(crate) mod content;
+pub(crate) mod custom_keyword;
 pub(crate) mod dependencies;
 pub(crate) mod enum_;
 pub(crate) mod exclusive_maximum;
