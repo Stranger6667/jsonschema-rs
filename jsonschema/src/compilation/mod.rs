@@ -255,10 +255,7 @@ pub(crate) fn compile_validators<'a>(
 mod tests {
     use super::JSONSchema;
     use crate::{
-        compilation::options::CustomKeywordDefinition,
-        error::{TypeKind, ValidationError},
-        paths::JSONPointer,
-        primitive_type::PrimitiveType,
+        compilation::options::CustomKeywordDefinition, error::ValidationError, paths::JSONPointer,
         ErrorIterator,
     };
     use serde_json::{from_str, json, Value};
@@ -323,6 +320,7 @@ mod tests {
     fn custom_keyword_defintion() {
         // Define a custom validator that verifies the object's keys consist of
         // only ASCII representable characters.
+        #[allow(clippy::needless_pass_by_value)]
         fn custom_object_validator(
             instance: &Value,
             instance_path: JSONPointer,
@@ -333,8 +331,8 @@ mod tests {
                 let error = ValidationError {
                     instance: Cow::Borrowed(instance),
                     kind: crate::error::ValidationErrorKind::Schema,
-                    instance_path: instance_path.clone(),
-                    schema_path: schema_path.clone(),
+                    instance_path,
+                    schema_path,
                 };
                 return Box::new(Some(error).into_iter()); // Invalid schema
             }
