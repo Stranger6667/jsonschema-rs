@@ -11,7 +11,7 @@ use crate::{
 };
 use ahash::AHashMap;
 use std::{
-    fmt::{self, Display},
+    fmt::{self},
     sync::Arc,
 };
 

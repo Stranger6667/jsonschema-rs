@@ -8,6 +8,8 @@ use serde_json::Value;
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
+// An Arc<Value> is used so the borrow checker doesn't need explicit lifetime parameters.
+// This would pollute dependents with lifetime parameters. 
 pub(crate) type CustomValidateFn =
     fn(&Value, JSONPointer, Arc<Value>, JSONPointer) -> ErrorIterator;
 pub(crate) type CustomIsValidFn = fn(&Value, &Value) -> bool;

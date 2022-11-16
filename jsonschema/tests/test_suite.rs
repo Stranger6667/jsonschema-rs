@@ -1,5 +1,5 @@
-use json_schema_test_suite::{json_schema_test_suite, TestCase};
-use jsonschema::{Draft, JSONSchema};
+use json_schema_test_suite::json_schema_test_suite;
+use jsonschema::JSONSchema;
 use std::fs;
 
 #[json_schema_test_suite("tests/suite", "draft4", {"optional_bignum_0_0", "optional_bignum_2_0"})]
