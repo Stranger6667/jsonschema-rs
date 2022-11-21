@@ -8,7 +8,6 @@ use crate::{
 };
 use fraction::{BigFraction, BigUint};
 use serde_json::{Map, Value};
-use std::f64::EPSILON;
 
 pub(crate) struct MultipleOfFloatValidator {
     multiple_of: f64,
@@ -39,7 +38,7 @@ impl Validate for MultipleOfFloatValidator {
                     true
                 }
             } else {
-                remainder < EPSILON
+                remainder < f64::EPSILON
             }
         } else {
             true
