@@ -250,7 +250,7 @@ mod tests {
 
     fn load(path: &str, idx: usize) -> Value {
         let path = Path::new(path);
-        let mut file = File::open(&path).unwrap();
+        let mut file = File::open(path).unwrap();
         let mut content = String::new();
         file.read_to_string(&mut content).ok().unwrap();
         let data: Value = from_str(&content).unwrap();
