@@ -17,7 +17,7 @@ name = "jsonschema"
 
 [features]
 cli = ["clap"]
-default = ["resolve-http", "resolve-file", "cli"]
+default = ["resolve-http", "resolve-file", "cli", "ahash/runtime-rng"]
 draft201909 = []
 draft202012 = []
 
@@ -25,7 +25,7 @@ resolve-http = ["reqwest"]
 resolve-file = []
 
 [dependencies]
-ahash = { version = "0.8", features = ["serde"] }
+ahash = { version = "0.8", default-features = false, features = ["no-rng", "std", "serde"] }
 anyhow = "1.0"
 base64 = "0.13"
 bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
