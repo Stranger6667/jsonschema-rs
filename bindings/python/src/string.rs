@@ -1,8 +1,11 @@
-use pyo3::ffi::{PyTypeObject, PyUnicode_AsUTF8AndSize, Py_UNICODE, Py_hash_t, Py_ssize_t};
+use pyo3::ffi::{
+    PyBytes_AsString, PyTypeObject, PyUnicode_AsUTF8String, PyUnicode_GetLength, Py_hash_t,
+    Py_ssize_t,
+};
 use std::os::raw::c_char;
 
 #[repr(C)]
-struct PyAsciiObject {
+pub struct PyAsciiObject {
     pub ob_refcnt: Py_ssize_t,
     pub ob_type: *mut PyTypeObject,
     pub length: Py_ssize_t,
@@ -12,13 +15,8 @@ struct PyAsciiObject {
 }
 
 #[repr(C)]
-struct PyCompactUnicodeObject {
-    pub ob_refcnt: Py_ssize_t,
-    pub ob_type: *mut PyTypeObject,
-    pub length: Py_ssize_t,
-    pub hash: Py_hash_t,
-    pub state: u32,
-    pub wstr: *mut Py_UNICODE,
+pub struct PyCompactUnicodeObject {
+    pub ob_base: PyAsciiObject,
     pub utf8_length: Py_ssize_t,
     pub utf8: *mut c_char,
     pub wstr_length: Py_ssize_t,
@@ -27,7 +25,7 @@ struct PyCompactUnicodeObject {
 const STATE_ASCII: u32 = 0b0000_0000_0000_0000_0000_0000_0100_0000;
 const STATE_COMPACT: u32 = 0b0000_0000_0000_0000_0000_0000_0010_0000;
 
-/// Read a UTF-8 string from a pointer and change the given size if needed.
+/// Read a UTF-8 string from a pointer and change the given size.
 pub unsafe fn read_utf8_from_str(
     object_pointer: *mut pyo3::ffi::PyObject,
     size: &mut Py_ssize_t,
@@ -43,6 +41,8 @@ pub unsafe fn read_utf8_from_str(
         *size = (*object_pointer.cast::<PyCompactUnicodeObject>()).utf8_length;
         (*object_pointer.cast::<PyCompactUnicodeObject>()).utf8 as *const u8
     } else {
-        PyUnicode_AsUTF8AndSize(object_pointer, size).cast::<u8>()
+        *size = PyUnicode_GetLength(object_pointer);
+        let bytes = PyUnicode_AsUTF8String(object_pointer);
+        PyBytes_AsString(bytes) as *const u8
     }
 }

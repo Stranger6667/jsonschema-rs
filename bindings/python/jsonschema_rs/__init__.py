@@ -1,1 +1,1 @@
-from ._jsonschema_rs import *
+from .jsonschema_rs import *

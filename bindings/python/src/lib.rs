@@ -373,8 +373,7 @@ impl JSONSchema {
         let obj_ptr = pyschema.as_ptr();
         let object_type = unsafe { pyo3::ffi::Py_TYPE(obj_ptr) };
         if unsafe { object_type != types::STR_TYPE } {
-            let type_name =
-                unsafe { std::ffi::CStr::from_ptr((*object_type).tp_name).to_string_lossy() };
+            let type_name = unsafe { types::get_type_name(object_type) };
             Err(PyValueError::new_err(format!(
                 "Expected string, got {}",
                 type_name
@@ -450,7 +449,7 @@ mod build {
 
 /// JSON Schema validation for Python written in Rust.
 #[pymodule]
-fn _jsonschema_rs(py: Python<'_>, module: &PyModule) -> PyResult<()> {
+fn jsonschema_rs(py: Python<'_>, module: &PyModule) -> PyResult<()> {
     // To provide proper signatures for PyCharm, all the functions have their signatures as the
     // first line in docstrings. The idea is taken from NumPy.
     types::init();

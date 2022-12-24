@@ -1,8 +1,8 @@
 use pyo3::{
     exceptions,
     ffi::{
-        PyDictObject, PyFloat_AS_DOUBLE, PyList_GET_ITEM, PyList_GET_SIZE, PyLong_AsLongLong,
-        PyObject_GetAttr, PyTuple_GET_ITEM, PyTuple_GET_SIZE, Py_TYPE,
+        PyDict_Size, PyFloat_AsDouble, PyList_GetItem, PyList_Size, PyLong_AsLongLong,
+        PyObject_GetAttr, PyTuple_GetItem, PyTuple_Size, Py_TYPE,
     },
     prelude::*,
     types::PyAny,
@@ -14,7 +14,6 @@ use serde::{
 };
 
 use crate::{ffi, string, types};
-use std::ffi::CStr;
 
 pub const RECURSION_LIMIT: u8 = 255;
 
@@ -74,18 +73,16 @@ fn get_object_type_from_object(object: *mut pyo3::ffi::PyObject) -> ObjectType {
     }
 }
 
-fn get_type_name(object_type: *mut pyo3::ffi::PyTypeObject) -> std::borrow::Cow<'static, str> {
-    unsafe { CStr::from_ptr((*object_type).tp_name).to_string_lossy() }
-}
-
 #[inline]
 fn check_type_is_str<E: ser::Error>(object: *mut pyo3::ffi::PyObject) -> Result<(), E> {
     let object_type = unsafe { Py_TYPE(object) };
     if object_type != unsafe { types::STR_TYPE } {
-        return Err(ser::Error::custom(format!(
-            "Dict key must be str. Got '{}'",
-            get_type_name(object_type)
-        )));
+        unsafe {
+            return Err(ser::Error::custom(format!(
+                "Dict key must be str. Got '{}'",
+                types::get_type_name(object_type)
+            )));
+        }
     }
     Ok(())
 }
@@ -111,7 +108,7 @@ pub fn get_object_type(object_type: *mut pyo3::ffi::PyTypeObject) -> ObjectType 
     } else if is_enum_subclass(object_type) {
         ObjectType::Enum
     } else {
-        ObjectType::Unknown(get_type_name(object_type).to_string())
+        unsafe { ObjectType::Unknown(types::get_type_name(object_type).to_string()) }
     }
 }
 
@@ -134,16 +131,14 @@ impl Serialize for SerializePyObject {
                 serializer.serialize_str(slice)
             }
             ObjectType::Int => serializer.serialize_i64(unsafe { PyLong_AsLongLong(self.object) }),
-            ObjectType::Float => {
-                serializer.serialize_f64(unsafe { PyFloat_AS_DOUBLE(self.object) })
-            }
+            ObjectType::Float => serializer.serialize_f64(unsafe { PyFloat_AsDouble(self.object) }),
             ObjectType::Bool => serializer.serialize_bool(self.object == unsafe { types::TRUE }),
             ObjectType::None => serializer.serialize_unit(),
             ObjectType::Dict => {
                 if self.recursion_depth == RECURSION_LIMIT {
                     return Err(ser::Error::custom("Recursion limit reached"));
                 }
-                let length = unsafe { (*self.object.cast::<PyDictObject>()).ma_used } as usize;
+                let length = unsafe { PyDict_Size(self.object) } as usize;
                 if length == 0 {
                     serializer.serialize_map(Some(0))?.end()
                 } else {
@@ -177,7 +172,7 @@ impl Serialize for SerializePyObject {
                 if self.recursion_depth == RECURSION_LIMIT {
                     return Err(ser::Error::custom("Recursion limit reached"));
                 }
-                let length = unsafe { PyList_GET_SIZE(self.object) as usize };
+                let length = unsafe { PyList_Size(self.object) as usize };
                 if length == 0 {
                     serializer.serialize_seq(Some(0))?.end()
                 } else {
@@ -185,7 +180,7 @@ impl Serialize for SerializePyObject {
                     let mut ob_type = ObjectType::Str;
                     let mut sequence = serializer.serialize_seq(Some(length))?;
                     for i in 0..length {
-                        let elem = unsafe { PyList_GET_ITEM(self.object, i as isize) };
+                        let elem = unsafe { PyList_GetItem(self.object, i as isize) };
                         let current_ob_type = unsafe { Py_TYPE(elem) };
                         if current_ob_type != type_ptr {
                             type_ptr = current_ob_type;
@@ -205,7 +200,7 @@ impl Serialize for SerializePyObject {
                 if self.recursion_depth == RECURSION_LIMIT {
                     return Err(ser::Error::custom("Recursion limit reached"));
                 }
-                let length = unsafe { PyTuple_GET_SIZE(self.object) as usize };
+                let length = unsafe { PyTuple_Size(self.object) as usize };
                 if length == 0 {
                     serializer.serialize_seq(Some(0))?.end()
                 } else {
@@ -213,7 +208,7 @@ impl Serialize for SerializePyObject {
                     let mut ob_type = ObjectType::Str;
                     let mut sequence = serializer.serialize_seq(Some(length))?;
                     for i in 0..length {
-                        let elem = unsafe { PyTuple_GET_ITEM(self.object, i as isize) };
+                        let elem = unsafe { PyTuple_GetItem(self.object, i as isize) };
                         let current_ob_type = unsafe { Py_TYPE(elem) };
                         if current_ob_type != type_ptr {
                             type_ptr = current_ob_type;

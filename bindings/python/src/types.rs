@@ -1,7 +1,8 @@
+use crate::string;
 use pyo3::ffi::{
     PyDict_New, PyFloat_FromDouble, PyImport_ImportModule, PyList_New, PyLong_FromLongLong,
-    PyMapping_GetItemString, PyObject, PyObject_GenericGetDict, PyTuple_New, PyTypeObject,
-    PyUnicode_New, Py_DECREF, Py_None, Py_TYPE, Py_True,
+    PyMapping_GetItemString, PyObject, PyObject_GetAttrString, PyTuple_New, PyTypeObject,
+    PyUnicode_FromString, Py_DECREF, Py_None, Py_TYPE, Py_True,
 };
 use std::{os::raw::c_char, sync::Once};
 
@@ -24,12 +25,21 @@ static INIT: Once = Once::new();
 #[cold]
 unsafe fn look_up_enum_type() -> *mut PyTypeObject {
     let module = PyImport_ImportModule("enum\0".as_ptr().cast::<c_char>());
-    let module_dict = PyObject_GenericGetDict(module, std::ptr::null_mut());
+    let module_dict = PyObject_GetAttrString(module, "__dict__\0".as_ptr().cast::<c_char>());
     let ptr = PyMapping_GetItemString(module_dict, "EnumMeta\0".as_ptr().cast::<c_char>())
         .cast::<PyTypeObject>();
     Py_DECREF(module_dict);
     Py_DECREF(module);
     ptr
+}
+
+pub(crate) unsafe fn get_type_name(object_type: *mut pyo3::ffi::PyTypeObject) -> String {
+    let type_name =
+        PyObject_GetAttrString(object_type as _, "__name__\0".as_ptr().cast::<c_char>());
+    let mut str_size: pyo3::ffi::Py_ssize_t = 0;
+    let uni = string::read_utf8_from_str(type_name, &mut str_size);
+    let bytes = std::slice::from_raw_parts(uni, str_size as usize).to_vec();
+    String::from_utf8_unchecked(bytes)
 }
 
 /// Set empty type object pointers with their actual values.
@@ -38,7 +48,7 @@ unsafe fn look_up_enum_type() -> *mut PyTypeObject {
 pub fn init() {
     INIT.call_once(|| unsafe {
         TRUE = Py_True();
-        STR_TYPE = Py_TYPE(PyUnicode_New(0, 255));
+        STR_TYPE = Py_TYPE(PyUnicode_FromString("".as_ptr().cast::<c_char>()));
         DICT_TYPE = Py_TYPE(PyDict_New());
         TUPLE_TYPE = Py_TYPE(PyTuple_New(0_isize));
         LIST_TYPE = Py_TYPE(PyList_New(0_isize));
