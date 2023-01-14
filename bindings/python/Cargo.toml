@@ -16,7 +16,7 @@ name = "jsonschema_rs"
 crate-type = ["cdylib"]
 
 [build-dependencies]
-built = { version = "0.5.1", features = ["chrono"] }
+built = { version = "0.5.2", features = ["chrono"] }
 
 [dependencies.jsonschema]
 path = "../../jsonschema"
@@ -25,9 +25,9 @@ default-features = false
 features = ["resolve-http", "resolve-file"]
 
 [dependencies]
-serde_json = "1.0.81"
-serde = "1.0.137"
-pyo3 = { version = "0.17.2", features = ["extension-module"] }
+serde_json = "1.0.91"
+serde = "1.0.152"
+pyo3 = { version = "0.17.3", features = ["extension-module"] }
 pyo3-built = "0.4.7"
 
 [package.metadata.maturin]
