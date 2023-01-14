@@ -65,6 +65,38 @@ jobs:
       - run: cargo test --no-fail-fast --features ${{ matrix.draft }}
         working-directory: ./jsonschema
 
+  build-wasm32:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ['wasm32-unknown-unknown']
+
+    name: Build on ${{ matrix.target }}
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+
+      - name: Cache cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: stable-${{ matrix.target }}-cargo-cache
+
+      - run: cargo build --target ${{ matrix.target }} --no-default-features --features=cli
+        working-directory: ./jsonschema
+
   coverage:
     name: Run test coverage
     runs-on: ubuntu-20.04
@@ -163,7 +195,6 @@ jobs:
       - name: Installing sdist
         run: pip install dist/*
         working-directory: ./bindings/python
-
 
   fmt:
     name: Rustfmt
