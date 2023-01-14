@@ -1,3 +1,4 @@
+import sys
 import uuid
 from collections import namedtuple
 from contextlib import suppress
@@ -11,7 +12,11 @@ from hypothesis import strategies as st
 from jsonschema_rs import JSONSchema, ValidationError, is_valid, iter_errors, validate
 
 json = st.recursive(
-    st.none() | st.booleans() | st.floats() | st.integers() | st.text(),
+    st.none()
+    | st.booleans()
+    | st.floats()
+    | st.integers(min_value=-sys.maxsize - 1, max_value=sys.maxsize)
+    | st.text(),
     lambda children: st.lists(children, min_size=1) | st.dictionaries(st.text(), children, min_size=1),
 )
 
@@ -26,8 +31,10 @@ def test_instance_processing(func, instance):
 @pytest.mark.parametrize("func", (is_valid, validate))
 @given(instance=json)
 def test_schema_processing(func, instance):
-    with suppress(Exception):
+    try:
         func(instance, True)
+    except Exception:
+        pass
 
 
 @pytest.mark.parametrize("func", (is_valid, validate))
