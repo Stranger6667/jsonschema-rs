@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Bump `base64` to `0.21`.
+- Bump `fancy-regex` to `0.11`.
+- Bump `fraction` to `0.13`.
+
 ## [0.16.1] - 2022-10-20
 
 ### Added
