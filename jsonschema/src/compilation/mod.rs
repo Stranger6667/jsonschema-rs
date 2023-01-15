@@ -16,6 +16,7 @@ use crate::{
 };
 use ahash::AHashMap;
 use context::CompilationContext;
+use once_cell::sync::Lazy;
 use options::CompilationOptions;
 use serde_json::Value;
 use std::sync::Arc;
@@ -30,9 +31,8 @@ pub struct JSONSchema {
     config: Arc<CompilationOptions>,
 }
 
-lazy_static::lazy_static! {
-    pub static ref DEFAULT_SCOPE: Url = url::Url::parse(DEFAULT_ROOT_URL).expect("Is a valid URL");
-}
+pub(crate) static DEFAULT_SCOPE: Lazy<Url> =
+    Lazy::new(|| url::Url::parse(DEFAULT_ROOT_URL).expect("Is a valid URL"));
 
 impl JSONSchema {
     /// Return a default `CompilationOptions` that can configure

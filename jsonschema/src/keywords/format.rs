@@ -2,6 +2,7 @@
 use std::{net::IpAddr, str::FromStr};
 
 use fancy_regex::Regex;
+use once_cell::sync::Lazy;
 use serde_json::{Map, Value};
 use url::Url;
 use uuid::Uuid;
@@ -16,25 +17,28 @@ use crate::{
     Draft,
 };
 
-lazy_static::lazy_static! {
-    static ref DATE_RE: Regex =
-        Regex::new(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}\z").expect("Is a valid regex");
-    static ref IRI_REFERENCE_RE: Regex =
-        Regex::new(r"^(\w+:(/?/?))?[^#\\\s]*(#[^\\\s]*)?\z").expect("Is a valid regex");
-    static ref JSON_POINTER_RE: Regex = Regex::new(r"^(/(([^/~])|(~[01]))*)*\z").expect("Is a valid regex");
-    static ref RELATIVE_JSON_POINTER_RE: Regex =
-        Regex::new(r"^(?:0|[1-9][0-9]*)(?:#|(?:/(?:[^~/]|~0|~1)*)*)\z").expect("Is a valid regex");
-    static ref TIME_RE: Regex =
-        Regex::new(
+static DATE_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}\z").expect("Is a valid regex"));
+static IRI_REFERENCE_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^(\w+:(/?/?))?[^#\\\s]*(#[^\\\s]*)?\z").expect("Is a valid regex"));
+static JSON_POINTER_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^(/(([^/~])|(~[01]))*)*\z").expect("Is a valid regex"));
+static RELATIVE_JSON_POINTER_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^(?:0|[1-9][0-9]*)(?:#|(?:/(?:[^~/]|~0|~1)*)*)\z").expect("Is a valid regex")
+});
+static TIME_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
         r"^([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])(\.[0-9]{6})?(([Zz])|([+|\-]([01][0-9]|2[0-3]):[0-5][0-9]))\z",
-    ).expect("Is a valid regex");
-    static ref URI_REFERENCE_RE: Regex =
-        Regex::new(r"^(\w+:(/?/?))?[^#\\\s]*(#[^\\\s]*)?\z").expect("Is a valid regex");
-    static ref URI_TEMPLATE_RE: Regex = Regex::new(
+    ).expect("Is a valid regex")
+});
+static URI_REFERENCE_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^(\w+:(/?/?))?[^#\\\s]*(#[^\\\s]*)?\z").expect("Is a valid regex"));
+static URI_TEMPLATE_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
         r#"^(?:(?:[^\x00-\x20"'<>%\\^`{|}]|%[0-9a-f]{2})|\{[+#./;?&=,!@|]?(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?(?:,(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?)*})*\z"#
     )
-    .expect("Is a valid regex");
-}
+    .expect("Is a valid regex")
+});
 
 macro_rules! format_validator {
     ($validator:ident, $format_name:tt) => {
