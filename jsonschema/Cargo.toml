@@ -27,11 +27,11 @@ resolve-file = []
 [dependencies]
 ahash = { version = "0.8", features = ["serde"] }
 anyhow = "1.0"
-base64 = "0.13"
+base64 = "0.21"
 bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
 clap = { version = "4.0", features = ["derive"], optional = true }
-fancy-regex = "0.10"
-fraction = { version = "0.12", default-features = false, features = ["with-bigint"] }
+fancy-regex = "0.11"
+fraction = { version = "0.13", default-features = false, features = ["with-bigint"] }
 iso8601 = "0.5"
 itoa = "1"
 lazy_static = "1.4"
