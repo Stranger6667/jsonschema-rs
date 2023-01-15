@@ -6,15 +6,15 @@ use crate::{
     primitive_type::PrimitiveType,
     validator::Validate,
 };
+use once_cell::sync::Lazy;
 use serde_json::{Map, Value};
 
 use crate::paths::JSONPointer;
 use std::ops::Index;
 
-lazy_static::lazy_static! {
-    // Use regex::Regex here to take advantage of replace_all method not available in fancy_regex::Regex
-    static ref CONTROL_GROUPS_RE: regex::Regex = regex::Regex::new(r"\\c[A-Za-z]").expect("Is a valid regex");
-}
+// Use regex::Regex here to take advantage of replace_all method not available in fancy_regex::Regex
+static CONTROL_GROUPS_RE: Lazy<regex::Regex> =
+    Lazy::new(|| regex::Regex::new(r"\\c[A-Za-z]").expect("Is a valid regex"));
 
 pub(crate) struct PatternValidator {
     original: String,

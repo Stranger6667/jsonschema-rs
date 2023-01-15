@@ -1,6 +1,7 @@
 use crate::error::ValidationError;
 use ahash::AHashMap;
 use base64::{engine::general_purpose, Engine as _};
+use once_cell::sync::Lazy;
 
 pub(crate) type ContentEncodingCheckType = fn(&str) -> bool;
 pub(crate) type ContentEncodingConverterType =
@@ -19,10 +20,11 @@ pub(crate) fn from_base64(
     }
 }
 
-lazy_static::lazy_static! {
-    pub(crate) static ref DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS: AHashMap<&'static str, (ContentEncodingCheckType, ContentEncodingConverterType)> = {
-        let mut map: AHashMap<&'static str, (ContentEncodingCheckType, ContentEncodingConverterType)> = AHashMap::with_capacity(1);
-        map.insert("base64", (is_base64, from_base64));
-        map
-    };
-}
+pub(crate) static DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS: Lazy<
+    AHashMap<&'static str, (ContentEncodingCheckType, ContentEncodingConverterType)>,
+> = Lazy::new(|| {
+    let mut map: AHashMap<&'static str, (ContentEncodingCheckType, ContentEncodingConverterType)> =
+        AHashMap::with_capacity(1);
+    map.insert("base64", (is_base64, from_base64));
+    map
+});
