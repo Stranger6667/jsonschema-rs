@@ -1,21 +1,21 @@
 use super::{
     super::vocabularies::KeywordName,
-    edges::{EdgeLabel, RawEdge},
+    edges::{self, EdgeLabel, SingleEdge},
     error::Result,
     references::{self, Reference},
     resolving::{id_of_object, with_folders, Resolver},
 };
 use serde_json::{Map, Value};
 use std::collections::{hash_map::Entry, BTreeMap, HashMap};
-use KeywordName::{AllOf, Items, Maximum, Properties, Ref, Type};
+use KeywordName::{AllOf, Items, MaxLength, Maximum, MinProperties, Properties, Ref, Type};
 
 pub(crate) type KeywordNode<'s> = (usize, &'s Value, KeywordName);
 pub(crate) type KeywordMap<'s> = BTreeMap<usize, Vec<KeywordNode<'s>>>;
-pub(crate) type EdgeMap = BTreeMap<usize, Vec<RawEdge>>;
+pub(crate) type EdgeMap = BTreeMap<usize, Vec<SingleEdge>>;
 
 /// The main goal of this phase is to collect all nodes from the input schema and its remote
-/// dependencies into a single graph where each vertex is a reference to a JSON value from these
-/// schemas. Each edge is represented as a pair indexes into the vertex vector and a label.
+/// dependencies into a single graph where each node is a reference to a JSON value from these
+/// schemas. Each edge is represented as a pair indexes into the node vector and a label.
 pub(crate) fn collect<'s>(
     schema: &'s Value,
     root_resolver: &'s Resolver,
@@ -98,7 +98,7 @@ impl<'s> Collector<'s> {
         self.edges
             .entry(source)
             .or_insert_with(Vec::new)
-            .push(RawEdge::new(source, target, label.into()));
+            .push(edges::single(label, source, target));
         (entry, target)
     }
     fn add_keyword(
@@ -143,6 +143,12 @@ impl<'s> Collector<'s> {
                     }
                     "maximum" => {
                         self.add_keyword(parent_id, value, Maximum);
+                    }
+                    "maxLength" => {
+                        self.add_keyword(parent_id, value, MaxLength);
+                    }
+                    "minProperties" => {
+                        self.add_keyword(parent_id, value, MinProperties);
                     }
                     "type" => {
                         self.add_keyword(parent_id, value, Type);

@@ -1,14 +1,77 @@
-//! Packed JSON Schema representation.
+//! This module contains data structures for representing JSON Schemas.
 //!
-//! This approach represents JSON Schema as a set of nodes & edges stored compactly in vectors.
+//! # Motivation
 //!
-//! Fast and cache efficient validation requires fast iteration over the schema, therefore a
-//! representation like `serde_json::Value` should be converted to a more compact one.
+//! The main motivation behind all design decisions is high data validation performance.
+//!
+//! The most effective way to achieve it is to minimize the amount of work needed during validation.
+//! It is achieved by:
+//!
+//! - Loading remote schemas only once
+//! - Inlining trivial schemas
+//! - Skipping sub-schemas that always succeed (e.g. `uniqueItems: false`)
+//! - Grouping multiple sub-schemas into a single one
+//! - Specializing internal data structures and algorithms by the input schema characteristics
+//! - Avoiding allocations during validation
+//!
+//! # Design
 //!
 //! JSON Schema is a directed graph, where cycles could be represented via the `$ref` keyword.
 //! It contains two types of edges:
-//!   - Concrete edges are regular Rust references that connect two JSON values;
-//!   - Virtual edges are using the `$ref` keyword to do this.
+//!   - Regular parent-child relationships between two JSON values;
+//!   - Values connected via the `$ref` keyword.
+//!
+//! This graph is implemented as an arena that stores all nodes in a single vector with a separate
+//! vector for edges.
+//!
+//! ## Example
+//!
+//! Schema:
+//!
+//! ```json
+//! {
+//!     "type": "object",
+//!     "properties": {
+//!         "A": {
+//!             "type": "string",
+//!             "maxLength": 5
+//!         },
+//!         "B": {
+//!             "allOf": [
+//!                 {
+//!                     "type": "integer"
+//!                 },
+//!                 {
+//!                     "type": "array"
+//!                 }
+//!             ]
+//!         },
+//!     },
+//!     "minProperties": 1
+//! }
+//! ```
+//!
+//!   Keywords                                                    Edges
+//!
+//! [                                                                 [
+//! -- 0..3 `/`                                    |------------>     -- 0..2 (`properties' edges)
+//!      <type: object>                            |  |<------------------ A
+//!      <properties> -----> 0..2 ---------------->|  |  |<--------------- B
+//!      <minProperties: 1>                           |  |  |--->     -- 2..4 (`allOf` edges)
+//! -- 3..5 `/properties/A`               <--- 3..5 <-|  |  |  |<--------- 0
+//!      <type: string>                                  |  |  |  |<------ 1
+//!      <maxLength: 5>                                  |  |  |  |   ]
+//! -- 5..6 `/properties/B`               <--- 5..6 <----|  |  |  |
+//!      <allOf> ----------> 2..4 ------------------------->|  |  |
+//! -- 6..7 `/properties/B/allOf/0`       <--- 6..7 <----------|  |
+//!      <type: integer>                                          |
+//! -- 7..8 `/properties/B/allOf/1`       <--- 7..8 <-------------|
+//!      <type: array>
+//! ]
+//!
+//! The key here is that nodes are stored the same way as how Breadth-First-Search traverses a tree.
+//!
+//! # Historical notes
 //!
 //! Here is a high-level algorithm used for building a compact schema representation:
 //!   1. Recursively fetch all external schemas reachable from the input schema via references.
@@ -28,9 +91,12 @@ pub mod resolving;
 #[cfg(test)]
 mod testing;
 
-use crate::vocabularies::{applicator, validation, Keyword, KeywordName};
+use crate::{
+    value_type::ValueType,
+    vocabularies::{applicator, validation, Keyword, KeywordName},
+};
 use collection::{EdgeMap, KeywordMap};
-use edges::Edge;
+use edges::MultiEdge;
 use error::Result;
 use serde_json::Value;
 
@@ -39,18 +105,20 @@ use serde_json::Value;
 //     Example: `anyOf` where some items are very cheap and common to pass validation.
 //     collect average distance between two subsequent array accesses to measure it
 //   - Interleave values & edges in the same struct. Might improve cache locality.
+//   - Order keywords, so ones with edges are stored in the end of the current level -
+//     this way there will be fewer jump to other levels and back to the current one
 
 #[derive(Debug)]
-pub struct JsonSchema {
+pub struct Schema {
     pub(crate) keywords: Box<[Keyword]>,
     head_end: usize,
-    pub(crate) edges: Box<[Edge]>,
+    pub(crate) edges: Box<[MultiEdge]>,
 }
 
-impl JsonSchema {
+impl Schema {
     pub fn new(schema: &Value) -> Result<Self> {
-        // Resolver for the root schema - needed to resolve location-independent references during
-        // the initial resolving step
+        // Resolver for the root schema
+        // needed to resolve location-independent references during the initial resolving step
         let root_resolver = resolving::Resolver::new(schema)?;
         // Fetch all external schemas reachable from the root
         let external = resolving::fetch_external(schema, &root_resolver)?;
@@ -60,7 +128,7 @@ impl JsonSchema {
         let (keyword_map, edge_map) = collection::collect(schema, &root_resolver, &resolvers)?;
         // Build a `Keyword` graph
         let (head_end, keywords, edges) = build(&keyword_map, &edge_map);
-        Ok(JsonSchema {
+        Ok(Schema {
             keywords: keywords.into_boxed_slice(),
             head_end,
             edges: edges.into_boxed_slice(),
@@ -68,51 +136,78 @@ impl JsonSchema {
     }
 
     pub fn is_valid(&self, instance: &Value) -> bool {
-        if let [keyword] = &self.keywords[..] {
-            keyword.is_valid(self, instance)
-        } else {
-            self.keywords[..self.head_end]
-                .iter()
-                .all(|keyword| keyword.is_valid(self, instance))
-        }
+        self.keywords[..self.head_end]
+            .iter()
+            .all(|keyword| keyword.is_valid(self, instance))
     }
 }
 
-fn build(keyword_map: &KeywordMap<'_>, edge_map: &EdgeMap) -> (usize, Vec<Keyword>, Vec<Edge>) {
+// Keyword iterator
+//   1. two stack - keywords (K) & edges (E)
+//   2. push top level range onto K
+//   3. iter over keywords in current range
+//   4. If keyword has edge range, push this range onto E
+//   5. Iter over edges - push each keyword range onto K
+//   6. repeat from (3)
+// What about conditionals - if / else? push ranges depending on evaluation
+
+fn build(
+    keyword_map: &KeywordMap<'_>,
+    edge_map: &EdgeMap,
+) -> (usize, Vec<Keyword>, Vec<MultiEdge>) {
     let mut keywords = vec![];
     let mut edges = vec![];
     let head = keyword_map.get(&0).map_or(0, |kwords| kwords.len());
     for node_keywords in keyword_map.values() {
-        let next_keyword_layer_start_idx = keywords.len() + node_keywords.len();
+        let mut next = keywords.len() + node_keywords.len();
         for (target, value, keyword) in node_keywords {
             match keyword {
                 KeywordName::AllOf => {
-                    // TODO: child keywords should go immediately after this one, otherwise there is a gap
                     keywords.push(applicator::AllOf::build(
-                        next_keyword_layer_start_idx,
-                        next_keyword_layer_start_idx + edge_map[target].len(),
+                        edges.len(),
+                        edges.len() + edge_map[target].len(),
                     ));
+                    for edge in &edge_map[target] {
+                        let end = next + keyword_map[&edge.target].len();
+                        edges.push(edges::multi(edge.label.clone(), next..end));
+                        next = end;
+                    }
                 }
                 KeywordName::Items => {}
                 KeywordName::Maximum => {
                     keywords.push(validation::Maximum::build(value.as_u64().unwrap()))
+                }
+                KeywordName::MaxLength => {
+                    keywords.push(validation::MaxLength::build(value.as_u64().unwrap()))
+                }
+                KeywordName::MinProperties => {
+                    keywords.push(validation::MinProperties::build(value.as_u64().unwrap()))
                 }
                 KeywordName::Properties => {
                     keywords.push(applicator::Properties::build(
                         edges.len(),
                         edges.len() + edge_map[target].len(),
                     ));
-                    let mut offset = 0;
                     for edge in &edge_map[target] {
-                        let start = keywords.len() + offset;
-                        let children_length = keyword_map[&edge.target].len();
-                        let end = start + children_length;
-                        edges.push(Edge::new(edge.label.clone(), start..end));
-                        offset += children_length;
+                        let end = next + keyword_map[&edge.target].len();
+                        edges.push(edges::multi(edge.label.clone(), next..end));
+                        next = end;
                     }
                 }
                 KeywordName::Ref => {}
-                KeywordName::Type => {}
+                KeywordName::Type => {
+                    let x = match value.as_str().unwrap() {
+                        "array" => ValueType::Array,
+                        "boolean" => ValueType::Boolean,
+                        "integer" => ValueType::Integer,
+                        "null" => ValueType::Null,
+                        "number" => ValueType::Number,
+                        "object" => ValueType::Object,
+                        "string" => ValueType::String,
+                        _ => panic!("invalid type"),
+                    };
+                    keywords.push(validation::Type::build(x))
+                }
             }
         }
     }
@@ -121,15 +216,15 @@ fn build(keyword_map: &KeywordMap<'_>, edge_map: &EdgeMap) -> (usize, Vec<Keywor
 
 #[cfg(test)]
 mod tests {
-    use super::{applicator::Properties, edges::EdgeLabel, validation::Maximum, *};
-    use crate::compilation::edges::RawEdge;
-    use bench_helpers::read_json;
-    use serde_json::{json as j, Value};
-    use std::fs;
+    use super::*;
+    use serde_json::{from_reader, json as j, Value};
+    use std::{fs, fs::File, io::BufReader};
     use test_case::test_case;
 
-    fn raw(source: usize, target: usize, label: impl Into<EdgeLabel>) -> RawEdge {
-        RawEdge::new(source, target, label.into())
+    pub fn read_json(filepath: &str) -> Value {
+        let file = File::open(filepath).expect("Failed to open file");
+        let reader = BufReader::new(file);
+        from_reader(reader).expect("Invalid JSON")
     }
 
     const SELF_REF: &str = "#";
@@ -149,7 +244,7 @@ mod tests {
     //         j!({"maximum": 5}),
     //         j!(5),
     //     ],
-    //     &[raw(0, 1, KeywordName::Maximum)],
+    //     &[single(0, 1, KeywordName::Maximum)],
     //     &[];
     //     "No reference"
     // )]
@@ -161,8 +256,8 @@ mod tests {
     //         j!(true),
     //     ],
     //     &[
-    //         raw(0, 1, KeywordName::Properties),
-    //         raw(1, 2, "maximum"),
+    //         single(0, 1, KeywordName::Properties),
+    //         single(1, 2, "maximum"),
     //     ],
     //     &[];
     //     "Not a keyword"
@@ -182,9 +277,9 @@ mod tests {
     //         j!(5),
     //     ],
     //     &[
-    //         raw(0, 1, KeywordName::Properties),
-    //         raw(1, 2, "$ref"),
-    //         raw(2, 3, KeywordName::Maximum),
+    //         single(0, 1, KeywordName::Properties),
+    //         single(1, 2, "$ref"),
+    //         single(2, 3, KeywordName::Maximum),
     //     ],
     //     &[];
     //     "Not a reference"
@@ -195,7 +290,7 @@ mod tests {
     //         j!({"$ref": SELF_REF}),
     //     ],
     //     &[
-    //         raw(0, 0, KeywordName::Ref),
+    //         single(0, 0, KeywordName::Ref),
     //     ],
     //     &[];
     //     "Self reference"
@@ -208,8 +303,8 @@ mod tests {
     //         j!("integer"),
     //     ],
     //     &[
-    //         raw(1, 2, KeywordName::Type),
-    //         raw(0, 1, KeywordName::Ref),
+    //         single(1, 2, KeywordName::Type),
+    //         single(0, 1, KeywordName::Ref),
     //     ],
     //     &[REMOTE_BASE];
     //     "Remote reference"
@@ -239,10 +334,10 @@ mod tests {
     //         j!("integer"),
     //     ],
     //     &[
-    //         raw(0, 1, KeywordName::Items),
-    //         raw(1, 2, KeywordName::Items),
-    //         raw(3, 4, KeywordName::Type),
-    //         raw(2, 3, KeywordName::Ref),
+    //         single(0, 1, KeywordName::Items),
+    //         single(1, 2, KeywordName::Items),
+    //         single(3, 4, KeywordName::Type),
+    //         single(2, 3, KeywordName::Ref),
     //     ],
     //     &["http://localhost:1234/baseUriChange/folderInteger.json"];
     //     "Base URI change"
@@ -272,9 +367,9 @@ mod tests {
     //         j!({"$id":"baseUriChangeFolder/"}),
     //     ],
     //     &[
-    //         raw(0, 1, KeywordName::Properties),
-    //         raw(1, 2, "list"),
-    //         raw(2, 3, KeywordName::Ref),
+    //         single(0, 1, KeywordName::Properties),
+    //         single(1, 2, "list"),
+    //         single(2, 3, KeywordName::Ref),
     //     ],
     //     &[];
     //     "Base URI change - change folder"
@@ -290,9 +385,9 @@ mod tests {
     //         j!("integer"),
     //     ],
     //     &[
-    //         raw(2, 3, KeywordName::Type),
-    //         raw(1, 2, KeywordName::Ref),
-    //         raw(0, 1, KeywordName::Ref),
+    //         single(2, 3, KeywordName::Type),
+    //         single(1, 2, KeywordName::Ref),
+    //         single(0, 1, KeywordName::Ref),
     //     ],
     //     &["http://localhost:1234/subSchemas.json"];
     //     "Reference within remote reference"
@@ -323,9 +418,9 @@ mod tests {
     //         j!({"$ref": "http://localhost:1234/root"}),
     //     ],
     //     &[
-    //         raw(0, 1, KeywordName::Properties),
-    //         raw(1, 2, "A"),
-    //         raw(2, 0, KeywordName::Ref),
+    //         single(0, 1, KeywordName::Properties),
+    //         single(1, 2, "A"),
+    //         single(2, 0, KeywordName::Ref),
     //     ],
     //     &[];
     //     "Absolute reference to the same schema"
@@ -344,11 +439,11 @@ mod tests {
     //         j!({"$ref":"#/allOf/0"}),
     //     ],
     //     &[
-    //         raw(0, 1, KeywordName::AllOf),
-    //         raw(1, 2, 0),
-    //         raw(3, 2, KeywordName::Ref),
-    //         raw(2, 3, KeywordName::Ref),
-    //         raw(1, 3, 1),
+    //         single(0, 1, KeywordName::AllOf),
+    //         single(1, 2, 0),
+    //         single(3, 2, KeywordName::Ref),
+    //         single(2, 3, KeywordName::Ref),
+    //         single(1, 3, 1),
     //     ],
     //     &[];
     //     "Multiple references to the same target"
@@ -380,13 +475,13 @@ mod tests {
     //         j!({"$ref":"tree"}),
     //     ],
     //     &[
-    //         raw(0, 1, KeywordName::Properties),
-    //         raw(1, 2, "nodes"),
-    //         raw(2, 3, KeywordName::Items),
-    //         raw(4, 5, KeywordName::Properties),
-    //         raw(5, 6, "subtree"),
-    //         raw(6, 0, KeywordName::Ref),
-    //         raw(3, 4, KeywordName::Ref),
+    //         single(0, 1, KeywordName::Properties),
+    //         single(1, 2, "nodes"),
+    //         single(2, 3, KeywordName::Items),
+    //         single(4, 5, KeywordName::Properties),
+    //         single(5, 6, "subtree"),
+    //         single(6, 0, KeywordName::Ref),
+    //         single(3, 4, KeywordName::Ref),
     //     ],
     //     &[];
     //     "Recursive references between schemas"
@@ -410,7 +505,7 @@ mod tests {
     //         &j!({"maximum": 5}),
     //         &j!(5),
     //     ],
-    //     vec![raw(0, 1, KeywordName::Maximum)],
+    //     vec![single(0, 1, KeywordName::Maximum)],
     //     1,
     //     vec![Maximum::build(5)],
     //     vec![];
@@ -424,9 +519,9 @@ mod tests {
     //         &j!(5),
     //     ],
     //     vec![
-    //         raw(0, 1, KeywordName::Properties),
-    //         raw(1, 2, "A"),
-    //         raw(2, 3, KeywordName::Maximum),
+    //         single(0, 1, KeywordName::Properties),
+    //         single(1, 2, "A"),
+    //         single(2, 3, KeywordName::Maximum),
     //     ],
     //     1,
     //     vec![
@@ -448,11 +543,11 @@ mod tests {
     //         &j!(3),
     //     ],
     //     vec![
-    //         raw(0, 1, KeywordName::Properties),
-    //         raw(1, 2, "A"),
-    //         raw(2, 3, KeywordName::Maximum),
-    //         raw(1, 4, "B"),
-    //         raw(4, 5, KeywordName::Maximum),
+    //         single(0, 1, KeywordName::Properties),
+    //         single(1, 2, "A"),
+    //         single(2, 3, KeywordName::Maximum),
+    //         single(1, 4, "B"),
+    //         single(4, 5, KeywordName::Maximum),
     //     ],
     //     1,
     //     vec![
@@ -476,11 +571,11 @@ mod tests {
     //         &j!(5),
     //     ],
     //     vec![
-    //         raw(0, 1, KeywordName::Properties),
-    //         raw(1, 2, "A"),
-    //         raw(2, 3, KeywordName::Properties),
-    //         raw(3, 4, "B"),
-    //         raw(4, 5, KeywordName::Maximum),
+    //         single(0, 1, KeywordName::Properties),
+    //         single(1, 2, "A"),
+    //         single(2, 3, KeywordName::Properties),
+    //         single(3, 4, "B"),
+    //         single(4, 5, KeywordName::Maximum),
     //     ],
     //     1,
     //     vec![
@@ -563,17 +658,75 @@ mod tests {
         )
     }
 
-    // #[test_case(j!({"maximum": 5}), j!(4), j!(6))]
-    // #[test_case(j!({"properties": {"A": {"maximum": 5}}}), j!({"A": 4}), j!({"A": 6}))]
-    // #[test_case(j!({"properties": {"A": {"properties": {"B": {"maximum": 5}}}}}), j!({"A": {"B": 4}}), j!({"A": {"B": 6}}))]
+    #[test_case(j!({"maximum": 5}), j!(4), j!(6))]
     #[test_case(
-        j!({"allOf": [{"properties": {"A": {"maximum": 5}}}, {"properties": {"B": {"maximum": 7}}}]}),
-        j!({"A": 4, "B": 6}),
+        j!({
+            "properties": {
+                "A": {"maximum": 5}
+            }
+        }),
+        j!({"A": 4}),
+        j!({"A": 6})
+    )]
+    #[test_case(
+        j!({
+            "properties": {
+                "A": {
+                    "properties": {
+                        "B": {"maximum": 5}
+                    }
+                }
+            }
+        }),
+        j!({"A": {"B": 4}}),
+        j!({"A": {"B": 6}})
+    )]
+    #[test_case(
+        j!({
+            "type": "object",
+            "properties": {
+                "A": {
+                    "type": "string",
+                    "maxLength": 5
+                },
+                "B": {
+                    "allOf": [
+                        {"type": "integer"},
+                        {"type": "array"}
+                    ]
+                },
+            },
+            "minProperties": 1
+        }),
+        j!({"A": "ABC"}),
         j!({"A": 4, "B": 9})
     )]
+    #[test_case(
+        j!(
+        {
+             "type": "object",
+             "properties": {
+                 "A": {
+                     "type": "string",
+                     "maxLength": 5
+                 },
+             },
+             "allOf": [
+                 {
+                     "type": "object"
+                 },
+                 {
+                     "type": "object"
+                 }
+             ]
+         }
+        ),
+        j!({"A": "ABC"}),
+        j!({"A": 4})
+    )]
     fn is_valid(schema: Value, valid: Value, invalid: Value) {
-        let compiled = JsonSchema::new(&schema).unwrap();
-        println!("{:?}", compiled);
+        let compiled = Schema::new(&schema).unwrap();
+        testing::assert_graph(&compiled.keywords, &compiled.edges);
         assert!(compiled.is_valid(&valid));
         assert!(!compiled.is_valid(&invalid));
     }

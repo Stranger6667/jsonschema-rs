@@ -1,10 +1,10 @@
-use crate::{compilation::edges::EdgeLabel, vocabularies::Keyword, JsonSchema};
+use crate::{schema::edges::EdgeLabel, vocabularies::Keyword, Schema};
 use serde_json::Value;
 use std::ops::Range;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Properties {
-    edges: Range<usize>,
+    pub(crate) edges: Range<usize>,
 }
 
 impl Properties {
@@ -14,7 +14,7 @@ impl Properties {
 }
 
 impl Properties {
-    pub(crate) fn is_valid(&self, schema: &JsonSchema, instance: &Value) -> bool {
+    pub(crate) fn is_valid(&self, schema: &Schema, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             schema.edges[self.edges.clone()].iter().all(|edge| {
                 // TODO. split edges to String / usize to avoid `match` on each one

@@ -114,14 +114,14 @@ pub(crate) fn pointer<'a, 'b>(
     let mut folders = vec![];
 
     for token in tokens {
-        let target_opt = match *target {
-            Value::Object(ref map) => {
+        let target_opt = match target {
+            Value::Object(map) => {
                 if let Some(id) = id_of(target) {
                     folders.push(id);
                 }
                 map.get(&*token)
             }
-            Value::Array(ref list) => parse_index(&token).and_then(|x| list.get(x)),
+            Value::Array(list) => parse_index(&token).and_then(|x| list.get(x)),
             _ => return None,
         };
         if let Some(t) = target_opt {
