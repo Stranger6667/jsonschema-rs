@@ -30,12 +30,6 @@ impl From<usize> for EdgeLabel {
     }
 }
 
-impl From<&str> for EdgeLabel {
-    fn from(value: &str) -> Self {
-        EdgeLabel::Key(value.to_string().into_boxed_str())
-    }
-}
-
 impl From<&String> for EdgeLabel {
     fn from(value: &String) -> Self {
         EdgeLabel::Key(value.to_owned().into_boxed_str())
@@ -77,19 +71,13 @@ pub(crate) struct SingleEdge {
     pub(crate) target: usize,
 }
 
-impl SingleEdge {
-    pub(crate) const fn new(label: EdgeLabel, source: usize, target: usize) -> Self {
-        Self {
-            source,
-            target,
-            label,
-        }
-    }
-}
-
 /// A convenience shortcut to create `SingleEdge`.
 pub(crate) fn single(label: impl Into<EdgeLabel>, source: usize, target: usize) -> SingleEdge {
-    SingleEdge::new(label.into(), source, target)
+    SingleEdge {
+        label: label.into(),
+        source,
+        target,
+    }
 }
 
 /// An edge between a single JSON value and a range of JSON values that are stored contiguously.
@@ -127,13 +115,10 @@ pub(crate) struct MultiEdge {
     pub(crate) keywords: Range<usize>,
 }
 
-impl MultiEdge {
-    pub(crate) fn new(label: EdgeLabel, keywords: Range<usize>) -> Self {
-        Self { label, keywords }
-    }
-}
-
 /// A convenience shortcut to create `MultiEdge`.
 pub(crate) fn multi(label: impl Into<EdgeLabel>, keywords: Range<usize>) -> MultiEdge {
-    MultiEdge::new(label.into(), keywords)
+    MultiEdge {
+        label: label.into(),
+        keywords,
+    }
 }
