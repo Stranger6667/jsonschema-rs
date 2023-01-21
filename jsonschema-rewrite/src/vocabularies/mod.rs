@@ -1,5 +1,4 @@
 use crate::Schema;
-#[cfg(test)]
 use std::ops::Range;
 
 pub(crate) mod applicator;
@@ -85,7 +84,11 @@ impl Keyword {
         }
     }
 
-    #[cfg(test)]
+    #[inline]
+    pub fn validate(&self, schema: &Schema, instance: &serde_json::Value) -> Option<u64> {
+        Some(42)
+    }
+
     pub(crate) fn edges(&self) -> Option<Range<usize>> {
         match self {
             Keyword::AllOf(inner) => Some(inner.edges.clone()),

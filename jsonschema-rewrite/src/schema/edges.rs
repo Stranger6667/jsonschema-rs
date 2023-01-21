@@ -11,8 +11,7 @@ pub(crate) enum EdgeLabel {
     ///           name
     /// object ---------> "Test"
     ///
-    /// The label for the edge between the top-level object and string "Test" is `name` if it is not
-    /// a JSON Schema keyword.
+    /// The label for the edge between the top-level object and string "Test" is `name`.
     Key(Box<str>),
     /// # Example
     ///

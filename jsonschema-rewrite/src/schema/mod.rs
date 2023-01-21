@@ -71,8 +71,6 @@
 //!
 //! The key here is that nodes are stored the same way as how Breadth-First-Search traverses a tree.
 //!
-//! # Historical notes
-//!
 //! Here is a high-level algorithm used for building a compact schema representation:
 //!   1. Recursively fetch all external schemas reachable from the input schema via references.
 //!   2. Build reference resolvers for all schemas. At this point any reference in this set of
@@ -99,6 +97,7 @@ use collection::{EdgeMap, KeywordMap};
 use edges::MultiEdge;
 use error::Result;
 use serde_json::Value;
+use std::ops::Range;
 
 // TODO. Optimization ideas:
 //   - Values ordering. "Cheaper" keywords might work better if they are executed first.
@@ -140,16 +139,81 @@ impl Schema {
             .iter()
             .all(|keyword| keyword.is_valid(self, instance))
     }
+
+    pub fn validate<'s, 'i>(&'s self, instance: &'i Value) -> ValidationResult<'s, 'i> {
+        ValidationResult {
+            schema: self,
+            instance,
+        }
+    }
 }
 
-// Keyword iterator
-//   1. two stack - keywords (K) & edges (E)
-//   2. push top level range onto K
-//   3. iter over keywords in current range
-//   4. If keyword has edge range, push this range onto E
-//   5. Iter over edges - push each keyword range onto K
-//   6. repeat from (3)
-// What about conditionals - if / else? push ranges depending on evaluation
+#[derive(Clone)]
+pub struct ValidationResult<'s, 'i> {
+    schema: &'s Schema,
+    instance: &'i Value,
+}
+
+impl<'s, 'i> ValidationResult<'s, 'i> {
+    pub fn errors(&self) -> ErrorIterator {
+        ErrorIterator::new(self.schema, self.instance)
+    }
+}
+
+pub struct ErrorIterator<'s, 'i> {
+    keywords: Vec<Range<usize>>,
+    edges: Vec<Range<usize>>,
+    schema: &'s Schema,
+    instance: &'i Value,
+}
+
+impl<'s, 'i> ErrorIterator<'s, 'i> {
+    fn new(schema: &'s Schema, instance: &'i Value) -> Self {
+        Self {
+            keywords: vec![0..schema.head_end],
+            edges: vec![],
+            schema,
+            instance,
+        }
+    }
+}
+
+impl<'s, 'i> Iterator for ErrorIterator<'s, 'i> {
+    type Item = u64;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(Range { mut start, end }) = self.keywords.pop() {
+            for keyword in &self.schema.keywords[start..end] {
+                // FIXME: applicators should somehow collect multiple children results, decide
+                //        and bubble up the errors only in this case.
+                //        Maybe create `Error` iterator for children & call recursively?
+                //        In such a case it will be nice to avoid creating new `Vec` there &
+                //        reuse this one
+                //        E.g. applicators could get an iterator over children errors as input
+                //        Maybe pass &mut Vec to `ErrorIterator`?? or just have a private struct
+                //        that implements the same stuff. This way `ErrorIterator` will have only
+                //        2 lifetimes
+                start += 1;
+                let result = if let Some(edges) = keyword.edges() {
+                    for edge in &self.schema.edges[edges] {
+                        self.keywords.push(edge.keywords.clone());
+                    }
+                    continue;
+                } else {
+                    // TODO: Validation keywords actually don't need schema - try to not pass it
+                    keyword.validate(self.schema, self.instance)
+                };
+                // FIXME: It doesn't cover the `continue` above
+                if start != end {
+                    // Store not yet traversed keywords to get back to them later
+                    self.keywords.push(start..end);
+                }
+                return result;
+            }
+        }
+        None
+    }
+}
 
 fn build(
     keyword_map: &KeywordMap<'_>,
@@ -619,8 +683,10 @@ mod tests {
                         let root = resolving::Resolver::new(schema).unwrap();
                         let external = resolving::fetch_external(schema, &root).unwrap();
                         let resolvers = resolving::build_resolvers(&external);
-                        let (_, _) = collection::collect(schema, &root, &resolvers).unwrap();
-                        // testing::assert_unique_edges(&edges);
+                        let (_, edge_map) = collection::collect(schema, &root, &resolvers).unwrap();
+                        for (_, edges) in edge_map {
+                            testing::assert_unique_edges(&edges);
+                        }
                     }
                 }
             }
@@ -702,25 +768,23 @@ mod tests {
         j!({"A": 4, "B": 9})
     )]
     #[test_case(
-        j!(
-        {
-             "type": "object",
-             "properties": {
-                 "A": {
-                     "type": "string",
-                     "maxLength": 5
-                 },
-             },
-             "allOf": [
-                 {
-                     "type": "object"
-                 },
-                 {
-                     "type": "object"
-                 }
-             ]
-         }
-        ),
+        j!({
+            "type": "object",
+            "properties": {
+                "A": {
+                    "type": "string",
+                    "maxLength": 5
+                },
+            },
+            "allOf": [
+                {
+                    "type": "object"
+                },
+                {
+                    "type": "object"
+                }
+            ]
+        }),
         j!({"A": "ABC"}),
         j!({"A": 4})
     )]
@@ -729,5 +793,31 @@ mod tests {
         testing::assert_graph(&compiled.keywords, &compiled.edges);
         assert!(compiled.is_valid(&valid));
         assert!(!compiled.is_valid(&invalid));
+    }
+
+    #[test]
+    fn validate() {
+        let compiled = Schema::new(&j!({
+            "type": "object",
+            "properties": {
+                "A": {
+                    "type": "string",
+                    "maxLength": 5
+                },
+                "B": {
+                    "allOf": [
+                        {"type": "integer"},
+                        {"type": "array"}
+                    ]
+                },
+            },
+            "minProperties": 1
+        }))
+        .unwrap();
+        let instance = j!({"A": 4});
+        let outcome = compiled.validate(&instance);
+        for error in outcome.errors() {
+            dbg!(error);
+        }
     }
 }
