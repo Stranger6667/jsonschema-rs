@@ -91,7 +91,7 @@ mod testing;
 
 use crate::{
     value_type::ValueType,
-    vocabularies::{applicator, validation, Keyword, KeywordName},
+    vocabularies::{applicator, validation, Keyword},
 };
 use collection::{EdgeMap, KeywordMap};
 use edges::MultiEdge;
@@ -225,8 +225,8 @@ fn build(
     for node_keywords in keyword_map.values() {
         let mut next = keywords.len() + node_keywords.len();
         for (target, value, keyword) in node_keywords {
-            match keyword {
-                KeywordName::AllOf => {
+            match *keyword {
+                "allOf" => {
                     keywords.push(applicator::AllOf::build(
                         edges.len(),
                         edges.len() + edge_map[target].len(),
@@ -237,29 +237,26 @@ fn build(
                         next = end;
                     }
                 }
-                KeywordName::Items => {}
-                KeywordName::Maximum => {
-                    keywords.push(validation::Maximum::build(value.as_u64().unwrap()))
-                }
-                KeywordName::MaxLength => {
-                    keywords.push(validation::MaxLength::build(value.as_u64().unwrap()))
-                }
-                KeywordName::MinProperties => {
+                "items" => {}
+                "maximum" => keywords.push(validation::Maximum::build(value.as_u64().unwrap())),
+                "maxLength" => keywords.push(validation::MaxLength::build(value.as_u64().unwrap())),
+                "minProperties" => {
                     keywords.push(validation::MinProperties::build(value.as_u64().unwrap()))
                 }
-                KeywordName::Properties => {
+                "properties" => {
                     keywords.push(applicator::Properties::build(
                         edges.len(),
                         edges.len() + edge_map[target].len(),
                     ));
+                    // TODO: It will not work for $ref - it will point to some other keywords
                     for edge in &edge_map[target] {
                         let end = next + keyword_map[&edge.target].len();
                         edges.push(edges::multi(edge.label.clone(), next..end));
                         next = end;
                     }
                 }
-                KeywordName::Ref => {}
-                KeywordName::Type => {
+                "$ref" => {}
+                "type" => {
                     let x = match value.as_str().unwrap() {
                         "array" => ValueType::Array,
                         "boolean" => ValueType::Boolean,
@@ -272,6 +269,7 @@ fn build(
                     };
                     keywords.push(validation::Type::build(x))
                 }
+                _ => {}
             }
         }
     }

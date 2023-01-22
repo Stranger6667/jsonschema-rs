@@ -4,64 +4,38 @@ use std::ops::Range;
 pub(crate) mod applicator;
 pub(crate) mod validation;
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
-pub(crate) enum KeywordName {
+use applicator::{AllOf, ItemsArray, Properties};
+use validation::{MaxLength, Maximum, MinProperties, Type};
+
+macro_rules! keywords {
+    ($($kw:ident),+) => {
+        #[derive(Debug, Eq, PartialEq)]
+        pub enum Keyword {
+            $(
+                $kw($kw),
+            )+
+        }
+
+        $(
+        impl From<$kw> for Keyword {
+            fn from(v: $kw) -> Keyword {
+                Keyword::$kw(v)
+            }
+        }
+        )+
+
+    };
+}
+
+keywords!(
     AllOf,
-    Items,
-    Maximum,
-    MaxLength,
-    MinProperties,
+    ItemsArray,
     Properties,
-    Ref,
-    Type,
-}
-
-#[derive(Debug, Eq, PartialEq)]
-pub enum Keyword {
-    AllOf(applicator::AllOf),
-    ItemsArray(applicator::ItemsArray),
-    MaxLength(validation::MaxLength),
-    Maximum(validation::Maximum),
-    MinProperties(validation::MinProperties),
-    Properties(applicator::Properties),
-    Type(validation::Type),
-}
-
-impl From<applicator::AllOf> for Keyword {
-    fn from(v: applicator::AllOf) -> Keyword {
-        Keyword::AllOf(v)
-    }
-}
-impl From<applicator::ItemsArray> for Keyword {
-    fn from(v: applicator::ItemsArray) -> Keyword {
-        Keyword::ItemsArray(v)
-    }
-}
-impl From<validation::MaxLength> for Keyword {
-    fn from(v: validation::MaxLength) -> Keyword {
-        Keyword::MaxLength(v)
-    }
-}
-impl From<validation::Maximum> for Keyword {
-    fn from(v: validation::Maximum) -> Keyword {
-        Keyword::Maximum(v)
-    }
-}
-impl From<validation::MinProperties> for Keyword {
-    fn from(v: validation::MinProperties) -> Keyword {
-        Keyword::MinProperties(v)
-    }
-}
-impl From<applicator::Properties> for Keyword {
-    fn from(v: applicator::Properties) -> Keyword {
-        Keyword::Properties(v)
-    }
-}
-impl From<validation::Type> for Keyword {
-    fn from(v: validation::Type) -> Keyword {
-        Keyword::Type(v)
-    }
-}
+    MaxLength,
+    Maximum,
+    MinProperties,
+    Type
+);
 
 impl Keyword {
     #[inline]

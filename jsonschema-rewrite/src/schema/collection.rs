@@ -1,5 +1,4 @@
 use super::{
-    super::vocabularies::KeywordName,
     edges::{self, EdgeLabel, SingleEdge},
     error::Result,
     references::{self, Reference},
@@ -7,9 +6,8 @@ use super::{
 };
 use serde_json::{Map, Value};
 use std::collections::{hash_map::Entry, BTreeMap, HashMap};
-use KeywordName::{AllOf, Items, MaxLength, Maximum, MinProperties, Properties, Ref, Type};
 
-pub(crate) type KeywordNode<'s> = (usize, &'s Value, KeywordName);
+pub(crate) type KeywordNode<'s> = (usize, &'s Value, &'static str);
 pub(crate) type KeywordMap<'s> = BTreeMap<usize, Vec<KeywordNode<'s>>>;
 pub(crate) type EdgeMap = BTreeMap<usize, Vec<SingleEdge>>;
 
@@ -105,7 +103,7 @@ impl<'s> Collector<'s> {
         &mut self,
         source: usize,
         value: &'s Value,
-        keyword: KeywordName,
+        keyword: &'static str,
     ) -> (ValueEntry, usize) {
         let (entry, target) = self.push(value);
         self.keywords
@@ -142,19 +140,19 @@ impl<'s> Collector<'s> {
                         }
                     }
                     "maximum" => {
-                        self.add_keyword(parent_id, value, Maximum);
+                        self.add_keyword(parent_id, value, "maximum");
                     }
                     "maxLength" => {
-                        self.add_keyword(parent_id, value, MaxLength);
+                        self.add_keyword(parent_id, value, "maxLength");
                     }
                     "minProperties" => {
-                        self.add_keyword(parent_id, value, MinProperties);
+                        self.add_keyword(parent_id, value, "minProperties");
                     }
                     "type" => {
-                        self.add_keyword(parent_id, value, Type);
+                        self.add_keyword(parent_id, value, "type");
                     }
                     "allOf" => {
-                        if let (Vacant, source) = self.add_keyword(parent_id, value, AllOf) {
+                        if let (Vacant, source) = self.add_keyword(parent_id, value, "allOf") {
                             if let Value::Array(items) = value {
                                 for (id, schema) in items.iter().enumerate() {
                                     if let (Vacant, id) = self.add_value(source, schema, id) {
@@ -165,12 +163,12 @@ impl<'s> Collector<'s> {
                         }
                     }
                     "items" => {
-                        if let (Vacant, id) = self.add_keyword(parent_id, value, Items) {
+                        if let (Vacant, id) = self.add_keyword(parent_id, value, "items") {
                             self.collect_schema(value, id, scope)?;
                         }
                     }
                     "properties" => {
-                        if let (Vacant, source) = self.add_keyword(parent_id, value, Properties) {
+                        if let (Vacant, source) = self.add_keyword(parent_id, value, "properties") {
                             if let Value::Object(object) = value {
                                 for (key, schema) in object {
                                     if let (Vacant, id) = self.add_value(source, schema, key) {
@@ -233,7 +231,7 @@ impl<'s> Collector<'s> {
         self.keywords
             .entry(source)
             .or_insert_with(Vec::new)
-            .push((target, resolved, Ref));
+            .push((target, resolved, "$ref"));
         Ok(())
     }
 }
