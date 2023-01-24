@@ -1,19 +1,90 @@
-use super::{
-    edges::{self, EdgeLabel, SingleEdge},
-    error::Result,
-    references::{self, Reference},
-    resolving::{id_of_object, with_folders, Resolver},
+use crate::{
+    schema::{
+        edges,
+        error::Result,
+        resolving::{id_of_object, is_local, with_folders, Reference, Resolver},
+    },
+    value_type::ValueType,
+    vocabularies::{
+        applicator::{AllOf, Properties},
+        validation::{MaxLength, Maximum, MinProperties, Type},
+        Keyword,
+    },
 };
 use serde_json::{Map, Value};
 use std::collections::{hash_map::Entry, BTreeMap, HashMap};
 
 pub(crate) type KeywordNode<'s> = (usize, &'s Value, &'static str);
 pub(crate) type KeywordMap<'s> = BTreeMap<usize, Vec<KeywordNode<'s>>>;
-pub(crate) type EdgeMap = BTreeMap<usize, Vec<SingleEdge>>;
+pub(crate) type EdgeMap = BTreeMap<usize, Vec<edges::SingleEdge>>;
 
 /// The main goal of this phase is to collect all nodes from the input schema and its remote
 /// dependencies into a single graph where each node is a reference to a JSON value from these
 /// schemas. Each edge is represented as a pair indexes into the node vector and a label.
+pub(crate) fn build<'s>(
+    schema: &'s Value,
+    root_resolver: &'s Resolver,
+    resolvers: &'s HashMap<&str, Resolver>,
+) -> Result<(usize, Vec<Keyword>, Vec<edges::MultiEdge>)> {
+    let (keyword_map, edge_map) = collect(schema, root_resolver, resolvers)?;
+    let mut keywords = vec![];
+    let mut edges = vec![];
+
+    macro_rules! push_edge {
+        ($target:expr, $next:expr) => {{
+            // TODO: It will not work for $ref - it will point to some other keywords
+            for edge in &edge_map[$target] {
+                let end = $next + keyword_map[&edge.target].len();
+                edges.push(edges::multi(edge.label.clone(), $next..end));
+                $next = end;
+            }
+        }};
+    }
+
+    macro_rules! next_edges {
+        ($target:expr) => {
+            edges.len()..edges.len() + edge_map[$target].len()
+        };
+    }
+
+    let root_offset = keyword_map.get(&0).map_or(0, Vec::len);
+    for node_keywords in keyword_map.values() {
+        let mut next = keywords.len() + node_keywords.len();
+        for (target, value, keyword) in node_keywords {
+            match *keyword {
+                "allOf" => {
+                    keywords.push(AllOf::build(next_edges!(target)));
+                    push_edge!(target, next);
+                }
+                "items" => {}
+                "maximum" => keywords.push(Maximum::build(value.as_u64().unwrap())),
+                "maxLength" => keywords.push(MaxLength::build(value.as_u64().unwrap())),
+                "minProperties" => keywords.push(MinProperties::build(value.as_u64().unwrap())),
+                "properties" => {
+                    keywords.push(Properties::build(next_edges!(target)));
+                    push_edge!(target, next);
+                }
+                "$ref" => {}
+                "type" => {
+                    let x = match value.as_str().unwrap() {
+                        "array" => ValueType::Array,
+                        "boolean" => ValueType::Boolean,
+                        "integer" => ValueType::Integer,
+                        "null" => ValueType::Null,
+                        "number" => ValueType::Number,
+                        "object" => ValueType::Object,
+                        "string" => ValueType::String,
+                        _ => panic!("invalid type"),
+                    };
+                    keywords.push(Type::build(x))
+                }
+                _ => {}
+            }
+        }
+    }
+    Ok((root_offset, keywords, edges))
+}
+
 pub(crate) fn collect<'s>(
     schema: &'s Value,
     root_resolver: &'s Resolver,
@@ -90,7 +161,7 @@ impl<'s> Collector<'s> {
         &mut self,
         source: usize,
         value: &'s Value,
-        label: impl Into<EdgeLabel>,
+        label: impl Into<edges::EdgeLabel>,
     ) -> (ValueEntry, usize) {
         let (entry, target) = self.push(value);
         self.edges
@@ -207,7 +278,7 @@ impl<'s> Collector<'s> {
             }
             Reference::Relative(location) => {
                 let mut resolver = scope.resolver;
-                if !references::is_local(location) {
+                if !is_local(location) {
                     let location = with_folders(resolver.scope(), location, &scope.folders)?;
                     if !resolver.contains(location.as_str()) {
                         resolver = self

@@ -8,8 +8,8 @@ pub struct Properties {
 }
 
 impl Properties {
-    pub(crate) fn build(start: usize, end: usize) -> Keyword {
-        Self { edges: start..end }.into()
+    pub(crate) fn build(edges: Range<usize>) -> Keyword {
+        Self { edges }.into()
     }
 }
 

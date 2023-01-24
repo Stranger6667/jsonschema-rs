@@ -1,4 +1,4 @@
-use super::{error::Result, references};
+use super::error::{Error, Result};
 use once_cell::sync::Lazy;
 use serde_json::{Map, Value};
 use std::{borrow::Cow, collections::HashMap};
@@ -271,11 +271,7 @@ fn fetch_routine(
                     folders.push(id);
                 }
                 for (key, value) in object {
-                    if key == "$ref"
-                        && value
-                            .as_str()
-                            .map_or(false, |value| !references::is_local(value))
-                    {
+                    if key == "$ref" && value.as_str().map_or(false, |value| !is_local(value)) {
                         if let Some(reference) = value.as_str() {
                             if resolver.contains(reference) {
                                 continue;
@@ -359,6 +355,35 @@ pub(crate) fn build_resolvers(external: &HashMap<Url, Value>) -> HashMap<&str, R
         );
     }
     resolvers
+}
+
+pub(crate) fn is_local(reference: &str) -> bool {
+    reference.starts_with('#')
+}
+
+/// A JSON Schema reference.
+pub(crate) enum Reference<'a> {
+    /// Absolute reference.
+    /// Example: `http://localhost:1234/subSchemas.json#/integer`
+    Absolute(String),
+    /// Relative reference.
+    /// Example: `#foo`
+    Relative(&'a str),
+}
+
+impl<'a> TryFrom<&'a str> for Reference<'a> {
+    type Error = Error;
+
+    fn try_from(value: &'a str) -> Result<Self> {
+        match Url::parse(value) {
+            Ok(mut location) => {
+                location.set_fragment(None);
+                Ok(Self::Absolute(location.to_string()))
+            }
+            Err(url::ParseError::RelativeUrlWithoutBase) => Ok(Self::Relative(value)),
+            Err(error) => Err(Error::InvalidUrl(error)),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -488,6 +513,27 @@ mod tests {
             },
             "type": "object"
         })
+    }
+
+    #[test_case("#foo"; "Location-independent identifier")]
+    #[test_case("remote.json"; "Remote schema")]
+    #[test_case("remote.json#/key"; "Remote schema with fragment")]
+    fn relative(value: &str) {
+        let reference = Reference::try_from(value).unwrap();
+        assert!(matches!(reference, Reference::Relative(_)))
+    }
+
+    #[test_case("http://localhost/integer.json"; "Absolute reference")]
+    #[test_case("http://localhost/integer.json#/integer"; "Absolute reference with fragment")]
+    #[test_case("http://localhost/bar#foo"; "Location-independent identifier with an absolute URI")]
+    fn absolute(value: &str) {
+        let reference = Reference::try_from(value).unwrap();
+        assert!(matches!(reference, Reference::Absolute(_)))
+    }
+
+    #[test]
+    fn error() {
+        assert!(Reference::try_from("https://127.999.999.999/").is_err());
     }
 
     #[test_case(default(), &["json-schema:///#foo"], &["/definitions/A"])]

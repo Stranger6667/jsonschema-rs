@@ -81,19 +81,14 @@
 //!      validation, or represent default behavior (e.g. `uniqueItems: false`).
 //!   5. Re-build the graph by transforming the input nodes into ones that contain pre-processed
 //!      data needed for validation and do not depend on the original input type.
-mod collection;
 pub(crate) mod edges;
 mod error;
-mod references;
+mod graph;
 pub mod resolving;
 #[cfg(test)]
 mod testing;
 
-use crate::{
-    value_type::ValueType,
-    vocabularies::{applicator, validation, Keyword},
-};
-use collection::{EdgeMap, KeywordMap};
+use crate::vocabularies::Keyword;
 use edges::MultiEdge;
 use error::Result;
 use serde_json::Value;
@@ -110,7 +105,7 @@ use std::ops::Range;
 #[derive(Debug)]
 pub struct Schema {
     pub(crate) keywords: Box<[Keyword]>,
-    head_end: usize,
+    root_offset: usize,
     pub(crate) edges: Box<[MultiEdge]>,
 }
 
@@ -124,18 +119,16 @@ impl Schema {
         // Build resolvers for external schemas
         let resolvers = resolving::build_resolvers(&external);
         // Collect all values and resolve references
-        let (keyword_map, edge_map) = collection::collect(schema, &root_resolver, &resolvers)?;
-        // Build a `Keyword` graph
-        let (head_end, keywords, edges) = build(&keyword_map, &edge_map);
+        let (root_offset, keywords, edges) = graph::build(schema, &root_resolver, &resolvers)?;
         Ok(Schema {
             keywords: keywords.into_boxed_slice(),
-            head_end,
+            root_offset,
             edges: edges.into_boxed_slice(),
         })
     }
 
     pub fn is_valid(&self, instance: &Value) -> bool {
-        self.keywords[..self.head_end]
+        self.keywords[..self.root_offset]
             .iter()
             .all(|keyword| keyword.is_valid(self, instance))
     }
@@ -170,7 +163,7 @@ pub struct ErrorIterator<'s, 'i> {
 impl<'s, 'i> ErrorIterator<'s, 'i> {
     fn new(schema: &'s Schema, instance: &'i Value) -> Self {
         Self {
-            keywords: vec![0..schema.head_end],
+            keywords: vec![0..schema.root_offset],
             edges: vec![],
             schema,
             instance,
@@ -213,67 +206,6 @@ impl<'s, 'i> Iterator for ErrorIterator<'s, 'i> {
         }
         None
     }
-}
-
-fn build(
-    keyword_map: &KeywordMap<'_>,
-    edge_map: &EdgeMap,
-) -> (usize, Vec<Keyword>, Vec<MultiEdge>) {
-    let mut keywords = vec![];
-    let mut edges = vec![];
-    let head = keyword_map.get(&0).map_or(0, |kwords| kwords.len());
-    for node_keywords in keyword_map.values() {
-        let mut next = keywords.len() + node_keywords.len();
-        for (target, value, keyword) in node_keywords {
-            match *keyword {
-                "allOf" => {
-                    keywords.push(applicator::AllOf::build(
-                        edges.len(),
-                        edges.len() + edge_map[target].len(),
-                    ));
-                    for edge in &edge_map[target] {
-                        let end = next + keyword_map[&edge.target].len();
-                        edges.push(edges::multi(edge.label.clone(), next..end));
-                        next = end;
-                    }
-                }
-                "items" => {}
-                "maximum" => keywords.push(validation::Maximum::build(value.as_u64().unwrap())),
-                "maxLength" => keywords.push(validation::MaxLength::build(value.as_u64().unwrap())),
-                "minProperties" => {
-                    keywords.push(validation::MinProperties::build(value.as_u64().unwrap()))
-                }
-                "properties" => {
-                    keywords.push(applicator::Properties::build(
-                        edges.len(),
-                        edges.len() + edge_map[target].len(),
-                    ));
-                    // TODO: It will not work for $ref - it will point to some other keywords
-                    for edge in &edge_map[target] {
-                        let end = next + keyword_map[&edge.target].len();
-                        edges.push(edges::multi(edge.label.clone(), next..end));
-                        next = end;
-                    }
-                }
-                "$ref" => {}
-                "type" => {
-                    let x = match value.as_str().unwrap() {
-                        "array" => ValueType::Array,
-                        "boolean" => ValueType::Boolean,
-                        "integer" => ValueType::Integer,
-                        "null" => ValueType::Null,
-                        "number" => ValueType::Number,
-                        "object" => ValueType::Object,
-                        "string" => ValueType::String,
-                        _ => panic!("invalid type"),
-                    };
-                    keywords.push(validation::Type::build(x))
-                }
-                _ => {}
-            }
-        }
-    }
-    (head, keywords, edges)
 }
 
 #[cfg(test)]
@@ -681,8 +613,8 @@ mod tests {
                         let root = resolving::Resolver::new(schema).unwrap();
                         let external = resolving::fetch_external(schema, &root).unwrap();
                         let resolvers = resolving::build_resolvers(&external);
-                        let (_, edge_map) = collection::collect(schema, &root, &resolvers).unwrap();
-                        for (_, edges) in edge_map {
+                        let (_, edge_map) = graph::collect(schema, &root, &resolvers).unwrap();
+                        for (_, edges) in &edge_map {
                             testing::assert_unique_edges(&edges);
                         }
                     }
@@ -786,8 +718,21 @@ mod tests {
         j!({"A": "ABC"}),
         j!({"A": 4})
     )]
+    #[test_case(
+        j!({
+            "$id": "http://localhost:1234/root",
+            "properties": {
+                "A": {
+                    "$ref": "http://localhost:1234/root"
+                }
+            }
+        }),
+        j!({"A": {}}),
+        j!({"A": 4})
+    )]
     fn is_valid(schema: Value, valid: Value, invalid: Value) {
         let compiled = Schema::new(&schema).unwrap();
+        dbg!(&compiled);
         testing::assert_graph(&compiled.keywords, &compiled.edges);
         assert!(compiled.is_valid(&valid));
         assert!(!compiled.is_valid(&invalid));
