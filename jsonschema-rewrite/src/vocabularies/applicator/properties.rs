@@ -1,4 +1,4 @@
-use crate::{schema::edges::EdgeLabel, vocabularies::Keyword, Schema};
+use crate::{vocabularies::Keyword, Schema};
 use serde_json::Value;
 use std::ops::Range;
 
@@ -18,10 +18,7 @@ impl Properties {
         if let Value::Object(item) = instance {
             schema.edges[self.edges.clone()].iter().all(|edge| {
                 // TODO. split edges to String / usize to avoid `match` on each one
-                if let Some(value) = match &edge.label {
-                    EdgeLabel::Key(key) => item.get(&**key),
-                    EdgeLabel::Index(_) => None,
-                } {
+                if let Some(value) = edge.label.as_key().and_then(|key| item.get(key)) {
                     schema.keywords[edge.keywords.clone()]
                         .iter()
                         .all(|k| k.is_valid(schema, value))

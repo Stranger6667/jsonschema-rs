@@ -1,5 +1,5 @@
 use crate::{
-    schema::edges::{MultiEdge, SingleEdge},
+    schema::graph::{MultiEdge, SingleEdge},
     vocabularies::Keyword,
 };
 use serde_json::Value;
@@ -11,7 +11,7 @@ pub(crate) fn assert_unique_edges(edges: &[SingleEdge]) {
     for (index, edge) in edges.iter().enumerate() {
         if let Some(existing_index) = seen.insert(edge, index) {
             panic!(
-                "Edge `{} -> {:?} -> {} ` at index {} was already seen at index {}",
+                "Edge `{:?} -> {:?} -> {:?} ` at index {} was already seen at index {}",
                 edge.source, edge.label, edge.target, index, existing_index
             )
         }

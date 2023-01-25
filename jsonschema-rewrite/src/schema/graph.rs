@@ -1,6 +1,5 @@
 use crate::{
     schema::{
-        edges,
         error::Result,
         resolving::{id_of_object, is_local, with_folders, Reference, Resolver},
     },
@@ -14,55 +13,244 @@ use crate::{
 use serde_json::{Map, Value};
 use std::collections::{hash_map::Entry, BTreeMap, HashMap};
 
-pub(crate) type KeywordNode<'s> = (usize, &'s Value, &'static str);
-pub(crate) type KeywordMap<'s> = BTreeMap<usize, Vec<KeywordNode<'s>>>;
-pub(crate) type EdgeMap = BTreeMap<usize, Vec<edges::SingleEdge>>;
+use std::ops::Range;
+
+/// A label on an edge between two JSON values.
+/// It could be either a key name or an index.
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub(crate) enum EdgeLabel {
+    /// # Example
+    ///
+    /// `{"name": "Test"}` could be represented as:
+    ///
+    ///           name
+    /// object ---------> "Test"
+    ///
+    /// The label for the edge between the top-level object and string "Test" is `name`.
+    Key(Box<str>),
+    /// # Example
+    ///
+    /// `["Test"]` could be represented as:
+    ///
+    ///          0
+    /// array ------> "Test"
+    ///
+    /// The label for the edge between the top-level array and string "Test" is `0`.
+    Index(usize),
+}
+
+impl EdgeLabel {
+    pub(crate) fn as_key(&self) -> Option<&str> {
+        if let EdgeLabel::Key(key) = self {
+            Some(&**key)
+        } else {
+            None
+        }
+    }
+}
+
+impl From<usize> for EdgeLabel {
+    fn from(value: usize) -> Self {
+        EdgeLabel::Index(value)
+    }
+}
+
+impl From<&String> for EdgeLabel {
+    fn from(value: &String) -> Self {
+        EdgeLabel::Key(value.to_owned().into_boxed_str())
+    }
+}
+
+/// Id of a node in a graph.
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+pub(crate) struct NodeId(usize);
+
+/// An edge between two JSON values stored in a graph.
+///
+/// # Example
+///
+/// JSON:
+///
+/// ```json
+/// {
+///     "properties": {
+///         "A": {
+///             "type": "object"
+///         },
+///         "B": {
+///             "type": "string"
+///         }
+///     }
+/// }
+/// ```
+///
+/// ("A", 0, 1) - an edge between `<properties>` and `<type: object>`
+/// ("B", 0, 2) - an edge between `<properties>` and `<type: string>`
+///
+///          --------------- B ------------->
+///         |  ------ A ---->               |
+///         | |             |               |
+/// `[ <properties>, <type: object>, <type: string>]`
+///         0              1               2
+///
+#[derive(Debug, Eq, PartialEq, Hash, Clone)]
+pub(crate) struct SingleEdge {
+    pub(crate) label: EdgeLabel,
+    pub(crate) source: NodeId,
+    pub(crate) target: NodeId,
+}
+
+/// A convenience shortcut to create `SingleEdge`.
+pub(crate) fn single(label: impl Into<EdgeLabel>, source: NodeId, target: NodeId) -> SingleEdge {
+    SingleEdge {
+        label: label.into(),
+        source,
+        target,
+    }
+}
+
+/// An edge between a single JSON value and a range of JSON values that are stored contiguously.
+///
+/// # Example
+///
+/// JSON:
+///
+/// ```json
+/// {
+///     "properties": {
+///         "A": {
+///             "type": "object",
+///             "maxLength": 5
+///         },
+///         "B": {
+///             "type": "string"
+///         }
+///     }
+/// }
+/// ```
+///
+/// ("A", 1..3) - an edge between `<properties>` and `<type: object>` + `<maxLength: 5>`
+/// ("B", 3..4) - an edge between `<properties>` and `<type: string>`
+///
+///          ---------------------- B ---------------------->
+///         |  ------------->------ A ------>               |
+///         | |             |               |               |
+/// `[ <properties>, <type: object>, <maxLength: 5>, <type: string>]`
+///         0              1               2               3
+///
+#[derive(Debug, Eq, PartialEq, Hash)]
+pub(crate) struct MultiEdge {
+    pub(crate) label: EdgeLabel,
+    pub(crate) keywords: Range<usize>,
+}
+
+impl MultiEdge {
+    pub(crate) fn new(label: impl Into<EdgeLabel>, keywords: Range<usize>) -> MultiEdge {
+        MultiEdge {
+            label: label.into(),
+            keywords,
+        }
+    }
+}
+
+/// A slot for a node in a tree.
+pub(crate) struct NodeSlot {
+    /// Unique node identifier.
+    id: NodeId,
+    state: SlotState,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+enum SlotState {
+    /// Slot was not previously used.
+    New,
+    /// Slot is already occupied.
+    Used,
+}
+
+impl NodeSlot {
+    fn seen(id: NodeId) -> Self {
+        Self {
+            id,
+            state: SlotState::Used,
+        }
+    }
+    fn new(id: NodeId) -> Self {
+        Self {
+            id,
+            state: SlotState::New,
+        }
+    }
+    fn is_new(&self) -> bool {
+        self.state == SlotState::New
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct KeywordNode<'s> {
+    id: NodeId,
+    value: &'s Value,
+    name: &'static str,
+}
+
+impl<'s> KeywordNode<'s> {
+    fn new(id: NodeId, value: &'s Value, name: &'static str) -> Self {
+        Self { id, value, name }
+    }
+}
+
+pub(crate) type KeywordMap<'s> = BTreeMap<NodeId, Vec<KeywordNode<'s>>>;
+pub(crate) type EdgeMap = BTreeMap<NodeId, Vec<SingleEdge>>;
+pub(crate) type SeenNodeMap = HashMap<*const Value, NodeId>;
 
 /// The main goal of this phase is to collect all nodes from the input schema and its remote
 /// dependencies into a single graph where each node is a reference to a JSON value from these
-/// schemas. Each edge is represented as a pair indexes into the node vector and a label.
+/// schemas.
 pub(crate) fn build<'s>(
     schema: &'s Value,
     root_resolver: &'s Resolver,
     resolvers: &'s HashMap<&str, Resolver>,
-) -> Result<(usize, Vec<Keyword>, Vec<edges::MultiEdge>)> {
+) -> Result<(usize, Vec<Keyword>, Vec<MultiEdge>)> {
     let (keyword_map, edge_map) = collect(schema, root_resolver, resolvers)?;
     let mut keywords = vec![];
     let mut edges = vec![];
+    dbg!(&keyword_map);
+    dbg!(&edge_map);
 
     macro_rules! push_edge {
-        ($target:expr, $next:expr) => {{
+        ($node_id:expr, $next:expr) => {{
             // TODO: It will not work for $ref - it will point to some other keywords
-            for edge in &edge_map[$target] {
+            // Push all node's edges. For example, all key names from `properties`
+            for edge in &edge_map[$node_id] {
                 let end = $next + keyword_map[&edge.target].len();
-                edges.push(edges::multi(edge.label.clone(), $next..end));
+                edges.push(MultiEdge::new(edge.label.clone(), $next..end));
                 $next = end;
             }
         }};
     }
 
     macro_rules! next_edges {
-        ($target:expr) => {
-            edges.len()..edges.len() + edge_map[$target].len()
+        ($node_id:expr) => {
+            edges.len()..edges.len() + edge_map[$node_id].len()
         };
     }
 
-    let root_offset = keyword_map.get(&0).map_or(0, Vec::len);
+    let root_offset = keyword_map.get(&NodeId(0)).map_or(0, Vec::len);
     for node_keywords in keyword_map.values() {
         let mut next = keywords.len() + node_keywords.len();
-        for (target, value, keyword) in node_keywords {
-            match *keyword {
+        for KeywordNode { id, value, name } in node_keywords {
+            match *name {
                 "allOf" => {
-                    keywords.push(AllOf::build(next_edges!(target)));
-                    push_edge!(target, next);
+                    keywords.push(AllOf::build(next_edges!(id)));
+                    push_edge!(id, next);
                 }
                 "items" => {}
                 "maximum" => keywords.push(Maximum::build(value.as_u64().unwrap())),
                 "maxLength" => keywords.push(MaxLength::build(value.as_u64().unwrap())),
                 "minProperties" => keywords.push(MinProperties::build(value.as_u64().unwrap())),
                 "properties" => {
-                    keywords.push(Properties::build(next_edges!(target)));
-                    push_edge!(target, next);
+                    keywords.push(Properties::build(next_edges!(id)));
+                    push_edge!(id, next);
                 }
                 "$ref" => {}
                 "type" => {
@@ -113,22 +301,15 @@ impl<'s> CollectionScope<'s> {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
-enum ValueEntry {
-    Occupied,
-    Vacant,
-}
-use ValueEntry::{Occupied, Vacant};
-
 /// Storage for intermediate collection data.
 pub(crate) struct Collector<'s> {
     resolvers: &'s HashMap<&'s str, Resolver<'s>>,
-    /// Nodes of the input schema.
+    /// Nodes of the input schema flattened into a vector.
     nodes: Vec<&'s Value>,
     keywords: KeywordMap<'s>,
     edges: EdgeMap,
     /// Nodes already seen during collection.
-    seen: HashMap<*const Value, usize>,
+    seen: SeenNodeMap,
 }
 
 impl<'s> Collector<'s> {
@@ -137,51 +318,46 @@ impl<'s> Collector<'s> {
         Self {
             resolvers,
             nodes: vec![],
-            keywords: BTreeMap::default(),
-            edges: BTreeMap::default(),
-            seen: HashMap::default(),
+            keywords: KeywordMap::default(),
+            edges: EdgeMap::default(),
+            seen: SeenNodeMap::default(),
         }
     }
 
-    /// Push a value to the tree.
-    /// If value already exists there - return its index.
-    fn push(&mut self, value: &'s Value) -> (ValueEntry, usize) {
+    /// Push a value to the tree & return its slot.
+    fn push(&mut self, value: &'s Value) -> NodeSlot {
         match self.seen.entry(value) {
-            Entry::Occupied(entry) => (Occupied, *entry.get()),
+            Entry::Occupied(entry) => NodeSlot::seen(*entry.get()),
             Entry::Vacant(entry) => {
-                let node_id = self.nodes.len();
+                let node_id = NodeId(self.nodes.len());
                 self.nodes.push(value);
                 entry.insert(node_id);
-                (Vacant, node_id)
+                NodeSlot::new(node_id)
             }
         }
     }
 
     fn add_value(
         &mut self,
-        source: usize,
+        parent_id: NodeId,
         value: &'s Value,
-        label: impl Into<edges::EdgeLabel>,
-    ) -> (ValueEntry, usize) {
-        let (entry, target) = self.push(value);
+        label: impl Into<EdgeLabel>,
+    ) -> NodeSlot {
+        let slot = self.push(value);
         self.edges
-            .entry(source)
+            .entry(parent_id)
             .or_insert_with(Vec::new)
-            .push(edges::single(label, source, target));
-        (entry, target)
+            .push(single(label, parent_id, slot.id));
+        slot
     }
-    fn add_keyword(
-        &mut self,
-        source: usize,
-        value: &'s Value,
-        keyword: &'static str,
-    ) -> (ValueEntry, usize) {
-        let (entry, target) = self.push(value);
+
+    fn add_keyword(&mut self, parent_id: NodeId, value: &'s Value, name: &'static str) -> NodeSlot {
+        let slot = self.push(value);
         self.keywords
-            .entry(source)
+            .entry(parent_id)
             .or_insert_with(Vec::new)
-            .push((target, value, keyword));
-        (entry, target)
+            .push(KeywordNode::new(slot.id, value, name));
+        slot
     }
 
     pub(crate) fn collect(
@@ -190,15 +366,16 @@ impl<'s> Collector<'s> {
         resolver: &'s Resolver,
     ) -> Result<(KeywordMap<'s>, EdgeMap)> {
         let mut scope = CollectionScope::new(resolver);
-        let (_, node_id) = self.push(node);
-        self.collect_schema(node, node_id, &mut scope)?;
+        let slot = self.push(node);
+        self.collect_schema(node, slot.id, &mut scope)?;
+        dbg!(&self.nodes);
         Ok((self.keywords, self.edges))
     }
 
     fn collect_schema(
         &mut self,
         schema: &'s Value,
-        parent_id: usize,
+        parent_id: NodeId,
         scope: &mut CollectionScope<'s>,
     ) -> Result<()> {
         if let Value::Object(object) = schema {
@@ -223,27 +400,32 @@ impl<'s> Collector<'s> {
                         self.add_keyword(parent_id, value, "type");
                     }
                     "allOf" => {
-                        if let (Vacant, source) = self.add_keyword(parent_id, value, "allOf") {
-                            if let Value::Array(items) = value {
+                        if let Value::Array(items) = value {
+                            let all_of = self.add_keyword(parent_id, value, "allOf");
+                            if all_of.is_new() {
                                 for (id, schema) in items.iter().enumerate() {
-                                    if let (Vacant, id) = self.add_value(source, schema, id) {
-                                        self.collect_schema(schema, id, scope)?;
+                                    let value = self.add_value(all_of.id, schema, id);
+                                    if value.is_new() {
+                                        self.collect_schema(schema, value.id, scope)?;
                                     }
                                 }
                             }
                         }
                     }
                     "items" => {
-                        if let (Vacant, id) = self.add_keyword(parent_id, value, "items") {
-                            self.collect_schema(value, id, scope)?;
+                        let items = self.add_keyword(parent_id, value, "items");
+                        if items.is_new() {
+                            self.collect_schema(value, items.id, scope)?;
                         }
                     }
                     "properties" => {
-                        if let (Vacant, source) = self.add_keyword(parent_id, value, "properties") {
-                            if let Value::Object(object) = value {
+                        if let Value::Object(object) = value {
+                            let properties = self.add_keyword(parent_id, value, "properties");
+                            if properties.is_new() {
                                 for (key, schema) in object {
-                                    if let (Vacant, id) = self.add_value(source, schema, key) {
-                                        self.collect_schema(schema, id, scope)?;
+                                    let value = self.add_value(properties.id, schema, key);
+                                    if value.is_new() {
+                                        self.collect_schema(schema, value.id, scope)?;
                                     }
                                 }
                             }
@@ -259,21 +441,21 @@ impl<'s> Collector<'s> {
     fn collect_reference(
         &mut self,
         reference: &str,
-        source: usize,
+        parent_id: NodeId,
         scope: &mut CollectionScope<'s>,
     ) -> Result<()> {
         // Resolve reference & traverse it.
-        let (target, resolved) = match Reference::try_from(reference)? {
+        let (slot, value) = match Reference::try_from(reference)? {
             Reference::Absolute(location) => {
                 if let Some(resolver) = self.resolvers.get(location.as_str()) {
                     let (folders, resolved) = resolver.resolve(reference)?;
-                    let (_, target) = self.push(resolved);
+                    let slot = self.push(resolved);
                     let mut scope = CollectionScope::with_folders(resolver, folders);
-                    self.collect_schema(resolved, target, &mut scope)?;
-                    (target, resolved)
+                    self.collect_schema(resolved, slot.id, &mut scope)?;
+                    (slot, resolved)
                 } else {
                     let (_, resolved) = scope.resolver.resolve(reference)?;
-                    (self.push(resolved).1, resolved)
+                    (self.push(resolved), resolved)
                 }
             }
             Reference::Relative(location) => {
@@ -288,21 +470,19 @@ impl<'s> Collector<'s> {
                     }
                 };
                 let (folders, resolved) = resolver.resolve(location)?;
-                // Push the resolved value onto the stack to explore them further
-                match self.push(resolved) {
-                    (Vacant, target) => {
-                        let mut scope = CollectionScope::with_folders(resolver, folders);
-                        self.collect_schema(resolved, target, &mut scope)?;
-                        (target, resolved)
-                    }
-                    (Occupied, target) => (target, resolved),
+                let slot = self.push(resolved);
+                if slot.is_new() {
+                    // New value - traverse it
+                    let mut scope = CollectionScope::with_folders(resolver, folders);
+                    self.collect_schema(resolved, slot.id, &mut scope)?;
                 }
+                (slot, resolved)
             }
         };
         self.keywords
-            .entry(source)
+            .entry(parent_id)
             .or_insert_with(Vec::new)
-            .push((target, resolved, "$ref"));
+            .push(KeywordNode::new(slot.id, value, "$ref"));
         Ok(())
     }
 }

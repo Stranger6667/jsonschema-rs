@@ -81,15 +81,13 @@
 //!      validation, or represent default behavior (e.g. `uniqueItems: false`).
 //!   5. Re-build the graph by transforming the input nodes into ones that contain pre-processed
 //!      data needed for validation and do not depend on the original input type.
-pub(crate) mod edges;
 mod error;
-mod graph;
+pub(crate) mod graph;
 pub mod resolving;
 #[cfg(test)]
 mod testing;
 
 use crate::vocabularies::Keyword;
-use edges::MultiEdge;
 use error::Result;
 use serde_json::Value;
 use std::ops::Range;
@@ -106,7 +104,7 @@ use std::ops::Range;
 pub struct Schema {
     pub(crate) keywords: Box<[Keyword]>,
     root_offset: usize,
-    pub(crate) edges: Box<[MultiEdge]>,
+    pub(crate) edges: Box<[graph::MultiEdge]>,
 }
 
 impl Schema {
@@ -614,8 +612,8 @@ mod tests {
                         let external = resolving::fetch_external(schema, &root).unwrap();
                         let resolvers = resolving::build_resolvers(&external);
                         let (_, edge_map) = graph::collect(schema, &root, &resolvers).unwrap();
-                        for (_, edges) in &edge_map {
-                            testing::assert_unique_edges(&edges);
+                        for edges in edge_map.values() {
+                            testing::assert_unique_edges(edges);
                         }
                     }
                 }
