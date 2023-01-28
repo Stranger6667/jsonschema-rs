@@ -16,6 +16,12 @@ fn id_of(schema: &Value) -> Option<&str> {
     schema.as_object().and_then(id_of_object)
 }
 
+pub(crate) fn resolve(schema: &Value) -> Result<(Resolver<'_>, HashMap<Url, Value>)> {
+    let resolver = Resolver::new(schema)?;
+    let external = fetch_external(schema, &resolver)?;
+    Ok((resolver, external))
+}
+
 #[inline]
 pub(crate) fn id_of_object(object: &Map<String, Value>) -> Option<&str> {
     object.get("$id").and_then(Value::as_str)
@@ -389,131 +395,9 @@ impl<'a> TryFrom<&'a str> for Reference<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testing::load_case;
     use serde_json::{json, Value};
     use test_case::test_case;
-
-    fn default() -> Value {
-        json!({
-            "allOf": [{
-                "$ref": "#foo"
-            }],
-            "definitions": {
-                "A": {
-                    "$id": "#foo",
-                    "type": "integer"
-                }
-            }
-        })
-    }
-
-    fn absolute_uri() -> Value {
-        json!({
-            "allOf": [{
-                "$ref": "http://localhost:1234/bar#foo"
-            }],
-            "definitions": {
-                "A": {
-                    "$id": "http://localhost:1234/bar#foo",
-                    "type": "integer"
-                }
-            }
-        })
-    }
-
-    fn sub_schema_in_object() -> Value {
-        json!({
-            "allOf": [{"$ref": "#foo"}],
-            "definitions": {
-                "A": {"$id": "#foo", "type": "integer"}
-            }
-        })
-    }
-
-    fn sub_schemas_in_array() -> Value {
-        json!({
-            "definitions": {
-                "A": [
-                    {"$id": "#foo", "type": "integer"},
-                    {"$id": "#bar", "type": "string"},
-                ]
-            }
-        })
-    }
-
-    fn root_schema_id() -> Value {
-        json!({
-            "$id": "http://localhost:1234/tree",
-            "definitions": {
-                "node": {
-                    "$id": "http://localhost:1234/node",
-                    "description": "node",
-                    "properties": {
-                        "subtree": {"$ref": "tree"},
-                        "value": {"type": "number"}
-                    },
-                    "required": ["value"],
-                    "type": "object"
-                }
-            },
-            "description": "tree of nodes",
-            "properties": {
-                "meta": {"type": "string"},
-                "nodes": {
-                    "items": {"$ref": "node"},
-                    "type": "array"
-                }
-            },
-            "required": ["meta", "nodes"],
-            "type": "object"
-        })
-    }
-
-    fn base_uri_change_in_subschema() -> Value {
-        json!({
-            "$id": "http://localhost:1234/root",
-            "allOf": [{
-                "$ref": "http://localhost:1234/nested.json#foo"
-            }],
-            "definitions": {
-                "A": {
-                    "$id": "nested.json",
-                    "definitions": {
-                        "B": {
-                            "$id": "#foo",
-                            "type": "integer"
-                        }
-                    }
-                }
-            }
-        })
-    }
-
-    fn base_uri_change() -> Value {
-        json!({
-            "$id": "http://localhost:1234/",
-            "items": {
-                "$id":"folder/",
-                "items": {"$ref": "folderInteger.json"}
-            }
-        })
-    }
-
-    fn base_uri_change_folder() -> Value {
-        json!({
-            "$id": "http://localhost:1234/scope_change_defs1.json",
-            "definitions": {
-                "baz": {
-                    "$id": "folder/",
-                    "items": {"$ref": "folderInteger.json"},
-                    "type":"array"
-                }
-            },
-            "properties": {
-                "list": {"$ref": "#/definitions/baz"}
-            },
-            "type": "object"
-        })
-    }
 
     #[test_case("#foo"; "Location-independent identifier")]
     #[test_case("remote.json"; "Remote schema")]
@@ -536,15 +420,14 @@ mod tests {
         assert!(Reference::try_from("https://127.999.999.999/").is_err());
     }
 
-    #[test_case(default(), &["json-schema:///#foo"], &["/definitions/A"])]
-    #[test_case(absolute_uri(), &["http://localhost:1234/bar#foo"], &["/definitions/A"])]
+    #[test_case("ref-absolute-uri", &["http://localhost:1234/bar#foo"], &["/definitions/A"])]
     #[test_case(
-        sub_schema_in_object(),
+        "ref-schemas-in-object",
         &["json-schema:///#foo"],
         &["/definitions/A"]
     )]
     #[test_case(
-        sub_schemas_in_array(),
+        "ref-schemas-in-array",
         &[
             "json-schema:///#foo",
             "json-schema:///#bar",
@@ -555,7 +438,7 @@ mod tests {
         ]
     )]
     #[test_case(
-        root_schema_id(),
+        "ref-recursive-between-schemas",
         &[
             "http://localhost:1234/tree",
             "http://localhost:1234/node",
@@ -566,7 +449,7 @@ mod tests {
         ]
     )]
     #[test_case(
-        base_uri_change_in_subschema(),
+        "ref-remote-base-uri-change-in-subschema",
         &[
             "http://localhost:1234/root",
             "http://localhost:1234/nested.json",
@@ -574,15 +457,15 @@ mod tests {
         ],
         &[
             "",
-            "/definitions/A",
-            "/definitions/A/definitions/B",
+            "/$defs/A",
+            "/$defs/A/$defs/B",
         ]
     )]
     #[test_case(
-        base_uri_change(),
+        "ref-remote-base-uri-change",
         &[
             "http://localhost:1234/",
-            "http://localhost:1234/folder/"
+            "http://localhost:1234/baseUriChange/"
         ],
         &[
             "",
@@ -590,18 +473,19 @@ mod tests {
         ]
     )]
     #[test_case(
-        base_uri_change_folder(),
+        "ref-remote-base-uri-change-folder",
         &[
             "http://localhost:1234/scope_change_defs1.json",
-            "http://localhost:1234/folder/",
+            "http://localhost:1234/baseUriChangeFolder/",
         ],
         &[
             "",
             "/definitions/baz",
         ]
     )]
-    fn location_identifiers(schema: Value, ids: &[&str], pointers: &[&str]) {
-        let store = collect_schemas(&schema, scope_of(&schema).unwrap());
+    fn location_identifiers(name: &str, ids: &[&str], pointers: &[&str]) {
+        let schema = &load_case(name)["schema"];
+        let store = collect_schemas(schema, scope_of(schema).unwrap());
         assert_eq!(store.len(), ids.len());
         for (id, pointer) in ids.iter().zip(pointers.iter()) {
             assert_eq!(store[*id], schema.pointer(pointer).unwrap());
@@ -628,19 +512,17 @@ mod tests {
     }
 
     #[test_case(
-        base_uri_change_folder(),
+        "ref-remote-base-uri-change-folder",
         "#/definitions/baz/type",
-        json!("array")
+        "/definitions/baz/type"
     )]
-    #[test_case(
-        sub_schema_in_object(),
-        "#foo",
-        json!({"$id": "#foo", "type": "integer"})
-    )]
-    #[test_case(sub_schema_in_object(), "#", sub_schema_in_object())]
-    fn resolving(schema: Value, reference: &str, expected: Value) {
-        let resolver = Resolver::new(&schema).unwrap();
-        let (_, resolved) = resolver.resolve(reference).unwrap();
-        assert_eq!(resolved, &expected);
+    #[test_case("ref-schemas-in-object", "#foo", "/definitions/A")]
+    #[test_case("ref-schemas-in-object", "#", "")]
+    fn resolving(name: &str, reference: &str, pointer: &str) {
+        let schema = &load_case(name)["schema"];
+        let resolver = Resolver::new(schema).unwrap();
+        let (_, via_resolve) = resolver.resolve(reference).unwrap();
+        let via_pointer = schema.pointer(pointer).unwrap();
+        assert_eq!(via_resolve, via_pointer);
     }
 }

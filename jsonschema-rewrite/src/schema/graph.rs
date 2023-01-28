@@ -1,19 +1,22 @@
 use crate::{
     schema::{
         error::Result,
-        resolving::{id_of_object, is_local, with_folders, Reference, Resolver},
+        resolving::{id_of_object, is_local, Reference, Resolver},
     },
     value_type::ValueType,
     vocabularies::{
         applicator::{AllOf, Properties},
+        references::Ref,
         validation::{MaxLength, Maximum, MinProperties, Type},
         Keyword,
     },
 };
 use serde_json::{Map, Value};
-use std::collections::{hash_map::Entry, BTreeMap, HashMap};
+use std::collections::{hash_map::Entry, HashMap, VecDeque};
 
+use crate::{schema::error::Error, vocabularies::applicator::Items};
 use std::ops::Range;
+use url::Url;
 
 /// A label on an edge between two JSON values.
 /// It could be either a key name or an index.
@@ -65,6 +68,15 @@ impl From<&String> for EdgeLabel {
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub(crate) struct NodeId(usize);
 
+impl NodeId {
+    pub(crate) fn value(&self) -> usize {
+        self.0
+    }
+    pub(crate) fn is_root(&self) -> bool {
+        self.value() == 0
+    }
+}
+
 /// An edge between two JSON values stored in a graph.
 ///
 /// # Example
@@ -96,16 +108,15 @@ pub(crate) struct NodeId(usize);
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub(crate) struct SingleEdge {
     pub(crate) label: EdgeLabel,
-    pub(crate) source: NodeId,
     pub(crate) target: NodeId,
 }
 
-/// A convenience shortcut to create `SingleEdge`.
-pub(crate) fn single(label: impl Into<EdgeLabel>, source: NodeId, target: NodeId) -> SingleEdge {
-    SingleEdge {
-        label: label.into(),
-        source,
-        target,
+impl SingleEdge {
+    pub(crate) fn new(label: impl Into<EdgeLabel>, target: NodeId) -> SingleEdge {
+        SingleEdge {
+            label: label.into(),
+            target,
+        }
     }
 }
 
@@ -141,14 +152,14 @@ pub(crate) fn single(label: impl Into<EdgeLabel>, source: NodeId, target: NodeId
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub(crate) struct MultiEdge {
     pub(crate) label: EdgeLabel,
-    pub(crate) keywords: Range<usize>,
+    pub(crate) nodes: Range<usize>,
 }
 
 impl MultiEdge {
-    pub(crate) fn new(label: impl Into<EdgeLabel>, keywords: Range<usize>) -> MultiEdge {
+    pub(crate) fn new(label: impl Into<EdgeLabel>, nodes: Range<usize>) -> MultiEdge {
         MultiEdge {
             label: label.into(),
-            keywords,
+            nodes,
         }
     }
 }
@@ -186,107 +197,282 @@ impl NodeSlot {
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct KeywordNode<'s> {
-    id: NodeId,
-    value: &'s Value,
-    name: &'static str,
-}
+pub(crate) type VisitedMap = HashMap<*const Value, NodeId>;
 
-impl<'s> KeywordNode<'s> {
-    fn new(id: NodeId, value: &'s Value, name: &'static str) -> Self {
-        Self { id, value, name }
-    }
-}
-
-pub(crate) type KeywordMap<'s> = BTreeMap<NodeId, Vec<KeywordNode<'s>>>;
-pub(crate) type EdgeMap = BTreeMap<NodeId, Vec<SingleEdge>>;
-pub(crate) type SeenNodeMap = HashMap<*const Value, NodeId>;
-
-/// The main goal of this phase is to collect all nodes from the input schema and its remote
-/// dependencies into a single graph where each node is a reference to a JSON value from these
-/// schemas.
+/// Build a packed graph to represent JSON Schema.
 pub(crate) fn build<'s>(
     schema: &'s Value,
-    root_resolver: &'s Resolver,
+    root: &'s Resolver,
     resolvers: &'s HashMap<&str, Resolver>,
-) -> Result<(usize, Vec<Keyword>, Vec<MultiEdge>)> {
-    let (keyword_map, edge_map) = collect(schema, root_resolver, resolvers)?;
-    let mut keywords = vec![];
-    let mut edges = vec![];
-    dbg!(&keyword_map);
-    dbg!(&edge_map);
+) -> Result<CompressedRangeGraph> {
+    // Represent the schema as an adjacency list including all reachable remote nodes
+    // Nodes in this list are ordered by the Breadth-First search traversal order
+    let adjacency_list = AdjacencyList::new(schema, root, resolvers)?;
+    // TODO: Update comments
+    // Re-create its node list with the following differences:
+    //   - Skip nodes that are not needed for validation
+    //   - Transform JSON values into `Keyword` instances
+    let range_graph = RangeGraph::try_from(&adjacency_list)?;
+    // Compress the edges into a single vector. All nodes are ordered and grouped into layers
+    // because of BFS earlier, hence each layer could be located with a range of indexes.
+    Ok(range_graph.compress())
+}
 
-    macro_rules! push_edge {
-        ($node_id:expr, $next:expr) => {{
-            // TODO: It will not work for $ref - it will point to some other keywords
-            // Push all node's edges. For example, all key names from `properties`
-            for edge in &edge_map[$node_id] {
-                let end = $next + keyword_map[&edge.target].len();
-                edges.push(MultiEdge::new(edge.label.clone(), $next..end));
-                $next = end;
-            }
-        }};
-    }
+#[derive(Debug)]
+pub(crate) struct AdjacencyList<'s> {
+    pub(crate) nodes: Vec<&'s Value>,
+    pub(crate) edges: Vec<Vec<SingleEdge>>,
+    visited: VisitedMap,
+}
 
-    macro_rules! next_edges {
-        ($node_id:expr) => {
-            edges.len()..edges.len() + edge_map[$node_id].len()
-        };
-    }
-
-    let root_offset = keyword_map.get(&NodeId(0)).map_or(0, Vec::len);
-    for node_keywords in keyword_map.values() {
-        let mut next = keywords.len() + node_keywords.len();
-        for KeywordNode { id, value, name } in node_keywords {
-            match *name {
-                "allOf" => {
-                    keywords.push(AllOf::build(next_edges!(id)));
-                    push_edge!(id, next);
+impl<'s> AdjacencyList<'s> {
+    fn new(
+        schema: &'s Value,
+        root: &'s Resolver,
+        resolvers: &'s HashMap<&str, Resolver>,
+    ) -> Result<Self> {
+        let mut output = AdjacencyList::empty();
+        let mut queue = VecDeque::new();
+        queue.push_back((Scope::new(root), NodeId(0), EdgeLabel::Index(0), schema));
+        while let Some((mut scope, parent_id, label, node)) = queue.pop_front() {
+            let slot = output.push(parent_id, label, node);
+            if slot.is_new() {
+                match node {
+                    Value::Object(object) => {
+                        scope.track_folder(object);
+                        // FIXME: track schema / non schema properly. Maybe extend scope?
+                        for (key, value) in object {
+                            if key == "$ref" {
+                                if let Value::String(reference) = value {
+                                    match Reference::try_from(reference.as_str())? {
+                                        Reference::Absolute(location) => {
+                                            if let Some(resolver) = resolvers.get(location.as_str())
+                                            {
+                                                let (folders, resolved) =
+                                                    resolver.resolve(reference)?;
+                                                queue.push_back((
+                                                    Scope::with_folders(resolver, folders),
+                                                    slot.id,
+                                                    key.into(),
+                                                    resolved,
+                                                ));
+                                            } else {
+                                                let (_, resolved) =
+                                                    scope.resolver.resolve(reference)?;
+                                                queue.push_back((
+                                                    scope.clone(),
+                                                    slot.id,
+                                                    key.into(),
+                                                    resolved,
+                                                ));
+                                            }
+                                        }
+                                        Reference::Relative(location) => {
+                                            let mut resolver = scope.resolver;
+                                            if !is_local(location) {
+                                                let location =
+                                                    scope.build_url(resolver.scope(), location)?;
+                                                if !resolver.contains(location.as_str()) {
+                                                    resolver = resolvers
+                                                        .get(location.as_str())
+                                                        .expect("Unknown reference");
+                                                }
+                                            };
+                                            let (folders, resolved) = resolver.resolve(location)?;
+                                            queue.push_back((
+                                                Scope::with_folders(resolver, folders),
+                                                slot.id,
+                                                key.into(),
+                                                resolved,
+                                            ));
+                                        }
+                                    };
+                                }
+                            } else {
+                                queue.push_back((scope.clone(), slot.id, key.into(), value));
+                            }
+                        }
+                    }
+                    Value::Array(items) => {
+                        for (idx, item) in items.iter().enumerate() {
+                            queue.push_back((scope.clone(), slot.id, idx.into(), item));
+                        }
+                    }
+                    _ => {}
                 }
-                "items" => {}
-                "maximum" => keywords.push(Maximum::build(value.as_u64().unwrap())),
-                "maxLength" => keywords.push(MaxLength::build(value.as_u64().unwrap())),
-                "minProperties" => keywords.push(MinProperties::build(value.as_u64().unwrap())),
-                "properties" => {
-                    keywords.push(Properties::build(next_edges!(id)));
-                    push_edge!(id, next);
-                }
-                "$ref" => {}
-                "type" => {
-                    let x = match value.as_str().unwrap() {
-                        "array" => ValueType::Array,
-                        "boolean" => ValueType::Boolean,
-                        "integer" => ValueType::Integer,
-                        "null" => ValueType::Null,
-                        "number" => ValueType::Number,
-                        "object" => ValueType::Object,
-                        "string" => ValueType::String,
-                        _ => panic!("invalid type"),
-                    };
-                    keywords.push(Type::build(x))
-                }
-                _ => {}
             }
         }
+        Ok(output)
     }
-    Ok((root_offset, keywords, edges))
+
+    /// Create an empty adjacency list.
+    fn empty() -> Self {
+        Self {
+            // For simpler BFS implementation we put a dummy node in the beginning
+            // This way we can assume there is always a parent node, even for the schema root
+            nodes: vec![&Value::Null],
+            edges: vec![vec![]],
+            visited: VisitedMap::new(),
+        }
+    }
+
+    /// Push a new node & an edge to it.
+    fn push(&mut self, parent_id: NodeId, label: EdgeLabel, node: &'s Value) -> NodeSlot {
+        let slot = match self.visited.entry(node) {
+            Entry::Occupied(entry) => NodeSlot::seen(*entry.get()),
+            Entry::Vacant(entry) => {
+                // Insert a new node & empty edges for it
+                let node_id = NodeId(self.nodes.len());
+                self.nodes.push(node);
+                self.edges.push(vec![]);
+                entry.insert(node_id);
+                NodeSlot::new(node_id)
+            }
+        };
+        // Insert a new edge from `parent_id` to this node
+        self.edges[parent_id.0].push(SingleEdge::new(label, slot.id));
+        slot
+    }
+
+    pub(crate) fn range_of(&self, target_id: usize) -> Range<usize> {
+        let (start, end) = match self.edges[target_id].as_slice() {
+            [] => return 0..0,
+            [edge] => (edge, edge),
+            [start, .., end] => (start, end),
+        };
+        start.target.value()..end.target.value() + 1
+    }
+}
+// TODO: What about specialization? When should it happen? RangeGraph?
+
+#[derive(Debug)]
+pub(crate) struct RangeGraph {
+    pub(crate) nodes: Vec<Option<Keyword>>,
+    pub(crate) edges: Vec<Option<MultiEdge>>,
 }
 
-pub(crate) fn collect<'s>(
-    schema: &'s Value,
-    root_resolver: &'s Resolver,
-    resolvers: &'s HashMap<&str, Resolver>,
-) -> Result<(KeywordMap<'s>, EdgeMap)> {
-    Collector::new(resolvers).collect(schema, root_resolver)
+macro_rules! vec_of_nones {
+    ($size:expr) => {
+        (0..$size).map(|_| None).collect()
+    };
 }
 
-struct CollectionScope<'s> {
+impl TryFrom<&AdjacencyList<'_>> for RangeGraph {
+    type Error = Error;
+
+    fn try_from(input: &AdjacencyList<'_>) -> Result<Self> {
+        let mut output = RangeGraph {
+            nodes: vec_of_nones!(input.nodes.len()),
+            edges: vec_of_nones!(input.edges.len()),
+        };
+        let mut visited = vec![false; input.nodes.len()];
+        let mut queue = VecDeque::new();
+        queue.push_back((NodeId(0), &input.edges[0]));
+        while let Some((node_id, node_edges)) = queue.pop_front() {
+            if visited[node_id.value()] {
+                continue;
+            }
+            visited[node_id.value()] = true;
+            // TODO: Properly track scope of schema/nonschema.
+            //       Likely $ref should be schema -> schema, and others are schema -> non-schema
+            // TODO: Maybe we can skip pushing edges from non-applicators? they will be no-op here,
+            //       but could be skipped upfront
+            for edge in node_edges {
+                queue.push_back((edge.target, &input.edges[edge.target.value()]));
+            }
+            if !node_id.is_root() {
+                for edge in node_edges {
+                    let target_id = edge.target.value();
+                    let value = input.nodes[target_id];
+                    match edge.label.as_key() {
+                        Some("maximum") => {
+                            output.set_node(target_id, Maximum::build(value.as_u64().unwrap()));
+                        }
+                        Some("maxLength") => {
+                            output.set_node(target_id, MaxLength::build(value.as_u64().unwrap()));
+                        }
+                        Some("minProperties") => {
+                            output
+                                .set_node(target_id, MinProperties::build(value.as_u64().unwrap()));
+                        }
+                        Some("type") => {
+                            let type_value = match value.as_str().unwrap() {
+                                "array" => ValueType::Array,
+                                "boolean" => ValueType::Boolean,
+                                "integer" => ValueType::Integer,
+                                "null" => ValueType::Null,
+                                "number" => ValueType::Number,
+                                "object" => ValueType::Object,
+                                "string" => ValueType::String,
+                                _ => panic!("invalid type"),
+                            };
+                            output.set_node(target_id, Type::build(type_value));
+                        }
+                        Some("properties") => {
+                            let edges = input.range_of(target_id);
+                            output.set_node(target_id, Properties::build(edges));
+                            output.set_many_edges(&input.edges[target_id], input);
+                        }
+                        Some("items") => {
+                            // TODO: properly set edges & node
+                            output.set_node(target_id, Items::build());
+                        }
+                        Some("allOf") => {
+                            let edges = input.range_of(target_id);
+                            output.set_node(target_id, AllOf::build(edges));
+                            output.set_many_edges(&input.edges[target_id], input);
+                        }
+                        Some("$ref") => {
+                            // TODO: Inline reference
+                            let nodes = input.range_of(target_id);
+                            output.set_node(target_id, Ref::build(nodes));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        Ok(output)
+    }
+}
+
+impl RangeGraph {
+    fn set_node(&mut self, id: usize, keyword: Keyword) {
+        self.nodes[id] = Some(keyword)
+    }
+    fn set_edge(&mut self, id: usize, label: EdgeLabel, nodes: Range<usize>) {
+        self.edges[id] = Some(MultiEdge::new(label, nodes))
+    }
+    fn set_many_edges(&mut self, edges: &[SingleEdge], input: &AdjacencyList) {
+        for edge in edges {
+            let id = edge.target.value();
+            self.set_edge(id, edge.label.clone(), input.range_of(id));
+        }
+    }
+    fn compress(self) -> CompressedRangeGraph {
+        todo!()
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct CompressedRangeGraph {
+    pub(crate) nodes: Vec<Keyword>,
+    pub(crate) edges: Vec<MultiEdge>,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum BuildScope {
+    Schema,
+    NonSchema,
+}
+
+#[derive(Clone)]
+struct Scope<'s> {
     folders: Vec<&'s str>,
     resolver: &'s Resolver<'s>,
 }
 
-impl<'s> CollectionScope<'s> {
+impl<'s> Scope<'s> {
     pub(crate) fn new(resolver: &'s Resolver) -> Self {
         Self::with_folders(resolver, vec![])
     }
@@ -299,190 +485,54 @@ impl<'s> CollectionScope<'s> {
             self.folders.push(id);
         }
     }
+
+    pub(crate) fn build_url(&self, scope: &Url, reference: &str) -> Result<Url> {
+        let folders = &self.folders;
+        let mut location = scope.clone();
+        if folders.len() > 1 {
+            for folder in folders.iter().skip(1) {
+                location = location.join(folder)?;
+            }
+        }
+        Ok(location.join(reference)?)
+    }
 }
 
-/// Storage for intermediate collection data.
-pub(crate) struct Collector<'s> {
-    resolvers: &'s HashMap<&'s str, Resolver<'s>>,
-    /// Nodes of the input schema flattened into a vector.
-    nodes: Vec<&'s Value>,
-    keywords: KeywordMap<'s>,
-    edges: EdgeMap,
-    /// Nodes already seen during collection.
-    seen: SeenNodeMap,
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        schema::resolving,
+        testing::{assert_adjacency_list, assert_compressed_graph, assert_range_graph, load_case},
+    };
+    use test_case::test_case;
 
-impl<'s> Collector<'s> {
-    /// Create a new collector.
-    pub(crate) fn new(resolvers: &'s HashMap<&str, Resolver>) -> Self {
-        Self {
-            resolvers,
-            nodes: vec![],
-            keywords: KeywordMap::default(),
-            edges: EdgeMap::default(),
-            seen: SeenNodeMap::default(),
-        }
-    }
-
-    /// Push a value to the tree & return its slot.
-    fn push(&mut self, value: &'s Value) -> NodeSlot {
-        match self.seen.entry(value) {
-            Entry::Occupied(entry) => NodeSlot::seen(*entry.get()),
-            Entry::Vacant(entry) => {
-                let node_id = NodeId(self.nodes.len());
-                self.nodes.push(value);
-                entry.insert(node_id);
-                NodeSlot::new(node_id)
-            }
-        }
-    }
-
-    fn add_value(
-        &mut self,
-        parent_id: NodeId,
-        value: &'s Value,
-        label: impl Into<EdgeLabel>,
-    ) -> NodeSlot {
-        let slot = self.push(value);
-        self.edges
-            .entry(parent_id)
-            .or_insert_with(Vec::new)
-            .push(single(label, parent_id, slot.id));
-        slot
-    }
-
-    fn add_keyword(&mut self, parent_id: NodeId, value: &'s Value, name: &'static str) -> NodeSlot {
-        let slot = self.push(value);
-        self.keywords
-            .entry(parent_id)
-            .or_insert_with(Vec::new)
-            .push(KeywordNode::new(slot.id, value, name));
-        slot
-    }
-
-    pub(crate) fn collect(
-        mut self,
-        node: &'s Value,
-        resolver: &'s Resolver,
-    ) -> Result<(KeywordMap<'s>, EdgeMap)> {
-        let mut scope = CollectionScope::new(resolver);
-        let slot = self.push(node);
-        self.collect_schema(node, slot.id, &mut scope)?;
-        dbg!(&self.nodes);
-        Ok((self.keywords, self.edges))
-    }
-
-    fn collect_schema(
-        &mut self,
-        schema: &'s Value,
-        parent_id: NodeId,
-        scope: &mut CollectionScope<'s>,
-    ) -> Result<()> {
-        if let Value::Object(object) = schema {
-            scope.track_folder(object);
-            for (key, value) in object {
-                match key.as_str() {
-                    "$ref" => {
-                        if let Value::String(reference) = value {
-                            self.collect_reference(reference, parent_id, scope)?;
-                        }
-                    }
-                    "maximum" => {
-                        self.add_keyword(parent_id, value, "maximum");
-                    }
-                    "maxLength" => {
-                        self.add_keyword(parent_id, value, "maxLength");
-                    }
-                    "minProperties" => {
-                        self.add_keyword(parent_id, value, "minProperties");
-                    }
-                    "type" => {
-                        self.add_keyword(parent_id, value, "type");
-                    }
-                    "allOf" => {
-                        if let Value::Array(items) = value {
-                            let all_of = self.add_keyword(parent_id, value, "allOf");
-                            if all_of.is_new() {
-                                for (id, schema) in items.iter().enumerate() {
-                                    let value = self.add_value(all_of.id, schema, id);
-                                    if value.is_new() {
-                                        self.collect_schema(schema, value.id, scope)?;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    "items" => {
-                        let items = self.add_keyword(parent_id, value, "items");
-                        if items.is_new() {
-                            self.collect_schema(value, items.id, scope)?;
-                        }
-                    }
-                    "properties" => {
-                        if let Value::Object(object) = value {
-                            let properties = self.add_keyword(parent_id, value, "properties");
-                            if properties.is_new() {
-                                for (key, schema) in object {
-                                    let value = self.add_value(properties.id, schema, key);
-                                    if value.is_new() {
-                                        self.collect_schema(schema, value.id, scope)?;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                };
-            }
-        }
-        Ok(())
-    }
-
-    fn collect_reference(
-        &mut self,
-        reference: &str,
-        parent_id: NodeId,
-        scope: &mut CollectionScope<'s>,
-    ) -> Result<()> {
-        // Resolve reference & traverse it.
-        let (slot, value) = match Reference::try_from(reference)? {
-            Reference::Absolute(location) => {
-                if let Some(resolver) = self.resolvers.get(location.as_str()) {
-                    let (folders, resolved) = resolver.resolve(reference)?;
-                    let slot = self.push(resolved);
-                    let mut scope = CollectionScope::with_folders(resolver, folders);
-                    self.collect_schema(resolved, slot.id, &mut scope)?;
-                    (slot, resolved)
-                } else {
-                    let (_, resolved) = scope.resolver.resolve(reference)?;
-                    (self.push(resolved), resolved)
-                }
-            }
-            Reference::Relative(location) => {
-                let mut resolver = scope.resolver;
-                if !is_local(location) {
-                    let location = with_folders(resolver.scope(), location, &scope.folders)?;
-                    if !resolver.contains(location.as_str()) {
-                        resolver = self
-                            .resolvers
-                            .get(location.as_str())
-                            .expect("Unknown reference");
-                    }
-                };
-                let (folders, resolved) = resolver.resolve(location)?;
-                let slot = self.push(resolved);
-                if slot.is_new() {
-                    // New value - traverse it
-                    let mut scope = CollectionScope::with_folders(resolver, folders);
-                    self.collect_schema(resolved, slot.id, &mut scope)?;
-                }
-                (slot, resolved)
-            }
-        };
-        self.keywords
-            .entry(parent_id)
-            .or_insert_with(Vec::new)
-            .push(KeywordNode::new(slot.id, value, "$ref"));
-        Ok(())
+    #[test_case("boolean")]
+    #[test_case("maximum")]
+    #[test_case("properties")]
+    #[test_case("properties-empty")]
+    #[test_case("nested-properties")]
+    #[test_case("multiple-nodes-each-layer")]
+    // #[test_case("not-a-keyword-validation")]
+    // #[test_case("not-a-keyword-ref")]
+    #[test_case("ref-recursive-absolute")]
+    #[test_case("ref-recursive-self")]
+    #[test_case("ref-recursive-between-schemas")]
+    #[test_case("ref-remote-pointer")]
+    #[test_case("ref-remote-nested")]
+    #[test_case("ref-remote-base-uri-change")]
+    #[test_case("ref-remote-base-uri-change-folder")]
+    #[test_case("ref-remote-base-uri-change-in-subschema")]
+    #[test_case("ref-multiple-same-target")]
+    fn internal_structure(name: &str) {
+        let schema = &load_case(name)["schema"];
+        let (root, external) = resolving::resolve(schema).unwrap();
+        let resolvers = resolving::build_resolvers(&external);
+        let adjacency_list = AdjacencyList::new(schema, &root, &resolvers).unwrap();
+        assert_adjacency_list(&adjacency_list);
+        let range_graph = RangeGraph::try_from(&adjacency_list).unwrap();
+        assert_range_graph(&range_graph);
+        // let compressed = range_graph.compress();
+        // assert_compressed_graph(&compressed);
     }
 }

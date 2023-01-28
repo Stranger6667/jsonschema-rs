@@ -1,10 +1,17 @@
-use crate::Schema;
+use crate::{vocabularies::Keyword, Schema};
+use serde_json::Value;
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct ItemsArray {}
+pub struct Items {}
 
-impl ItemsArray {
-    pub(crate) fn is_valid(&self, _: &Schema, _: &serde_json::Value) -> bool {
+impl Items {
+    pub(crate) fn build() -> Keyword {
+        Self {}.into()
+    }
+}
+
+impl Items {
+    pub(crate) fn is_valid(&self, _: &Schema, _: &Value) -> bool {
         todo!()
     }
 }

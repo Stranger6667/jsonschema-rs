@@ -15,8 +15,8 @@ impl AllOf {
 
 impl AllOf {
     pub(crate) fn is_valid(&self, schema: &Schema, instance: &Value) -> bool {
-        schema.edges[self.edges.clone()].iter().all(|edge| {
-            schema.keywords[edge.keywords.clone()]
+        schema.edges()[self.edges.clone()].iter().all(|edge| {
+            schema.nodes()[edge.nodes.clone()]
                 .iter()
                 .all(|k| k.is_valid(schema, instance))
         })

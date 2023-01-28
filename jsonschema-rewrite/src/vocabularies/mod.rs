@@ -2,9 +2,11 @@ use crate::Schema;
 use std::ops::Range;
 
 pub(crate) mod applicator;
+pub(crate) mod references;
 pub(crate) mod validation;
 
-use applicator::{AllOf, ItemsArray, Properties};
+use applicator::{AllOf, Items, Properties};
+use references::Ref;
 use validation::{MaxLength, Maximum, MinProperties, Type};
 
 macro_rules! keywords {
@@ -29,12 +31,13 @@ macro_rules! keywords {
 
 keywords!(
     AllOf,
-    ItemsArray,
+    Items,
     Properties,
     MaxLength,
     Maximum,
     MinProperties,
-    Type
+    Type,
+    Ref
 );
 
 impl Keyword {
@@ -49,12 +52,13 @@ impl Keyword {
         // }
         match self {
             Keyword::AllOf(inner) => inner.is_valid(schema, instance),
-            Keyword::ItemsArray(inner) => inner.is_valid(schema, instance),
+            Keyword::Items(inner) => inner.is_valid(schema, instance),
             Keyword::Maximum(inner) => inner.is_valid(instance),
             Keyword::MaxLength(inner) => inner.is_valid(instance),
             Keyword::MinProperties(inner) => inner.is_valid(instance),
             Keyword::Properties(inner) => inner.is_valid(schema, instance),
             Keyword::Type(inner) => inner.is_valid(instance),
+            Keyword::Ref(inner) => inner.is_valid(schema, instance),
         }
     }
 

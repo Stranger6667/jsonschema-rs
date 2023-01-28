@@ -84,13 +84,10 @@
 mod error;
 pub(crate) mod graph;
 pub mod resolving;
-#[cfg(test)]
-mod testing;
 
-use crate::vocabularies::Keyword;
+use crate::{schema::graph::MultiEdge, vocabularies::Keyword};
 use error::Result;
 use serde_json::Value;
-use std::ops::Range;
 
 // TODO. Optimization ideas:
 //   - Values ordering. "Cheaper" keywords might work better if they are executed first.
@@ -102,663 +99,126 @@ use std::ops::Range;
 
 #[derive(Debug)]
 pub struct Schema {
-    pub(crate) keywords: Box<[Keyword]>,
-    root_offset: usize,
-    pub(crate) edges: Box<[graph::MultiEdge]>,
+    graph: graph::CompressedRangeGraph,
 }
 
 impl Schema {
     pub fn new(schema: &Value) -> Result<Self> {
         // Resolver for the root schema
         // needed to resolve location-independent references during the initial resolving step
-        let root_resolver = resolving::Resolver::new(schema)?;
-        // Fetch all external schemas reachable from the root
-        let external = resolving::fetch_external(schema, &root_resolver)?;
+        let (root, external) = resolving::resolve(schema)?;
         // Build resolvers for external schemas
         let resolvers = resolving::build_resolvers(&external);
         // Collect all values and resolve references
-        let (root_offset, keywords, edges) = graph::build(schema, &root_resolver, &resolvers)?;
         Ok(Schema {
-            keywords: keywords.into_boxed_slice(),
-            root_offset,
-            edges: edges.into_boxed_slice(),
+            graph: graph::build(schema, &root, &resolvers)?,
         })
     }
 
     pub fn is_valid(&self, instance: &Value) -> bool {
-        self.keywords[..self.root_offset]
-            .iter()
-            .all(|keyword| keyword.is_valid(self, instance))
+        todo!()
+        // self.keywords[..self.root_offset]
+        //     .iter()
+        //     .all(|keyword| keyword.is_valid(self, instance))
     }
 
-    pub fn validate<'s, 'i>(&'s self, instance: &'i Value) -> ValidationResult<'s, 'i> {
-        ValidationResult {
-            schema: self,
-            instance,
-        }
+    pub(crate) fn nodes(&self) -> &[Keyword] {
+        &self.graph.nodes
     }
-}
-
-#[derive(Clone)]
-pub struct ValidationResult<'s, 'i> {
-    schema: &'s Schema,
-    instance: &'i Value,
-}
-
-impl<'s, 'i> ValidationResult<'s, 'i> {
-    pub fn errors(&self) -> ErrorIterator {
-        ErrorIterator::new(self.schema, self.instance)
+    pub(crate) fn edges(&self) -> &[MultiEdge] {
+        &self.graph.edges
     }
-}
 
-pub struct ErrorIterator<'s, 'i> {
-    keywords: Vec<Range<usize>>,
-    edges: Vec<Range<usize>>,
-    schema: &'s Schema,
-    instance: &'i Value,
+    // pub fn validate<'s, 'i>(&'s self, instance: &'i Value) -> ValidationResult<'s, 'i> {
+    //     ValidationResult {
+    //         schema: self,
+    //         instance,
+    //     }
+    // }
 }
-
-impl<'s, 'i> ErrorIterator<'s, 'i> {
-    fn new(schema: &'s Schema, instance: &'i Value) -> Self {
-        Self {
-            keywords: vec![0..schema.root_offset],
-            edges: vec![],
-            schema,
-            instance,
-        }
-    }
-}
-
-impl<'s, 'i> Iterator for ErrorIterator<'s, 'i> {
-    type Item = u64;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        while let Some(Range { mut start, end }) = self.keywords.pop() {
-            for keyword in &self.schema.keywords[start..end] {
-                // FIXME: applicators should somehow collect multiple children results, decide
-                //        and bubble up the errors only in this case.
-                //        Maybe create `Error` iterator for children & call recursively?
-                //        In such a case it will be nice to avoid creating new `Vec` there &
-                //        reuse this one
-                //        E.g. applicators could get an iterator over children errors as input
-                //        Maybe pass &mut Vec to `ErrorIterator`?? or just have a private struct
-                //        that implements the same stuff. This way `ErrorIterator` will have only
-                //        2 lifetimes
-                start += 1;
-                let result = if let Some(edges) = keyword.edges() {
-                    for edge in &self.schema.edges[edges] {
-                        self.keywords.push(edge.keywords.clone());
-                    }
-                    continue;
-                } else {
-                    // TODO: Validation keywords actually don't need schema - try to not pass it
-                    keyword.validate(self.schema, self.instance)
-                };
-                // FIXME: It doesn't cover the `continue` above
-                if start != end {
-                    // Store not yet traversed keywords to get back to them later
-                    self.keywords.push(start..end);
-                }
-                return result;
-            }
-        }
-        None
-    }
-}
+//
+// #[derive(Clone)]
+// pub struct ValidationResult<'s, 'i> {
+//     schema: &'s Schema,
+//     instance: &'i Value,
+// }
+//
+// impl<'s, 'i> ValidationResult<'s, 'i> {
+//     pub fn errors(&self) -> ErrorIterator {
+//         ErrorIterator::new(self.schema, self.instance)
+//     }
+// }
+//
+// pub struct ErrorIterator<'s, 'i> {
+//     keywords: Vec<Range<usize>>,
+//     edges: Vec<Range<usize>>,
+//     schema: &'s Schema,
+//     instance: &'i Value,
+// }
+//
+// impl<'s, 'i> ErrorIterator<'s, 'i> {
+//     fn new(schema: &'s Schema, instance: &'i Value) -> Self {
+//         Self {
+//             keywords: vec![0..schema.root_offset],
+//             edges: vec![],
+//             schema,
+//             instance,
+//         }
+//     }
+// }
+//
+// impl<'s, 'i> Iterator for ErrorIterator<'s, 'i> {
+//     type Item = u64;
+//
+//     fn next(&mut self) -> Option<Self::Item> {
+//         while let Some(Range { mut start, end }) = self.keywords.pop() {
+//             for keyword in &self.schema.keywords[start..end] {
+//                 // FIXME: applicators should somehow collect multiple children results, decide
+//                 //        and bubble up the errors only in this case.
+//                 //        Maybe create `Error` iterator for children & call recursively?
+//                 //        In such a case it will be nice to avoid creating new `Vec` there &
+//                 //        reuse this one
+//                 //        E.g. applicators could get an iterator over children errors as input
+//                 //        Maybe pass &mut Vec to `ErrorIterator`?? or just have a private struct
+//                 //        that implements the same stuff. This way `ErrorIterator` will have only
+//                 //        2 lifetimes
+//                 start += 1;
+//                 let result = if let Some(edges) = keyword.edges() {
+//                     for edge in &self.schema.edges[edges] {
+//                         self.keywords.push(edge.keywords.clone());
+//                     }
+//                     continue;
+//                 } else {
+//                     // TODO: Validation keywords actually don't need schema - try to not pass it
+//                     keyword.validate(self.schema, self.instance)
+//                 };
+//                 // FIXME: It doesn't cover the `continue` above
+//                 if start != end {
+//                     // Store not yet traversed keywords to get back to them later
+//                     self.keywords.push(start..end);
+//                 }
+//                 return result;
+//             }
+//         }
+//         None
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::{from_reader, json as j, Value};
-    use std::{fs, fs::File, io::BufReader};
+    use crate::testing::load_case;
     use test_case::test_case;
 
-    pub fn read_json(filepath: &str) -> Value {
-        let file = File::open(filepath).expect("Failed to open file");
-        let reader = BufReader::new(file);
-        from_reader(reader).expect("Invalid JSON")
-    }
-
-    const SELF_REF: &str = "#";
-    const REMOTE_REF: &str = "http://localhost:1234/subSchemas.json#/integer";
-    const REMOTE_BASE: &str = "http://localhost:1234/subSchemas.json";
-
-    // #[test_case(
-    //     j!(true),
-    //     &[j!(true)],
-    //     &[],
-    //     &[];
-    //     "Boolean schema"
-    // )]
-    // #[test_case(
-    //     j!({"maximum": 5}),
-    //     &[
-    //         j!({"maximum": 5}),
-    //         j!(5),
-    //     ],
-    //     &[single(0, 1, KeywordName::Maximum)],
-    //     &[];
-    //     "No reference"
-    // )]
-    // #[test_case(
-    //     j!({"properties": {"maximum": true}}),
-    //     &[
-    //         j!({"properties": {"maximum": true}}),
-    //         j!({"maximum": true}),
-    //         j!(true),
-    //     ],
-    //     &[
-    //         single(0, 1, KeywordName::Properties),
-    //         single(1, 2, "maximum"),
-    //     ],
-    //     &[];
-    //     "Not a keyword"
-    // )]
-    // #[test_case(
-    //     j!({
-    //         "properties": {
-    //             "$ref": {
-    //                 "maximum": 5
-    //             }
-    //         }
-    //     }),
-    //     &[
-    //         j!({"properties":{"$ref":{"maximum": 5}}}),
-    //         j!({"$ref":{"maximum": 5}}),
-    //         j!({"maximum": 5}),
-    //         j!(5),
-    //     ],
-    //     &[
-    //         single(0, 1, KeywordName::Properties),
-    //         single(1, 2, "$ref"),
-    //         single(2, 3, KeywordName::Maximum),
-    //     ],
-    //     &[];
-    //     "Not a reference"
-    // )]
-    // #[test_case(
-    //     j!({"$ref": SELF_REF}),
-    //     &[
-    //         j!({"$ref": SELF_REF}),
-    //     ],
-    //     &[
-    //         single(0, 0, KeywordName::Ref),
-    //     ],
-    //     &[];
-    //     "Self reference"
-    // )]
-    // #[test_case(
-    //     j!({"$ref": REMOTE_REF}),
-    //     &[
-    //         j!({"$ref": REMOTE_REF}),
-    //         j!({"type": "integer"}),
-    //         j!("integer"),
-    //     ],
-    //     &[
-    //         single(1, 2, KeywordName::Type),
-    //         single(0, 1, KeywordName::Ref),
-    //     ],
-    //     &[REMOTE_BASE];
-    //     "Remote reference"
-    // )]
-    // #[test_case(
-    //     j!({
-    //         "$id": "http://localhost:1234/",
-    //         "items": {
-    //             "$id": "baseUriChange/",
-    //             "items": {"$ref": "folderInteger.json"}
-    //         }
-    //     }),
-    //     &[
-    //         j!({
-    //             "$id": "http://localhost:1234/",
-    //             "items": {
-    //                 "$id": "baseUriChange/",
-    //                 "items": {"$ref": "folderInteger.json"}
-    //             }
-    //         }),
-    //         j!({
-    //             "$id": "baseUriChange/",
-    //             "items": {"$ref": "folderInteger.json"}
-    //         }),
-    //         j!({"$ref": "folderInteger.json"}),
-    //         j!({"type": "integer"}),
-    //         j!("integer"),
-    //     ],
-    //     &[
-    //         single(0, 1, KeywordName::Items),
-    //         single(1, 2, KeywordName::Items),
-    //         single(3, 4, KeywordName::Type),
-    //         single(2, 3, KeywordName::Ref),
-    //     ],
-    //     &["http://localhost:1234/baseUriChange/folderInteger.json"];
-    //     "Base URI change"
-    // )]
-    // #[test_case(
-    //     j!({
-    //         "$id": "http://localhost:1234/scope_change_defs1.json",
-    //         "properties": {
-    //             "list": {"$ref": "#/definitions"}
-    //         },
-    //         "definitions": {
-    //             "$id": "baseUriChangeFolder/",
-    //         }
-    //     }),
-    //     &[
-    //         j!({
-    //             "$id": "http://localhost:1234/scope_change_defs1.json",
-    //             "properties": {
-    //                 "list": {"$ref": "#/definitions"}
-    //             },
-    //             "definitions": {
-    //                 "$id": "baseUriChangeFolder/",
-    //             }
-    //         }),
-    //         j!({"list":{"$ref":"#/definitions"}}),
-    //         j!({"$ref":"#/definitions"}),
-    //         j!({"$id":"baseUriChangeFolder/"}),
-    //     ],
-    //     &[
-    //         single(0, 1, KeywordName::Properties),
-    //         single(1, 2, "list"),
-    //         single(2, 3, KeywordName::Ref),
-    //     ],
-    //     &[];
-    //     "Base URI change - change folder"
-    // )]
-    // #[test_case(
-    //     j!({
-    //         "$ref": "http://localhost:1234/subSchemas.json#/refToInteger"
-    //     }),
-    //     &[
-    //         j!({"$ref": "http://localhost:1234/subSchemas.json#/refToInteger"}),
-    //         j!({"$ref":"#/integer"}),
-    //         j!({"type":"integer"}),
-    //         j!("integer"),
-    //     ],
-    //     &[
-    //         single(2, 3, KeywordName::Type),
-    //         single(1, 2, KeywordName::Ref),
-    //         single(0, 1, KeywordName::Ref),
-    //     ],
-    //     &["http://localhost:1234/subSchemas.json"];
-    //     "Reference within remote reference"
-    // )]
-    // #[test_case(
-    //     j!({
-    //         "$id": "http://localhost:1234/root",
-    //         "properties": {
-    //             "A": {
-    //                 "$ref": "http://localhost:1234/root"
-    //             }
-    //         }
-    //     }),
-    //     &[
-    //         j!({
-    //             "$id": "http://localhost:1234/root",
-    //             "properties": {
-    //                 "A": {
-    //                     "$ref": "http://localhost:1234/root"
-    //                 }
-    //             }
-    //         }),
-    //         j!({
-    //             "A": {
-    //                 "$ref": "http://localhost:1234/root"
-    //             }
-    //         }),
-    //         j!({"$ref": "http://localhost:1234/root"}),
-    //     ],
-    //     &[
-    //         single(0, 1, KeywordName::Properties),
-    //         single(1, 2, "A"),
-    //         single(2, 0, KeywordName::Ref),
-    //     ],
-    //     &[];
-    //     "Absolute reference to the same schema"
-    // )]
-    // #[test_case(
-    //     j!({
-    //         "allOf": [
-    //             {"$ref": "#/allOf/1"},
-    //             {"$ref": "#/allOf/0"}
-    //         ]
-    //     }),
-    //     &[
-    //         j!({"allOf":[{"$ref":"#/allOf/1"},{"$ref":"#/allOf/0"}]}),
-    //         j!([{"$ref":"#/allOf/1"},{"$ref":"#/allOf/0"}]),
-    //         j!({"$ref":"#/allOf/1"}),
-    //         j!({"$ref":"#/allOf/0"}),
-    //     ],
-    //     &[
-    //         single(0, 1, KeywordName::AllOf),
-    //         single(1, 2, 0),
-    //         single(3, 2, KeywordName::Ref),
-    //         single(2, 3, KeywordName::Ref),
-    //         single(1, 3, 1),
-    //     ],
-    //     &[];
-    //     "Multiple references to the same target"
-    // )]
-    // #[test_case(
-    //     j!({
-    //         "$id": "http://localhost:1234/tree",
-    //         "properties": {
-    //             "nodes": {
-    //                 "items": {"$ref": "node"}
-    //             }
-    //         },
-    //         "definitions": {
-    //             "node": {
-    //                 "$id": "http://localhost:1234/node",
-    //                 "properties": {
-    //                     "subtree": {"$ref": "tree"}
-    //                 }
-    //             }
-    //         }
-    //     }),
-    //     &[
-    //         j!({"$id":"http://localhost:1234/tree","definitions":{"node":{"$id":"http://localhost:1234/node","properties":{"subtree":{"$ref":"tree"}}}},"properties":{"nodes":{"items":{"$ref":"node"}}}}),
-    //         j!({"nodes":{"items":{"$ref":"node"}}}),
-    //         j!({"items":{"$ref":"node"}}),
-    //         j!({"$ref":"node"}),
-    //         j!({"$id":"http://localhost:1234/node","properties":{"subtree":{"$ref":"tree"}}}),
-    //         j!({"subtree":{"$ref":"tree"}}),
-    //         j!({"$ref":"tree"}),
-    //     ],
-    //     &[
-    //         single(0, 1, KeywordName::Properties),
-    //         single(1, 2, "nodes"),
-    //         single(2, 3, KeywordName::Items),
-    //         single(4, 5, KeywordName::Properties),
-    //         single(5, 6, "subtree"),
-    //         single(6, 0, KeywordName::Ref),
-    //         single(3, 4, KeywordName::Ref),
-    //     ],
-    //     &[];
-    //     "Recursive references between schemas"
-    // )]
-    // fn values_and_edges(schema: Value, values: &[Value], edges: &[RawEdge], keys: &[&str]) {
-    //     let root = resolving::Resolver::new(&schema).unwrap();
-    //     let external = resolving::fetch_external(&schema, &root).unwrap();
-    //     let resolvers = resolving::build_resolvers(&external);
-    //     let (values_, keywords_of, edges_if) =
-    //         collection::collect(&schema, &root, &resolvers).unwrap();
-    //     testing::print_values(&values_);
-    //     let concrete_values = values_.into_iter().cloned().collect::<Vec<Value>>();
-    //     assert_eq!(concrete_values, values);
-    //     // assert_eq!(edges_, edges);
-    //     // testing::assert_unique_edges(&edges_);
-    //     assert_eq!(resolvers.keys().cloned().collect::<Vec<&str>>(), keys);
-    // }
-
-    // #[test_case(
-    //     vec![
-    //         &j!({"maximum": 5}),
-    //         &j!(5),
-    //     ],
-    //     vec![single(0, 1, KeywordName::Maximum)],
-    //     1,
-    //     vec![Maximum::build(5)],
-    //     vec![];
-    //     "Validator keyword"
-    // )]
-    // #[test_case(
-    //     vec![
-    //         &j!({"properties": {"A": {"maximum": 5}}}),
-    //         &j!({"A":{"maximum": 5}}),
-    //         &j!({"maximum": 5}),
-    //         &j!(5),
-    //     ],
-    //     vec![
-    //         single(0, 1, KeywordName::Properties),
-    //         single(1, 2, "A"),
-    //         single(2, 3, KeywordName::Maximum),
-    //     ],
-    //     1,
-    //     vec![
-    //         Properties::build(0, 1),
-    //         Maximum::build(5),
-    //     ],
-    //     vec![
-    //         edge("A", 1..2),
-    //     ];
-    //     "Applicator keyword - one edge"
-    // )]
-    // #[test_case(
-    //     vec![
-    //         &j!({"properties": {"A": {"maximum": 5}, "B": {"maximum": 3}}}),
-    //         &j!({"A":{"maximum": 5}, "B": {"maximum": 3}}),
-    //         &j!({"maximum": 5}),
-    //         &j!(5),
-    //         &j!({"maximum": 3}),
-    //         &j!(3),
-    //     ],
-    //     vec![
-    //         single(0, 1, KeywordName::Properties),
-    //         single(1, 2, "A"),
-    //         single(2, 3, KeywordName::Maximum),
-    //         single(1, 4, "B"),
-    //         single(4, 5, KeywordName::Maximum),
-    //     ],
-    //     1,
-    //     vec![
-    //         Properties::build(0, 2),
-    //         Maximum::build(5),
-    //         Maximum::build(3),
-    //     ],
-    //     vec![
-    //         edge("A", 1..2),
-    //         edge("B", 2..3),
-    //     ];
-    //     "Applicator keyword - two edges"
-    // )]
-    // #[test_case(
-    //     vec![
-    //         &j!({"properties": {"A": {"properties": {"B": {"maximum": 5}}}}}),
-    //         &j!({"A": {"properties": {"B": {"maximum": 5}}}}),
-    //         &j!({"properties": {"B": {"maximum": 5}}}),
-    //         &j!({"B": {"maximum": 5}}),
-    //         &j!({"maximum": 5}),
-    //         &j!(5),
-    //     ],
-    //     vec![
-    //         single(0, 1, KeywordName::Properties),
-    //         single(1, 2, "A"),
-    //         single(2, 3, KeywordName::Properties),
-    //         single(3, 4, "B"),
-    //         single(4, 5, KeywordName::Maximum),
-    //     ],
-    //     1,
-    //     vec![
-    //         Properties::build(0, 1),
-    //         Properties::build(1, 2),
-    //         Maximum::build(5),
-    //     ],
-    //     vec![
-    //         edge("A", 1..2),
-    //         edge("B", 2..3),
-    //     ];
-    //     "Applicator keyword - nested"
-    // )]
-    // fn building(
-    //     values: Vec<&Value>,
-    //     edges: Vec<RawEdge>,
-    //     expected_head: usize,
-    //     expected_keywords: Vec<Keyword>,
-    //     expected_edges: Vec<Edge>,
-    // ) {
-    //     let (head, keywords, edges_) = build(&values, edges);
-    //     assert_eq!(head, expected_head);
-    //     assert_eq!(keywords, expected_keywords);
-    //     assert_eq!(edges_, expected_edges);
-    // }
-
-    #[test]
-    fn all_schemas() {
-        for draft in &[7] {
-            let paths =
-                fs::read_dir(format!("../jsonschema/tests/suite/tests/draft{}", draft)).unwrap();
-            for path in paths {
-                let entry = path.unwrap();
-                let path = entry.path();
-                if path.is_file() && path.extension().unwrap().to_str().unwrap() == "json" {
-                    println!("File: {}", path.display());
-                    let data = read_json(path.as_path().to_str().unwrap());
-                    for (idx, case) in data.as_array().unwrap().iter().enumerate() {
-                        println!("Case: {}", idx);
-                        let schema = &case["schema"];
-                        let root = resolving::Resolver::new(schema).unwrap();
-                        let external = resolving::fetch_external(schema, &root).unwrap();
-                        let resolvers = resolving::build_resolvers(&external);
-                        let (_, edge_map) = graph::collect(schema, &root, &resolvers).unwrap();
-                        for edges in edge_map.values() {
-                            testing::assert_unique_edges(edges);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    #[test_case(
-        j!({"$ref": "http://localhost:1234/subSchemas.json"}),
-        &["http://localhost:1234/subSchemas.json"];
-        "One remote"
-    )]
-    #[test_case(
-        j!({"$ref": "http://localhost:1234/draft2019-09/metaschema-no-validation.json"}),
-        &[
-            "http://localhost:1234/draft2019-09/metaschema-no-validation.json",
-            "https://json-schema.org/draft/2019-09/meta/applicator",
-            "https://json-schema.org/draft/2019-09/meta/core"
-        ];
-        "One + two remote"
-    )]
-    #[test_case(
-        j!({"$id": REMOTE_BASE, "defs": {"type": "string"}, "$ref": REMOTE_BASE}),
-        &[];
-        "Absolute reference to the root schema which is not a remote"
-    )]
-    fn external_schemas(schema: Value, expected: &[&str]) {
-        let root = resolving::Resolver::new(&schema).unwrap();
-        let external = resolving::fetch_external(&schema, &root).unwrap();
-        assert!(
-            expected
-                .iter()
-                .all(|key| external.contains_key(&url::Url::parse(key).unwrap())),
-            "{:?}",
-            external.keys()
-        )
-    }
-
-    #[test_case(j!({"maximum": 5}), j!(4), j!(6))]
-    #[test_case(
-        j!({
-            "properties": {
-                "A": {"maximum": 5}
-            }
-        }),
-        j!({"A": 4}),
-        j!({"A": 6})
-    )]
-    #[test_case(
-        j!({
-            "properties": {
-                "A": {
-                    "properties": {
-                        "B": {"maximum": 5}
-                    }
-                }
-            }
-        }),
-        j!({"A": {"B": 4}}),
-        j!({"A": {"B": 6}})
-    )]
-    #[test_case(
-        j!({
-            "type": "object",
-            "properties": {
-                "A": {
-                    "type": "string",
-                    "maxLength": 5
-                },
-                "B": {
-                    "allOf": [
-                        {"type": "integer"},
-                        {"type": "array"}
-                    ]
-                },
-            },
-            "minProperties": 1
-        }),
-        j!({"A": "ABC"}),
-        j!({"A": 4, "B": 9})
-    )]
-    #[test_case(
-        j!({
-            "type": "object",
-            "properties": {
-                "A": {
-                    "type": "string",
-                    "maxLength": 5
-                },
-            },
-            "allOf": [
-                {
-                    "type": "object"
-                },
-                {
-                    "type": "object"
-                }
-            ]
-        }),
-        j!({"A": "ABC"}),
-        j!({"A": 4})
-    )]
-    #[test_case(
-        j!({
-            "$id": "http://localhost:1234/root",
-            "properties": {
-                "A": {
-                    "$ref": "http://localhost:1234/root"
-                }
-            }
-        }),
-        j!({"A": {}}),
-        j!({"A": 4})
-    )]
-    fn is_valid(schema: Value, valid: Value, invalid: Value) {
-        let compiled = Schema::new(&schema).unwrap();
-        dbg!(&compiled);
-        testing::assert_graph(&compiled.keywords, &compiled.edges);
-        assert!(compiled.is_valid(&valid));
-        assert!(!compiled.is_valid(&invalid));
-    }
-
-    #[test]
-    fn validate() {
-        let compiled = Schema::new(&j!({
-            "type": "object",
-            "properties": {
-                "A": {
-                    "type": "string",
-                    "maxLength": 5
-                },
-                "B": {
-                    "allOf": [
-                        {"type": "integer"},
-                        {"type": "array"}
-                    ]
-                },
-            },
-            "minProperties": 1
-        }))
-        .unwrap();
-        let instance = j!({"A": 4});
-        let outcome = compiled.validate(&instance);
-        for error in outcome.errors() {
-            dbg!(error);
-        }
+    #[test_case("maximum")]
+    #[test_case("properties")]
+    #[test_case("nested-properties")]
+    #[test_case("multiple-nodes-each-layer")]
+    #[test_case("ref-recursive-absolute")]
+    fn is_valid(name: &str) {
+        let case = load_case(name);
+        let compiled = Schema::new(&case["schema"]).unwrap();
+        assert!(compiled.is_valid(&case["valid"]));
+        assert!(!compiled.is_valid(&case["invalid"]));
     }
 }

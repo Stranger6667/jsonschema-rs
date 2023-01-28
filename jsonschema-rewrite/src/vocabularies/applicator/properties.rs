@@ -16,10 +16,10 @@ impl Properties {
 impl Properties {
     pub(crate) fn is_valid(&self, schema: &Schema, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
-            schema.edges[self.edges.clone()].iter().all(|edge| {
+            schema.edges()[self.edges.clone()].iter().all(|edge| {
                 // TODO. split edges to String / usize to avoid `match` on each one
                 if let Some(value) = edge.label.as_key().and_then(|key| item.get(key)) {
-                    schema.keywords[edge.keywords.clone()]
+                    schema.nodes()[edge.nodes.clone()]
                         .iter()
                         .all(|k| k.is_valid(schema, value))
                 } else {

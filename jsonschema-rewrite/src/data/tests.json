@@ -1,0 +1,260 @@
+{
+    "boolean": {
+        "schema": true,
+        "valid": 42
+    },
+    "maximum": {
+        "schema": {
+            "maximum": 5
+        },
+        "valid": 4,
+        "invalid": 5
+    },
+    "properties": {
+        "schema": {
+            "properties": {
+                "A": {
+                    "maximum": 5
+                }
+            }
+        },
+        "valid": {
+            "A": 4
+        },
+        "invalid": {
+            "A": 5
+        }
+    },
+    "properties-empty": {
+        "schema": {
+            "properties": {
+            }
+        },
+        "valid": {
+            "A": 4
+        },
+        "invalid": 4
+    },
+    "nested-properties": {
+        "schema": {
+            "properties": {
+                "A": {
+                    "properties": {
+                        "B": {
+                            "maximum": 5
+                        }
+                    }
+                }
+            }
+        },
+        "valid": {
+            "A": {
+                "B": 4
+            }
+        },
+        "invalid": {
+            "A": {
+                "B": 5
+            }
+        }
+    },
+    "multiple-nodes-each-layer": {
+        "schema": {
+            "type": "object",
+            "properties": {
+                "A": {
+                    "type": "string",
+                    "maxLength": 5
+                },
+                "B": {
+                    "allOf": [
+                        {
+                            "type": "integer",
+                            "maximum": 3
+                        },
+                        {
+                            "type": "number",
+                            "maximum": 10
+                        }
+                    ],
+                    "maximum": 3
+                }
+            },
+            "minProperties": 1
+        },
+        "valid": {
+            "A": "FOO"
+        },
+        "invalid": {
+            "B": 11
+        }
+    },
+    "not-a-keyword-validation": {
+        "schema": {
+            "properties": {
+                "maximum": {
+                    "maximum": 5
+                }
+            }
+        }
+    },
+    "not-a-keyword-ref": {
+        "schema": {
+            "properties": {
+                "$ref": {
+                    "maximum": 5
+                }
+            }
+        }
+    },
+    "ref-recursive-absolute": {
+        "schema": {
+            "$id": "http://localhost:1234/root",
+            "properties": {
+                "A": {
+                    "$ref": "http://localhost:1234/root"
+                }
+            },
+            "type": "object"
+        },
+        "valid": {
+            "A": {}
+        },
+        "invalid": {
+            "A": 4
+        }
+    },
+    "ref-recursive-self": {
+        "schema": {
+            "$ref": "#"
+        },
+        "valid": 42
+    },
+    "ref-recursive-between-schemas": {
+        "schema": {
+            "$id": "http://localhost:1234/tree",
+            "properties": {
+                "nodes": {
+                    "items": {
+                        "$ref": "node"
+                    }
+                }
+            },
+            "definitions": {
+                "node": {
+                    "$id": "http://localhost:1234/node",
+                    "properties": {
+                        "subtree": {
+                            "$ref": "tree"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "ref-multiple-same-target": {
+        "schema": {
+            "allOf": [
+                {
+                    "$ref": "#/allOf/1"
+                },
+                {
+                    "$ref": "#/allOf/0"
+                }
+            ]
+        }
+    },
+    "ref-schemas-in-array": {
+        "schema": {
+            "definitions": {
+                "A": [
+                    {"$id": "#foo", "type": "integer"},
+                    {"$id": "#bar", "type": "string"}
+                ]
+            }
+        }
+    },
+    "ref-schemas-in-object": {
+        "schema": {
+            "allOf": [{"$ref": "#foo"}],
+            "definitions": {
+                "A": {"$id": "#foo", "type": "integer"}
+            }
+        }
+    },
+    "ref-absolute-uri": {
+        "schema": {
+            "allOf": [{
+                "$ref": "http://localhost:1234/bar#foo"
+            }],
+            "definitions": {
+                "A": {
+                    "$id": "http://localhost:1234/bar#foo",
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "ref-remote-pointer": {
+        "schema": {
+            "$ref": "http://localhost:1234/subSchemas.json#/integer"
+        },
+        "valid": 42,
+        "invalid": "A"
+    },
+    "ref-remote-nested": {
+        "schema": {
+            "$ref": "http://localhost:1234/subSchemas.json#/refToInteger"
+        },
+        "valid": 42,
+        "invalid": "A"
+    },
+    "ref-remote-base-uri-change": {
+        "schema": {
+            "$id": "http://localhost:1234/",
+            "items": {
+                "$id": "baseUriChange/",
+                "items": {
+                    "$ref": "folderInteger.json"
+                }
+            }
+        }
+    },
+    "ref-remote-base-uri-change-folder": {
+        "schema": {
+            "$id": "http://localhost:1234/scope_change_defs1.json",
+            "type": "object",
+            "properties": {
+                "list": {
+                    "$ref": "#/definitions/baz"
+                }
+            },
+            "definitions": {
+                "baz": {
+                    "$id": "baseUriChangeFolder/",
+                    "type": "array",
+                    "items": {
+                        "$ref": "folderInteger.json"
+                    }
+                }
+            }
+        }
+    },
+    "ref-remote-base-uri-change-in-subschema": {
+        "schema": {
+            "$id": "http://localhost:1234/root",
+            "$ref": "http://localhost:1234/nested.json#foo",
+            "$defs": {
+                "A": {
+                    "$id": "nested.json",
+                    "$defs": {
+                        "B": {
+                            "$id": "#foo",
+                            "type": "integer"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
