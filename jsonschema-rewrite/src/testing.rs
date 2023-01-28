@@ -1,10 +1,10 @@
 use crate::{
-    schema::graph::{AdjacencyList, CompressedRangeGraph, EdgeLabel, RangeGraph, SingleEdge},
+    schema::graph::{AdjacencyList, CompressedRangeGraph, EdgeLabel, RangeGraph},
     vocabularies::Keyword,
 };
 use once_cell::sync::Lazy;
 use serde_json::Value;
-use std::{collections::HashMap, fs::File, io::BufReader};
+use std::{fs::File, io::BufReader};
 
 /// JSON Schema instances and (in)valid examples for them.
 ///
@@ -19,25 +19,6 @@ pub(crate) fn load_case(name: &str) -> &Value {
     &SCHEMAS[name]
 }
 
-/// Ensure all edges are unique.
-pub(crate) fn assert_unique_edges(edges: &[SingleEdge]) {
-    let mut seen = HashMap::new();
-    for (index, edge) in edges.iter().enumerate() {
-        if let Some(existing_index) = seen.insert(edge, index) {
-            panic!(
-                "Edge `{:?} -> {:?} ` at index {} was already seen at index {}",
-                edge.label, edge.target, index, existing_index
-            )
-        }
-    }
-}
-
-/// Display value references in a slice.
-pub(crate) fn print_values(values: &[&Value]) {
-    for (id, value) in values.iter().enumerate() {
-        println!("[{}]: {}", id, value)
-    }
-}
 
 /// Ensure that all edges & nodes are in the right boundaries.
 pub(crate) fn assert_compressed_graph(graph: &CompressedRangeGraph) {

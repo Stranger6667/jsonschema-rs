@@ -532,7 +532,7 @@ mod tests {
         assert_adjacency_list(&adjacency_list);
         let range_graph = RangeGraph::try_from(&adjacency_list).unwrap();
         assert_range_graph(&range_graph);
-        // let compressed = range_graph.compress();
-        // assert_compressed_graph(&compressed);
+        let compressed = range_graph.compress();
+        assert_compressed_graph(&compressed);
     }
 }
