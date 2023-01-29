@@ -9,6 +9,7 @@ description = "JSON schema validaton library"
 repository = "https://github.com/Stranger6667/jsonschema-rs"
 keywords = ["jsonschema", "validation"]
 categories = ["web-programming"]
+rust-version = "1.56.1"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]

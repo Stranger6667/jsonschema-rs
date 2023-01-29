@@ -136,9 +136,9 @@ impl JSONSchema {
 
 /// Compile JSON schema into a tree of validators.
 #[inline]
-pub(crate) fn compile_validators<'a, 'c>(
+pub(crate) fn compile_validators<'a>(
     schema: &'a Value,
-    context: &'c CompilationContext,
+    context: &CompilationContext,
 ) -> Result<SchemaNode, ValidationError<'a>> {
     let context = context.push(schema)?;
     let relative_path = context.clone().into_pointer();

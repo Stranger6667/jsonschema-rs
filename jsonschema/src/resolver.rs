@@ -160,7 +160,7 @@ impl Resolver {
     ///   - the root document (`DEFAULT_ROOT_URL`) case;
     ///   - named subschema that is stored in `self.schemas`;
     ///   - document from a remote location;
-    fn resolve_url<'a>(&'a self, url: &Url, orig_ref: &str) -> Result<Arc<Value>, ValidationError> {
+    fn resolve_url(&self, url: &Url, orig_ref: &str) -> Result<Arc<Value>, ValidationError<'_>> {
         match url.as_str() {
             DEFAULT_ROOT_URL => Ok(self.root_schema.clone()),
             url_str => match self.schemas.get(url_str) {
@@ -311,10 +311,10 @@ impl<'a> MaybeReplaceExt<'a> for Cow<'a, str> {
 }
 
 /// Based on `serde_json`, but tracks folders in the traversed documents.
-pub(crate) fn pointer<'a, 'b>(
+pub(crate) fn pointer<'a>(
     draft: Draft,
     document: &'a Value,
-    pointer: &'b str,
+    pointer: &str,
 ) -> Option<(Vec<&'a str>, &'a Value)> {
     if !pointer.starts_with('/') {
         return None;
