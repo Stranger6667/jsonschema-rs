@@ -15,7 +15,7 @@ mod edges;
 mod nodes;
 
 pub(crate) use edges::{Edge, EdgeLabel, RangedEdge};
-pub(crate) use nodes::{NodeId, NodeSlot};
+pub(crate) use nodes::{Node, NodeId, NodeSlot};
 use serde_json::{Map, Value};
 use std::{
     collections::{hash_map::Entry, HashMap, VecDeque},
@@ -46,7 +46,7 @@ pub(crate) fn build<'s>(
 
 #[derive(Debug)]
 pub(crate) struct AdjacencyList<'s> {
-    pub(crate) nodes: Vec<&'s Value>,
+    pub(crate) nodes: Vec<Node<'s>>,
     pub(crate) edges: Vec<Vec<Edge>>,
     visited: VisitedMap,
 }
@@ -64,17 +64,19 @@ impl<'s> AdjacencyList<'s> {
             Scope::new(root),
             NodeId::new(0),
             EdgeLabel::Index(0),
-            schema,
+            Node::schema(schema),
         ));
         while let Some((mut scope, parent_id, label, node)) = queue.pop_front() {
             let slot = output.push(parent_id, label, node);
             if slot.is_new() {
-                match node {
+                match &node.value {
                     Value::Object(object) => {
                         scope.track_folder(object);
-                        // FIXME: track schema / non schema properly. Maybe extend scope?
                         for (key, value) in object {
                             if key == "$ref" {
+                                // TODO: If resolved node is in the tree we need to mark it as a schema
+                                //       It could happen that it was discovered from a non-$ref
+                                //       path and is not considered a schema
                                 if let Value::String(reference) = value {
                                     match Reference::try_from(reference.as_str())? {
                                         Reference::Absolute(location) => {
@@ -86,7 +88,7 @@ impl<'s> AdjacencyList<'s> {
                                                     Scope::with_folders(resolver, folders),
                                                     slot.id,
                                                     key.into(),
-                                                    resolved,
+                                                    Node::schema(resolved),
                                                 ));
                                             } else {
                                                 let (_, resolved) =
@@ -95,7 +97,7 @@ impl<'s> AdjacencyList<'s> {
                                                     scope.clone(),
                                                     slot.id,
                                                     key.into(),
-                                                    resolved,
+                                                    Node::schema(resolved),
                                                 ));
                                             }
                                         }
@@ -115,19 +117,29 @@ impl<'s> AdjacencyList<'s> {
                                                 Scope::with_folders(resolver, folders),
                                                 slot.id,
                                                 key.into(),
-                                                resolved,
+                                                Node::schema(resolved),
                                             ));
                                         }
                                     };
                                 }
                             } else {
-                                queue.push_back((scope.clone(), slot.id, key.into(), value));
+                                queue.push_back((
+                                    scope.clone(),
+                                    slot.id,
+                                    key.into(),
+                                    node.toggle(value),
+                                ));
                             }
                         }
                     }
                     Value::Array(items) => {
                         for (idx, item) in items.iter().enumerate() {
-                            queue.push_back((scope.clone(), slot.id, idx.into(), item));
+                            queue.push_back((
+                                scope.clone(),
+                                slot.id,
+                                idx.into(),
+                                node.toggle(item),
+                            ));
                         }
                     }
                     _ => {}
@@ -142,15 +154,15 @@ impl<'s> AdjacencyList<'s> {
         Self {
             // For simpler BFS implementation we put a dummy node in the beginning
             // This way we can assume there is always a parent node, even for the schema root
-            nodes: vec![&Value::Null],
+            nodes: vec![Node::dummy()],
             edges: vec![vec![]],
             visited: VisitedMap::new(),
         }
     }
 
     /// Push a new node & an edge to it.
-    fn push(&mut self, parent_id: NodeId, label: EdgeLabel, node: &'s Value) -> NodeSlot {
-        let slot = match self.visited.entry(node) {
+    fn push(&mut self, parent_id: NodeId, label: EdgeLabel, node: Node<'s>) -> NodeSlot {
+        let slot = match self.visited.entry(node.value) {
             Entry::Occupied(entry) => NodeSlot::seen(*entry.get()),
             Entry::Vacant(entry) => {
                 // Insert a new node & empty edges for it
@@ -205,17 +217,18 @@ impl RangeGraph {
                 continue;
             }
             visited[node_id.value()] = true;
-            // TODO: Properly track scope of schema/nonschema.
-            //       Likely $ref should be schema -> schema, and others are schema -> non-schema
             // TODO: Maybe we can skip pushing edges from non-applicators? they will be no-op here,
             //       but could be skipped upfront
+            if !input.nodes[node_id.value()].is_schema() {
+                continue;
+            }
             for edge in node_edges {
                 queue.push_back((edge.target, &input.edges[edge.target.value()]));
             }
             if !node_id.is_root() {
                 for edge in node_edges {
                     let target_id = edge.target.value();
-                    let value = input.nodes[target_id];
+                    let value = input.nodes[target_id].value;
                     match edge.label.as_key() {
                         Some("maximum") => {
                             output.set_node(target_id, Maximum::build(value.as_u64().unwrap()));
@@ -290,12 +303,6 @@ pub(crate) struct CompressedRangeGraph {
     pub(crate) edges: Vec<RangedEdge>,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-enum BuildScope {
-    Schema,
-    NonSchema,
-}
-
 #[derive(Clone)]
 struct Scope<'s> {
     folders: Vec<&'s str>,
@@ -343,8 +350,10 @@ mod tests {
     #[test_case("properties-empty")]
     #[test_case("nested-properties")]
     #[test_case("multiple-nodes-each-layer")]
+    // TODO: check stuff inside `$defs` / anything references via $ref
     #[test_case("not-a-keyword-validation")]
     #[test_case("not-a-keyword-ref")]
+    #[test_case("not-a-keyword-nested")]
     #[test_case("ref-recursive-absolute")]
     #[test_case("ref-recursive-self")]
     #[test_case("ref-recursive-between-schemas")]

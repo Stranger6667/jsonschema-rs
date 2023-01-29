@@ -1,7 +1,4 @@
-use crate::{
-    schema::graph::{AdjacencyList, CompressedRangeGraph, EdgeLabel, RangeGraph},
-    vocabularies::Keyword,
-};
+use crate::schema::graph::{AdjacencyList, CompressedRangeGraph, EdgeLabel, RangeGraph};
 use once_cell::sync::Lazy;
 use serde_json::Value;
 use std::{fs::File, io::BufReader};
@@ -35,7 +32,7 @@ pub(crate) fn assert_compressed_graph(graph: &CompressedRangeGraph) {
 pub(crate) fn assert_adjacency_list(graph: &AdjacencyList) {
     for (node_id, (node, edges)) in graph.nodes.iter().zip(graph.edges.iter()).enumerate() {
         for edge in edges {
-            let by_target_id = graph.nodes[edge.target.value()];
+            let by_target_id = graph.nodes[edge.target.value()].value;
             // 0th node is a dummy node, there is no valid label coming from it
             if node_id != 0 {
                 let by_label = match &edge.label {
@@ -46,10 +43,10 @@ pub(crate) fn assert_adjacency_list(graph: &AdjacencyList) {
                             // that will require implementing resolving here
                             continue;
                         } else {
-                            node.get(&**key)
+                            node.value.get(&**key)
                         }
                     }
-                    EdgeLabel::Index(id) => node.get(id),
+                    EdgeLabel::Index(id) => node.value.get(id),
                 }
                 .unwrap_or_else(|| panic!("Value does not exist: {} -> {:?}", node_id, edge.label));
                 // Nodes resolved different ways should point to the same value
@@ -73,20 +70,5 @@ pub(crate) fn assert_range_graph(graph: &RangeGraph) {
             }
         }
     }
-    for edge in graph.edges.iter().flatten() {
-        // There should be at least one node in this range (some of them might be skipped)
-        let mut exists = false;
-        for node in graph.nodes[edge.nodes.clone()].iter().flatten() {
-            exists = true;
-            if let Keyword::Ref(reference) = node {
-                assert!(
-                    graph.nodes[reference.nodes.clone()]
-                        .iter()
-                        .any(|n| n.is_some()),
-                    "Reference to invalid nodes"
-                )
-            }
-        }
-        assert!(exists, "No nodes at {:?}", edge.nodes);
-    }
+    // Edges may point to empty schemas, meaning that there will be no nodes at referenced ranges
 }

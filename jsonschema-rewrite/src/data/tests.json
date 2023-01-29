@@ -107,6 +107,17 @@
             }
         }
     },
+    "not-a-keyword-nested": {
+        "schema": {
+            "properties": {
+                "maximum": {
+                    "not-a-keyword": {
+                        "maximum": 5
+                    }
+                }
+            }
+        }
+    },
     "ref-recursive-absolute": {
         "schema": {
             "$id": "http://localhost:1234/root",
