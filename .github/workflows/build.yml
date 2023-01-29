@@ -188,10 +188,10 @@ jobs:
           toolchain: stable
           override: true
 
-      - run: python -m pip install tox
+      - run: python -m pip install maturin
         working-directory: ./bindings/python
 
-      - run: tox -e build-sdist
+      - run: maturin build --sdist -o dist
         working-directory: ./bindings/python
 
       - name: Installing sdist

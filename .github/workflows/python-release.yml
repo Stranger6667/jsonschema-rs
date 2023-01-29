@@ -31,11 +31,11 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - name: Install Tox
-        run: pip install tox
+      - name: Install maturin
+        run: pip install maturin
       - name: Build wheel
         working-directory: ./bindings/python
-        run: tox -e build-wheel
+        run: maturin build
       - uses: actions/upload-artifact@v3
         with:
           name: Distribution Artifacts
@@ -75,12 +75,12 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - name: Install Tox
-        run: ${{ env.PYTHON_SYS_EXECUTABLE }} -m pip install tox
+      - name: Install maturin
+        run: pip install maturin
       - name: Build wheel
         working-directory: ./bindings/python
         run: |
-          ${{ env.PYTHON_SYS_EXECUTABLE }} -m tox -e build-wheel
+          maturin build
           # Ensure that the wheel is tagged as manylinux2014 platform
           auditwheel repair \
             --wheel-dir=./dist \
@@ -107,11 +107,11 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - name: Install Tox
-        run: pip install tox
+      - name: Install maturin
+        run: pip install maturin
       - name: Build sdist
         working-directory: ./bindings/python
-        run: tox -e build-sdist
+        run: maturin build --sdist -o dist
       - uses: actions/upload-artifact@v3
         with:
           name: Distribution Artifacts
