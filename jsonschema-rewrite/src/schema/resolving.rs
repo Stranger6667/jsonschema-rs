@@ -406,6 +406,38 @@ pub(crate) enum Reference<'a> {
     Relative(&'a str),
 }
 
+impl<'a> Reference<'a> {
+    pub(crate) fn resolve<'s>(
+        &self,
+        reference: &str,
+        scope: &Scope<'s>,
+        resolvers: &'s HashMap<&str, Resolver>,
+    ) -> Result<(Scope<'s>, &'s Value)> {
+        Ok(match self {
+            Reference::Absolute(location) => {
+                if let Some(resolver) = resolvers.get(location.as_str()) {
+                    let (folders, resolved) = resolver.resolve(reference)?;
+                    (Scope::with_folders(resolver, folders), resolved)
+                } else {
+                    let (_, resolved) = scope.resolver.resolve(reference)?;
+                    (scope.clone(), resolved)
+                }
+            }
+            Reference::Relative(location) => {
+                let mut resolver = scope.resolver;
+                if !is_local(location) {
+                    let location = scope.build_url(resolver.scope(), location)?;
+                    if !resolver.contains(location.as_str()) {
+                        resolver = resolvers.get(location.as_str()).expect("Unknown reference");
+                    }
+                };
+                let (folders, resolved) = resolver.resolve(location)?;
+                (Scope::with_folders(resolver, folders), resolved)
+            }
+        })
+    }
+}
+
 impl<'a> TryFrom<&'a str> for Reference<'a> {
     type Error = Error;
 

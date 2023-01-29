@@ -1,7 +1,7 @@
 use crate::{
     schema::{
         error::Result,
-        resolving::{is_local, Reference, Resolver, Scope},
+        resolving::{Reference, Resolver, Scope},
     },
     value_type::ValueType,
     vocabularies::{
@@ -72,63 +72,24 @@ impl<'s> AdjacencyList<'s> {
                     Value::Object(object) => {
                         scope.track_folder(object);
                         for (key, value) in object {
-                            if key == "$ref" {
+                            // TODO: if it is not a schema, then skip ref resolving?
+                            let (scope, resolved) = if key == "$ref" {
                                 // TODO: If resolved node is in the tree we need to mark it as a schema
                                 //       It could happen that it was discovered from a non-$ref
                                 //       path and is not considered a schema
                                 if let Value::String(reference) = value {
-                                    match Reference::try_from(reference.as_str())? {
-                                        Reference::Absolute(location) => {
-                                            if let Some(resolver) = resolvers.get(location.as_str())
-                                            {
-                                                let (folders, resolved) =
-                                                    resolver.resolve(reference)?;
-                                                queue.push_back((
-                                                    Scope::with_folders(resolver, folders),
-                                                    slot.id,
-                                                    key.into(),
-                                                    Node::schema(resolved),
-                                                ));
-                                            } else {
-                                                let (_, resolved) =
-                                                    scope.resolver.resolve(reference)?;
-                                                queue.push_back((
-                                                    scope.clone(),
-                                                    slot.id,
-                                                    key.into(),
-                                                    Node::schema(resolved),
-                                                ));
-                                            }
-                                        }
-                                        Reference::Relative(location) => {
-                                            let mut resolver = scope.resolver;
-                                            if !is_local(location) {
-                                                let location =
-                                                    scope.build_url(resolver.scope(), location)?;
-                                                if !resolver.contains(location.as_str()) {
-                                                    resolver = resolvers
-                                                        .get(location.as_str())
-                                                        .expect("Unknown reference");
-                                                }
-                                            };
-                                            let (folders, resolved) = resolver.resolve(location)?;
-                                            queue.push_back((
-                                                Scope::with_folders(resolver, folders),
-                                                slot.id,
-                                                key.into(),
-                                                Node::schema(resolved),
-                                            ));
-                                        }
-                                    };
+                                    let reference1 = Reference::try_from(reference.as_str())?;
+                                    let (scope, resolved) =
+                                        reference1.resolve(reference, &scope, resolvers)?;
+                                    (scope, Node::schema(resolved))
+                                } else {
+                                    // TODO: What about references that are not strings?
+                                    continue;
                                 }
                             } else {
-                                queue.push_back((
-                                    scope.clone(),
-                                    slot.id,
-                                    key.into(),
-                                    node.toggle(value),
-                                ));
-                            }
+                                (scope.clone(), node.toggle(value))
+                            };
+                            queue.push_back((scope, slot.id, key.into(), resolved));
                         }
                     }
                     Value::Array(items) => {
