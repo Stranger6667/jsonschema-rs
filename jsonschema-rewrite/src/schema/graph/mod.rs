@@ -22,8 +22,6 @@ use std::{
     ops::Range,
 };
 
-pub(crate) type VisitedMap = HashMap<*const Value, NodeId>;
-
 /// Build a packed graph to represent JSON Schema.
 pub(crate) fn build<'s>(
     schema: &'s Value,
@@ -47,7 +45,7 @@ pub(crate) fn build<'s>(
 pub(crate) struct AdjacencyList<'s> {
     pub(crate) nodes: Vec<Node<'s>>,
     pub(crate) edges: Vec<Vec<Edge>>,
-    visited: VisitedMap,
+    visited: HashMap<*const Value, NodeId>,
 }
 
 impl<'s> AdjacencyList<'s> {
@@ -116,7 +114,7 @@ impl<'s> AdjacencyList<'s> {
             // This way we can assume there is always a parent node, even for the schema root
             nodes: vec![Node::dummy()],
             edges: vec![vec![]],
-            visited: VisitedMap::new(),
+            visited: HashMap::new(),
         }
     }
 
@@ -163,20 +161,30 @@ macro_rules! vec_of_nones {
     };
 }
 
+struct VisitedMap(Vec<bool>);
+
+impl VisitedMap {
+    fn new(size: usize) -> Self {
+        Self(vec![false; size])
+    }
+    fn insert(&mut self, index: usize) -> bool {
+        std::mem::replace(&mut self.0[index], true)
+    }
+}
+
 impl RangeGraph {
     fn new(input: &AdjacencyList<'_>) -> Result<Self> {
         let mut output = RangeGraph {
             nodes: vec_of_nones!(input.nodes.len()),
             edges: vec_of_nones!(input.edges.len()),
         };
-        let mut visited = vec![false; input.nodes.len()];
+        let mut visited = VisitedMap::new(input.nodes.len());
         let mut queue = VecDeque::new();
         queue.push_back((NodeId::new(0), &input.edges[0]));
         while let Some((node_id, node_edges)) = queue.pop_front() {
-            if visited[node_id.value()] {
+            if visited.insert(node_id.value()) {
                 continue;
             }
-            visited[node_id.value()] = true;
             // TODO: Maybe we can skip pushing edges from non-applicators? they will be no-op here,
             //       but could be skipped upfront
             if !input.nodes[node_id.value()].is_schema() {
