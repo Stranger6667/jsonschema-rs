@@ -5,210 +5,23 @@ use crate::{
     },
     value_type::ValueType,
     vocabularies::{
-        applicator::{AllOf, Properties},
+        applicator::{AllOf, Items, Properties},
         references::Ref,
         validation::{MaxLength, Maximum, MinProperties, Type},
         Keyword,
     },
 };
+mod edges;
+mod nodes;
+
+pub(crate) use edges::{Edge, EdgeLabel, RangedEdge};
+pub(crate) use nodes::{NodeId, NodeSlot};
 use serde_json::{Map, Value};
-use std::collections::{hash_map::Entry, HashMap, VecDeque};
-
-use crate::{schema::error::Error, vocabularies::applicator::Items};
-use std::ops::Range;
+use std::{
+    collections::{hash_map::Entry, HashMap, VecDeque},
+    ops::Range,
+};
 use url::Url;
-
-/// A label on an edge between two JSON values.
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub(crate) enum EdgeLabel {
-    /// # Example
-    ///
-    /// `{"name": "Test"}` could be represented as:
-    ///
-    ///           name
-    /// object ---------> "Test"
-    ///
-    /// The label for the edge between the top-level object and string "Test" is `name`.
-    Key(Box<str>),
-    /// # Example
-    ///
-    /// `["Test"]` could be represented as:
-    ///
-    ///          0
-    /// array ------> "Test"
-    ///
-    /// The label for the edge between the top-level array and string "Test" is `0`.
-    Index(usize),
-}
-
-impl EdgeLabel {
-    pub(crate) fn as_key(&self) -> Option<&str> {
-        if let EdgeLabel::Key(key) = self {
-            Some(&**key)
-        } else {
-            None
-        }
-    }
-}
-
-impl From<usize> for EdgeLabel {
-    fn from(value: usize) -> Self {
-        EdgeLabel::Index(value)
-    }
-}
-
-impl From<&String> for EdgeLabel {
-    fn from(value: &String) -> Self {
-        EdgeLabel::Key(value.to_owned().into_boxed_str())
-    }
-}
-
-/// Unique identifier of a node in a graph.
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
-pub(crate) struct NodeId(usize);
-
-impl NodeId {
-    pub(crate) fn value(&self) -> usize {
-        self.0
-    }
-    /// If this `NodeId` points to the root node.
-    pub(crate) fn is_root(&self) -> bool {
-        self.value() == 0
-    }
-}
-
-/// An edge between two JSON values stored in adjacency list.
-///
-/// # Example
-///
-/// JSON:
-///
-/// ```json
-/// {
-///     "properties": {
-///         "A": {
-///             "type": "object"
-///         },
-///         "B": {
-///             "type": "string"
-///         }
-///     }
-/// }
-/// ```
-///
-/// ("A", 1) - an edge between `<properties>` and `<type: object>`
-/// ("B", 2) - an edge between `<properties>` and `<type: string>`
-///
-/// ```text
-///   Nodes                      Edges
-///
-/// [                         [
-///   0 <properties>            [("A", 1), ("B", 2)]
-///   1 <type: object>          []
-///   2 <type: string>          []
-/// ]                         ]
-/// ```
-#[derive(Debug, Eq, PartialEq, Hash, Clone)]
-pub(crate) struct Edge {
-    pub(crate) label: EdgeLabel,
-    pub(crate) target: NodeId,
-}
-
-impl Edge {
-    pub(crate) fn new(label: impl Into<EdgeLabel>, target: NodeId) -> Edge {
-        Edge {
-            label: label.into(),
-            target,
-        }
-    }
-}
-
-/// An edge between a single JSON value and a range of JSON values that are stored contiguously.
-///
-/// # Example
-///
-/// JSON:
-///
-/// ```json
-/// {
-///     "properties": {
-///         "A": {
-///             "type": "object",
-///             "maxLength": 5
-///         },
-///         "B": {
-///             "type": "string"
-///         }
-///     }
-/// }
-/// ```
-///
-/// ("A", 1..3) - an edge between `<properties>` and `<type: object>` & `<maxLength: 5>`
-/// ("B", 3..4) - an edge between `<properties>` and `<type: string>`
-///
-/// ```text
-///   Nodes                                                              Edges
-///
-/// [                                                                 [
-/// -- 0..1 `/`                                    |------------>     -- 0..2 (`properties' edges)
-///      <properties> -----> 0..2 ---------------->|  |<------------------ A
-/// -- 1..3 `/properties/A`               <--- 1..3 <-|  |<--------------- B
-///      <type: object>                                  |            ]
-///      <maxLength: 5>                                  |
-/// -- 3..4 `/properties/B`               <--- 3..4 <----|
-///      <type: string>
-/// ]
-/// ```
-#[derive(Debug, Eq, PartialEq, Hash)]
-pub(crate) struct RangedEdge {
-    /// A label for this edge.
-    pub(crate) label: EdgeLabel,
-    /// A range of nodes referenced by this edge.
-    pub(crate) nodes: Range<usize>,
-}
-
-impl RangedEdge {
-    pub(crate) fn new(label: impl Into<EdgeLabel>, nodes: Range<usize>) -> RangedEdge {
-        RangedEdge {
-            label: label.into(),
-            nodes,
-        }
-    }
-}
-
-/// A slot for a node in a tree.
-pub(crate) struct NodeSlot {
-    /// Unique node identifier.
-    id: NodeId,
-    /// Whether this slot was already used or not.
-    state: SlotState,
-}
-
-#[derive(Debug, Eq, PartialEq)]
-enum SlotState {
-    /// Slot was not previously used.
-    New,
-    /// Slot is already used.
-    Used,
-}
-
-impl NodeSlot {
-    fn seen(id: NodeId) -> Self {
-        Self {
-            id,
-            state: SlotState::Used,
-        }
-    }
-    fn new(id: NodeId) -> Self {
-        Self {
-            id,
-            state: SlotState::New,
-        }
-    }
-    fn is_new(&self) -> bool {
-        self.state == SlotState::New
-    }
-}
 
 pub(crate) type VisitedMap = HashMap<*const Value, NodeId>;
 
@@ -226,7 +39,7 @@ pub(crate) fn build<'s>(
     //     `Some(Keyword)` instances at places containing valid JSON Schema keywords and fill
     //     everything else with `None`.
     //   * Convert edges, so they point to ranges of nodes
-    let range_graph = RangeGraph::try_from(&adjacency_list)?;
+    let range_graph = RangeGraph::new(&adjacency_list)?;
     // Remove empty nodes and adjust all indexes
     Ok(range_graph.compress())
 }
@@ -247,7 +60,12 @@ impl<'s> AdjacencyList<'s> {
         let mut output = AdjacencyList::empty();
         // This is a Breadth-First-Search routine
         let mut queue = VecDeque::new();
-        queue.push_back((Scope::new(root), NodeId(0), EdgeLabel::Index(0), schema));
+        queue.push_back((
+            Scope::new(root),
+            NodeId::new(0),
+            EdgeLabel::Index(0),
+            schema,
+        ));
         while let Some((mut scope, parent_id, label, node)) = queue.pop_front() {
             let slot = output.push(parent_id, label, node);
             if slot.is_new() {
@@ -336,7 +154,7 @@ impl<'s> AdjacencyList<'s> {
             Entry::Occupied(entry) => NodeSlot::seen(*entry.get()),
             Entry::Vacant(entry) => {
                 // Insert a new node & empty edges for it
-                let node_id = NodeId(self.nodes.len());
+                let node_id = NodeId::new(self.nodes.len());
                 self.nodes.push(node);
                 self.edges.push(vec![]);
                 entry.insert(node_id);
@@ -344,7 +162,7 @@ impl<'s> AdjacencyList<'s> {
             }
         };
         // Insert a new edge from `parent_id` to this node
-        self.edges[parent_id.0].push(Edge::new(label, slot.id));
+        self.edges[parent_id.value()].push(Edge::new(label, slot.id));
         slot
     }
 
@@ -373,17 +191,15 @@ macro_rules! vec_of_nones {
     };
 }
 
-impl TryFrom<&AdjacencyList<'_>> for RangeGraph {
-    type Error = Error;
-
-    fn try_from(input: &AdjacencyList<'_>) -> Result<Self> {
+impl RangeGraph {
+    fn new(input: &AdjacencyList<'_>) -> Result<Self> {
         let mut output = RangeGraph {
             nodes: vec_of_nones!(input.nodes.len()),
             edges: vec_of_nones!(input.edges.len()),
         };
         let mut visited = vec![false; input.nodes.len()];
         let mut queue = VecDeque::new();
-        queue.push_back((NodeId(0), &input.edges[0]));
+        queue.push_back((NodeId::new(0), &input.edges[0]));
         while let Some((node_id, node_edges)) = queue.pop_front() {
             if visited[node_id.value()] {
                 continue;
@@ -427,7 +243,7 @@ impl TryFrom<&AdjacencyList<'_>> for RangeGraph {
                         Some("properties") => {
                             let edges = input.range_of(target_id);
                             output.set_node(target_id, Properties::build(edges));
-                            output.set_many_edges(&input.edges[target_id], input);
+                            output.set_edges(&input.edges[target_id], input);
                         }
                         Some("items") => {
                             // TODO: properly set edges & node
@@ -436,7 +252,7 @@ impl TryFrom<&AdjacencyList<'_>> for RangeGraph {
                         Some("allOf") => {
                             let edges = input.range_of(target_id);
                             output.set_node(target_id, AllOf::build(edges));
-                            output.set_many_edges(&input.edges[target_id], input);
+                            output.set_edges(&input.edges[target_id], input);
                         }
                         Some("$ref") => {
                             // TODO: Inline reference
@@ -456,13 +272,11 @@ impl RangeGraph {
     fn set_node(&mut self, id: usize, keyword: Keyword) {
         self.nodes[id] = Some(keyword)
     }
-    fn set_edge(&mut self, id: usize, label: EdgeLabel, nodes: Range<usize>) {
-        self.edges[id] = Some(RangedEdge::new(label, nodes))
-    }
-    fn set_many_edges(&mut self, edges: &[Edge], input: &AdjacencyList) {
+    fn set_edges(&mut self, edges: &[Edge], input: &AdjacencyList) {
         for edge in edges {
             let id = edge.target.value();
-            self.set_edge(id, edge.label.clone(), input.range_of(id));
+            let nodes = input.range_of(id);
+            self.edges[id] = Some(RangedEdge::new(edge.label.clone(), nodes));
         }
     }
     fn compress(self) -> CompressedRangeGraph {
@@ -546,7 +360,7 @@ mod tests {
         let resolvers = resolving::build_resolvers(&external);
         let adjacency_list = AdjacencyList::new(schema, &root, &resolvers).unwrap();
         assert_adjacency_list(&adjacency_list);
-        let range_graph = RangeGraph::try_from(&adjacency_list).unwrap();
+        let range_graph = RangeGraph::new(&adjacency_list).unwrap();
         assert_range_graph(&range_graph);
         let compressed = range_graph.compress();
         assert_compressed_graph(&compressed);

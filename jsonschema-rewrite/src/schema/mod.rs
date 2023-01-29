@@ -77,7 +77,7 @@ mod error;
 pub(crate) mod graph;
 pub mod resolving;
 
-use crate::{schema::graph::RangedEdge, vocabularies::Keyword};
+use crate::vocabularies::Keyword;
 use error::Result;
 use serde_json::Value;
 
@@ -117,7 +117,7 @@ impl Schema {
     pub(crate) fn nodes(&self) -> &[Keyword] {
         &self.graph.nodes
     }
-    pub(crate) fn edges(&self) -> &[RangedEdge] {
+    pub(crate) fn edges(&self) -> &[graph::RangedEdge] {
         &self.graph.edges
     }
 
