@@ -107,7 +107,7 @@ impl Schema {
         Ok(Schema { graph })
     }
 
-    pub fn is_valid(&self, instance: &Value) -> bool {
+    pub fn is_valid(&self, _instance: &Value) -> bool {
         todo!()
         // self.keywords[..self.root_offset]
         //     .iter()

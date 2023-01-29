@@ -92,7 +92,7 @@ impl<'schema> Resolver<'schema> {
             } else if let Some((folders, resolved)) = pointer(self.document, &raw_pointer) {
                 Ok((folders, resolved))
             } else {
-                panic!("Failed to resolve: {}", reference)
+                panic!("Failed to resolve: {reference}")
             }
         }
     }
@@ -104,10 +104,7 @@ impl<'schema> Resolver<'schema> {
 }
 
 /// Based on `serde_json`, but tracks folders in the traversed documents.
-pub(crate) fn pointer<'a, 'b>(
-    document: &'a Value,
-    pointer: &'b str,
-) -> Option<(Vec<&'a str>, &'a Value)> {
+pub(crate) fn pointer<'a>(document: &'a Value, pointer: &str) -> Option<(Vec<&'a str>, &'a Value)> {
     if pointer.is_empty() {
         return Some((vec![], document));
     }

@@ -63,7 +63,7 @@ impl Keyword {
     }
 
     #[inline]
-    pub fn validate(&self, schema: &Schema, instance: &serde_json::Value) -> Option<u64> {
+    pub fn validate(&self, _schema: &Schema, _instance: &serde_json::Value) -> Option<u64> {
         Some(42)
     }
 

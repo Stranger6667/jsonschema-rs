@@ -55,9 +55,7 @@ pub(crate) fn assert_adjacency_list(graph: &AdjacencyList) {
                 // Nodes resolved different ways should point to the same value
                 assert!(
                     std::ptr::eq(by_label, by_target_id),
-                    "Edges do not point to the same node: {} vs {}",
-                    by_label,
-                    by_target_id
+                    "Edges do not point to the same node: {by_label} vs {by_target_id}"
                 );
             }
         }
@@ -70,8 +68,7 @@ pub(crate) fn assert_range_graph(graph: &RangeGraph) {
             if !edges.is_empty() {
                 assert!(
                     graph.edges[edges.clone()].iter().any(|edge| edge.is_some()),
-                    "No edges at {:?}",
-                    edges
+                    "No edges at {edges:?}"
                 );
             }
         }
