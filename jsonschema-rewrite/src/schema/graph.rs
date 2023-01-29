@@ -19,7 +19,6 @@ use std::ops::Range;
 use url::Url;
 
 /// A label on an edge between two JSON values.
-/// It could be either a key name or an index.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) enum EdgeLabel {
     /// # Example
@@ -64,7 +63,7 @@ impl From<&String> for EdgeLabel {
     }
 }
 
-/// Id of a node in a graph.
+/// Unique identifier of a node in a graph.
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub(crate) struct NodeId(usize);
 
@@ -72,12 +71,13 @@ impl NodeId {
     pub(crate) fn value(&self) -> usize {
         self.0
     }
+    /// If this `NodeId` points to the root node.
     pub(crate) fn is_root(&self) -> bool {
         self.value() == 0
     }
 }
 
-/// An edge between two JSON values stored in a graph.
+/// An edge between two JSON values stored in adjacency list.
 ///
 /// # Example
 ///
@@ -96,24 +96,27 @@ impl NodeId {
 /// }
 /// ```
 ///
-/// ("A", 0, 1) - an edge between `<properties>` and `<type: object>`
-/// ("B", 0, 2) - an edge between `<properties>` and `<type: string>`
+/// ("A", 1) - an edge between `<properties>` and `<type: object>`
+/// ("B", 2) - an edge between `<properties>` and `<type: string>`
 ///
-///          --------------- B ------------->
-///         |  ------ A ---->               |
-///         | |             |               |
-/// `[ <properties>, <type: object>, <type: string>]`
-///         0              1               2
+/// ```text
+///   Nodes                      Edges
 ///
+/// [                         [
+///   0 <properties>            [("A", 1), ("B", 2)]
+///   1 <type: object>          []
+///   2 <type: string>          []
+/// ]                         ]
+/// ```
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
-pub(crate) struct SingleEdge {
+pub(crate) struct Edge {
     pub(crate) label: EdgeLabel,
     pub(crate) target: NodeId,
 }
 
-impl SingleEdge {
-    pub(crate) fn new(label: impl Into<EdgeLabel>, target: NodeId) -> SingleEdge {
-        SingleEdge {
+impl Edge {
+    pub(crate) fn new(label: impl Into<EdgeLabel>, target: NodeId) -> Edge {
+        Edge {
             label: label.into(),
             target,
         }
@@ -140,24 +143,33 @@ impl SingleEdge {
 /// }
 /// ```
 ///
-/// ("A", 1..3) - an edge between `<properties>` and `<type: object>` + `<maxLength: 5>`
+/// ("A", 1..3) - an edge between `<properties>` and `<type: object>` & `<maxLength: 5>`
 /// ("B", 3..4) - an edge between `<properties>` and `<type: string>`
 ///
-///          ---------------------- B ---------------------->
-///         |  ------------->------ A ------>               |
-///         | |             |               |               |
-/// `[ <properties>, <type: object>, <maxLength: 5>, <type: string>]`
-///         0              1               2               3
+/// ```text
+///   Nodes                                                              Edges
 ///
+/// [                                                                 [
+/// -- 0..1 `/`                                    |------------>     -- 0..2 (`properties' edges)
+///      <properties> -----> 0..2 ---------------->|  |<------------------ A
+/// -- 1..3 `/properties/A`               <--- 1..3 <-|  |<--------------- B
+///      <type: object>                                  |            ]
+///      <maxLength: 5>                                  |
+/// -- 3..4 `/properties/B`               <--- 3..4 <----|
+///      <type: string>
+/// ]
+/// ```
 #[derive(Debug, Eq, PartialEq, Hash)]
-pub(crate) struct MultiEdge {
+pub(crate) struct RangedEdge {
+    /// A label for this edge.
     pub(crate) label: EdgeLabel,
+    /// A range of nodes referenced by this edge.
     pub(crate) nodes: Range<usize>,
 }
 
-impl MultiEdge {
-    pub(crate) fn new(label: impl Into<EdgeLabel>, nodes: Range<usize>) -> MultiEdge {
-        MultiEdge {
+impl RangedEdge {
+    pub(crate) fn new(label: impl Into<EdgeLabel>, nodes: Range<usize>) -> RangedEdge {
+        RangedEdge {
             label: label.into(),
             nodes,
         }
@@ -168,6 +180,7 @@ impl MultiEdge {
 pub(crate) struct NodeSlot {
     /// Unique node identifier.
     id: NodeId,
+    /// Whether this slot was already used or not.
     state: SlotState,
 }
 
@@ -175,7 +188,7 @@ pub(crate) struct NodeSlot {
 enum SlotState {
     /// Slot was not previously used.
     New,
-    /// Slot is already occupied.
+    /// Slot is already used.
     Used,
 }
 
@@ -205,23 +218,23 @@ pub(crate) fn build<'s>(
     root: &'s Resolver,
     resolvers: &'s HashMap<&str, Resolver>,
 ) -> Result<CompressedRangeGraph> {
-    // Represent the schema as an adjacency list including all reachable remote nodes
-    // Nodes in this list are ordered by the Breadth-First search traversal order
+    // Convert `Value` to an adjacency list and add all remote nodes reachable from the root
     let adjacency_list = AdjacencyList::new(schema, root, resolvers)?;
-    // TODO: Update comments
-    // Re-create its node list with the following differences:
-    //   - Skip nodes that are not needed for validation
-    //   - Transform JSON values into `Keyword` instances
+    // Each JSON Schema is a set of keywords that may contain nested sub-schemas. As all of nodes
+    // are ordered by the BFS traversal order, we can address each schema by a range of indexes:
+    //   * Create nodes with the same structure as the adjacency list but put corresponding
+    //     `Some(Keyword)` instances at places containing valid JSON Schema keywords and fill
+    //     everything else with `None`.
+    //   * Convert edges, so they point to ranges of nodes
     let range_graph = RangeGraph::try_from(&adjacency_list)?;
-    // Compress the edges into a single vector. All nodes are ordered and grouped into layers
-    // because of BFS earlier, hence each layer could be located with a range of indexes.
+    // Remove empty nodes and adjust all indexes
     Ok(range_graph.compress())
 }
 
 #[derive(Debug)]
 pub(crate) struct AdjacencyList<'s> {
     pub(crate) nodes: Vec<&'s Value>,
-    pub(crate) edges: Vec<Vec<SingleEdge>>,
+    pub(crate) edges: Vec<Vec<Edge>>,
     visited: VisitedMap,
 }
 
@@ -232,6 +245,7 @@ impl<'s> AdjacencyList<'s> {
         resolvers: &'s HashMap<&str, Resolver>,
     ) -> Result<Self> {
         let mut output = AdjacencyList::empty();
+        // This is a Breadth-First-Search routine
         let mut queue = VecDeque::new();
         queue.push_back((Scope::new(root), NodeId(0), EdgeLabel::Index(0), schema));
         while let Some((mut scope, parent_id, label, node)) = queue.pop_front() {
@@ -330,16 +344,18 @@ impl<'s> AdjacencyList<'s> {
             }
         };
         // Insert a new edge from `parent_id` to this node
-        self.edges[parent_id.0].push(SingleEdge::new(label, slot.id));
+        self.edges[parent_id.0].push(Edge::new(label, slot.id));
         slot
     }
 
     pub(crate) fn range_of(&self, target_id: usize) -> Range<usize> {
         let (start, end) = match self.edges[target_id].as_slice() {
+            // Node has no edges
             [] => return 0..0,
             [edge] => (edge, edge),
             [start, .., end] => (start, end),
         };
+        // We use non-inclusive ranges, but edges point to precise indexes, hence add 1
         start.target.value()..end.target.value() + 1
     }
 }
@@ -348,7 +364,7 @@ impl<'s> AdjacencyList<'s> {
 #[derive(Debug)]
 pub(crate) struct RangeGraph {
     pub(crate) nodes: Vec<Option<Keyword>>,
-    pub(crate) edges: Vec<Option<MultiEdge>>,
+    pub(crate) edges: Vec<Option<RangedEdge>>,
 }
 
 macro_rules! vec_of_nones {
@@ -441,9 +457,9 @@ impl RangeGraph {
         self.nodes[id] = Some(keyword)
     }
     fn set_edge(&mut self, id: usize, label: EdgeLabel, nodes: Range<usize>) {
-        self.edges[id] = Some(MultiEdge::new(label, nodes))
+        self.edges[id] = Some(RangedEdge::new(label, nodes))
     }
-    fn set_many_edges(&mut self, edges: &[SingleEdge], input: &AdjacencyList) {
+    fn set_many_edges(&mut self, edges: &[Edge], input: &AdjacencyList) {
         for edge in edges {
             let id = edge.target.value();
             self.set_edge(id, edge.label.clone(), input.range_of(id));
@@ -457,7 +473,7 @@ impl RangeGraph {
 #[derive(Debug)]
 pub(crate) struct CompressedRangeGraph {
     pub(crate) nodes: Vec<Keyword>,
-    pub(crate) edges: Vec<MultiEdge>,
+    pub(crate) edges: Vec<RangedEdge>,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -513,8 +529,8 @@ mod tests {
     #[test_case("properties-empty")]
     #[test_case("nested-properties")]
     #[test_case("multiple-nodes-each-layer")]
-    // #[test_case("not-a-keyword-validation")]
-    // #[test_case("not-a-keyword-ref")]
+    #[test_case("not-a-keyword-validation")]
+    #[test_case("not-a-keyword-ref")]
     #[test_case("ref-recursive-absolute")]
     #[test_case("ref-recursive-self")]
     #[test_case("ref-recursive-between-schemas")]

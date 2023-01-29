@@ -19,7 +19,6 @@ pub(crate) fn load_case(name: &str) -> &Value {
     &SCHEMAS[name]
 }
 
-
 /// Ensure that all edges & nodes are in the right boundaries.
 pub(crate) fn assert_compressed_graph(graph: &CompressedRangeGraph) {
     for edge in graph.edges.iter() {

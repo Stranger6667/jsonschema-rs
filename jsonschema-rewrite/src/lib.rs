@@ -1,3 +1,6 @@
+/*!
+The `jsonschema` crate provides a fast and extensible JSON Schema validator.
+*/
 mod schema;
 #[cfg(test)]
 pub(crate) mod testing;

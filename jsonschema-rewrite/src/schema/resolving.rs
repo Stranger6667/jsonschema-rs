@@ -519,10 +519,11 @@ mod tests {
     #[test_case("ref-schemas-in-object", "#foo", "/definitions/A")]
     #[test_case("ref-schemas-in-object", "#", "")]
     fn resolving(name: &str, reference: &str, pointer: &str) {
+        // Compare resolving results by JSON Schema reference and an equivalent JSON pointer
         let schema = &load_case(name)["schema"];
         let resolver = Resolver::new(schema).unwrap();
-        let (_, via_resolve) = resolver.resolve(reference).unwrap();
-        let via_pointer = schema.pointer(pointer).unwrap();
-        assert_eq!(via_resolve, via_pointer);
+        let (_, by_reference) = resolver.resolve(reference).unwrap();
+        let by_pointer = schema.pointer(pointer).unwrap();
+        assert_eq!(by_reference, by_pointer);
     }
 }
