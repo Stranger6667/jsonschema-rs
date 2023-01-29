@@ -37,6 +37,38 @@ pub fn scope_of(schema: &Value) -> Result<Url> {
     }
 }
 
+#[derive(Clone)]
+pub(crate) struct Scope<'s> {
+    folders: Vec<&'s str>,
+    pub(crate) resolver: &'s Resolver<'s>,
+}
+
+impl<'s> Scope<'s> {
+    pub(crate) fn new(resolver: &'s Resolver) -> Self {
+        Self::with_folders(resolver, vec![])
+    }
+    pub(crate) fn with_folders(resolver: &'s Resolver, folders: Vec<&'s str>) -> Self {
+        Self { folders, resolver }
+    }
+    pub(crate) fn track_folder(&mut self, object: &'s Map<String, Value>) {
+        // Some objects may change `$ref` behavior via the `$id` keyword
+        if let Some(id) = id_of_object(object) {
+            self.folders.push(id);
+        }
+    }
+
+    pub(crate) fn build_url(&self, scope: &Url, reference: &str) -> Result<Url> {
+        let folders = &self.folders;
+        let mut location = scope.clone();
+        if folders.len() > 1 {
+            for folder in folders.iter().skip(1) {
+                location = location.join(folder)?;
+            }
+        }
+        Ok(location.join(reference)?)
+    }
+}
+
 pub(crate) fn with_folders(scope: &Url, reference: &str, folders: &[&str]) -> Result<Url> {
     let mut location = scope.clone();
     if folders.len() > 1 {

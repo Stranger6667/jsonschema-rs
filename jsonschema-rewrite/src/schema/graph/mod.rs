@@ -1,7 +1,7 @@
 use crate::{
     schema::{
         error::Result,
-        resolving::{id_of_object, is_local, Reference, Resolver},
+        resolving::{is_local, Reference, Resolver, Scope},
     },
     value_type::ValueType,
     vocabularies::{
@@ -16,12 +16,11 @@ mod nodes;
 
 pub(crate) use edges::{Edge, EdgeLabel, RangedEdge};
 pub(crate) use nodes::{Node, NodeId, NodeSlot};
-use serde_json::{Map, Value};
+use serde_json::Value;
 use std::{
     collections::{hash_map::Entry, HashMap, VecDeque},
     ops::Range,
 };
-use url::Url;
 
 pub(crate) type VisitedMap = HashMap<*const Value, NodeId>;
 
@@ -301,38 +300,6 @@ impl RangeGraph {
 pub(crate) struct CompressedRangeGraph {
     pub(crate) nodes: Vec<Keyword>,
     pub(crate) edges: Vec<RangedEdge>,
-}
-
-#[derive(Clone)]
-struct Scope<'s> {
-    folders: Vec<&'s str>,
-    resolver: &'s Resolver<'s>,
-}
-
-impl<'s> Scope<'s> {
-    pub(crate) fn new(resolver: &'s Resolver) -> Self {
-        Self::with_folders(resolver, vec![])
-    }
-    pub(crate) fn with_folders(resolver: &'s Resolver, folders: Vec<&'s str>) -> Self {
-        Self { folders, resolver }
-    }
-    pub(crate) fn track_folder(&mut self, object: &'s Map<String, Value>) {
-        // Some objects may change `$ref` behavior via the `$id` keyword
-        if let Some(id) = id_of_object(object) {
-            self.folders.push(id);
-        }
-    }
-
-    pub(crate) fn build_url(&self, scope: &Url, reference: &str) -> Result<Url> {
-        let folders = &self.folders;
-        let mut location = scope.clone();
-        if folders.len() > 1 {
-            for folder in folders.iter().skip(1) {
-                location = location.join(folder)?;
-            }
-        }
-        Ok(location.join(reference)?)
-    }
 }
 
 #[cfg(test)]
