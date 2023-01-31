@@ -21,8 +21,8 @@ jobs:
           architecture: x86
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
@@ -36,7 +36,7 @@ jobs:
       - name: Build wheel
         working-directory: ./bindings/python
         run: tox -e build-wheel
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: Distribution Artifacts
           path: bindings/python/dist/
@@ -55,7 +55,7 @@ jobs:
       # Variable needed for PyO3 to properly identify the python interpreter
       PYTHON_SYS_EXECUTABLE: /opt/python/${{ matrix.PYTHON_IMPLEMENTATION_ABI }}/bin/python
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install/Update OpenSSL
         run: |
           retryCount=0
@@ -89,7 +89,7 @@ jobs:
           # Remove `linux_x86_64` tagged wheels as they are not supported by https://pypi.org
           # Example https://github.com/Stranger6667/jsonschema-rs/runs/766075274
           rm ./dist/jsonschema_rs-*-${{ matrix.PYTHON_IMPLEMENTATION_ABI }}-linux_x86_64.whl
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: Distribution Artifacts
           path: bindings/python/dist/
@@ -98,8 +98,8 @@ jobs:
     name: Create sdist package
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: 3.7
       - uses: actions-rs/toolchain@v1
@@ -112,7 +112,7 @@ jobs:
       - name: Build sdist
         working-directory: ./bindings/python
         run: tox -e build-sdist
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: Distribution Artifacts
           path: bindings/python/dist/
@@ -125,13 +125,12 @@ jobs:
     name: Upload Artifacts to PyPi
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: Distribution Artifacts
         path: bindings/python/dist/
     - name: Publish distribution package to PyPI
-      uses: pypa/gh-action-pypi-publish@v1.2.2
+      uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        user: ${{ secrets.PYPI_USERNAME }}
-        password: ${{ secrets.PYPI_PASSWORD }}
+        password: ${{ secrets.PYPI_API_TOKEN }}
         packages_dir: bindings/python/dist/
