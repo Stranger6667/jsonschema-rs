@@ -13,19 +13,21 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Check out code
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3.0.0
+        with:
+          fetch-depth: 0
       - name: Run commitsar
-        uses: docker://commitsar/commitsar
+        uses: aevea/commitsar@v0.18.0
 
   pre-commit:
     name: Generic pre-commit checks
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 1
 
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4
         with:
           python-version: 3.9
 
@@ -43,7 +45,7 @@ jobs:
     name: Test ${{ matrix.draft }} (stable) on ${{ matrix.os}}
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
 
@@ -74,7 +76,7 @@ jobs:
     name: Build on ${{ matrix.target }}
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
 
@@ -101,7 +103,7 @@ jobs:
     name: Run test coverage
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
       - name: Toolchain setup
@@ -125,7 +127,7 @@ jobs:
         run: cargo +nightly tarpaulin --verbose --all-features --out Xml
         working-directory: ./jsonschema
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v3
         if: ${{ env.GITHUB_REPOSITORY }} == 'Stranger6667/jsonschema-rs'
         with:
           name: coverage
@@ -140,10 +142,10 @@ jobs:
     name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
           architecture: x64
@@ -173,10 +175,10 @@ jobs:
     runs-on: ubuntu-20.04
     name: Testing Python source code distribution
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.8'
           architecture: x64
@@ -200,7 +202,7 @@ jobs:
     name: Rustfmt
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -214,7 +216,7 @@ jobs:
     name: Clippy
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
       - uses: actions-rs/toolchain@v1
@@ -230,7 +232,7 @@ jobs:
     name: Check features
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
       - uses: actions-rs/toolchain@v1
