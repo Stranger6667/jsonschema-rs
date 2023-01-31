@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Build wheels for Linux(glibc) x86_64/i686, Windows x64/x86, and macOS x86_64/aarch64.
+
 ### Changed
 
 - Update `pyo3` to `0.18`.
