@@ -35,7 +35,7 @@ jobs:
         run: pip install maturin
       - name: Build wheel
         working-directory: ./bindings/python
-        run: maturin build
+        run: maturin build -o dist
       - uses: actions/upload-artifact@v3
         with:
           name: Distribution Artifacts
@@ -80,7 +80,7 @@ jobs:
       - name: Build wheel
         working-directory: ./bindings/python
         run: |
-          maturin build
+          maturin build -o dist
           # Ensure that the wheel is tagged as manylinux2014 platform
           auditwheel repair \
             --wheel-dir=./dist \
@@ -111,7 +111,7 @@ jobs:
         run: pip install maturin
       - name: Build sdist
         working-directory: ./bindings/python
-        run: maturin build --sdist -o dist
+        run: maturin sdist -o dist
       - uses: actions/upload-artifact@v3
         with:
           name: Distribution Artifacts
