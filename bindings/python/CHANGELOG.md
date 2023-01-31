@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.16.3] - 2023-02-01
+
 ### Added
 
 - Build wheels for Linux(glibc) x86_64/i686, Windows x64/x86, and macOS x86_64/aarch64.
@@ -294,7 +296,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.2...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.3...HEAD
+[0.16.3]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.2...python-v0.16.3
 [0.16.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.1...python-v0.16.2
 [0.16.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.0...python-v0.16.1
 [0.16.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.14.0...python-v0.16.0
