@@ -5,132 +5,184 @@ on:
     tags:
       - python-v*
 
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PACKAGE_NAME: jsonschema_rs
+
 jobs:
-  create_macos_and_windows_wheels:
-    name: Wheels for Python ${{ matrix.python-version }} / ${{ matrix.os }}
+  sdist:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.7"
+          architecture: x64
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          default: true
+      - name: Build sdist
+        uses: messense/maturin-action@v1
+        with:
+          command: sdist
+          args: -m bindings/python/Cargo.toml --out dist
+      - name: Install sdist
+        run: |
+          pip install dist/${{ env.PACKAGE_NAME }}-*.tar.gz --force-reinstall
+      - name: Upload sdist
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: dist
+
+  macos-x86_64:
+    runs-on: macos-12
     strategy:
       matrix:
-        os: [macos-11, windows-2019]
         python-version: ['3.7', '3.8', '3.9', '3.10', '3.11']
-        architecture: [x86, x64]
-        exclude:
-        - os: macos-11
-          architecture: x86
-        - os: windows-2019
-          # TODO: Re-enable windows 32bits
-          architecture: x86
-    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-          architecture: ${{ matrix.architecture }}
-      - uses: actions-rs/toolchain@v1
+          architecture: x64
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
           toolchain: stable
-          override: true
-      - name: Install maturin
-        run: pip install maturin
-      - name: Build wheel
-        working-directory: ./bindings/python
-        run: maturin build -o dist
-      - uses: actions/upload-artifact@v3
+          profile: minimal
+          default: true
+      - name: Build wheels - x86_64
+        uses: messense/maturin-action@v1
         with:
-          name: Distribution Artifacts
-          path: bindings/python/dist/
+          target: x86_64
+          args: --release -m bindings/python/Cargo.toml --out dist --interpreter ${{ matrix.python-version }}
+      - name: Install built wheel - x86_64
+        run: |
+          pip install dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: dist
 
-  create_wheels_manylinux:
-    name: Wheels for Python ${{ matrix.PYTHON_IMPLEMENTATION_ABI }} / Linux
+  macos-universal:
+    runs-on: macos-12
     strategy:
-      fail-fast: false
       matrix:
-        # List of the language-implementation API pairs to publish wheels for
-        # The list of supported is obtainable by running `docker run quay.io/pypa/manylinux2014_x86_64 ls /opt/python`
-        PYTHON_IMPLEMENTATION_ABI: [cp37-cp37m, cp38-cp38, cp39-cp39, cp310-cp310, cp311-cp311]
-    runs-on: ubuntu-20.04
-    container: quay.io/pypa/manylinux2014_x86_64  # Builds wheels on CentOS 7 (supported until 2024)
-    env:
-      # Variable needed for PyO3 to properly identify the python interpreter
-      PYTHON_SYS_EXECUTABLE: /opt/python/${{ matrix.PYTHON_IMPLEMENTATION_ABI }}/bin/python
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install/Update OpenSSL
-        run: |
-          retryCount=0
-          # yum install seems to be flakey (due to network timeouts)
-          # retry up to 5 times with a 10s sleep in case of failure
-          until yum install openssl-devel --assumeyes --noplugins; do
-            # For some reason the install has failed
-            if [ ${retryCount} -eq 5 ]; then
-                false
-            else
-              retryCount=$((${retryCount}+1))
-            fi
-            sleep 10
-          done
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - name: Install maturin
-        run: pip install maturin
-      - name: Build wheel
-        working-directory: ./bindings/python
-        run: |
-          maturin build -o dist
-          # Ensure that the wheel is tagged as manylinux2014 platform
-          auditwheel repair \
-            --wheel-dir=./dist \
-            --plat manylinux2014_x86_64 \
-            ./dist/jsonschema_rs-*-${{ matrix.PYTHON_IMPLEMENTATION_ABI }}-linux_x86_64.whl
-          # Remove `linux_x86_64` tagged wheels as they are not supported by https://pypi.org
-          # Example https://github.com/Stranger6667/jsonschema-rs/runs/766075274
-          rm ./dist/jsonschema_rs-*-${{ matrix.PYTHON_IMPLEMENTATION_ABI }}-linux_x86_64.whl
-      - uses: actions/upload-artifact@v3
-        with:
-          name: Distribution Artifacts
-          path: bindings/python/dist/
-
-  create_source_dist:
-    name: Create sdist package
-    runs-on: ubuntu-20.04
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: 3.7
-      - uses: actions-rs/toolchain@v1
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
           toolchain: stable
-          override: true
-      - name: Install maturin
-        run: pip install maturin
-      - name: Build sdist
-        working-directory: ./bindings/python
-        run: maturin sdist -o dist
-      - uses: actions/upload-artifact@v3
+          profile: minimal
+          default: true
+      - name: Build wheels - universal2
+        uses: messense/maturin-action@v1
         with:
-          name: Distribution Artifacts
-          path: bindings/python/dist/
+          args: --release -m bindings/python/Cargo.toml --universal2 --out dist --interpreter ${{ matrix.python-version }}
+      - name: Install built wheel - universal2
+        run: |
+          pip install dist/${{ env.PACKAGE_NAME }}-*universal2.whl --force-reinstall
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: dist
 
-  upload_to_pypi:
-    needs:
-    - create_macos_and_windows_wheels
-    - create_wheels_manylinux
-    - create_source_dist
-    name: Upload Artifacts to PyPi
-    runs-on: ubuntu-20.04
+  windows:
+    runs-on: windows-2022
+    strategy:
+      matrix:
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
+        target: [ x64, x86 ]
     steps:
-    - uses: actions/download-artifact@v3
-      with:
-        name: Distribution Artifacts
-        path: bindings/python/dist/
-    - name: Publish distribution package to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
-        packages_dir: bindings/python/dist/
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.target }}
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          default: true
+      - name: Build wheels
+        uses: messense/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release -m bindings/python/Cargo.toml --out dist --interpreter ${{ matrix.python-version }}
+      - name: Install built wheel
+        shell: bash
+        run: |
+          python -m pip install dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: dist
+
+  linux:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
+        target: [ x86_64, i686 ]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+      - name: Build wheels
+        uses: messense/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          manylinux: auto
+          args: --release -m bindings/python/Cargo.toml --out dist --interpreter ${{ matrix.python-version }}
+      - name: Install built wheel
+        if: matrix.target == 'x86_64'
+        run: |
+          pip install dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: dist
+
+  release:
+    name: Release
+    runs-on: ubuntu-20.04
+    needs:
+      - sdist
+      - macos-x86_64
+      - macos-universal
+      - windows
+      - linux
+    if: "startsWith(github.ref, 'refs/tags/')"
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: dist
+      - name: Publish distribution package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          packages_dir: bindings/python/dist/
