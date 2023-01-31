@@ -129,7 +129,7 @@ impl Edge {
 ///      <type: string>
 /// ]
 /// ```
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub(crate) struct RangedEdge {
     /// A label for this edge.
     pub(crate) label: EdgeLabel,

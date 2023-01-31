@@ -11,11 +11,22 @@ use validation::{MaxLength, Maximum, MinProperties, Type};
 
 macro_rules! keywords {
     ($($kw:ident),+) => {
-        #[derive(Debug, Eq, PartialEq)]
+        #[derive(Eq, PartialEq)]
         pub enum Keyword {
             $(
                 $kw($kw),
             )+
+        }
+
+        // Display only the inner value to reduce visual clutter
+        impl core::fmt::Debug for Keyword {
+            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                match self {
+                    $(
+                        Self::$kw(inner) => inner.fmt(f),
+                    )+
+                }
+            }
         }
 
         $(
@@ -71,6 +82,13 @@ impl Keyword {
         match self {
             Keyword::AllOf(inner) => Some(inner.edges.clone()),
             Keyword::Properties(inner) => Some(inner.edges.clone()),
+            _ => None,
+        }
+    }
+    pub(crate) fn edges_mut(&mut self) -> Option<&mut Range<usize>> {
+        match self {
+            Keyword::AllOf(inner) => Some(&mut inner.edges),
+            Keyword::Properties(inner) => Some(&mut inner.edges),
             _ => None,
         }
     }

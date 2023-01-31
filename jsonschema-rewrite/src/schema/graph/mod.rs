@@ -167,8 +167,8 @@ impl VisitedMap {
     fn new(size: usize) -> Self {
         Self(vec![false; size])
     }
-    fn insert(&mut self, index: usize) -> bool {
-        std::mem::replace(&mut self.0[index], true)
+    fn insert(&mut self, node_id: NodeId) -> bool {
+        std::mem::replace(&mut self.0[node_id.value()], true)
     }
 }
 
@@ -182,18 +182,20 @@ impl RangeGraph {
         let mut queue = VecDeque::new();
         queue.push_back((NodeId::new(0), &input.edges[0]));
         while let Some((node_id, node_edges)) = queue.pop_front() {
-            if visited.insert(node_id.value()) {
+            if visited.insert(node_id) {
                 continue;
             }
             // TODO: Maybe we can skip pushing edges from non-applicators? they will be no-op here,
             //       but could be skipped upfront
-            if !input.nodes[node_id.value()].is_schema() {
-                continue;
-            }
             for edge in node_edges {
                 queue.push_back((edge.target, &input.edges[edge.target.value()]));
             }
-            if !node_id.is_root() {
+            if node_id.is_root() {
+                output.set_edges(&input.edges[node_id.value()], input);
+            } else {
+                if !input.nodes[node_id.value()].is_schema() {
+                    continue;
+                }
                 for edge in node_edges {
                     let target_id = edge.target.value();
                     let value = input.nodes[target_id].value;
@@ -260,8 +262,46 @@ impl RangeGraph {
             self.edges[id] = Some(RangedEdge::new(edge.label.clone(), nodes));
         }
     }
-    fn compress(self) -> CompressedRangeGraph {
-        todo!()
+    /// Move edges and nodes into a new graph skipping empty slots and adjusting indexes.
+    fn compress(mut self) -> CompressedRangeGraph {
+        let mut nodes = vec![];
+        let mut edges = vec![];
+
+        for range in self
+            .nodes
+            .iter_mut()
+            .flatten()
+            .filter_map(|node| node.edges_mut())
+        {
+            let node_edges = self.edges.get(range.clone()).expect("Missing edge");
+            let start = edges.len();
+            edges.extend(
+                node_edges
+                    .iter()
+                    .map(|edge| edge.as_ref().expect("Missing edge"))
+                    .cloned(),
+            );
+            *range = start..edges.len();
+        }
+
+        for edge in [self.edges[1].as_mut().unwrap()]
+            .into_iter()
+            .chain(edges.iter_mut())
+        {
+            let start = nodes.len();
+            let mut end = start;
+            // TODO: Use `repeat` + `take`??
+            let replacement: Vec<Option<Keyword>> = vec_of_nones!(edge.nodes.len());
+            // FIXME: what if this keyword was already pushed??? need to refer to it with range
+            for node in self.nodes.splice(edge.nodes.clone(), replacement).flatten() {
+                end += 1;
+                nodes.push(node);
+            }
+            // FIXME: handle refs
+            edge.nodes = start..end;
+        }
+        // TODO: store offset for the root's children
+        CompressedRangeGraph { nodes, edges }
     }
 }
 
@@ -279,6 +319,7 @@ mod tests {
         testing::{assert_adjacency_list, assert_compressed_graph, assert_range_graph, load_case},
     };
     use test_case::test_case;
+    // TODO: distinguish boolean false & true schemas. now they both lead to empty nodes & edges
 
     #[test_case("boolean")]
     #[test_case("maximum")]
