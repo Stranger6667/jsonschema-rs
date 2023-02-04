@@ -1,4 +1,5 @@
 use crate::schema::graph::{AdjacencyList, CompressedRangeGraph, EdgeLabel, RangeGraph};
+use crate::vocabularies::{references::Ref, Keyword};
 use once_cell::sync::Lazy;
 use serde_json::Value;
 use std::{fs::File, io::BufReader};
@@ -24,6 +25,9 @@ pub(crate) fn assert_compressed_graph(graph: &CompressedRangeGraph) {
     for node in graph.nodes.iter() {
         if let Some(range) = node.edges() {
             assert!(graph.edges.get(range).is_some());
+        }
+        if let Keyword::Ref(Ref { nodes }) = node {
+            assert!(graph.nodes.get(nodes.clone()).is_some());
         }
     }
 }
