@@ -276,6 +276,8 @@ impl RangeGraph {
         let mut nodes = vec![];
         let mut edges = vec![];
 
+        // For each node, take their edges and push them into a new vector, skipping empty ones
+        // and updating node's edges to their new locations
         for range in self
             .nodes
             .iter_mut()
