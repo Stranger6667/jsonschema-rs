@@ -203,7 +203,9 @@ mod tests {
 
     #[test_case("maximum")]
     #[test_case("properties")]
-    #[test_case("nested-properties")]
+    #[test_case("properties-empty")]
+    #[test_case("properties-many")]
+    #[test_case("properties-nested")]
     #[test_case("multiple-nodes-each-layer")]
     #[test_case("ref-recursive-absolute")]
     fn is_valid(name: &str) {
