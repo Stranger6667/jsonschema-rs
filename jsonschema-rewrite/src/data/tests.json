@@ -8,7 +8,7 @@
             "maximum": 5
         },
         "valid": 4,
-        "invalid": 5
+        "invalid": 6
     },
     "properties": {
         "schema": {
@@ -22,7 +22,7 @@
             "A": 4
         },
         "invalid": {
-            "A": 5
+            "A": 6
         }
     },
     "properties-empty": {
@@ -54,7 +54,7 @@
         },
         "invalid": {
             "A": {
-                "B": 5
+                "B": 6
             }
         }
     },

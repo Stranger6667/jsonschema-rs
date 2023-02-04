@@ -262,6 +262,15 @@ impl RangeGraph {
             self.edges[id] = Some(RangedEdge::new(edge.label.clone(), nodes));
         }
     }
+
+    fn root_offset(&self) -> usize {
+        // INVARIANT: 1th edge always is present as it denotes edges of the root node
+        self.edges[1]
+            .as_ref()
+            .map(|edge| edge.nodes.end)
+            .unwrap_or(0)
+    }
+
     /// Move edges and nodes into a new graph skipping empty slots and adjusting indexes.
     fn compress(mut self) -> CompressedRangeGraph {
         let mut nodes = vec![];
@@ -300,13 +309,17 @@ impl RangeGraph {
             // FIXME: handle refs
             edge.nodes = start..end;
         }
-        // TODO: store offset for the root's children
-        CompressedRangeGraph { nodes, edges }
+        CompressedRangeGraph {
+            root_offset: self.root_offset(),
+            nodes,
+            edges,
+        }
     }
 }
 
 #[derive(Debug)]
 pub(crate) struct CompressedRangeGraph {
+    pub(crate) root_offset: usize,
     pub(crate) nodes: Vec<Keyword>,
     pub(crate) edges: Vec<RangedEdge>,
 }

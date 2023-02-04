@@ -107,11 +107,10 @@ impl Schema {
         Ok(Schema { graph })
     }
 
-    pub fn is_valid(&self, _instance: &Value) -> bool {
-        todo!()
-        // self.keywords[..self.root_offset]
-        //     .iter()
-        //     .all(|keyword| keyword.is_valid(self, instance))
+    pub fn is_valid(&self, instance: &Value) -> bool {
+        self.graph.nodes[..self.graph.root_offset]
+            .iter()
+            .all(|keyword| keyword.is_valid(self, instance))
     }
 
     pub(crate) fn nodes(&self) -> &[Keyword] {
