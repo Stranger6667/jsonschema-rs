@@ -293,26 +293,37 @@ impl RangeGraph {
             *range = start..edges.len();
         }
 
+        let mut node_ranges: HashMap<Range<usize>, Range<usize>> = HashMap::new();
+        let root_edges = self.edges[1]
+            .as_ref().unwrap().nodes.clone();
+
         for edge in [self.edges[1].as_mut().unwrap()]
             .into_iter()
             .chain(edges.iter_mut())
         {
-            let start = nodes.len();
-            let mut end = start;
-            // FIXME: what if this keyword was already pushed??? need to refer to it with range
-            for node in self
-                .nodes
-                .splice(
-                    edge.nodes.clone(),
-                    std::iter::repeat(None::<Keyword>).take(edge.nodes.len()),
-                )
-                .flatten()
-            {
-                end += 1;
-                nodes.push(node);
+            if edge.nodes == (1..2) {
+                // This edge points to the root node.
+                // When
+                // TODO: Check self-recursion (if this edge is the only edge in the graph)
+                edge.nodes = node_ranges.get(&root_edges).unwrap().clone();
+            } else {
+                let start = nodes.len();
+                let mut end = start;
+                // FIXME: what if this keyword was already pushed??? need to refer to it with range
+                for node in self
+                    .nodes
+                    .splice(
+                        edge.nodes.clone(),
+                        std::iter::repeat(None::<Keyword>).take(edge.nodes.len()),
+                    )
+                    .flatten()
+                {
+                    end += 1;
+                    nodes.push(node);
+                }
+                node_ranges.insert(edge.nodes.clone(), start..end);
+                edge.nodes = start..end;
             }
-            // FIXME: handle refs
-            edge.nodes = start..end;
         }
         CompressedRangeGraph {
             root_offset: self.root_offset(),
@@ -339,25 +350,25 @@ mod tests {
     use test_case::test_case;
     // TODO: distinguish boolean false & true schemas. now they both lead to empty nodes & edges
 
-    // #[test_case("boolean")]
-    // #[test_case("maximum")]
-    // #[test_case("properties")]
-    // #[test_case("properties-empty")]
-    // #[test_case("nested-properties")]
-    // #[test_case("multiple-nodes-each-layer")]
-    // // TODO: check stuff inside `$defs` / anything references via $ref
-    // #[test_case("not-a-keyword-validation")]
-    // #[test_case("not-a-keyword-ref")]
-    // #[test_case("not-a-keyword-nested")]
+    #[test_case("boolean")]
+    #[test_case("maximum")]
+    #[test_case("properties")]
+    #[test_case("properties-empty")]
+    #[test_case("nested-properties")]
+    #[test_case("multiple-nodes-each-layer")]
+    // TODO: check stuff inside `$defs` / anything references via $ref
+    #[test_case("not-a-keyword-validation")]
+    #[test_case("not-a-keyword-ref")]
+    #[test_case("not-a-keyword-nested")]
     #[test_case("ref-recursive-absolute")]
-    // #[test_case("ref-recursive-self")]
-    // #[test_case("ref-recursive-between-schemas")]
-    // #[test_case("ref-remote-pointer")]
-    // #[test_case("ref-remote-nested")]
-    // #[test_case("ref-remote-base-uri-change")]
-    // #[test_case("ref-remote-base-uri-change-folder")]
-    // #[test_case("ref-remote-base-uri-change-in-subschema")]
-    // #[test_case("ref-multiple-same-target")]
+    #[test_case("ref-recursive-self")]
+    #[test_case("ref-recursive-between-schemas")]
+    #[test_case("ref-remote-pointer")]
+    #[test_case("ref-remote-nested")]
+    #[test_case("ref-remote-base-uri-change")]
+    #[test_case("ref-remote-base-uri-change-folder")]
+    #[test_case("ref-remote-base-uri-change-in-subschema")]
+    #[test_case("ref-multiple-same-target")]
     fn internal_structure(name: &str) {
         let schema = &load_case(name)["schema"];
         let (root, external) = resolving::resolve(schema).unwrap();
