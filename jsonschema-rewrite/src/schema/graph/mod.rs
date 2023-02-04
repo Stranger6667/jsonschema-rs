@@ -299,10 +299,15 @@ impl RangeGraph {
         {
             let start = nodes.len();
             let mut end = start;
-            // TODO: Use `repeat` + `take`??
-            let replacement: Vec<Option<Keyword>> = vec_of_nones!(edge.nodes.len());
             // FIXME: what if this keyword was already pushed??? need to refer to it with range
-            for node in self.nodes.splice(edge.nodes.clone(), replacement).flatten() {
+            for node in self
+                .nodes
+                .splice(
+                    edge.nodes.clone(),
+                    std::iter::repeat(None::<Keyword>).take(edge.nodes.len()),
+                )
+                .flatten()
+            {
                 end += 1;
                 nodes.push(node);
             }

@@ -2,7 +2,7 @@ use crate::{vocabularies::Keyword, Schema};
 use serde_json::Value;
 use std::ops::Range;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Properties {
     pub(crate) edges: Range<usize>,
 }

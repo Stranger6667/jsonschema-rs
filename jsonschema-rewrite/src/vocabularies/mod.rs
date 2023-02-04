@@ -11,7 +11,7 @@ use validation::{MaxLength, Maximum, MinProperties, Type};
 
 macro_rules! keywords {
     ($($kw:ident),+) => {
-        #[derive(Eq, PartialEq)]
+        #[derive(Eq, PartialEq, Clone)]
         pub enum Keyword {
             $(
                 $kw($kw),

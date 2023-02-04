@@ -1,7 +1,7 @@
 use crate::{vocabularies::Keyword, Schema};
 use serde_json::Value;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Items {}
 
 impl Items {

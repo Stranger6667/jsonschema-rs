@@ -2,7 +2,7 @@ use crate::vocabularies::Keyword;
 use num_cmp::NumCmp;
 use serde_json::Value;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Maximum {
     pub(crate) limit: u64,
 }
