@@ -12,10 +12,6 @@ impl NodeId {
     pub(crate) fn value(&self) -> usize {
         self.0
     }
-    /// If this `NodeId` points to the root node.
-    pub(crate) fn is_root(&self) -> bool {
-        self.value() == 0
-    }
 }
 
 /// A slot for a node in a tree.

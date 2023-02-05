@@ -146,6 +146,10 @@ impl<'s> AdjacencyList<'s> {
         // We use non-inclusive ranges, but edges point to precise indexes, hence add 1
         start.target.value()..end.target.value() + 1
     }
+
+    pub(crate) fn value_at(&self, idx: usize) -> &Value {
+        &self.nodes[idx].value
+    }
 }
 // TODO: What about specialization? When should it happen? RangeGraph?
 
@@ -167,10 +171,12 @@ impl VisitedMap {
     fn new(size: usize) -> Self {
         Self(vec![false; size])
     }
-    fn insert(&mut self, node_id: NodeId) -> bool {
-        std::mem::replace(&mut self.0[node_id.value()], true)
+    fn insert(&mut self, node_id: usize) -> bool {
+        std::mem::replace(&mut self.0[node_id], true)
     }
 }
+
+const ROOT_NODE_ID: usize = 0;
 
 impl RangeGraph {
     fn new(input: &AdjacencyList<'_>) -> Result<Self> {
@@ -180,25 +186,32 @@ impl RangeGraph {
         };
         let mut visited = VisitedMap::new(input.nodes.len());
         let mut queue = VecDeque::new();
-        queue.push_back((NodeId::new(0), &input.edges[0]));
-        while let Some((node_id, node_edges)) = queue.pop_front() {
-            if visited.insert(node_id) {
+        // Start from the root node
+        queue.push_back((ROOT_NODE_ID, &input.edges[ROOT_NODE_ID]));
+        while let Some((id, edges)) = queue.pop_front() {
+            // Skip already visited nodes
+            if visited.insert(id) {
                 continue;
             }
             // TODO: Maybe we can skip pushing edges from non-applicators? they will be no-op here,
             //       but could be skipped upfront
-            for edge in node_edges {
-                queue.push_back((edge.target, &input.edges[edge.target.value()]));
+            // Traverse child nodes later
+            for edge in edges {
+                // `edge.target` points at index in the input graph where node & its edges live
+                let target_id = edge.target.value();
+                queue.push_back((target_id, &input.edges[target_id]));
             }
-            if node_id.is_root() {
-                output.set_edges(&input.edges[node_id.value()], input);
+            if id == ROOT_NODE_ID {
+                // Set edges of the root node
+                output.set_edges(&input.edges[id], input);
             } else {
-                if !input.nodes[node_id.value()].is_schema() {
+                if !input.nodes[id].is_schema() {
                     continue;
                 }
-                for edge in node_edges {
+                for edge in edges {
                     let target_id = edge.target.value();
-                    let value = input.nodes[target_id].value;
+                    // Edge points to this JSON value
+                    let value = input.value_at(target_id);
                     match edge.label.as_key() {
                         Some("maximum") => {
                             output.set_node(target_id, Maximum::build(value.as_u64().unwrap()));
@@ -240,7 +253,7 @@ impl RangeGraph {
                         Some("$ref") => {
                             // TODO: Inline reference
                             let nodes = input.range_of(target_id);
-                            output.set_node(node_id.value(), Ref::build(nodes));
+                            output.set_node(id, Ref::build(nodes));
                         }
                         _ => {}
                     }
@@ -258,7 +271,7 @@ impl RangeGraph {
     fn set_edges(&mut self, edges: &[Edge], input: &AdjacencyList) {
         for edge in edges {
             let id = edge.target.value();
-            let nodes = if input.nodes[id].value.get("$ref").is_some() {
+            let nodes = if input.value_at(id).get("$ref").is_some() {
                 id..id + 1
             } else {
                 input.range_of(id)
