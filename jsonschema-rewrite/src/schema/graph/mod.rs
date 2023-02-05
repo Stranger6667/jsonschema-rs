@@ -353,26 +353,26 @@ mod tests {
     use test_case::test_case;
     // TODO: distinguish boolean false & true schemas. now they both lead to empty nodes & edges
 
-    // #[test_case("boolean")]
-    // #[test_case("maximum")]
+    #[test_case("boolean")]
+    #[test_case("maximum")]
     #[test_case("properties")]
-    // #[test_case("properties-empty")]
-    // #[test_case("properties-many")]
-    // #[test_case("properties-nested")]
-    // #[test_case("multiple-nodes-each-layer")]
-    // // TODO: check stuff inside `$defs` / anything references via $ref
-    // #[test_case("not-a-keyword-validation")]
-    // #[test_case("not-a-keyword-ref")]
-    // #[test_case("not-a-keyword-nested")]
-    // #[test_case("ref-recursive-absolute")]
-    // #[test_case("ref-recursive-self")]
-    // #[test_case("ref-recursive-between-schemas")]
-    // #[test_case("ref-remote-pointer")]
-    // #[test_case("ref-remote-nested")]
-    // #[test_case("ref-remote-base-uri-change")]
-    // #[test_case("ref-remote-base-uri-change-folder")]
-    // #[test_case("ref-remote-base-uri-change-in-subschema")]
-    // #[test_case("ref-multiple-same-target")]
+    #[test_case("properties-empty")]
+    #[test_case("properties-many")]
+    #[test_case("properties-nested")]
+    #[test_case("multiple-nodes-each-layer")]
+    // TODO: check stuff inside `$defs` / anything references via $ref
+    #[test_case("not-a-keyword-validation")]
+    #[test_case("not-a-keyword-ref")]
+    #[test_case("not-a-keyword-nested")]
+    #[test_case("ref-recursive-absolute")]
+    #[test_case("ref-recursive-self")]
+    #[test_case("ref-recursive-between-schemas")]
+    #[test_case("ref-multiple-same-target")]
+    #[test_case("ref-remote-pointer")]
+    #[test_case("ref-remote-nested")]
+    #[test_case("ref-remote-base-uri-change")]
+    #[test_case("ref-remote-base-uri-change-folder")]
+    #[test_case("ref-remote-base-uri-change-in-subschema")]
     fn internal_structure(name: &str) {
         let schema = &load_case(name)["schema"];
         let (root, external) = resolving::resolve(schema).unwrap();
@@ -382,9 +382,34 @@ mod tests {
         let range_graph = RangeGraph::new(&adjacency_list).unwrap();
         assert_range_graph(&range_graph);
         let compressed = range_graph.compress();
-        dbg!(&compressed);
         assert_compressed_graph(&compressed);
-        // TODO: Explicitly test schemas with references (generic test doesn't catch cases when
-        //       Ref is not used at all).
+        // The check above would verify references only if they are present in the compressed graph
+        // Hence check them manually too.
+        match name {
+            "ref-recursive-absolute" => {
+                assert_eq!(compressed.nodes[2], Keyword::Ref(Ref { nodes: 0..2 }));
+                assert_eq!(compressed.nodes[3], Keyword::Ref(Ref { nodes: 0..2 }));
+                assert_eq!(compressed.edges[0].nodes, 2..3);
+                assert_eq!(compressed.edges[1].nodes, 3..4);
+            }
+            "ref-recursive-self" => {
+                assert_eq!(compressed.nodes[0], Keyword::Ref(Ref { nodes: 0..1 }));
+                assert!(compressed.edges.is_empty());
+            }
+            "ref-recursive-between-schemas" => {
+                assert_eq!(compressed.nodes[2], Keyword::Ref(Ref { nodes: 0..1 }));
+                assert_eq!(compressed.edges[1].nodes, 2..3);
+            }
+            "ref-multiple-same-target" => {
+                assert_eq!(compressed.nodes[1], Keyword::Ref(Ref { nodes: 2..3 }));
+                assert_eq!(compressed.nodes[2], Keyword::Ref(Ref { nodes: 1..2 }));
+                assert_eq!(compressed.edges[0].nodes, 1..2);
+                assert_eq!(compressed.edges[1].nodes, 2..3);
+            }
+            "ref-remote-pointer" => {
+                todo!("missing nodes")
+            }
+            _ => {}
+        }
     }
 }
