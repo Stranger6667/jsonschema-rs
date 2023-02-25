@@ -33,7 +33,7 @@ bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
 clap = { version = "4.0", features = ["derive"], optional = true }
 fancy-regex = "0.11"
 fraction = { version = "0.13", default-features = false, features = ["with-bigint"] }
-iso8601 = "0.5"
+iso8601 = "0.6"
 itoa = "1"
 memchr = "2.5"
 num-cmp = "0.1"
@@ -59,7 +59,7 @@ json_schema_test_suite = { version = "0.3.0", path = "../jsonschema-test-suite" 
 jsonschema-valid = "0.5"
 mockito = "0.31"
 paste = "1.0"
-test-case = "2"
+test-case = "3"
 valico = "3.6"
 
 # Benchmarks for `jsonschema`

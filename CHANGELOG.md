@@ -7,6 +7,7 @@
 - Bump `base64` to `0.21`.
 - Bump `fancy-regex` to `0.11`.
 - Bump `fraction` to `0.13`.
+- Bump `iso8601` to `0.6`.
 - Replace `lazy_static` with `once_cell`.
 
 ## [0.16.1] - 2022-10-20
