@@ -129,6 +129,15 @@ impl<'a> PartialApplication<'a> {
         }
     }
 
+    /// A shortcut to check whether the partial represents passed validation.
+    #[must_use]
+    pub(crate) const fn is_valid(&self) -> bool {
+        match self {
+            Self::Valid { .. } => true,
+            Self::Invalid { .. } => false,
+        }
+    }
+
     /// Set the annotation that will be returned for the current validator. If this
     /// `PartialApplication` is invalid then this method does nothing
     pub(crate) fn annotate(&mut self, new_annotations: Annotations<'a>) {

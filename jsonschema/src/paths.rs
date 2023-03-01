@@ -213,6 +213,12 @@ impl From<&[PathChunk]> for JSONPointer {
     }
 }
 
+impl From<&str> for JSONPointer {
+    fn from(value: &str) -> Self {
+        JSONPointer(vec![value.to_string().into()])
+    }
+}
+
 /// An absolute reference
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AbsolutePath(url::Url);

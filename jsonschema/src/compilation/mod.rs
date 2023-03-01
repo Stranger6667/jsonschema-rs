@@ -154,7 +154,15 @@ pub(crate) fn compile_validators<'a>(
             )),
         },
         Value::Object(object) => {
-            if let Some(reference) = object.get("$ref") {
+            // In Draft 2019-09 and later, `$ref` can be evaluated alongside other attribute aka
+            // adjacent validation. We check here to see if adjacent validation is supported, and if
+            // so, we use the normal keyword validator collection logic.
+            //
+            // Otherwise, we isolate `$ref` and generate a schema reference validator directly.
+            let maybe_reference = object
+                .get("$ref")
+                .filter(|_| !keywords::ref_::supports_adjacent_validation(context.config.draft()));
+            if let Some(reference) = maybe_reference {
                 let unmatched_keywords = object
                     .iter()
                     .filter_map(|(k, v)| {
@@ -165,24 +173,16 @@ pub(crate) fn compile_validators<'a>(
                         }
                     })
                     .collect();
-                let mut validators = Vec::new();
-                if let Value::String(reference) = reference {
-                    let validator = keywords::ref_::compile(schema, reference, &context)
-                        .expect("Should always return Some")?;
-                    validators.push(("$ref".to_string(), validator));
-                    Ok(SchemaNode::new_from_keywords(
-                        &context,
-                        validators,
-                        Some(unmatched_keywords),
-                    ))
-                } else {
-                    Err(ValidationError::single_type_error(
-                        JSONPointer::default(),
-                        relative_path,
-                        reference,
-                        PrimitiveType::String,
-                    ))
-                }
+
+                let validator = keywords::ref_::compile(object, reference, &context)
+                    .expect("should always return Some")?;
+
+                let validators = vec![("$ref".to_string(), validator)];
+                Ok(SchemaNode::new_from_keywords(
+                    &context,
+                    validators,
+                    Some(unmatched_keywords),
+                ))
             } else {
                 let mut validators = Vec::with_capacity(object.len());
                 let mut unmatched_keywords = AHashMap::new();

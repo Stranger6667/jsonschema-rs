@@ -138,6 +138,8 @@ pub enum ValidationErrorKind {
     Schema,
     /// When the input value doesn't match one or multiple required types.
     Type { kind: TypeKind },
+    /// Unexpected properties.
+    UnevaluatedProperties { unexpected: Vec<String> },
     /// When the input array has non-unique elements.
     UniqueItems,
     /// Reference contains unknown scheme.
@@ -692,6 +694,19 @@ impl<'a> ValidationError<'a> {
             schema_path,
         }
     }
+    pub(crate) const fn unevaluated_properties(
+        schema_path: JSONPointer,
+        instance_path: JSONPointer,
+        instance: &'a Value,
+        unexpected: Vec<String>,
+    ) -> ValidationError<'a> {
+        ValidationError {
+            instance_path,
+            instance: Cow::Borrowed(instance),
+            kind: ValidationErrorKind::UnevaluatedProperties { unexpected },
+            schema_path,
+        }
+    }
     pub(crate) const fn unique_items(
         schema_path: JSONPointer,
         instance_path: JSONPointer,
@@ -936,6 +951,25 @@ impl fmt::Display for ValidationError<'_> {
             }
             ValidationErrorKind::MultipleOf { multiple_of } => {
                 write!(f, "{} is not a multiple of {}", self.instance, multiple_of)
+            }
+            ValidationErrorKind::UnevaluatedProperties { unexpected } => {
+                let verb = {
+                    if unexpected.len() == 1 {
+                        "was"
+                    } else {
+                        "were"
+                    }
+                };
+                write!(
+                    f,
+                    "Unevaluated properties are not allowed ({} {} unexpected)",
+                    unexpected
+                        .iter()
+                        .map(|x| format!("'{}'", x))
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                    verb
+                )
             }
             ValidationErrorKind::UniqueItems => {
                 write!(f, "{} has non-unique elements", self.instance)

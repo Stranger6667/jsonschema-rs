@@ -9,6 +9,9 @@
 - Bump `fraction` to `0.13`.
 - Bump `iso8601` to `0.6`.
 - Replace `lazy_static` with `once_cell`.
+- Add support for `unevaluatedProperties`. (gated by the `draft201909`/`draft202012` feature flags)
+- When using the draft 2019-09 or draft 2020-12 specification, `$ref` is now evaluated alongside
+  other keywords.
 
 ## [0.16.1] - 2022-10-20
 
