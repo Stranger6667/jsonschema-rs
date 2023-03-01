@@ -91,6 +91,7 @@ mod keywords;
 pub mod output;
 pub mod paths;
 pub mod primitive_type;
+pub(crate) mod properties;
 mod resolver;
 mod schema_node;
 mod schemas;

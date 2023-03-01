@@ -34,6 +34,8 @@ pub(crate) mod property_names;
 pub(crate) mod ref_;
 pub(crate) mod required;
 pub(crate) mod type_;
+#[cfg(any(feature = "draft201909", feature = "draft202012"))]
+pub(crate) mod unevaluated_properties;
 pub(crate) mod unique_items;
 use crate::{error, validator::Validate};
 

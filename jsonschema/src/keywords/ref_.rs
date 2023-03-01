@@ -3,13 +3,14 @@ use crate::{
     error::{error, ErrorIterator},
     keywords::CompilationResult,
     paths::{InstancePath, JSONPointer},
+    primitive_type::PrimitiveType,
     resolver::Resolver,
     schema_node::SchemaNode,
     validator::Validate,
-    CompilationOptions,
+    CompilationOptions, Draft, ValidationError,
 };
 use parking_lot::RwLock;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::sync::Arc;
 use url::Url;
 
@@ -123,11 +124,33 @@ impl core::fmt::Display for RefValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
-    _: &'a Value,
-    reference: &'a str,
+    _: &'a Map<String, Value>,
+    schema: &'a Value,
     context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
-    Some(RefValidator::compile(reference, context))
+    Some(
+        schema
+            .as_str()
+            .ok_or_else(|| {
+                ValidationError::single_type_error(
+                    JSONPointer::default(),
+                    context.clone().into_pointer(),
+                    schema,
+                    PrimitiveType::String,
+                )
+            })
+            .and_then(|reference| RefValidator::compile(reference, context)),
+    )
+}
+
+pub(crate) const fn supports_adjacent_validation(draft: Draft) -> bool {
+    match draft {
+        #[cfg(feature = "draft201909")]
+        Draft::Draft201909 => true,
+        #[cfg(feature = "draft202012")]
+        Draft::Draft202012 => true,
+        _ => false,
+    }
 }
 
 #[cfg(test)]

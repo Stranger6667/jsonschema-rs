@@ -50,6 +50,7 @@ impl Draft {
     #[allow(clippy::match_same_arms)]
     pub(crate) fn get_validator(self, keyword: &str) -> Option<CompileFunc> {
         match keyword {
+            "$ref" => Some(keywords::ref_::compile),
             "additionalItems" => Some(keywords::additional_items::compile),
             "additionalProperties" => Some(keywords::additional_properties::compile),
             "allOf" => Some(keywords::all_of::compile),
@@ -166,6 +167,13 @@ impl Draft {
                 Draft::Draft201909 => Some(keywords::type_::compile),
                 #[cfg(feature = "draft202012")]
                 Draft::Draft202012 => Some(keywords::type_::compile),
+            },
+            "unevaluatedProperties" => match self {
+                #[cfg(feature = "draft201909")]
+                Draft::Draft201909 => Some(keywords::unevaluated_properties::compile),
+                #[cfg(feature = "draft202012")]
+                Draft::Draft202012 => Some(keywords::unevaluated_properties::compile),
+                _ => None,
             },
             "uniqueItems" => Some(keywords::unique_items::compile),
             _ => None,

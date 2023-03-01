@@ -13,8 +13,6 @@ use std::fs;
     // These depend on the new `$defs` keyword (which is renamed from `definitions`)
     r"id_0_[0-6]",
     // Various types of new behavior used in the `$ref` context
-    "ref_5_1",
-    "ref_13_0",
     "refRemote_4_0",
     "refRemote_4_1",
     "recursiveRef_0_3",
@@ -35,7 +33,6 @@ use std::fs;
     r"optional_format_duration_.+",  // https://github.com/Stranger6667/jsonschema-rs/issues/265
     r"optional_format_uuid_.+",  // https://github.com/Stranger6667/jsonschema-rs/issues/266
     r"unevaluatedItems_.+",
-    r"unevaluatedProperties_.+",
 }))]
 #[cfg_attr(feature = "draft202012", json_schema_test_suite("tests/suite", "draft2020-12", {
     r"optional_format_idn_hostname_0_\d+",  // https://github.com/Stranger6667/jsonschema-rs/issues/101
@@ -43,8 +40,6 @@ use std::fs;
     // These depend on the new `$defs` keyword (which is renamed from `definitions`)
     r"id_0_[0-6]",
     // Various types of new behavior used in the `$ref` context
-    "ref_5_1",
-    "ref_13_0",
     "refRemote_4_0",
     "refRemote_4_1",
     "recursiveRef_0_3",
@@ -72,7 +67,6 @@ use std::fs;
     r"optional_format_uri_reference_.+",
     r"optional_format_uri_template_.+",
     r"unevaluatedItems_.+",
-    r"unevaluatedProperties_.+",
 }))]
 fn test_draft(_server_address: &str, test_case: TestCase) {
     let draft_version = match test_case.draft_version.as_ref() {
@@ -91,7 +85,7 @@ fn test_draft(_server_address: &str, test_case: TestCase) {
         .with_meta_schemas()
         .should_validate_formats(true)
         .compile(&test_case.schema)
-        .unwrap();
+        .expect("should not fail to compile schema");
 
     let result = compiled.validate(&test_case.instance);
 
@@ -100,50 +94,72 @@ fn test_draft(_server_address: &str, test_case: TestCase) {
             let first_error = errors_iterator.next();
             assert!(
                 first_error.is_none(),
-                "Schema: {}\nInstance: {}\nError: {:?}",
+                "Test case should not have validation errors:\nGroup: {}\nTest case: {}\nSchema: {}\nInstance: {}\nError: {:?}",
+                test_case.group_description,
+                test_case.test_case_description,
                 test_case.schema,
                 test_case.instance,
                 first_error,
             );
         }
-        if !compiled.is_valid(&test_case.instance) {
-            panic!(
-                "Schema: {}\nInstance: {}\nError: It is supposed to be VALID!",
-                test_case.schema, test_case.instance,
-            );
-        }
-        let output = compiled.apply(&test_case.instance).basic();
-        if !output.is_valid() {
-            panic!(
-                "Schema: {}\nInstance: {}\nError: {:?}",
-                test_case.schema, test_case.instance, output
-            );
-        }
-    } else {
         assert!(
-            result.is_err(),
-            "Schema: {}\nInstance: {}\nError: It is supposed to be INVALID!",
+            compiled.is_valid(&test_case.instance),
+            "Test case should be valid:\nGroup: {}\nTest case: {}\nSchema: {}\nInstance: {}",
+            test_case.group_description,
+            test_case.test_case_description,
             test_case.schema,
             test_case.instance,
         );
-        let errors: Vec<_> = result.expect_err("Errors").collect();
+        let output = compiled.apply(&test_case.instance).basic();
+        assert!(
+            output.is_valid(),
+            "Test case should be valid via basic output:\nGroup: {}\nTest case: {}\nSchema: {}\nInstance: {}\nError: {:?}",
+            test_case.group_description,
+            test_case.test_case_description,
+            test_case.schema,
+            test_case.instance,
+            output
+        );
+    } else {
+        assert!(
+            result.is_err(),
+            "Test case should have validation errors:\nGroup: {}\nTest case: {}\nSchema: {}\nInstance: {}",
+            test_case.group_description,
+            test_case.test_case_description,
+            test_case.schema,
+            test_case.instance,
+        );
+        let errors = result.unwrap_err();
         for error in errors {
             let pointer = error.instance_path.to_string();
-            assert_eq!(test_case.instance.pointer(&pointer), Some(&*error.instance))
-        }
-        if compiled.is_valid(&test_case.instance) {
-            panic!(
-                "Schema: {}\nInstance: {}\nError: It is supposed to be INVALID!",
-                test_case.schema, test_case.instance,
+            assert_eq!(
+                test_case.instance.pointer(&pointer), Some(&*error.instance),
+                "Expected error instance did not match actual error instance:\nGroup: {}\nTest case: {}\nSchema: {}\nInstance: {}\nExpected pointer: {:#?}\nActual pointer: {:#?}",
+                test_case.group_description,
+                test_case.test_case_description,
+                test_case.schema,
+                test_case.instance,
+                &*error.instance,
+                &pointer,
             );
         }
+        assert!(
+            !compiled.is_valid(&test_case.instance),
+            "Test case should be invalid:\nGroup: {}\nTest case: {}\nSchema: {}\nInstance: {}",
+            test_case.group_description,
+            test_case.test_case_description,
+            test_case.schema,
+            test_case.instance,
+        );
         let output = compiled.apply(&test_case.instance).basic();
-        if output.is_valid() {
-            panic!(
-                "Schema: {}\nInstance: {}\nError: It is supposed to be INVALID!",
-                test_case.schema, test_case.instance,
-            );
-        }
+        assert!(
+            !output.is_valid(),
+            "Test case should be invalid via basic output:\nGroup: {}\nTest case: {}\nSchema: {}\nInstance: {}",
+            test_case.group_description,
+            test_case.test_case_description,
+            test_case.schema,
+            test_case.instance,
+        );
     }
 }
 

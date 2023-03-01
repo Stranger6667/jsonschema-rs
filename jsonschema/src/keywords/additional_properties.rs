@@ -12,76 +12,12 @@ use crate::{
     keywords::CompilationResult,
     output::{Annotations, BasicOutput, OutputUnit},
     paths::{AbsolutePath, InstancePath, JSONPointer},
+    properties::*,
     schema_node::SchemaNode,
     validator::{format_validators, PartialApplication, Validate},
 };
-use ahash::AHashMap;
-use fancy_regex::Regex;
 use serde_json::{Map, Value};
 
-pub(crate) type PatternedValidators = Vec<(Regex, SchemaNode)>;
-
-/// Provide mapping API to get validators associated with a property from the underlying storage.
-pub(crate) trait PropertiesValidatorsMap: Send + Sync {
-    fn get_validator(&self, property: &str) -> Option<&SchemaNode>;
-    fn get_key_validator(&self, property: &str) -> Option<(&String, &SchemaNode)>;
-}
-
-// Iterating over a small vector and comparing strings is faster than a map lookup
-const MAP_SIZE_THRESHOLD: usize = 40;
-pub(crate) type SmallValidatorsMap = Vec<(String, SchemaNode)>;
-pub(crate) type BigValidatorsMap = AHashMap<String, SchemaNode>;
-
-impl PropertiesValidatorsMap for SmallValidatorsMap {
-    #[inline]
-    fn get_validator(&self, property: &str) -> Option<&SchemaNode> {
-        for (prop, node) in self {
-            if prop == property {
-                return Some(node);
-            }
-        }
-        None
-    }
-    #[inline]
-    fn get_key_validator(&self, property: &str) -> Option<(&String, &SchemaNode)> {
-        for (prop, node) in self {
-            if prop == property {
-                return Some((prop, node));
-            }
-        }
-        None
-    }
-}
-
-impl PropertiesValidatorsMap for BigValidatorsMap {
-    #[inline]
-    fn get_validator(&self, property: &str) -> Option<&SchemaNode> {
-        self.get(property)
-    }
-
-    #[inline]
-    fn get_key_validator(&self, property: &str) -> Option<(&String, &SchemaNode)> {
-        self.get_key_value(property)
-    }
-}
-
-macro_rules! dynamic_map {
-    ($validator:tt, $properties:ident, $( $arg:expr ),* $(,)*) => {{
-        if let Value::Object(map) = $properties {
-            if map.len() < MAP_SIZE_THRESHOLD {
-                Some($validator::<SmallValidatorsMap>::compile(
-                    map, $($arg, )*
-                ))
-            } else {
-                Some($validator::<BigValidatorsMap>::compile(
-                    map, $($arg, )*
-                ))
-            }
-        } else {
-            Some(Err(ValidationError::null_schema()))
-        }
-    }};
-}
 macro_rules! is_valid {
     ($node:expr, $value:ident) => {{
         $node.is_valid($value)
@@ -122,37 +58,6 @@ macro_rules! validate {
         let instance_path = $instance_path.push($property_name.clone());
         $node.validate($value, &instance_path)
     }};
-}
-
-fn compile_small_map<'a>(
-    map: &'a Map<String, Value>,
-    context: &CompilationContext,
-) -> Result<SmallValidatorsMap, ValidationError<'a>> {
-    let mut properties = Vec::with_capacity(map.len());
-    let keyword_context = context.with_path("properties");
-    for (key, subschema) in map {
-        let property_context = keyword_context.with_path(key.clone());
-        properties.push((
-            key.clone(),
-            compile_validators(subschema, &property_context)?,
-        ));
-    }
-    Ok(properties)
-}
-fn compile_big_map<'a>(
-    map: &'a Map<String, Value>,
-    context: &CompilationContext,
-) -> Result<BigValidatorsMap, ValidationError<'a>> {
-    let mut properties = AHashMap::with_capacity(map.len());
-    let keyword_context = context.with_path("properties");
-    for (key, subschema) in map {
-        let property_context = keyword_context.with_path(key.clone());
-        properties.insert(
-            key.clone(),
-            compile_validators(subschema, &property_context)?,
-        );
-    }
-    Ok(properties)
 }
 
 /// # Schema example
@@ -345,16 +250,11 @@ impl AdditionalPropertiesNotEmptyFalseValidator<BigValidatorsMap> {
 }
 impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseValidator<M> {
     fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::Object(item) = instance {
-            for (property, value) in item {
-                if let Some(node) = self.properties.get_validator(property) {
-                    is_valid_pattern_schema!(node, value)
-                }
-                // No extra properties are allowed
-                return false;
-            }
+        if let Value::Object(props) = instance {
+            are_properties_valid(&self.properties, props, |_| false)
+        } else {
+            true
         }
-        true
     }
 
     fn validate<'instance>(
@@ -484,17 +384,13 @@ impl AdditionalPropertiesNotEmptyValidator<BigValidatorsMap> {
 }
 impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValidator<M> {
     fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::Object(map) = instance {
-            for (property, value) in map {
-                if let Some(property_validators) = self.properties.get_validator(property) {
-                    is_valid_pattern_schema!(property_validators, value)
-                }
-                if !self.node.is_valid(value) {
-                    return false;
-                }
-            }
+        if let Value::Object(props) = instance {
+            are_properties_valid(&self.properties, props, |instance| {
+                self.node.is_valid(instance)
+            })
+        } else {
+            true
         }
-        true
     }
 
     fn validate<'instance>(
@@ -1263,7 +1159,7 @@ pub(crate) fn compile<'a>(
                     Value::Bool(true) => None, // "additionalProperties" are "true" by default
                     Value::Bool(false) => {
                         if let Some(properties) = properties {
-                            dynamic_map!(
+                            compile_dynamic_prop_map_validator!(
                                 AdditionalPropertiesWithPatternsNotEmptyFalseValidator,
                                 properties,
                                 compiled_patterns,
@@ -1278,7 +1174,7 @@ pub(crate) fn compile<'a>(
                     }
                     _ => {
                         if let Some(properties) = properties {
-                            dynamic_map!(
+                            compile_dynamic_prop_map_validator!(
                                 AdditionalPropertiesWithPatternsNotEmptyValidator,
                                 properties,
                                 schema,
@@ -1305,7 +1201,7 @@ pub(crate) fn compile<'a>(
             Value::Bool(true) => None, // "additionalProperties" are "true" by default
             Value::Bool(false) => {
                 if let Some(properties) = properties {
-                    dynamic_map!(
+                    compile_dynamic_prop_map_validator!(
                         AdditionalPropertiesNotEmptyFalseValidator,
                         properties,
                         context
@@ -1317,7 +1213,7 @@ pub(crate) fn compile<'a>(
             }
             _ => {
                 if let Some(properties) = properties {
-                    dynamic_map!(
+                    compile_dynamic_prop_map_validator!(
                         AdditionalPropertiesNotEmptyValidator,
                         properties,
                         schema,
@@ -1329,31 +1225,6 @@ pub(crate) fn compile<'a>(
             }
         }
     }
-}
-
-/// Create a vector of pattern-validators pairs.
-#[inline]
-fn compile_patterns<'a>(
-    obj: &'a Map<String, Value>,
-    context: &CompilationContext,
-) -> Result<PatternedValidators, ValidationError<'a>> {
-    let keyword_context = context.with_path("patternProperties");
-    let mut compiled_patterns = Vec::with_capacity(obj.len());
-    for (pattern, subschema) in obj {
-        let pattern_context = keyword_context.with_path(pattern.to_string());
-        if let Ok(compiled_pattern) = Regex::new(pattern) {
-            let node = compile_validators(subschema, &pattern_context)?;
-            compiled_patterns.push((compiled_pattern, node));
-        } else {
-            return Err(ValidationError::format(
-                JSONPointer::default(),
-                keyword_context.clone().into_pointer(),
-                subschema,
-                "regex",
-            ));
-        }
-    }
-    Ok(compiled_patterns)
 }
 
 #[cfg(test)]
