@@ -85,15 +85,15 @@ fn main() {
 
 ```rust
 use jsonschema::{Output, BasicOutput, JSONSchema};
+use serde_json::json;
 
 fn main() {
-    let schema_json = serde_json::json!({
+    let schema_json = json!({
         "title": "string value",
         "type": "string"
     });
-    let instance = serde_json::json!{"some string"};
-    let schema = JSONSchema::options()
-        .compile(&schema_json)
+    let instance = json!("some string");
+    let schema = JSONSchema::compile(&schema_json)
         .expect("A valid schema");
     
     let output: BasicOutput = schema.apply(&instance).basic();
@@ -102,7 +102,7 @@ fn main() {
     
     assert_eq!(
         output_json, 
-        serde_json::json!({
+        json!({
             "valid": true,
             "annotations": [
                 {
