@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.17.0] - 2023-03-16
+
 ### Changed
 
 - Bump `base64` to `0.21`.
@@ -407,7 +409,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.16.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.17.0...HEAD
+[0.17.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.16.1...rust-v0.17.0
 [0.16.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.16.0...rust-v0.16.1
 [0.16.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.2...rust-v0.16.0
 [0.15.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.1...rust-v0.15.2
