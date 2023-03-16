@@ -153,7 +153,6 @@ pub(crate) mod tests_util {
                 .expect("Should be a valid schema")
                 .validate(instance)
                 .expect_err(format!("{} should not be valid", instance).as_str())
-                .into_iter()
                 .map(|e| e.to_string())
                 .collect::<Vec<String>>(),
             errors
