@@ -77,17 +77,20 @@ impl UnevaluatedPropertiesValidator {
 
         let mut subschema_validators = vec![];
         if let Some(Value::Array(subschemas)) = parent.get("allOf") {
-            let validator = SubschemaSubvalidator::from_values(subschemas, context)?;
+            let validator =
+                SubschemaSubvalidator::from_values(subschemas, SubschemaBehavior::All, context)?;
             subschema_validators.push(validator);
         }
 
         if let Some(Value::Array(subschemas)) = parent.get("anyOf") {
-            let validator = SubschemaSubvalidator::from_values(subschemas, context)?;
+            let validator =
+                SubschemaSubvalidator::from_values(subschemas, SubschemaBehavior::Any, context)?;
             subschema_validators.push(validator);
         }
 
         if let Some(Value::Array(subschemas)) = parent.get("oneOf") {
-            let validator = SubschemaSubvalidator::from_values(subschemas, context)?;
+            let validator =
+                SubschemaSubvalidator::from_values(subschemas, SubschemaBehavior::One, context)?;
             subschema_validators.push(validator);
         }
 
@@ -203,7 +206,7 @@ impl UnevaluatedPropertiesValidator {
                 })
             })
             .or_else(|| {
-                let result = self.subschemas.as_ref().and_then(|subschemas| {
+                self.subschemas.as_ref().and_then(|subschemas| {
                     subschemas.iter().find_map(|subschema| {
                         subschema.validate_property(
                             instance,
@@ -213,9 +216,7 @@ impl UnevaluatedPropertiesValidator {
                             property_name,
                         )
                     })
-                });
-
-                result
+                })
             })
             .or_else(|| {
                 self.unevaluated
@@ -315,7 +316,7 @@ impl Validate for UnevaluatedPropertiesValidator {
     ) -> ErrorIterator<'instance> {
         if let Value::Object(props) = instance {
             let mut errors = vec![];
-            let mut unexpected = vec![];
+            let mut unevaluated = vec![];
 
             for (property_name, property_instance) in props {
                 let property_path = instance_path.push(property_name.clone());
@@ -330,21 +331,20 @@ impl Validate for UnevaluatedPropertiesValidator {
                 match maybe_property_errors {
                     Some(property_errors) => errors.extend(property_errors),
                     None => {
-                        // If we can't validate, that means that "unevaluatedProperties" is
-                        // "false", which means that this property was not expected.
-                        unexpected.push(property_name.to_string());
+                        unevaluated.push(property_name.to_string());
                     }
                 }
             }
 
-            if !unexpected.is_empty() {
+            if !unevaluated.is_empty() {
                 errors.push(ValidationError::unevaluated_properties(
                     self.schema_path.clone(),
                     instance_path.into(),
                     instance,
-                    unexpected,
-                ))
+                    unevaluated,
+                ));
             }
+
             Box::new(errors.into_iter())
         } else {
             no_error()
@@ -358,7 +358,7 @@ impl Validate for UnevaluatedPropertiesValidator {
     ) -> PartialApplication<'a> {
         if let Value::Object(props) = instance {
             let mut output = BasicOutput::default();
-            let mut unexpected = vec![];
+            let mut unevaluated = vec![];
 
             for (property_name, property_instance) in props {
                 let property_path = instance_path.push(property_name.clone());
@@ -373,21 +373,19 @@ impl Validate for UnevaluatedPropertiesValidator {
                 match maybe_property_output {
                     Some(property_output) => output += property_output,
                     None => {
-                        // If we can't validate, that means that "unevaluatedProperties" is
-                        // "false", which means that this property was not expected.
-                        unexpected.push(property_name.to_string());
+                        unevaluated.push(property_name.to_string());
                     }
                 }
             }
 
             let mut result: PartialApplication = output.into();
-            if !unexpected.is_empty() {
+            if !unevaluated.is_empty() {
                 result.mark_errored(
                     ValidationError::unevaluated_properties(
                         self.schema_path.clone(),
                         instance_path.into(),
                         instance,
-                        unexpected,
+                        unevaluated,
                     )
                     .into(),
                 )
@@ -503,8 +501,7 @@ impl PatternSubvalidator {
             }
         }
 
-        let errors: ErrorIterator<'instance> = Box::new(errors.into_iter());
-        had_match.then(|| errors)
+        had_match.then(|| boxed_errors(errors))
     }
 
     fn apply_property<'a>(
@@ -529,36 +526,64 @@ impl PatternSubvalidator {
     }
 }
 
+/// Subschema validator behavior.
+#[derive(Debug)]
+enum SubschemaBehavior {
+    /// Properties must be valid for all subschemas that would evaluate them.
+    All,
+
+    /// Properties must be valid for exactly one subschema that would evaluate them.
+    One,
+
+    /// Properties must be valid for at least one subschema that would evaluate them.
+    Any,
+}
+
+impl SubschemaBehavior {
+    const fn as_str(&self) -> &'static str {
+        match self {
+            SubschemaBehavior::All => "allOf",
+            SubschemaBehavior::One => "oneOf",
+            SubschemaBehavior::Any => "anyOf",
+        }
+    }
+}
+
 /// A subvalidator for subschema validation such as `allOf`, `oneOf`, and `anyOf`.
-///
-/// Unlike the validation logic for `allOf`/`oneOf`/`anyOf` themselves, this subvalidator searches
-/// configured subvalidators in a first-match-wins process. For example, a property will be
-/// considered evaluated against subschemas defined via `oneOf` so long as one subschema would evaluate
-/// the property, even if, say, more than one subschema in `oneOf` is technically valid, which would
-/// otherwise be a failure for validation of `oneOf` in and of itself.
 #[derive(Debug)]
 struct SubschemaSubvalidator {
-    subvalidators: Vec<UnevaluatedPropertiesValidator>,
+    behavior: SubschemaBehavior,
+    subvalidators: Vec<(SchemaNode, UnevaluatedPropertiesValidator)>,
 }
 
 impl SubschemaSubvalidator {
     fn from_values<'a>(
         values: &'a [Value],
+        behavior: SubschemaBehavior,
         context: &CompilationContext,
     ) -> Result<Self, ValidationError<'a>> {
         let mut subvalidators = vec![];
-        for value in values {
+        let keyword_context = context.with_path(behavior.as_str());
+
+        for (i, value) in values.iter().enumerate() {
             if let Value::Object(subschema) = value {
+                let subschema_context = keyword_context.with_path(i.to_string());
+
+                let node = compile_validators(value, &subschema_context)?;
                 let subvalidator = UnevaluatedPropertiesValidator::compile(
                     subschema,
                     get_unevaluated_props_schema(subschema),
-                    context,
+                    &subschema_context,
                 )?;
-                subvalidators.push(subvalidator);
+
+                subvalidators.push((node, subvalidator));
             }
         }
 
-        Ok(Self { subvalidators })
+        Ok(Self {
+            behavior,
+            subvalidators,
+        })
     }
 
     fn is_valid_property(
@@ -567,9 +592,62 @@ impl SubschemaSubvalidator {
         property_instance: &Value,
         property_name: &str,
     ) -> Option<bool> {
-        self.subvalidators.iter().find_map(|subvalidator| {
-            subvalidator.is_valid_property(instance, property_instance, property_name)
-        })
+        let results = self
+            .subvalidators
+            .iter()
+            .map(|(node, subvalidator)| {
+                (
+                    subvalidator.is_valid_property(instance, property_instance, property_name),
+                    node.is_valid(instance),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        match self.behavior {
+            // The instance must be valid against _all_ subschemas, and the property must be
+            // evaluated by at least one subschema.
+            SubschemaBehavior::All => {
+                let all_subschemas_valid =
+                    results.iter().all(|(_, instance_valid)| *instance_valid);
+                all_subschemas_valid.then(|| {
+                    // We only need to find the first valid evaluation because we know if that
+                    // all subschemas were valid against the instance that there can't actually
+                    // be any subschemas where the property was evaluated but invalid.
+                    results
+                        .iter()
+                        .any(|(property_result, _)| matches!(property_result, Some(true)))
+                })
+            }
+
+            // The instance must be valid against only _one_ subschema, and for that subschema, the
+            // property must be evaluated by it.
+            SubschemaBehavior::One => {
+                let mut evaluated_property = None;
+                for (property_result, instance_valid) in results {
+                    if instance_valid {
+                        if evaluated_property.is_some() {
+                            // We already found a subschema that the instance was valid against, and
+                            // had evaluated the property, which means this `oneOf` is not valid
+                            // overall, and so the property is not considered evaluated.
+                            return None;
+                        }
+
+                        evaluated_property = property_result;
+                    }
+                }
+
+                evaluated_property
+            }
+
+            // The instance must be valid against _at least_ one subschema, and for that subschema,
+            // the property must be evaluated by it.
+            SubschemaBehavior::Any => results
+                .iter()
+                .filter_map(|(property_result, instance_valid)| {
+                    (*instance_valid).then(|| *property_result).flatten()
+                })
+                .find(|x| *x),
+        }
     }
 
     fn validate_property<'instance>(
@@ -580,15 +658,82 @@ impl SubschemaSubvalidator {
         property_instance: &'instance Value,
         property_name: &str,
     ) -> Option<ErrorIterator<'instance>> {
-        self.subvalidators.iter().find_map(|subvalidator| {
-            subvalidator.validate_property(
-                instance,
-                instance_path,
-                property_path,
-                property_instance,
-                property_name,
-            )
-        })
+        let results = self
+            .subvalidators
+            .iter()
+            .map(|(node, subvalidator)| {
+                let property_result = subvalidator
+                    .validate_property(
+                        instance,
+                        instance_path,
+                        property_path,
+                        property_instance,
+                        property_name,
+                    )
+                    .map(|errs| errs.collect::<Vec<_>>());
+
+                let instance_result = node.validate(instance, instance_path).collect::<Vec<_>>();
+
+                (property_result, instance_result)
+            })
+            .collect::<Vec<_>>();
+
+        match self.behavior {
+            // The instance must be valid against _all_ subschemas, and the property must be
+            // evaluated by at least one subschema. We group the errors for the property itself
+            // across all subschemas, though.
+            SubschemaBehavior::All => {
+                let all_subschemas_valid = results
+                    .iter()
+                    .all(|(_, instance_errors)| instance_errors.is_empty());
+                all_subschemas_valid
+                    .then(|| {
+                        results
+                            .into_iter()
+                            .filter_map(|(property_errors, _)| property_errors)
+                            .reduce(|mut previous, current| {
+                                previous.extend(current);
+                                previous
+                            })
+                            .map(boxed_errors)
+                    })
+                    .flatten()
+            }
+
+            // The instance must be valid against only _one_ subschema, and for that subschema, the
+            // property must be evaluated by it.
+            SubschemaBehavior::One => {
+                let mut evaluated_property_errors = None;
+                for (property_errors, instance_errors) in results {
+                    if instance_errors.is_empty() {
+                        if evaluated_property_errors.is_some() {
+                            // We already found a subschema that the instance was valid against, and
+                            // had evaluated the property, which means this `oneOf` is not valid
+                            // overall, and so the property is not considered evaluated.
+                            return None;
+                        }
+
+                        evaluated_property_errors = property_errors.map(boxed_errors);
+                    }
+                }
+
+                evaluated_property_errors
+            }
+
+            // The instance must be valid against _at least_ one subschema, and for that subschema,
+            // the property must be evaluated by it.
+            SubschemaBehavior::Any => results
+                .into_iter()
+                .filter_map(|(property_errors, instance_errors)| {
+                    instance_errors
+                        .is_empty()
+                        .then(|| property_errors)
+                        .flatten()
+                })
+                .filter(|x| x.is_empty())
+                .map(boxed_errors)
+                .next(),
+        }
     }
 
     fn apply_property<'a>(
@@ -599,15 +744,77 @@ impl SubschemaSubvalidator {
         property_instance: &Value,
         property_name: &str,
     ) -> Option<BasicOutput<'a>> {
-        self.subvalidators.iter().find_map(|subvalidator| {
-            subvalidator.apply_property(
-                instance,
-                instance_path,
-                property_path,
-                property_instance,
-                property_name,
-            )
-        })
+        let results = self
+            .subvalidators
+            .iter()
+            .map(|(node, subvalidator)| {
+                let property_result = subvalidator.apply_property(
+                    instance,
+                    instance_path,
+                    property_path,
+                    property_instance,
+                    property_name,
+                );
+
+                let instance_result = node.apply(instance, instance_path);
+
+                (property_result, instance_result)
+            })
+            .collect::<Vec<_>>();
+
+        match self.behavior {
+            // The instance must be valid against _all_ subschemas, and the property must be
+            // evaluated by at least one subschema. We group the errors for the property itself
+            // across all subschemas, though.
+            SubschemaBehavior::All => {
+                let all_subschemas_valid = results
+                    .iter()
+                    .all(|(_, instance_output)| instance_output.is_valid());
+                all_subschemas_valid
+                    .then(|| {
+                        results
+                            .into_iter()
+                            .filter_map(|(property_output, _)| property_output)
+                            .reduce(|mut previous, current| {
+                                previous += current;
+                                previous
+                            })
+                    })
+                    .flatten()
+            }
+
+            // The instance must be valid against only _one_ subschema, and for that subschema, the
+            // property must be evaluated by it.
+            SubschemaBehavior::One => {
+                let mut evaluated_property_output = None;
+                for (property_output, instance_output) in results {
+                    if instance_output.is_valid() {
+                        if evaluated_property_output.is_some() {
+                            // We already found a subschema that the instance was valid against, and
+                            // had evaluated the property, which means this `oneOf` is not valid
+                            // overall, and so the property is not considered evaluated.
+                            return None;
+                        }
+
+                        evaluated_property_output = property_output;
+                    }
+                }
+
+                evaluated_property_output
+            }
+
+            // The instance must be valid against _at least_ one subschema, and for that subschema,
+            // the property must be evaluated by it.
+            SubschemaBehavior::Any => results
+                .into_iter()
+                .filter_map(|(property_output, instance_output)| {
+                    instance_output
+                        .is_valid()
+                        .then(|| property_output)
+                        .flatten()
+                })
+                .find(|x| x.is_valid()),
+        }
     }
 }
 
@@ -725,14 +932,15 @@ impl ConditionalSubvalidator {
         failure: Option<&'a Value>,
         context: &CompilationContext,
     ) -> Result<Self, ValidationError<'a>> {
-        compile_validators(schema, context).and_then(|condition| {
+        let if_context = context.with_path("if");
+        compile_validators(schema, &if_context).and_then(|condition| {
             let node = schema
                 .as_object()
                 .map(|parent| {
                     UnevaluatedPropertiesValidator::compile(
                         parent,
                         get_unevaluated_props_schema(parent),
-                        context,
+                        &if_context,
                     )
                 })
                 .transpose()?;
@@ -742,7 +950,7 @@ impl ConditionalSubvalidator {
                     UnevaluatedPropertiesValidator::compile(
                         parent,
                         get_unevaluated_props_schema(parent),
-                        context,
+                        &context.with_path("then"),
                     )
                 })
                 .transpose()?;
@@ -752,7 +960,7 @@ impl ConditionalSubvalidator {
                     UnevaluatedPropertiesValidator::compile(
                         parent,
                         get_unevaluated_props_schema(parent),
-                        context,
+                        &context.with_path("else"),
                     )
                 })
                 .transpose()?;
@@ -889,19 +1097,22 @@ impl DependentSchemaSubvalidator {
         value: &'a Value,
         context: &CompilationContext,
     ) -> Result<Self, ValidationError<'a>> {
+        let keyword_context = context.with_path("dependentSchemas");
         let schemas = value
             .as_object()
-            .ok_or_else(|| unexpected_type(context, value, PrimitiveType::Object))?;
+            .ok_or_else(|| unexpected_type(&keyword_context, value, PrimitiveType::Object))?;
         let mut nodes = AHashMap::new();
+
         for (dependent_property_name, dependent_schema) in schemas {
             let parent = dependent_schema
                 .as_object()
                 .ok_or_else(ValidationError::null_schema)?;
 
+            let schema_context = keyword_context.with_path(dependent_property_name.to_string());
             let node = UnevaluatedPropertiesValidator::compile(
                 parent,
                 get_unevaluated_props_schema(parent),
-                context,
+                &schema_context,
             )?;
             nodes.insert(dependent_property_name.to_string(), node);
         }
@@ -988,21 +1199,23 @@ impl ReferenceSubvalidator {
         value: &'a Value,
         context: &CompilationContext,
     ) -> Result<Option<Self>, ValidationError<'a>> {
+        let keyword_context = context.with_path("$ref");
         let reference = value
             .as_str()
-            .ok_or_else(|| unexpected_type(context, value, PrimitiveType::String))?;
+            .ok_or_else(|| unexpected_type(&keyword_context, value, PrimitiveType::String))?;
 
         let reference_url = context.build_url(reference)?;
-        let (scope, resolved) = context
+        let (scope, resolved) = keyword_context
             .resolver
-            .resolve_fragment(context.config.draft(), &reference_url, reference)
+            .resolve_fragment(keyword_context.config.draft(), &reference_url, reference)
             .map_err(|e| e.into_owned())?;
 
-        let ref_context = CompilationContext::new(
+        let mut ref_context = CompilationContext::new(
             scope.into(),
             Arc::clone(&context.config),
             Arc::clone(&context.resolver),
         );
+        ref_context.schema_path = keyword_context.schema_path.clone();
 
         resolved
             .as_object()
@@ -1094,6 +1307,11 @@ pub(crate) fn compile<'a>(
     }
 }
 
+fn boxed_errors<'a>(errors: Vec<ValidationError<'a>>) -> ErrorIterator<'a> {
+    let boxed_errors: ErrorIterator<'a> = Box::new(errors.into_iter());
+    boxed_errors
+}
+
 fn unexpected_type<'a>(
     context: &CompilationContext,
     instance: &'a Value,
@@ -1105,4 +1323,55 @@ fn unexpected_type<'a>(
         instance,
         expected_type,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{tests_util, Draft};
+    use serde_json::json;
+
+    #[test]
+    fn one_of() {
+        tests_util::is_valid_with_draft(
+            Draft::Draft201909,
+            &json!({
+                "oneOf": [
+                    { "properties": { "foo": { "const": "bar" } } },
+                    { "properties": { "foo": { "const": "quux" } } }
+                ],
+                "unevaluatedProperties": false
+            }),
+            &json!({ "foo": "quux" }),
+        )
+    }
+
+    #[test]
+    fn any_of() {
+        tests_util::is_valid_with_draft(
+            Draft::Draft201909,
+            &json!({
+                "anyOf": [
+                    { "properties": { "foo": { "minLength": 10 } } },
+                    { "properties": { "foo": { "type": "string" } } }
+                ],
+                "unevaluatedProperties": false
+            }),
+            &json!({ "foo": "rut roh" }),
+        )
+    }
+
+    #[test]
+    fn all_of() {
+        tests_util::is_not_valid_with_draft(
+            Draft::Draft201909,
+            &json!({
+                "allOf": [
+                    { "properties": { "foo": { "type": "string" } } },
+                    { "properties": { "foo": { "minLength": 10 } } }
+                ],
+                "unevaluatedProperties": false
+            }),
+            &json!({ "foo": "rut roh" }),
+        )
+    }
 }
