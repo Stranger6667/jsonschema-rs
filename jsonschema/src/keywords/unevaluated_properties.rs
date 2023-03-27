@@ -1330,10 +1330,25 @@ mod tests {
     use crate::{tests_util, Draft};
     use serde_json::json;
 
+    #[cfg(all(feature = "draft201909", not(feature = "draft202012")))]
+    const fn get_draft_version() -> Draft {
+        Draft::Draft201909
+    }
+
+    #[cfg(all(feature = "draft202012", not(feature = "draft201909")))]
+    const fn get_draft_version() -> Draft {
+        Draft::Draft202012
+    }
+
+    #[cfg(all(feature = "draft201909", feature = "draft202012"))]
+    const fn get_draft_version() -> Draft {
+        Draft::Draft202012
+    }
+
     #[test]
     fn one_of() {
         tests_util::is_valid_with_draft(
-            Draft::Draft201909,
+            get_draft_version(),
             &json!({
                 "oneOf": [
                     { "properties": { "foo": { "const": "bar" } } },
@@ -1348,7 +1363,7 @@ mod tests {
     #[test]
     fn any_of() {
         tests_util::is_valid_with_draft(
-            Draft::Draft201909,
+            get_draft_version(),
             &json!({
                 "anyOf": [
                     { "properties": { "foo": { "minLength": 10 } } },
@@ -1363,7 +1378,7 @@ mod tests {
     #[test]
     fn all_of() {
         tests_util::is_not_valid_with_draft(
-            Draft::Draft201909,
+            get_draft_version(),
             &json!({
                 "allOf": [
                     { "properties": { "foo": { "type": "string" } } },
