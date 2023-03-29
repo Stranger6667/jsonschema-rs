@@ -592,21 +592,18 @@ impl SubschemaSubvalidator {
         property_instance: &Value,
         property_name: &str,
     ) -> Option<bool> {
-        let results = self
-            .subvalidators
-            .iter()
-            .map(|(node, subvalidator)| {
-                (
-                    subvalidator.is_valid_property(instance, property_instance, property_name),
-                    node.is_valid(instance),
-                )
-            })
-            .collect::<Vec<_>>();
+        let mapped = self.subvalidators.iter().map(|(node, subvalidator)| {
+            (
+                subvalidator.is_valid_property(instance, property_instance, property_name),
+                node.is_valid(instance),
+            )
+        });
 
         match self.behavior {
             // The instance must be valid against _all_ subschemas, and the property must be
             // evaluated by at least one subschema.
             SubschemaBehavior::All => {
+                let results = mapped.collect::<Vec<_>>();
                 let all_subschemas_valid =
                     results.iter().all(|(_, instance_valid)| *instance_valid);
                 all_subschemas_valid.then(|| {
@@ -623,7 +620,7 @@ impl SubschemaSubvalidator {
             // property must be evaluated by it.
             SubschemaBehavior::One => {
                 let mut evaluated_property = None;
-                for (property_result, instance_valid) in results {
+                for (property_result, instance_valid) in mapped {
                     if instance_valid {
                         if evaluated_property.is_some() {
                             // We already found a subschema that the instance was valid against, and
@@ -641,10 +638,9 @@ impl SubschemaSubvalidator {
 
             // The instance must be valid against _at least_ one subschema, and for that subschema,
             // the property must be evaluated by it.
-            SubschemaBehavior::Any => results
-                .iter()
+            SubschemaBehavior::Any => mapped
                 .filter_map(|(property_result, instance_valid)| {
-                    (*instance_valid).then(|| *property_result).flatten()
+                    instance_valid.then(|| property_result).flatten()
                 })
                 .find(|x| *x),
         }
@@ -658,31 +654,28 @@ impl SubschemaSubvalidator {
         property_instance: &'instance Value,
         property_name: &str,
     ) -> Option<ErrorIterator<'instance>> {
-        let results = self
-            .subvalidators
-            .iter()
-            .map(|(node, subvalidator)| {
-                let property_result = subvalidator
-                    .validate_property(
-                        instance,
-                        instance_path,
-                        property_path,
-                        property_instance,
-                        property_name,
-                    )
-                    .map(|errs| errs.collect::<Vec<_>>());
+        let mapped = self.subvalidators.iter().map(|(node, subvalidator)| {
+            let property_result = subvalidator
+                .validate_property(
+                    instance,
+                    instance_path,
+                    property_path,
+                    property_instance,
+                    property_name,
+                )
+                .map(|errs| errs.collect::<Vec<_>>());
 
-                let instance_result = node.validate(instance, instance_path).collect::<Vec<_>>();
+            let instance_result = node.validate(instance, instance_path).collect::<Vec<_>>();
 
-                (property_result, instance_result)
-            })
-            .collect::<Vec<_>>();
+            (property_result, instance_result)
+        });
 
         match self.behavior {
             // The instance must be valid against _all_ subschemas, and the property must be
             // evaluated by at least one subschema. We group the errors for the property itself
             // across all subschemas, though.
             SubschemaBehavior::All => {
+                let results = mapped.collect::<Vec<_>>();
                 let all_subschemas_valid = results
                     .iter()
                     .all(|(_, instance_errors)| instance_errors.is_empty());
@@ -704,7 +697,7 @@ impl SubschemaSubvalidator {
             // property must be evaluated by it.
             SubschemaBehavior::One => {
                 let mut evaluated_property_errors = None;
-                for (property_errors, instance_errors) in results {
+                for (property_errors, instance_errors) in mapped {
                     if instance_errors.is_empty() {
                         if evaluated_property_errors.is_some() {
                             // We already found a subschema that the instance was valid against, and
@@ -722,8 +715,7 @@ impl SubschemaSubvalidator {
 
             // The instance must be valid against _at least_ one subschema, and for that subschema,
             // the property must be evaluated by it.
-            SubschemaBehavior::Any => results
-                .into_iter()
+            SubschemaBehavior::Any => mapped
                 .filter_map(|(property_errors, instance_errors)| {
                     instance_errors
                         .is_empty()
@@ -744,29 +736,26 @@ impl SubschemaSubvalidator {
         property_instance: &Value,
         property_name: &str,
     ) -> Option<BasicOutput<'a>> {
-        let results = self
-            .subvalidators
-            .iter()
-            .map(|(node, subvalidator)| {
-                let property_result = subvalidator.apply_property(
-                    instance,
-                    instance_path,
-                    property_path,
-                    property_instance,
-                    property_name,
-                );
+        let mapped = self.subvalidators.iter().map(|(node, subvalidator)| {
+            let property_result = subvalidator.apply_property(
+                instance,
+                instance_path,
+                property_path,
+                property_instance,
+                property_name,
+            );
 
-                let instance_result = node.apply(instance, instance_path);
+            let instance_result = node.apply(instance, instance_path);
 
-                (property_result, instance_result)
-            })
-            .collect::<Vec<_>>();
+            (property_result, instance_result)
+        });
 
         match self.behavior {
             // The instance must be valid against _all_ subschemas, and the property must be
             // evaluated by at least one subschema. We group the errors for the property itself
             // across all subschemas, though.
             SubschemaBehavior::All => {
+                let results = mapped.collect::<Vec<_>>();
                 let all_subschemas_valid = results
                     .iter()
                     .all(|(_, instance_output)| instance_output.is_valid());
@@ -787,7 +776,7 @@ impl SubschemaSubvalidator {
             // property must be evaluated by it.
             SubschemaBehavior::One => {
                 let mut evaluated_property_output = None;
-                for (property_output, instance_output) in results {
+                for (property_output, instance_output) in mapped {
                     if instance_output.is_valid() {
                         if evaluated_property_output.is_some() {
                             // We already found a subschema that the instance was valid against, and
@@ -805,8 +794,7 @@ impl SubschemaSubvalidator {
 
             // The instance must be valid against _at least_ one subschema, and for that subschema,
             // the property must be evaluated by it.
-            SubschemaBehavior::Any => results
-                .into_iter()
+            SubschemaBehavior::Any => mapped
                 .filter_map(|(property_output, instance_output)| {
                     instance_output
                         .is_valid()
@@ -1387,6 +1375,36 @@ mod tests {
                 "unevaluatedProperties": false
             }),
             &json!({ "foo": "rut roh" }),
+        )
+    }
+
+    #[test]
+    fn nested_variable_map() {
+        tests_util::is_valid_with_draft(
+            get_draft_version(),
+            &json!({
+                "allOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "headers": {
+                                "type": "object",
+                                "additionalProperties": {
+                                    "type": "string"
+                                }
+                            },
+                        },
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "fixed": { "type": "number" }
+                        },
+                    }
+                ],
+                "unevaluatedProperties": false
+            }),
+            &json!({ "fixed": 23, "headers": { "some": "thing" } }),
         )
     }
 }
