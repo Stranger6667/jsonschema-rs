@@ -26,6 +26,7 @@ use serde_json::{Map, Value};
 struct UnevaluatedPropertiesValidator {
     schema_path: JSONPointer,
     unevaluated: UnevaluatedSubvalidator,
+    additional: Option<UnevaluatedSubvalidator>,
     properties: Option<PropertySubvalidator>,
     patterns: Option<PatternSubvalidator>,
     conditional: Option<Box<ConditionalSubvalidator>>,
@@ -40,7 +41,20 @@ impl UnevaluatedPropertiesValidator {
         schema: &'a Value,
         context: &CompilationContext,
     ) -> Result<Self, ValidationError<'a>> {
-        let unevaluated = UnevaluatedSubvalidator::from_value(parent, schema, context)?;
+        let unevaluated = UnevaluatedSubvalidator::from_value(
+            schema,
+            &context.with_path("unevaluatedProperties"),
+        )?;
+
+        let additional = parent
+            .get("additionalProperties")
+            .map(|additional_properties| {
+                UnevaluatedSubvalidator::from_value(
+                    additional_properties,
+                    &context.with_path("additionalProperties"),
+                )
+            })
+            .transpose()?;
 
         let properties = parent
             .get("properties")
@@ -57,7 +71,7 @@ impl UnevaluatedPropertiesValidator {
                 let success = parent.get("then");
                 let failure = parent.get("else");
 
-                ConditionalSubvalidator::from_values(condition, success, failure, context)
+                ConditionalSubvalidator::from_values(schema, condition, success, failure, context)
                     .map(Box::new)
             })
             .transpose()?;
@@ -65,32 +79,44 @@ impl UnevaluatedPropertiesValidator {
         let dependent = parent
             .get("dependentSchemas")
             .map(|dependent_schemas| {
-                DependentSchemaSubvalidator::from_value(dependent_schemas, context)
+                DependentSchemaSubvalidator::from_value(schema, dependent_schemas, context)
             })
             .transpose()?;
 
         let reference = parent
             .get("$ref")
-            .map(|reference| ReferenceSubvalidator::from_value(reference, context))
+            .map(|reference| ReferenceSubvalidator::from_value(schema, reference, context))
             .transpose()?
             .flatten();
 
         let mut subschema_validators = vec![];
         if let Some(Value::Array(subschemas)) = parent.get("allOf") {
-            let validator =
-                SubschemaSubvalidator::from_values(subschemas, SubschemaBehavior::All, context)?;
+            let validator = SubschemaSubvalidator::from_values(
+                schema,
+                subschemas,
+                SubschemaBehavior::All,
+                context,
+            )?;
             subschema_validators.push(validator);
         }
 
         if let Some(Value::Array(subschemas)) = parent.get("anyOf") {
-            let validator =
-                SubschemaSubvalidator::from_values(subschemas, SubschemaBehavior::Any, context)?;
+            let validator = SubschemaSubvalidator::from_values(
+                schema,
+                subschemas,
+                SubschemaBehavior::Any,
+                context,
+            )?;
             subschema_validators.push(validator);
         }
 
         if let Some(Value::Array(subschemas)) = parent.get("oneOf") {
-            let validator =
-                SubschemaSubvalidator::from_values(subschemas, SubschemaBehavior::One, context)?;
+            let validator = SubschemaSubvalidator::from_values(
+                schema,
+                subschemas,
+                SubschemaBehavior::One,
+                context,
+            )?;
             subschema_validators.push(validator);
         }
 
@@ -103,6 +129,7 @@ impl UnevaluatedPropertiesValidator {
         Ok(Self {
             schema_path: JSONPointer::from(&context.schema_path),
             unevaluated,
+            additional,
             properties,
             patterns,
             conditional,
@@ -146,6 +173,11 @@ impl UnevaluatedPropertiesValidator {
                     subschemas.iter().find_map(|subschema| {
                         subschema.is_valid_property(instance, property_instance, property_name)
                     })
+                })
+            })
+            .or_else(|| {
+                self.additional.as_ref().and_then(|additional| {
+                    additional.is_valid_property(property_instance, property_name)
                 })
             })
             .or_else(|| {
@@ -219,6 +251,11 @@ impl UnevaluatedPropertiesValidator {
                 })
             })
             .or_else(|| {
+                self.additional.as_ref().and_then(|additional| {
+                    additional.validate_property(property_path, property_instance, property_name)
+                })
+            })
+            .or_else(|| {
                 self.unevaluated
                     .validate_property(property_path, property_instance, property_name)
             })
@@ -289,6 +326,11 @@ impl UnevaluatedPropertiesValidator {
                 });
 
                 result
+            })
+            .or_else(|| {
+                self.additional.as_ref().and_then(|additional| {
+                    additional.apply_property(property_path, property_instance, property_name)
+                })
             })
             .or_else(|| {
                 self.unevaluated
@@ -558,6 +600,7 @@ struct SubschemaSubvalidator {
 
 impl SubschemaSubvalidator {
     fn from_values<'a>(
+        parent: &'a Value,
         values: &'a [Value],
         behavior: SubschemaBehavior,
         context: &CompilationContext,
@@ -572,7 +615,7 @@ impl SubschemaSubvalidator {
                 let node = compile_validators(value, &subschema_context)?;
                 let subvalidator = UnevaluatedPropertiesValidator::compile(
                     subschema,
-                    get_unevaluated_props_schema(subschema),
+                    get_transitive_unevaluated_props_schema(subschema, parent),
                     &subschema_context,
                 )?;
 
@@ -828,30 +871,13 @@ struct UnevaluatedSubvalidator {
 
 impl UnevaluatedSubvalidator {
     fn from_value<'a>(
-        parent: &'a Map<String, Value>,
         value: &'a Value,
         context: &CompilationContext,
     ) -> Result<Self, ValidationError<'a>> {
-        // We also examine the value of `additionalProperties` here, if present, because if it's
-        // specified as `true`, it can potentially override the behavior of the validator depending
-        // on the value of `unevaluatedProperties`.
-        //
-        // TODO: We probably need to think about this more because `unevaluatedProperties` affects
-        // subschema validation, when really all we want to have this do (based on the JSON Schema
-        // test suite cases) is disable the `unevaluatedProperties: false` bit _just_ for normal
-        // properties on the top-level instance.
-        let additional_properties = parent.get("additionalProperties");
-        let behavior = match (value, additional_properties) {
-            (Value::Bool(false), None) | (Value::Bool(false), Some(Value::Bool(false))) => {
-                UnevaluatedBehavior::Deny
-            }
-            (Value::Bool(true), _) | (Value::Bool(false), Some(Value::Bool(true))) => {
-                UnevaluatedBehavior::Allow
-            }
-            _ => UnevaluatedBehavior::IfValid(compile_validators(
-                value,
-                &context.with_path("unevaluatedProperties"),
-            )?),
+        let behavior = match value {
+            Value::Bool(false) => UnevaluatedBehavior::Deny,
+            Value::Bool(true) => UnevaluatedBehavior::Allow,
+            _ => UnevaluatedBehavior::IfValid(compile_validators(value, context)?),
         };
 
         Ok(Self { behavior })
@@ -915,6 +941,7 @@ struct ConditionalSubvalidator {
 
 impl ConditionalSubvalidator {
     fn from_values<'a>(
+        parent: &'a Value,
         schema: &'a Value,
         success: Option<&'a Value>,
         failure: Option<&'a Value>,
@@ -924,30 +951,30 @@ impl ConditionalSubvalidator {
         compile_validators(schema, &if_context).and_then(|condition| {
             let node = schema
                 .as_object()
-                .map(|parent| {
+                .map(|node_schema| {
                     UnevaluatedPropertiesValidator::compile(
-                        parent,
-                        get_unevaluated_props_schema(parent),
+                        node_schema,
+                        get_transitive_unevaluated_props_schema(node_schema, parent),
                         &if_context,
                     )
                 })
                 .transpose()?;
             let success = success
                 .and_then(|value| value.as_object())
-                .map(|parent| {
+                .map(|success_schema| {
                     UnevaluatedPropertiesValidator::compile(
-                        parent,
-                        get_unevaluated_props_schema(parent),
+                        success_schema,
+                        get_transitive_unevaluated_props_schema(success_schema, parent),
                         &context.with_path("then"),
                     )
                 })
                 .transpose()?;
             let failure = failure
                 .and_then(|value| value.as_object())
-                .map(|parent| {
+                .map(|failure_schema| {
                     UnevaluatedPropertiesValidator::compile(
-                        parent,
-                        get_unevaluated_props_schema(parent),
+                        failure_schema,
+                        get_transitive_unevaluated_props_schema(failure_schema, parent),
                         &context.with_path("else"),
                     )
                 })
@@ -1082,6 +1109,7 @@ struct DependentSchemaSubvalidator {
 
 impl DependentSchemaSubvalidator {
     fn from_value<'a>(
+        parent: &'a Value,
         value: &'a Value,
         context: &CompilationContext,
     ) -> Result<Self, ValidationError<'a>> {
@@ -1092,14 +1120,14 @@ impl DependentSchemaSubvalidator {
         let mut nodes = AHashMap::new();
 
         for (dependent_property_name, dependent_schema) in schemas {
-            let parent = dependent_schema
+            let dependent_schema = dependent_schema
                 .as_object()
                 .ok_or_else(ValidationError::null_schema)?;
 
             let schema_context = keyword_context.with_path(dependent_property_name.to_string());
             let node = UnevaluatedPropertiesValidator::compile(
-                parent,
-                get_unevaluated_props_schema(parent),
+                dependent_schema,
+                get_transitive_unevaluated_props_schema(dependent_schema, parent),
                 &schema_context,
             )?;
             nodes.insert(dependent_property_name.to_string(), node);
@@ -1184,6 +1212,7 @@ struct ReferenceSubvalidator {
 
 impl ReferenceSubvalidator {
     fn from_value<'a>(
+        parent: &'a Value,
         value: &'a Value,
         context: &CompilationContext,
     ) -> Result<Option<Self>, ValidationError<'a>> {
@@ -1207,10 +1236,10 @@ impl ReferenceSubvalidator {
 
         resolved
             .as_object()
-            .map(|parent| {
+            .map(|ref_schema| {
                 UnevaluatedPropertiesValidator::compile(
-                    parent,
-                    get_unevaluated_props_schema(parent),
+                    ref_schema,
+                    get_transitive_unevaluated_props_schema(ref_schema, parent),
                     &ref_context,
                 )
                 .map(|validator| ReferenceSubvalidator {
@@ -1273,10 +1302,15 @@ fn value_has_object_key(value: &Value, key: &str) -> bool {
     }
 }
 
-fn get_unevaluated_props_schema(parent: &Map<String, Value>) -> &Value {
-    parent
-        .get("unevaluatedProperties")
-        .unwrap_or(&Value::Bool(true))
+fn get_transitive_unevaluated_props_schema<'a>(
+    leaf: &'a Map<String, Value>,
+    parent: &'a Value,
+) -> &'a Value {
+    // We first try and if the leaf schema has `unevaluatedProperties` defined, and if so, we use
+    // that. Otherwise, we fallback to the parent schema value, which is the value of
+    // `unevaluatedProperties` as defined at the level of the schema right where `leaf_schema`
+    // lives.
+    leaf.get("unevaluatedProperties").unwrap_or(parent)
 }
 
 pub(crate) fn compile<'a>(
@@ -1380,11 +1414,9 @@ mod tests {
 
     #[test]
     fn all_of_with_additional_props_subschema() {
-        tests_util::is_valid_with_draft(
-            get_draft_version(),
-            &json!({
-                "allOf": [
-                    {
+        let schema = json!({
+            "allOf": [
+                {
                     "type": "object",
                     "required": [
                         "foo"
@@ -1392,15 +1424,25 @@ mod tests {
                     "properties": {
                         "foo": { "type": "string" }
                     }
-                    },
-                    {
-                        "type": "object",
-                        "additionalProperties": { "type": "string" }
-                    }
-                ],
-                "unevaluatedProperties": false
-            }),
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" }
+                }
+            ],
+            "unevaluatedProperties": false
+        });
+
+        tests_util::is_valid_with_draft(
+            get_draft_version(),
+            &schema,
             &json!({ "foo": "wee", "another": "thing" }),
-        )
+        );
+
+        tests_util::is_not_valid_with_draft(
+            get_draft_version(),
+            &schema,
+            &json!({ "foo": "wee", "another": false }),
+        );
     }
 }
