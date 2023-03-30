@@ -1276,7 +1276,7 @@ fn value_has_object_key(value: &Value, key: &str) -> bool {
 fn get_unevaluated_props_schema(parent: &Map<String, Value>) -> &Value {
     parent
         .get("unevaluatedProperties")
-        .unwrap_or(&Value::Bool(false))
+        .unwrap_or(&Value::Bool(true))
 }
 
 pub(crate) fn compile<'a>(
@@ -1379,32 +1379,28 @@ mod tests {
     }
 
     #[test]
-    fn nested_variable_map() {
+    fn all_of_with_additional_props_subschema() {
         tests_util::is_valid_with_draft(
             get_draft_version(),
             &json!({
                 "allOf": [
                     {
-                        "type": "object",
-                        "properties": {
-                            "headers": {
-                                "type": "object",
-                                "additionalProperties": {
-                                    "type": "string"
-                                }
-                            },
-                        },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ],
+                    "properties": {
+                        "foo": { "type": "string" }
+                    }
                     },
                     {
                         "type": "object",
-                        "properties": {
-                            "fixed": { "type": "number" }
-                        },
+                        "additionalProperties": { "type": "string" }
                     }
                 ],
                 "unevaluatedProperties": false
             }),
-            &json!({ "fixed": 23, "headers": { "some": "thing" } }),
+            &json!({ "foo": "wee", "another": "thing" }),
         )
     }
 }
