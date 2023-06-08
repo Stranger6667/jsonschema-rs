@@ -836,12 +836,12 @@ impl fmt::Display for ValidationError<'_> {
                     verb
                 )
             }
-            ValidationErrorKind::AnyOf  => write!(
+            ValidationErrorKind::AnyOf => write!(
                 f,
                 "{} is not valid under any of the schemas listed in the 'anyOf' keyword",
                 self.instance
             ),
-            ValidationErrorKind::OneOfNotValid  => write!(
+            ValidationErrorKind::OneOfNotValid => write!(
                 f,
                 "{} is not valid under any of the schemas listed in the 'oneOf' keyword",
                 self.instance
