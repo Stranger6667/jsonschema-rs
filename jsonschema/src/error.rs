@@ -68,7 +68,7 @@ pub enum ValidationErrorKind {
     AdditionalItems { limit: usize },
     /// Unexpected properties.
     AdditionalProperties { unexpected: Vec<String> },
-    /// The input value is not valid under any of the given schemas.
+    /// The input value is not valid under any of the schemas listed in the 'anyOf' keyword.
     AnyOf,
     /// Results from a [`fancy_regex::Error::BacktrackLimitExceeded`] variant when matching
     BacktrackLimitExceeded { error: fancy_regex::Error },
@@ -122,9 +122,9 @@ pub enum ValidationErrorKind {
     MultipleOf { multiple_of: f64 },
     /// Negated schema failed validation.
     Not { schema: Value },
-    /// The given schema is valid under more than one of the given schemas.
+    /// The given schema is valid under more than one of the schemas listed in the 'oneOf' keyword.
     OneOfMultipleValid,
-    /// The given schema is not valid under any on the given schemas.
+    /// The given schema is not valid under any of the schemas listed in the 'oneOf' keyword.
     OneOfNotValid,
     /// When the input doesn't match to a pattern.
     Pattern { pattern: String },
@@ -836,9 +836,14 @@ impl fmt::Display for ValidationError<'_> {
                     verb
                 )
             }
-            ValidationErrorKind::AnyOf | ValidationErrorKind::OneOfNotValid => write!(
+            ValidationErrorKind::AnyOf => write!(
                 f,
-                "{} is not valid under any of the given schemas",
+                "{} is not valid under any of the schemas listed in the 'anyOf' keyword",
+                self.instance
+            ),
+            ValidationErrorKind::OneOfNotValid => write!(
+                f,
+                "{} is not valid under any of the schemas listed in the 'oneOf' keyword",
                 self.instance
             ),
             ValidationErrorKind::Contains => write!(
@@ -939,7 +944,7 @@ impl fmt::Display for ValidationError<'_> {
             }
             ValidationErrorKind::OneOfMultipleValid => write!(
                 f,
-                "{} is valid under more than one of the given schemas",
+                "{} is valid under more than one of the schemas listed in the 'oneOf' keyword",
                 self.instance
             ),
             ValidationErrorKind::Pattern { pattern } => {
