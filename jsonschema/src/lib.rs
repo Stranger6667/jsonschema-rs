@@ -128,8 +128,7 @@ pub(crate) mod tests_util {
     use crate::ValidationError;
     use serde_json::Value;
 
-    pub(crate) fn is_not_valid(schema: &Value, instance: &Value) {
-        let compiled = JSONSchema::compile(schema).unwrap();
+    fn is_not_valid_inner(compiled: &JSONSchema, instance: &Value) {
         assert!(
             !compiled.is_valid(instance),
             "{} should not be valid (via is_valid)",
@@ -147,6 +146,20 @@ pub(crate) mod tests_util {
         );
     }
 
+    pub(crate) fn is_not_valid(schema: &Value, instance: &Value) {
+        let compiled = JSONSchema::compile(schema).unwrap();
+        is_not_valid_inner(&compiled, instance)
+    }
+
+    #[cfg(any(feature = "draft201909", feature = "draft202012"))]
+    pub(crate) fn is_not_valid_with_draft(draft: crate::Draft, schema: &Value, instance: &Value) {
+        let compiled = JSONSchema::options()
+            .with_draft(draft)
+            .compile(schema)
+            .unwrap();
+        is_not_valid_inner(&compiled, instance)
+    }
+
     pub(crate) fn expect_errors(schema: &Value, instance: &Value, errors: &[&str]) {
         assert_eq!(
             JSONSchema::compile(schema)
@@ -159,8 +172,7 @@ pub(crate) mod tests_util {
         )
     }
 
-    pub(crate) fn is_valid(schema: &Value, instance: &Value) {
-        let compiled = JSONSchema::compile(schema).unwrap();
+    fn is_valid_inner(compiled: &JSONSchema, instance: &Value) {
         assert!(
             compiled.is_valid(instance),
             "{} should be valid (via is_valid)",
@@ -176,6 +188,20 @@ pub(crate) mod tests_util {
             "{} should be valid (via apply)",
             instance
         );
+    }
+
+    pub(crate) fn is_valid(schema: &Value, instance: &Value) {
+        let compiled = JSONSchema::compile(schema).unwrap();
+        is_valid_inner(&compiled, instance);
+    }
+
+    #[cfg(any(feature = "draft201909", feature = "draft202012"))]
+    pub(crate) fn is_valid_with_draft(draft: crate::Draft, schema: &Value, instance: &Value) {
+        let compiled = JSONSchema::options()
+            .with_draft(draft)
+            .compile(schema)
+            .unwrap();
+        is_valid_inner(&compiled, instance)
     }
 
     pub(crate) fn validate(schema: &Value, instance: &Value) -> ValidationError<'static> {
