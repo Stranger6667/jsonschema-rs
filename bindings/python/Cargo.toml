@@ -11,13 +11,12 @@ keywords = ["jsonschema", "validation"]
 categories = ["web-programming"]
 rust-version = "1.56.1"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 name = "jsonschema_rs"
 crate-type = ["cdylib"]
 
 [build-dependencies]
-built = { version = "0.5.2", features = ["chrono"] }
+built = { version = "0.6.1", features = ["chrono"] }
 
 [dependencies.jsonschema]
 path = "../../jsonschema"
@@ -28,9 +27,9 @@ features = ["resolve-http", "resolve-file"]
 [dependencies]
 serde_json = "1.0.91"
 serde = "1.0.152"
-pyo3 = { version = "0.18.0", features = ["extension-module"] }
+pyo3 = { version = "0.19.1", features = ["extension-module"] }
 pyo3-built = "0.4.7"
 
 [profile.release]
 codegen-units = 1
-lto = "on"
+lto = "fat"
