@@ -5,6 +5,7 @@
 ### Changed
 
 - Update `pyo3` to `0.19`.
+- Improved error messages for `oneOf` / `anyOf` keywords. [#429](https://github.com/Stranger6667/jsonschema-rs/issues/429)
 
 ## [0.16.3] - 2023-02-01
 

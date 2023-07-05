@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [0.17.1] - 2023-07-05
+
+### Changed
+
+- Improved error messages for `oneOf` / `anyOf` keywords. [#429](https://github.com/Stranger6667/jsonschema-rs/issues/429)
+
+### Fixed
+
+- Improper handling of subschema validation in `unevaluatedProperties`. [#421](https://github.com/Stranger6667/jsonschema-rs/issues/421)
+
 ## [0.17.0] - 2023-03-16
 
 ### Changed
@@ -409,7 +419,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.17.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.17.1...HEAD
+[0.17.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.17.0...rust-v0.17.1
 [0.17.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.16.1...rust-v0.17.0
 [0.16.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.16.0...rust-v0.16.1
 [0.16.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.15.2...rust-v0.16.0
