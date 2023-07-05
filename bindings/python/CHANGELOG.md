@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.17.1] - 2023-07-05
+
 ### Changed
 
 - Update `pyo3` to `0.19`.
@@ -301,7 +303,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.3...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.17.1...HEAD
+[0.17.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.3...python-v0.17.1
 [0.16.3]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.2...python-v0.16.3
 [0.16.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.1...python-v0.16.2
 [0.16.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.0...python-v0.16.1
