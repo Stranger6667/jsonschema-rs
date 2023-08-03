@@ -198,14 +198,9 @@ pub(crate) fn compile_validators<'a>(
                     {
                         is_props = true;
                     }
-                    if let Some(validator) = context
-                        .config
-                        .draft()
-                        .get_validator(keyword)
-                        .and_then(|f| f(object, subschema, &context))
-                    {
-                        validators.push((keyword.clone(), validator?));
-                    } else if let Some(keyword_definition) =
+                    // first check if this keyword was added as a custom keyword
+                    // it may override existing keyword behavior
+                    if let Some(keyword_definition) =
                         context.config.get_custom_keyword_definition(keyword)
                     {
                         let validator = compile_custom_keyword_validator(
@@ -213,8 +208,16 @@ pub(crate) fn compile_validators<'a>(
                             keyword.clone(),
                             keyword_definition,
                             subschema.clone(),
+                            schema.clone(),
                         )?;
                         validators.push((keyword.clone(), validator));
+                    } else if let Some(validator) = context
+                        .config
+                        .draft()
+                        .get_validator(keyword)
+                        .and_then(|f| f(object, subschema, &context))
+                    {
+                        validators.push((keyword.clone(), validator?));
                     } else {
                         unmatched_keywords.insert(keyword.to_string(), subschema.clone());
                     }
@@ -258,6 +261,8 @@ mod tests {
         compilation::options::CustomKeywordDefinition, error::ValidationError, paths::JSONPointer,
         ErrorIterator,
     };
+    use num_cmp::NumCmp;
+    use regex::Regex;
     use serde_json::{from_str, json, Value};
     use std::{borrow::Cow, fs::File, io::Read, path::Path, sync::Arc};
 
@@ -317,7 +322,7 @@ mod tests {
     }
 
     #[test]
-    fn custom_keyword_defintion() {
+    fn custom_keyword_definition() {
         // Define a custom validator that verifies the object's keys consist of
         // only ASCII representable characters.
         #[allow(clippy::needless_pass_by_value)]
@@ -326,6 +331,7 @@ mod tests {
             instance_path: JSONPointer,
             schema: Arc<Value>,
             schema_path: JSONPointer,
+            _: Arc<Value>,
         ) -> ErrorIterator<'_> {
             if schema.as_str().map_or(true, |str| str != "ascii-keys") {
                 let error = ValidationError {
@@ -350,7 +356,7 @@ mod tests {
             }
             Box::new(errors.into_iter())
         }
-        fn is_custom_object_valid(instance: &Value, schema: &Value) -> bool {
+        fn is_custom_object_valid(instance: &Value, schema: &Value, _: &Value) -> bool {
             if schema.as_str().map_or(true, |str| str != "ascii-keys") {
                 return false; // Invalid schema
             }
@@ -388,5 +394,179 @@ mod tests {
         let instance_err_non_ascii_keys = json!({ "å" : 1 });
         assert!(json_schema.validate(&instance_err_non_ascii_keys).is_err());
         assert!(!json_schema.is_valid(&instance_err_non_ascii_keys));
+    }
+
+    #[test]
+    fn custom_format_and_override_keyword() {
+        // prepare a custom format checker
+        // in this case, the format is "currency"
+        // checks that a string has some number of digits followed by a dot followed by
+        // exactly 2 digits.
+        const CURRENCY_RE_STR: &str = "^(0|([1-9]+[0-9]*))(\\.[0-9]{2})$";
+        fn currency_format_checker(s: &str) -> bool {
+            Regex::new(CURRENCY_RE_STR).unwrap().is_match(s)
+        }
+        // Define a custom keyword validator that overrides "minimum"
+        // so that "minimum" may apply to "currency"-formatted strings as well
+        fn custom_minimum_validator(
+            instance: &Value,
+            instance_path: JSONPointer,
+            subschema: Arc<Value>,
+            subschema_path: JSONPointer,
+            schema: Arc<Value>,
+        ) -> ErrorIterator<'_> {
+            let subschema: &Value = &subschema;
+            let limit = match subschema {
+                Value::Number(limit) => limit,
+                _ => {
+                    let error = ValidationError {
+                        instance: Cow::Borrowed(instance),
+                        kind: crate::error::ValidationErrorKind::Schema,
+                        instance_path,
+                        schema_path: subschema_path,
+                    };
+                    return Box::new(Some(error).into_iter()); // Invalid schema
+                }
+            };
+            let mut errors = vec![];
+            let valid = match instance {
+                // numeric comparison should happen just like original behavior
+                Value::Number(instance) => {
+                    if let Some(item) = instance.as_u64() {
+                        !NumCmp::num_lt(item, limit.as_f64().unwrap())
+                    } else if let Some(item) = limit.as_i64() {
+                        !NumCmp::num_lt(item, limit.as_f64().unwrap())
+                    } else {
+                        let item = instance.as_f64().expect("Always valid");
+                        !NumCmp::num_lt(item, limit.as_f64().unwrap())
+                    }
+                }
+                // string comparison should cast currency-formatted
+                Value::String(instance) => {
+                    let mut valid = true;
+                    if let Some(schema) = schema.as_object() {
+                        if let Some(format) = schema.get("format") {
+                            if format == "currency" {
+                                if currency_format_checker(instance) {
+                                    // all preconditions for minimum applying are met
+                                    let as_f64 = instance
+                                        .parse::<f64>()
+                                        .expect("format validated by regex checker");
+                                    println!("1 {:#?} {:#?}", as_f64, limit.as_f64().unwrap());
+                                    valid = !NumCmp::num_lt(as_f64, limit.as_f64().unwrap());
+                                    println!("valid {:#?}", valid);
+                                }
+                            }
+                        }
+                    }
+                    valid
+                }
+                // in all other cases, the "minimum" keyword should not apply
+                _ => true,
+            };
+            if !valid {
+                let error = ValidationError {
+                    instance: Cow::Borrowed(instance),
+                    kind: crate::error::ValidationErrorKind::Minimum {
+                        limit: subschema.clone(),
+                    },
+                    instance_path: instance_path.clone(),
+                    schema_path: subschema_path.clone(),
+                };
+                errors.push(error);
+            }
+            Box::new(errors.into_iter())
+        }
+        fn is_custom_minimum_valid(instance: &Value, subschema: &Value, schema: &Value) -> bool {
+            let subschema: &Value = &subschema;
+            let limit = match subschema {
+                Value::Number(limit) => limit,
+                _ => return false,
+            };
+            let valid = match instance {
+                // numeric comparison should happen just like original behavior
+                Value::Number(instance) => {
+                    if let Some(item) = instance.as_u64() {
+                        !NumCmp::num_lt(item, limit.as_f64().unwrap())
+                    } else if let Some(item) = limit.as_i64() {
+                        !NumCmp::num_lt(item, limit.as_f64().unwrap())
+                    } else {
+                        let item = instance.as_f64().expect("Always valid");
+                        !NumCmp::num_lt(item, limit.as_f64().unwrap())
+                    }
+                }
+                // string comparison should cast currency-formatted
+                Value::String(instance) => {
+                    let mut valid = true;
+                    if let Some(schema) = schema.as_object() {
+                        if let Some(format) = schema.get("format") {
+                            if format == "currency" {
+                                if currency_format_checker(instance) {
+                                    // all preconditions for minimum applying are met
+                                    let as_f64 = instance
+                                        .parse::<f64>()
+                                        .expect("format validated by regex checker");
+                                    println!("1 {:#?} {:#?}", as_f64, limit.as_f64().unwrap());
+                                    valid = !NumCmp::num_lt(as_f64, limit.as_f64().unwrap());
+                                    println!("valid {:#?}", valid);
+                                }
+                            }
+                        }
+                    }
+                    valid
+                }
+                // in all other cases, the "minimum" keyword should not apply
+                _ => true,
+            };
+            return valid;
+        }
+        let definition = CustomKeywordDefinition::Validator {
+            validate: custom_minimum_validator,
+            is_valid: is_custom_minimum_valid,
+        };
+
+        // define compilation options that include the custom format and the overridden keyword
+        let mut options = JSONSchema::options();
+        let options = options
+            .with_format("currency", currency_format_checker)
+            .with_custom_keyword("minimum", definition);
+
+        // Define a schema that includes both the custom format and the overridden keyword
+        let schema = json!({ "minimum": 2, "type": "string", "format": "currency" });
+        let compiled = options.compile(&schema).unwrap();
+
+        // Control: verify schema validation rejects non-string types
+        let instance_err_not_string = json!(15);
+        assert!(compiled.validate(&instance_err_not_string).is_err());
+        assert!(!compiled.is_valid(&instance_err_not_string));
+
+        // Control: verify validator rejects ill-formatted strings
+        let instance_ok = json!("not a currency");
+        assert!(compiled.validate(&instance_ok).is_err());
+        assert!(!compiled.is_valid(&instance_ok));
+
+        // Verify validator allows properly formatted strings that conform to custom keyword
+        let instance_err_non_ascii_keys = json!("3.00");
+        assert!(compiled.validate(&instance_err_non_ascii_keys).is_ok());
+        assert!(compiled.is_valid(&instance_err_non_ascii_keys));
+
+        // Verify validator rejects properly formatted strings that do not conform to custom keyword
+        let instance_err_non_ascii_keys = json!("1.99");
+        assert!(compiled.validate(&instance_err_non_ascii_keys).is_err());
+        assert!(!compiled.is_valid(&instance_err_non_ascii_keys));
+
+        // Define another schema that applies "minimum" to an integer to ensure original behavior
+        let schema = json!({ "minimum": 2, "type": "integer" });
+        let compiled = options.compile(&schema).unwrap();
+
+        // Verify schema allows integers greater than 2
+        let instance_err_not_string = json!(3);
+        assert!(compiled.validate(&instance_err_not_string).is_ok());
+        assert!(compiled.is_valid(&instance_err_not_string));
+
+        // Verify schema rejects integers less than 2
+        let instance_ok = json!(1);
+        assert!(compiled.validate(&instance_ok).is_err());
+        assert!(!compiled.is_valid(&instance_ok));
     }
 }

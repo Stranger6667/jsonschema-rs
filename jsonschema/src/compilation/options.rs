@@ -653,13 +653,14 @@ impl CompilationOptions {
     /// fn validate(
     ///     instance: &Value,
     ///     instance_path: JSONPointer,
-    ///     schema: Arc<Value>,
-    ///     schema_path: JSONPointer,
+    ///     subschema: Arc<Value>,
+    ///     subschema_path: JSONPointer,
+    ///     schema: Arc<Value>
     /// ) -> ErrorIterator {
     ///     // ... validate instance ...
     ///     Box::new(None.into_iter())
     /// }
-    /// fn is_valid(instance: &Value, schema: &Value) -> bool {
+    /// fn is_valid(instance: &Value, subschema: &Value, schema: &Value) -> bool {
     ///     // ... determine if instance is valid ...
     ///     return true;
     /// }
@@ -670,7 +671,11 @@ impl CompilationOptions {
     ///     .expect("A valid schema")
     ///     .is_valid(&json!({ "a": "b"})));
     /// ```
-    pub fn with_custom_keyword<T>(mut self, keyword: T, definition: CustomKeywordDefinition) -> Self
+    pub fn with_custom_keyword<T>(
+        &mut self,
+        keyword: T,
+        definition: CustomKeywordDefinition,
+    ) -> &mut Self
     where
         T: Into<String>,
     {
