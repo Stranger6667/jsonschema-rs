@@ -147,14 +147,13 @@ The tests in [jsonschema/](jsonschema/) depend on the [JSON Schema Test Suite](h
 $ git submodule init
 $ git submodule update
 ```
-These commands clone the suite to [jsonschema/tests/suite/](jsonschema/test/suite/).
+These commands clone the suite to [jsonschema/tests/suite/](jsonschema/tests/suite/).
 
 Now, enter jsonschema/ folder and run `cargo test`.
 
 ```bash
 $ cd jsonschema
-$ cargo test
-```
+$ cargo test ```
 
 ## Performance
 
