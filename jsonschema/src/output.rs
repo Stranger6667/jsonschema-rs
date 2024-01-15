@@ -1,7 +1,7 @@
 //! Implementation of json schema output formats specified in <https://json-schema.org/draft/2020-12/json-schema-core.html#rfc.section.12.2>
 //!
 //! Currently the "flag" and "basic" formats are supported. The "flag" format is
-//! idential to the [`JSONSchema::is_valid`] method and so is uninteresting. The
+//! identical to the [`JSONSchema::is_valid`] method and so is uninteresting. The
 //! main contribution of this module is [`Output::basic`]. See the documentation
 //! of that method for more information.
 

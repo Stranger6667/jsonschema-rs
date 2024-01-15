@@ -54,7 +54,7 @@ impl Hash for HashedValue<'_> {
 }
 
 // Empirically calculated threshold after which the validator resorts to hashing.
-// Calculated for an array of mixed types, large homogenous arrays of primitive values might be
+// Calculated for an array of mixed types, large homogeneous arrays of primitive values might be
 // processed faster with different thresholds, but this one gives a good baseline for the common
 // case.
 const ITEMS_SIZE_THRESHOLD: usize = 15;
