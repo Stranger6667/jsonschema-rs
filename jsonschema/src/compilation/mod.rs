@@ -36,7 +36,7 @@ pub(crate) static DEFAULT_SCOPE: Lazy<Url> =
 
 impl JSONSchema {
     /// Return a default `CompilationOptions` that can configure
-    /// `JSONSchema` compilaton flow.
+    /// `JSONSchema` compilation flow.
     ///
     /// Using options you will be able to configure the draft version
     /// to use during `JSONSchema` compilation
