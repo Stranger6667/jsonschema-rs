@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Expose drafts 2019-09 and 2020-12 to Python
+
 ## [0.17.1] - 2023-07-05
 
 ### Changed
