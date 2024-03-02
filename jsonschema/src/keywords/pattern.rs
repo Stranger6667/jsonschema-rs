@@ -103,6 +103,7 @@ impl core::fmt::Display for PatternValidator {
 }
 
 // ECMA 262 has differences
+#[allow(clippy::result_large_err)]
 pub(crate) fn convert_regex(pattern: &str) -> Result<fancy_regex::Regex, fancy_regex::Error> {
     // replace control chars
     let new_pattern = CONTROL_GROUPS_RE.replace_all(pattern, replace_control_group);

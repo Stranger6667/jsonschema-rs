@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Bump `base64` to `0.22`.
+- Bump `clap` to `4.5`.
+- Bump `fancy-regex` to `0.13`.
+- Bump `fraction` to `0.15`.
+- Bump `memchr` to `2.7`.
+- Bump `once_cell` to `1.19`.
+- Bump `percent-encoding` to `2.3`.
+- Bump `regex` to `1.10`.
+- Bump `url` to `2.5`.
+
 ## [0.17.1] - 2023-07-05
 
 ### Changed

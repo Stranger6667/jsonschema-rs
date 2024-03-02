@@ -1,5 +1,5 @@
 [package]
-authors = ["dmitry.dygalo <dadygalo@gmail.com>"]
+authors = ["Dmitry Dygalo <dmitry@dygalo.dev>"]
 description = "A crate for performing JSON schema validation"
 edition = "2021"
 exclude = [
@@ -38,9 +38,9 @@ resolve-file = []
 [dependencies]
 ahash = { version = "0.8", features = ["serde"] }
 anyhow = "1.0"
-base64 = "0.21"
+base64 = "0.22"
 bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
-clap = { version = "4.0", features = ["derive"], optional = true }
+clap = { version = "4.5", features = ["derive"], optional = true }
 fancy-regex = "0.13"
 fraction = { version = "0.15", default-features = false, features = [
   "with-bigint",
