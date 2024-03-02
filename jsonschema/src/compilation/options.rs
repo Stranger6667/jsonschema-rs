@@ -558,7 +558,7 @@ impl CompilationOptions {
     /// The example above is taken from the Swagger 2.0 JSON schema.
     #[inline]
     pub fn with_meta_schemas(&mut self) -> &mut Self {
-        self.store.extend(META_SCHEMAS.clone().into_iter());
+        self.store.extend(META_SCHEMAS.clone());
         self
     }
 

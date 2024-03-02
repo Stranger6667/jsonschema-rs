@@ -124,7 +124,7 @@ impl Validate for AdditionalPropertiesValidator {
         if let Value::Object(item) = instance {
             let mut matched_props = Vec::with_capacity(item.len());
             let mut output = BasicOutput::default();
-            for (name, value) in item.iter() {
+            for (name, value) in item {
                 let path = instance_path.push(name.to_string());
                 output += self.node.apply_rooted(value, &path);
                 matched_props.push(name.clone());
@@ -507,7 +507,7 @@ impl AdditionalPropertiesWithPatternsValidator {
 impl Validate for AdditionalPropertiesWithPatternsValidator {
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
-            for (property, value) in item.iter() {
+            for (property, value) in item {
                 let mut has_match = false;
                 for (re, node) in &self.patterns {
                     if re.is_match(property).unwrap_or(false) {
@@ -530,7 +530,7 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
     ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
-            for (property, value) in item.iter() {
+            for (property, value) in item {
                 let mut has_match = false;
                 errors.extend(
                     self.patterns
@@ -824,7 +824,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator<BigValidatorsMap> {
 impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNotEmptyValidator<M> {
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
-            for (property, value) in item.iter() {
+            for (property, value) in item {
                 if let Some(node) = self.properties.get_validator(property) {
                     if is_valid!(node, value) {
                         // Valid for `properties`, check `patternProperties`
@@ -865,7 +865,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
     ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
-            for (property, value) in item.iter() {
+            for (property, value) in item {
                 if let Some((name, node)) = self.properties.get_key_validator(property) {
                     errors.extend(validate!(node, value, instance_path, name));
                     errors.extend(
@@ -904,7 +904,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
         if let Value::Object(item) = instance {
             let mut output = BasicOutput::default();
             let mut additional_matches = Vec::with_capacity(item.len());
-            for (property, value) in item.iter() {
+            for (property, value) in item {
                 let path = instance_path.push(property.clone());
                 if let Some((_name, node)) = self.properties.get_key_validator(property) {
                     output += node.apply_rooted(value, &path);
@@ -1017,7 +1017,7 @@ impl<M: PropertiesValidatorsMap> Validate
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Object(item) = instance {
             // No properties are allowed, except ones defined in `properties` or `patternProperties`
-            for (property, value) in item.iter() {
+            for (property, value) in item {
                 if let Some(node) = self.properties.get_validator(property) {
                     if is_valid!(node, value) {
                         // Valid for `properties`, check `patternProperties`
@@ -1048,7 +1048,7 @@ impl<M: PropertiesValidatorsMap> Validate
             let mut errors = vec![];
             let mut unexpected = vec![];
             // No properties are allowed, except ones defined in `properties` or `patternProperties`
-            for (property, value) in item.iter() {
+            for (property, value) in item {
                 if let Some((name, node)) = self.properties.get_key_validator(property) {
                     errors.extend(validate!(node, value, instance_path, name));
                     errors.extend(
@@ -1096,7 +1096,7 @@ impl<M: PropertiesValidatorsMap> Validate
             let mut output = BasicOutput::default();
             let mut unexpected = vec![];
             // No properties are allowed, except ones defined in `properties` or `patternProperties`
-            for (property, value) in item.iter() {
+            for (property, value) in item {
                 let path = instance_path.push(property.clone());
                 if let Some((_name, node)) = self.properties.get_key_validator(property) {
                     output += node.apply_rooted(value, &path);

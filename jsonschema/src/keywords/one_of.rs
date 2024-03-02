@@ -54,7 +54,7 @@ impl OneOfValidator {
         first_valid_idx
     }
 
-    #[allow(clippy::integer_arithmetic)]
+    #[allow(clippy::arithmetic_side_effects)]
     fn are_others_valid(&self, instance: &Value, idx: usize) -> bool {
         // `idx + 1` will not overflow, because the maximum possible value there is `usize::MAX - 1`
         // For example we have `usize::MAX` schemas and only the last one is valid, then
