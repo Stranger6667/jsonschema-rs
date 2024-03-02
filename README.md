@@ -139,7 +139,7 @@ This library is functional and ready for use, but its API is still evolving to t
 - Ruby - a [crate](https://github.com/driv3r/rusty_json_schema) by @driv3r
 - NodeJS - a [package](https://github.com/ahungrynoob/jsonschema) by @ahungrynoob
 
-## `cargo test`
+## Running tests
 
 The tests in [jsonschema/](jsonschema/) depend on the [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite). Before calling `cargo test`, download the suite:
 
@@ -149,11 +149,12 @@ $ git submodule update
 ```
 These commands clone the suite to [jsonschema/tests/suite/](jsonschema/tests/suite/).
 
-Now, enter jsonschema/ folder and run `cargo test`.
+Now, enter the `jsonschema` directory and run `cargo test`.
 
 ```bash
 $ cd jsonschema
-$ cargo test ```
+$ cargo test
+```
 
 ## Performance
 
