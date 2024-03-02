@@ -142,7 +142,7 @@ pub struct PrimitiveTypesBitMapIterator {
 }
 impl Iterator for PrimitiveTypesBitMapIterator {
     type Item = PrimitiveType;
-    #[allow(clippy::integer_arithmetic)]
+    #[allow(clippy::arithmetic_side_effects)]
     fn next(&mut self) -> Option<Self::Item> {
         while self.idx <= 7 {
             let bit_value = 1 << self.idx;

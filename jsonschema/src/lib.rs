@@ -82,7 +82,7 @@
     clippy::upper_case_acronyms,
     clippy::needless_collect
 )]
-#![cfg_attr(not(test), allow(clippy::integer_arithmetic, clippy::unwrap_used))]
+#![cfg_attr(not(test), allow(clippy::arithmetic_side_effects, clippy::unwrap_used))]
 mod compilation;
 mod content_encoding;
 mod content_media_type;
