@@ -39,9 +39,15 @@ fn draft_version(json_schema_test_suite_path: &Path, file_path: &Path) -> String
 
 fn load_inner(json_schema_test_suite_path: &Path, dir: &Path, prefix: &str) -> Vec<TestCase> {
     let mut tests = vec![];
-    for result_entry in
-        fs::read_dir(dir).unwrap_or_else(|_| panic!("Tests directory not found: {}", dir.display()))
-    {
+    for result_entry in fs::read_dir(dir).unwrap_or_else(|_| {
+        panic!(
+            r#"JSON Schema Test Suite not found.
+Please ensure the test suite has been initialized correctly.
+Run `git submodule init` and `git submodule update` in the root directory to initialize it.
+If the issue persists, please verify the path to `{}` is correct."#,
+            dir.display()
+        )
+    }) {
         if let Ok(entry) = result_entry {
             let path = entry.path();
             if entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
