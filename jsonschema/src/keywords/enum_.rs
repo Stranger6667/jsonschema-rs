@@ -25,7 +25,7 @@ impl EnumValidator {
         schema_path: JSONPointer,
     ) -> CompilationResult<'a> {
         let mut types = PrimitiveTypesBitMap::new();
-        for item in items.iter() {
+        for item in items {
             types |= PrimitiveType::from(item);
         }
         Ok(Box::new(EnumValidator {

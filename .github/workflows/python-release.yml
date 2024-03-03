@@ -144,23 +144,41 @@ jobs:
     strategy:
       matrix:
         python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
-        target: [ x86_64, i686 ]
+        target: [ x86_64, i686, aarch64 ]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-          architecture: x64
       - name: Build wheels
         uses: messense/maturin-action@v1
         with:
           target: ${{ matrix.target }}
           manylinux: auto
           args: --release -m bindings/python/Cargo.toml --out dist --interpreter ${{ matrix.python-version }}
-      - name: Install built wheel
+      - name: Install built wheel on native architecture
         if: matrix.target == 'x86_64'
         run: |
           pip install dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
+      - uses: uraimo/run-on-arch-action@v2
+        if: matrix.target == 'aarch64'
+        name: Install built wheel on ARM architecture
+        with:
+          arch: ${{ matrix.target }}
+          distro: ubuntu22.04
+          githubToken: ${{ github.token }}
+          install: |
+            export TZ=UTC
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update
+            apt-get install -y --no-install-recommends software-properties-common gpg gpg-agent curl
+            add-apt-repository ppa:deadsnakes/ppa
+            apt-get update
+            apt-get install -y python${{ matrix.python-version }}-dev python${{ matrix.python-version }}-venv
+          run: |
+            python${{ matrix.python-version }} -m venv venv
+            venv/bin/pip install -U pip wheel
+            venv/bin/pip install ${{ env.PACKAGE_NAME }} --no-index --find-links dist/ --force-reinstall
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:

@@ -6,7 +6,6 @@ use pyo3::{
     },
     prelude::*,
     types::PyAny,
-    AsPyPointer,
 };
 use serde::{
     ser::{self, Serialize, SerializeMap, SerializeSeq},
@@ -164,7 +163,7 @@ impl Serialize for SerializePyObject {
                                 str_size as usize,
                             ))
                         };
-                        #[allow(clippy::integer_arithmetic)]
+                        #[allow(clippy::arithmetic_side_effects)]
                         map.serialize_entry(
                             slice,
                             &SerializePyObject::new(value, self.recursion_depth + 1),
@@ -191,7 +190,7 @@ impl Serialize for SerializePyObject {
                             type_ptr = current_ob_type;
                             ob_type = get_object_type(current_ob_type);
                         }
-                        #[allow(clippy::integer_arithmetic)]
+                        #[allow(clippy::arithmetic_side_effects)]
                         sequence.serialize_element(&SerializePyObject::with_obtype(
                             elem,
                             ob_type.clone(),
@@ -219,7 +218,7 @@ impl Serialize for SerializePyObject {
                             type_ptr = current_ob_type;
                             ob_type = get_object_type(current_ob_type);
                         }
-                        #[allow(clippy::integer_arithmetic)]
+                        #[allow(clippy::arithmetic_side_effects)]
                         sequence.serialize_element(&SerializePyObject::with_obtype(
                             elem,
                             ob_type.clone(),
@@ -231,7 +230,7 @@ impl Serialize for SerializePyObject {
             }
             ObjectType::Enum => {
                 let value = unsafe { PyObject_GetAttr(self.object, types::VALUE_STR) };
-                #[allow(clippy::integer_arithmetic)]
+                #[allow(clippy::arithmetic_side_effects)]
                 SerializePyObject::new(value, self.recursion_depth + 1).serialize(serializer)
             }
             ObjectType::Unknown(ref type_name) => Err(ser::Error::custom(format!(

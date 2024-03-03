@@ -72,9 +72,16 @@ def maybe_optional(draft, schema, instance, expected, description, filename):
 
 def pytest_generate_tests(metafunc):
     cases = [
-        maybe_optional(draft, block["schema"], test["data"], test["valid"], test["description"], filename)
+        maybe_optional(
+            draft,
+            block["schema"],
+            test["data"],
+            test["valid"],
+            test["description"],
+            filename,
+        )
         for draft in SUPPORTED_DRAFTS
-        for root, dirs, files in os.walk(f"{TEST_SUITE_PATH}/tests/draft{draft}/")
+        for root, _, files in os.walk(f"{TEST_SUITE_PATH}/tests/draft{draft}/")
         for filename in files
         for block in load_file(os.path.join(root, filename))
         for test in block["tests"]
@@ -85,7 +92,7 @@ def pytest_generate_tests(metafunc):
 def test_draft(filename, draft, schema, instance, expected, description):
     error_message = f"[{filename}] {description}: {schema} | {instance}"
     try:
-        result = jsonschema_rs.is_valid(schema, instance, int(draft))
+        result = jsonschema_rs.is_valid(schema, instance, int(draft), with_meta_schemas=True)
         assert result is expected, error_message
     except ValueError:
         pytest.fail(error_message)

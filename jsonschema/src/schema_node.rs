@@ -87,7 +87,7 @@ impl SchemaNode {
         }
     }
 
-    pub(crate) fn validators(&self) -> impl Iterator<Item = &BoxedValidator> + ExactSizeIterator {
+    pub(crate) fn validators(&self) -> impl ExactSizeIterator<Item = &BoxedValidator> {
         match &self.validators {
             NodeValidators::Boolean { validator } => {
                 if let Some(v) = validator {

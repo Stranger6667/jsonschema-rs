@@ -139,6 +139,23 @@ This library is functional and ready for use, but its API is still evolving to t
 - Ruby - a [crate](https://github.com/driv3r/rusty_json_schema) by @driv3r
 - NodeJS - a [package](https://github.com/ahungrynoob/jsonschema) by @ahungrynoob
 
+## Running tests
+
+The tests in [jsonschema/](jsonschema/) depend on the [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite). Before calling `cargo test`, download the suite:
+
+```bash
+$ git submodule init
+$ git submodule update
+```
+These commands clone the suite to [jsonschema/tests/suite/](jsonschema/tests/suite/).
+
+Now, enter the `jsonschema` directory and run `cargo test`.
+
+```bash
+$ cd jsonschema
+$ cargo test
+```
+
 ## Performance
 
 There is a comparison with other JSON Schema validators written in Rust - `jsonschema_valid==0.4.0` and `valico==3.6.0`.

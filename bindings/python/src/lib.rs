@@ -5,7 +5,7 @@
     clippy::match_same_arms,
     clippy::needless_borrow,
     clippy::print_stdout,
-    clippy::integer_arithmetic,
+    clippy::arithmetic_side_effects,
     clippy::cast_possible_truncation,
     clippy::map_unwrap_or,
     clippy::unseparated_literal_suffix,
@@ -21,7 +21,7 @@ use pyo3::{
     exceptions::{self, PyValueError},
     prelude::*,
     types::{PyAny, PyList, PyType},
-    wrap_pyfunction, AsPyPointer,
+    wrap_pyfunction,
 };
 #[macro_use]
 extern crate pyo3_built;
@@ -321,7 +321,6 @@ fn iter_errors(
 ///
 /// By default Draft 7 will be used for compilation.
 #[pyclass(module = "jsonschema_rs")]
-#[pyo3(text_signature = "(schema, draft=None, with_meta_schemas=False)")]
 struct JSONSchema {
     schema: jsonschema::JSONSchema,
     repr: String,
@@ -342,6 +341,7 @@ fn get_schema_repr(schema: &serde_json::Value) -> String {
 #[pymethods]
 impl JSONSchema {
     #[new]
+    #[pyo3(text_signature = "(schema, draft=None, with_meta_schemas=False)")]
     fn new(
         py: Python<'_>,
         pyschema: &PyAny,
