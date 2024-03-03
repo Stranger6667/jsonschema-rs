@@ -141,14 +141,14 @@ def test_initialization_errors(schema, draft, error):
 
 @given(minimum=st.integers().map(abs))
 def test_minimum(minimum):
-    with suppress(SystemError):
+    with suppress(SystemError, ValueError):
         assert is_valid({"minimum": minimum}, minimum)
         assert is_valid({"minimum": minimum}, minimum - 1) is False
 
 
 @given(maximum=st.integers().map(abs))
 def test_maximum(maximum):
-    with suppress(SystemError):
+    with suppress(SystemError, ValueError):
         assert is_valid({"maximum": maximum}, maximum)
         assert is_valid({"maximum": maximum}, maximum + 1) is False
 

@@ -2,7 +2,8 @@ use pyo3::{
     exceptions,
     ffi::{
         PyDictObject, PyFloat_AS_DOUBLE, PyList_GET_ITEM, PyList_GET_SIZE, PyLong_AsLongLong,
-        PyObject_GetAttr, PyTuple_GET_ITEM, PyTuple_GET_SIZE, Py_TYPE,
+        PyObject_GetAttr, PyTuple_GET_ITEM, PyTuple_GET_SIZE, PyUnicode_AsUTF8AndSize, Py_DECREF,
+        Py_TYPE,
     },
     prelude::*,
     types::PyAny,
@@ -12,7 +13,7 @@ use serde::{
     Serializer,
 };
 
-use crate::{ffi, string, types};
+use crate::{ffi, types};
 use std::ffi::CStr;
 
 pub const RECURSION_LIMIT: u8 = 255;
@@ -114,6 +115,31 @@ pub fn get_object_type(object_type: *mut pyo3::ffi::PyTypeObject) -> ObjectType 
     }
 }
 
+macro_rules! bail_on_integer_conversion_error {
+    ($value:expr) => {
+        if !$value.is_null() {
+            let repr = unsafe { pyo3::ffi::PyObject_Str($value) };
+            let mut size = 0;
+            let ptr = unsafe { PyUnicode_AsUTF8AndSize(repr, &mut size) };
+            return if !ptr.is_null() {
+                let slice = unsafe {
+                    std::str::from_utf8_unchecked(std::slice::from_raw_parts(
+                        ptr.cast::<u8>(),
+                        size as usize,
+                    ))
+                };
+                let message = String::from(slice);
+                unsafe { Py_DECREF(repr) };
+                Err(ser::Error::custom(message))
+            } else {
+                Err(ser::Error::custom(
+                    "Internal Error: Failed to convert exception to string",
+                ))
+            };
+        }
+    };
+}
+
 /// Convert a Python value to `serde_json::Value`
 impl Serialize for SerializePyObject {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -123,16 +149,34 @@ impl Serialize for SerializePyObject {
         match self.object_type {
             ObjectType::Str => {
                 let mut str_size: pyo3::ffi::Py_ssize_t = 0;
-                let uni = unsafe { string::read_utf8_from_str(self.object, &mut str_size) };
+                let ptr = unsafe { PyUnicode_AsUTF8AndSize(self.object, &mut str_size) };
                 let slice = unsafe {
                     std::str::from_utf8_unchecked(std::slice::from_raw_parts(
-                        uni,
+                        ptr.cast::<u8>(),
                         str_size as usize,
                     ))
                 };
                 serializer.serialize_str(slice)
             }
-            ObjectType::Int => serializer.serialize_i64(unsafe { PyLong_AsLongLong(self.object) }),
+            ObjectType::Int => {
+                let value = unsafe { PyLong_AsLongLong(self.object) };
+                if value == -1 {
+                    #[cfg(Py_3_12)]
+                    {
+                        let exception = unsafe { pyo3::ffi::PyErr_GetRaisedException() };
+                        bail_on_integer_conversion_error!(exception);
+                    };
+                    #[cfg(not(Py_3_12))]
+                    {
+                        let mut ptype: *mut pyo3::ffi::PyObject = std::ptr::null_mut();
+                        let mut pvalue: *mut pyo3::ffi::PyObject = std::ptr::null_mut();
+                        let mut ptraceback: *mut pyo3::ffi::PyObject = std::ptr::null_mut();
+                        unsafe { pyo3::ffi::PyErr_Fetch(&mut ptype, &mut pvalue, &mut ptraceback) };
+                        bail_on_integer_conversion_error!(pvalue);
+                    };
+                }
+                serializer.serialize_i64(value)
+            }
             ObjectType::Float => {
                 serializer.serialize_f64(unsafe { PyFloat_AS_DOUBLE(self.object) })
             }
@@ -156,10 +200,10 @@ impl Serialize for SerializePyObject {
                             pyo3::ffi::PyDict_Next(self.object, &mut pos, &mut key, &mut value);
                         }
                         check_type_is_str(key)?;
-                        let uni = unsafe { string::read_utf8_from_str(key, &mut str_size) };
+                        let ptr = unsafe { PyUnicode_AsUTF8AndSize(key, &mut str_size) };
                         let slice = unsafe {
                             std::str::from_utf8_unchecked(std::slice::from_raw_parts(
-                                uni,
+                                ptr.cast::<u8>(),
                                 str_size as usize,
                             ))
                         };
