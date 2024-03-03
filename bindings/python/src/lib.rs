@@ -19,6 +19,7 @@
 use jsonschema::{paths::JSONPointer, Draft};
 use pyo3::{
     exceptions::{self, PyValueError},
+    ffi::PyUnicode_AsUTF8AndSize,
     prelude::*,
     types::{PyAny, PyList, PyType},
     wrap_pyfunction,
@@ -28,7 +29,6 @@ extern crate pyo3_built;
 
 mod ffi;
 mod ser;
-mod string;
 mod types;
 
 const DRAFT7: u8 = 7;
@@ -385,8 +385,8 @@ impl JSONSchema {
             )))
         } else {
             let mut str_size: pyo3::ffi::Py_ssize_t = 0;
-            let uni = unsafe { string::read_utf8_from_str(obj_ptr, &mut str_size) };
-            let slice = unsafe { std::slice::from_raw_parts(uni, str_size as usize) };
+            let ptr = unsafe { PyUnicode_AsUTF8AndSize(obj_ptr, &mut str_size) };
+            let slice = unsafe { std::slice::from_raw_parts(ptr.cast::<u8>(), str_size as usize) };
             let raw_schema = serde_json::from_slice(slice)
                 .map_err(|error| PyValueError::new_err(format!("Invalid string: {}", error)))?;
             let options = make_options(draft, with_meta_schemas)?;

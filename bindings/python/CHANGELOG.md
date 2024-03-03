@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Support for Python 3.12 [#439](https://github.com/Stranger6667/jsonschema-rs/issues/439)
+
 ### Changed
 
 - Expose drafts 2019-09 and 2020-12 to Python
