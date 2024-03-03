@@ -3,10 +3,10 @@ name = "jsonschema_rs"
 description = "Fast JSON Schema validation for Python implemented in Rust"
 keywords = ["jsonschema", "validation", "rust"]
 authors = [
-    {name = "Dmitry Dygalo", email = "dadygalo@gmail.com"}
+    {name = "Dmitry Dygalo", email = "dmitry@dygalo.dev"}
 ]
 maintainers = [
-    {name = "Dmitry Dygalo", email = "dadygalo@gmail.com"}
+    {name = "Dmitry Dygalo", email = "dmitry@dygalo.dev"}
 ]
 readme = "README.rst"
 license = { text = "MIT" }
@@ -22,6 +22,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Rust",
 ]

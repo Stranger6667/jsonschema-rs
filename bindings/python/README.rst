@@ -152,7 +152,7 @@ Measured with stable Rust 1.56, CPython 3.9.7 / PyPy3 7.3.6 on i8700K (12 cores)
 Python support
 --------------
 
-``jsonschema-rs`` supports CPython 3.7, 3.8, 3.9, 3.10, and 3.11.
+``jsonschema-rs`` supports CPython 3.7, 3.8, 3.9, 3.10, 3.11, and 3.12.
 
 License
 -------
