@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Update `pyo3` to `0.20`.
+
 ## [0.17.1] - 2023-07-05
 
 ### Changed
