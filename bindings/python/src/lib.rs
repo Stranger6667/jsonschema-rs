@@ -34,6 +34,8 @@ mod types;
 const DRAFT7: u8 = 7;
 const DRAFT6: u8 = 6;
 const DRAFT4: u8 = 4;
+const DRAFT201909: u8 = 19;
+const DRAFT202012: u8 = 20;
 
 /// An instance is invalid under a provided schema.
 #[pyclass(extends=exceptions::PyValueError, module="jsonschema_rs")]
@@ -117,6 +119,8 @@ fn get_draft(draft: u8) -> PyResult<Draft> {
         DRAFT4 => Ok(jsonschema::Draft::Draft4),
         DRAFT6 => Ok(jsonschema::Draft::Draft6),
         DRAFT7 => Ok(jsonschema::Draft::Draft7),
+        DRAFT201909 => Ok(jsonschema::Draft::Draft201909),
+        DRAFT202012 => Ok(jsonschema::Draft::Draft202012),
         _ => Err(exceptions::PyValueError::new_err(format!(
             "Unknown draft: {}",
             draft
@@ -462,6 +466,8 @@ fn jsonschema_rs(py: Python<'_>, module: &PyModule) -> PyResult<()> {
     module.add("Draft4", DRAFT4)?;
     module.add("Draft6", DRAFT6)?;
     module.add("Draft7", DRAFT7)?;
+    module.add("Draft201909", DRAFT201909)?;
+    module.add("Draft202012", DRAFT202012)?;
 
     // Add build metadata to ease triaging incoming issues
     module.add("__build__", pyo3_built::pyo3_built!(py, build))?;

@@ -67,3 +67,5 @@ class ValidationError(ValueError):
 Draft4: int
 Draft6: int
 Draft7: int
+Draft201909: int
+Draft202012: int
