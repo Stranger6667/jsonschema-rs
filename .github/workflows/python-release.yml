@@ -49,7 +49,7 @@ jobs:
     runs-on: macos-12
     strategy:
       matrix:
-        python-version: ['3.7', '3.8', '3.9', '3.10', '3.11']
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12' ]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -80,7 +80,7 @@ jobs:
     runs-on: macos-12
     strategy:
       matrix:
-        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12' ]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -96,7 +96,7 @@ jobs:
       - name: Build wheels - universal2
         uses: messense/maturin-action@v1
         with:
-          args: --release -m bindings/python/Cargo.toml --universal2 --out dist --interpreter ${{ matrix.python-version }}
+          args: --release -m bindings/python/Cargo.toml --target universal2-apple-darwin --out dist --interpreter ${{ matrix.python-version }}
       - name: Install built wheel - universal2
         run: |
           pip install dist/${{ env.PACKAGE_NAME }}-*universal2.whl --force-reinstall
@@ -110,7 +110,7 @@ jobs:
     runs-on: windows-2022
     strategy:
       matrix:
-        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12' ]
         target: [ x64, x86 ]
     steps:
       - uses: actions/checkout@v3
@@ -143,7 +143,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12' ]
         target: [ x86_64, i686, aarch64 ]
     steps:
       - uses: actions/checkout@v3

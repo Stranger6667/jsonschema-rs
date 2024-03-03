@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.17.2] - 2024-03-03
+
 ### Added
 
 - Support for Python 3.12 [#439](https://github.com/Stranger6667/jsonschema-rs/issues/439)
@@ -312,7 +314,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.17.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.17.2...HEAD
+[0.17.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.17.1...python-v0.17.2
 [0.17.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.3...python-v0.17.1
 [0.16.3]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.2...python-v0.16.3
 [0.16.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.1...python-v0.16.2
