@@ -16,7 +16,7 @@ name = "jsonschema_rs"
 crate-type = ["cdylib"]
 
 [build-dependencies]
-built = { version = "0.6.1", features = ["chrono"] }
+built = { version = "0.7.1", features = ["cargo-lock", "chrono"] }
 
 [dependencies.jsonschema]
 path = "../../jsonschema"
@@ -27,7 +27,7 @@ features = ["resolve-http", "resolve-file"]
 [dependencies]
 serde_json = "1.0.91"
 serde = "1.0.152"
-pyo3 = { version = "0.19.1", features = ["extension-module"] }
+pyo3 = { version = "0.20.3", features = ["extension-module"] }
 pyo3-built = "0.4.7"
 
 [profile.release]
