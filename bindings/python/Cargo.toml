@@ -22,7 +22,7 @@ built = { version = "0.7.1", features = ["cargo-lock", "chrono"] }
 path = "../../jsonschema"
 version = "*"
 default-features = false
-features = ["resolve-http", "resolve-file"]
+features = ["resolve-http", "resolve-file", "draft201909", "draft202012"]
 
 [dependencies]
 serde_json = "1.0.91"
