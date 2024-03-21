@@ -67,6 +67,19 @@ fn is_enum_subclass(object_type: *mut pyo3::ffi::PyTypeObject) -> bool {
     unsafe { (*(object_type.cast::<ffi::PyTypeObject>())).ob_type == types::ENUM_TYPE }
 }
 
+#[inline]
+fn is_dict_subclass(object_type: *mut pyo3::ffi::PyTypeObject) -> bool {
+    // traverse the object's inheritance chain to check if it's a dict subclass
+    let mut current_type = object_type;
+    while !current_type.is_null() {
+        if current_type == unsafe { types::DICT_TYPE } {
+            return true;
+        }
+        current_type = unsafe { (*current_type).tp_base }
+    }
+    false
+}
+
 fn get_object_type_from_object(object: *mut pyo3::ffi::PyObject) -> ObjectType {
     unsafe {
         let object_type = Py_TYPE(object);
@@ -110,6 +123,8 @@ pub fn get_object_type(object_type: *mut pyo3::ffi::PyTypeObject) -> ObjectType 
         ObjectType::Dict
     } else if is_enum_subclass(object_type) {
         ObjectType::Enum
+    } else if is_dict_subclass(object_type) {
+        ObjectType::Dict
     } else {
         ObjectType::Unknown(get_type_name(object_type).to_string())
     }
