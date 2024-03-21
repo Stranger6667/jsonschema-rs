@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Support subclasses of Python `dict`s [#427](https://github.com/Stranger6667/jsonschema-rs/issues/427)
+
 ## [0.17.2] - 2024-03-03
 
 ### Added

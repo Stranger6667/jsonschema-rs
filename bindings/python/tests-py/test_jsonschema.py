@@ -1,6 +1,6 @@
 import sys
 import uuid
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 from contextlib import suppress
 from enum import Enum
 from functools import partial
@@ -248,3 +248,30 @@ def test_dict_with_non_str_keys():
     with pytest.raises(ValueError) as exec_info:
         validate(schema, instance)
     assert exec_info.value.args[0] == "Dict key must be str. Got 'UUID'"
+
+
+class MyDict(dict):
+    pass
+
+
+class MyDict2(MyDict):
+    pass
+
+
+@pytest.mark.parametrize(
+    "type_, value, expected",
+    (
+        (dict, 1, True),
+        (dict, "bar", False),
+        (OrderedDict, 1, True),
+        (OrderedDict, "bar", False),
+        (MyDict, 1, True),
+        (MyDict, "bar", False),
+        (MyDict2, 1, True),
+        (MyDict2, "bar", False),
+    ),
+)
+def test_dict_subclasses(type_, value, expected):
+    schema = {"type": "object", "properties": {"foo": {"type": "integer"}}}
+    document = type_({"foo": value})
+    assert is_valid(schema, document) is expected
