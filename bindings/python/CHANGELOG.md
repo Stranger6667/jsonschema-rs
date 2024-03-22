@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.17.3] - 2024-03-22
+
 ### Added
 
 - Support subclasses of Python `dict`s [#427](https://github.com/Stranger6667/jsonschema-rs/issues/427)
@@ -318,7 +320,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.17.2...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.17.3...HEAD
+[0.17.3]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.17.2...python-v0.17.3
 [0.17.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.17.1...python-v0.17.2
 [0.17.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.3...python-v0.17.1
 [0.16.3]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.2...python-v0.16.3
