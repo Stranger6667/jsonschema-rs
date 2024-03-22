@@ -1,6 +1,6 @@
 import sys
 import uuid
-from collections import namedtuple, OrderedDict
+from collections import OrderedDict, namedtuple
 from contextlib import suppress
 from enum import Enum
 from functools import partial
