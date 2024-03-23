@@ -3,7 +3,7 @@
 /bindings/*/target
 /bench_helpers/target
 /jsonschema-test-suite/target
-/jsonschema-csr/target
+/jsonschema-rewrite/target
 .hypothesis
 .benchmarks
 /jsonschema/Cargo.lock
