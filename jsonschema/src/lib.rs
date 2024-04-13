@@ -98,7 +98,7 @@ mod schemas;
 mod validator;
 
 pub use compilation::{
-    options::{CompilationOptions, CustomKeywordDefinition},
+    options::{CompilationOptions, CustomKeywordValidator},
     JSONSchema,
 };
 pub use error::{ErrorIterator, ValidationError};

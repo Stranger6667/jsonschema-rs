@@ -1,41 +1,36 @@
 use crate::compilation::context::CompilationContext;
-use crate::compilation::options::CustomKeywordDefinition;
+use crate::compilation::options::CustomKeywordValidator;
 use crate::keywords::CompilationResult;
 use crate::paths::{InstancePath, JSONPointer, PathChunk};
 use crate::validator::Validate;
 use crate::ErrorIterator;
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::fmt::{Display, Formatter};
-use std::sync::Arc;
-
-// An Arc<Value> is used so the borrow checker doesn't need explicit lifetime parameters.
-// This would pollute dependents with lifetime parameters.
-pub(crate) type CustomValidateFn =
-    fn(&Value, JSONPointer, Arc<Value>, JSONPointer, Arc<Value>) -> ErrorIterator;
-pub(crate) type CustomIsValidFn = fn(&Value, &Value, &Value) -> bool;
+use std::sync::{Arc, Mutex};
 
 /// Custom keyword validation implemented by user provided validation functions.
-pub(crate) struct CustomKeywordValidator {
+pub(crate) struct CompiledCustomKeywordValidator {
     schema: Arc<Value>,
     subschema: Arc<Value>,
     subschema_path: JSONPointer,
-    validate: CustomValidateFn,
-    is_valid: CustomIsValidFn,
+    validator:
+        Arc<Mutex<Box<dyn for<'instance, 'schema> CustomKeywordValidator<'instance, 'schema>>>>,
 }
 
-impl Display for CustomKeywordValidator {
+impl Display for CompiledCustomKeywordValidator {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "")
     }
 }
 
-impl Validate for CustomKeywordValidator {
+impl Validate for CompiledCustomKeywordValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'instance> {
-        (self.validate)(
+        let mut validator = self.validator.lock().expect("Access to validator");
+        validator.validate(
             instance,
             instance_path.into(),
             self.subschema.clone(),
@@ -45,27 +40,25 @@ impl Validate for CustomKeywordValidator {
     }
 
     fn is_valid(&self, instance: &Value) -> bool {
-        (self.is_valid)(instance, &self.subschema, &self.schema)
+        let mut validator = self.validator.lock().expect("Access to validator");
+        validator.is_valid(instance, &self.subschema, &self.schema)
     }
 }
 
 pub(crate) fn compile_custom_keyword_validator<'a>(
     context: &CompilationContext,
     keyword: impl Into<PathChunk>,
-    keyword_definition: &CustomKeywordDefinition,
+    validator: Arc<
+        Mutex<Box<dyn for<'instance, 'schema> CustomKeywordValidator<'instance, 'schema>>>,
+    >,
     subschema: Value,
     schema: Value,
 ) -> CompilationResult<'a> {
     let subschema_path = context.as_pointer_with(keyword);
-    match keyword_definition {
-        CustomKeywordDefinition::Validator { validate, is_valid } => {
-            Ok(Box::new(CustomKeywordValidator {
-                schema: Arc::new(schema),
-                subschema: Arc::new(subschema),
-                subschema_path,
-                validate: *validate,
-                is_valid: *is_valid,
-            }))
-        }
-    }
+    Ok(Box::new(CompiledCustomKeywordValidator {
+        schema: Arc::new(schema),
+        subschema: Arc::new(subschema),
+        subschema_path,
+        validator,
+    }))
 }
