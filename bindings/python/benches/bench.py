@@ -36,8 +36,22 @@ CANADA = load_from_benches("canada.json")
 CITM_CATALOG_SCHEMA = load_from_benches("citm_catalog_schema.json")
 CITM_CATALOG = load_from_benches("citm_catalog.json")
 FAST_SCHEMA = load_from_benches("fast_schema.json")
-FAST_INSTANCE_VALID = [9, "hello", [1, "a", True], {"a": "a", "b": "b", "d": "d"}, 42, 3]
-FAST_INSTANCE_INVALID = [10, "world", [1, "a", True], {"a": "a", "b": "b", "c": "xy"}, "str", 5]
+FAST_INSTANCE_VALID = [
+    9,
+    "hello",
+    [1, "a", True],
+    {"a": "a", "b": "b", "d": "d"},
+    42,
+    3,
+]
+FAST_INSTANCE_INVALID = [
+    10,
+    "world",
+    [1, "a", True],
+    {"a": "a", "b": "b", "c": "xy"},
+    "str",
+    5,
+]
 
 
 @pytest.fixture(params=[True, False], ids=("compiled", "raw"))
@@ -46,7 +60,12 @@ def is_compiled(request):
 
 
 if jsonschema_rs is not None:
-    variants = ["jsonschema-rs-is-valid", "jsonschema-rs-validate", "jsonschema", "fastjsonschema"]
+    variants = [
+        "jsonschema-rs-is-valid",
+        "jsonschema-rs-validate",
+        "jsonschema",
+        "fastjsonschema",
+    ]
 else:
     variants = ["jsonschema", "fastjsonschema"]
 
@@ -66,12 +85,20 @@ def args(request, variant, is_compiled):
         if is_compiled:
             return jsonschema_rs.JSONSchema(schema, with_meta_schemas=True).is_valid, instance
         else:
-            return partial(jsonschema_rs.is_valid, with_meta_schemas=True), schema, instance
+            return (
+                partial(jsonschema_rs.is_valid, with_meta_schemas=True),
+                schema,
+                instance,
+            )
     if variant == "jsonschema-rs-validate":
         if is_compiled:
             return jsonschema_rs.JSONSchema(schema, with_meta_schemas=True).validate, instance
         else:
-            return partial(jsonschema_rs.validate, with_meta_schemas=True), schema, instance
+            return (
+                partial(jsonschema_rs.validate, with_meta_schemas=True),
+                schema,
+                instance,
+            )
     if variant == "jsonschema":
         if is_compiled:
             return jsonschema.validators.validator_for(schema)(schema).is_valid, instance
@@ -85,7 +112,14 @@ def args(request, variant, is_compiled):
 
 
 @pytest.mark.parametrize(
-    "name", ("openapi.json", "swagger.json", "geojson.json", "citm_catalog_schema.json", "fast_schema.json")
+    "name",
+    (
+        "openapi.json",
+        "swagger.json",
+        "geojson.json",
+        "citm_catalog_schema.json",
+        "fast_schema.json",
+    ),
 )
 @pytest.mark.parametrize(
     "func",

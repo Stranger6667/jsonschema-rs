@@ -13,6 +13,7 @@
 - Bump `percent-encoding` to `2.3`.
 - Bump `regex` to `1.10`.
 - Bump `url` to `2.5`.
+- Build CLI only if the `cli` feature is enabled.
 
 ## [0.17.1] - 2023-07-05
 

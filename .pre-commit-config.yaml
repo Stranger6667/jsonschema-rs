@@ -1,9 +1,9 @@
 default_language_version:
-  python: python3.9
+  python: python3.11
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.1.0
+    rev: v4.6.0
     hooks:
       - id: check-yaml
       - id: end-of-file-fixer
@@ -15,23 +15,21 @@ repos:
       - id: check-merge-conflict
 
   - repo: https://github.com/jorisroovers/gitlint
-    rev: v0.17.0
+    rev: v0.19.1
     hooks:
       - id: gitlint
 
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.26.3
+    rev: v1.35.1
     hooks:
       - id: yamllint
 
-  - repo: https://github.com/ambv/black
-    rev: 22.3.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.7
     hooks:
-      - id: black
-        types: [python]
+      - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-isort
-    rev: v5.10.1
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.7
     hooks:
-      - id: isort
-        additional_dependencies: ["isort[pyproject]"]
+      - id: ruff

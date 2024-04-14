@@ -1,1 +1,1 @@
-from .jsonschema_rs import *
+from .jsonschema_rs import *  # noqa: F403
