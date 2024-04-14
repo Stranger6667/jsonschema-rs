@@ -281,7 +281,7 @@ pub struct CompilationOptions {
     ignore_unknown_formats: bool,
     custom_keywords: AHashMap<
         String, // TODO<samgqroberts> 2024-04-13 should this also be a &'static str
-        Arc<Mutex<Box<dyn for<'instance, 'schema> CustomKeywordValidator<'instance, 'schema>>>>,
+        Arc<Mutex<Box<dyn CustomKeywordValidator>>>,
     >,
 }
 
@@ -689,14 +689,7 @@ impl CompilationOptions {
     pub fn with_custom_keyword<T>(
         &mut self,
         keyword: T,
-        definition: Arc<
-            Mutex<
-                Box<
-                    dyn for<'instance, 'schema> CustomKeywordValidator<'instance, 'schema>
-                        + 'static,
-                >,
-            >,
-        >,
+        definition: Arc<Mutex<Box<dyn CustomKeywordValidator + 'static>>>,
     ) -> &mut Self
     where
         T: Into<String>,
@@ -708,9 +701,7 @@ impl CompilationOptions {
     pub(crate) fn get_custom_keyword_definition(
         &self,
         keyword: &str,
-    ) -> Option<
-        &Arc<Mutex<Box<dyn for<'instance, 'schema> CustomKeywordValidator<'instance, 'schema>>>>,
-    > {
+    ) -> Option<&Arc<Mutex<Box<dyn CustomKeywordValidator>>>> {
         self.custom_keywords.get(keyword)
     }
 }
@@ -731,7 +722,7 @@ impl fmt::Debug for CompilationOptions {
 }
 
 /// Trait that allows implementing custom validation for keywords.
-pub trait CustomKeywordValidator<'instance, 'schema>: Send + Sync {
+pub trait CustomKeywordValidator: Send + Sync {
     /// Validate [instance](serde_json::Value) according to a custom specification
     ///
     /// A custom keyword validator may be used when a validation that cannot, or
@@ -739,7 +730,7 @@ pub trait CustomKeywordValidator<'instance, 'schema>: Send + Sync {
     ///
     /// The custom validation is applied in addition to the JSON schema validation.
     /// Validate an instance returning any and all detected validation errors
-    fn validate(
+    fn validate<'instance>(
         &mut self,
         instance: &'instance serde_json::Value,
         instance_path: JSONPointer,
@@ -748,9 +739,9 @@ pub trait CustomKeywordValidator<'instance, 'schema>: Send + Sync {
         schema: Arc<serde_json::Value>,
     ) -> ErrorIterator<'instance>;
     /// Determine if an instance is valid
-    fn is_valid(
+    fn is_valid<'schema>(
         &mut self,
-        instance: &'instance serde_json::Value,
+        instance: &serde_json::Value,
         subschema: &'schema serde_json::Value,
         schema: &'schema serde_json::Value,
     ) -> bool;

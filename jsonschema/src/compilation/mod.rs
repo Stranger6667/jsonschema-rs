@@ -332,8 +332,8 @@ mod tests {
         // Define a custom validator that verifies the object's keys consist of
         // only ASCII representable characters.
         struct CustomObjectValidator;
-        impl<'instance> CustomKeywordValidator<'instance, '_> for CustomObjectValidator {
-            fn validate(
+        impl CustomKeywordValidator for CustomObjectValidator {
+            fn validate<'instance>(
                 &mut self,
                 instance: &'instance Value,
                 instance_path: JSONPointer,
@@ -418,8 +418,8 @@ mod tests {
         // Define a custom keyword validator that overrides "minimum"
         // so that "minimum" may apply to "currency"-formatted strings as well
         struct CustomMinimumValidator;
-        impl<'instance> CustomKeywordValidator<'instance, '_> for CustomMinimumValidator {
-            fn validate(
+        impl CustomKeywordValidator for CustomMinimumValidator {
+            fn validate<'instance>(
                 &mut self,
                 instance: &'instance Value,
                 instance_path: JSONPointer,
@@ -458,16 +458,14 @@ mod tests {
                         let mut valid = true;
                         if let Some(schema) = schema.as_object() {
                             if let Some(format) = schema.get("format") {
-                                if format == "currency" {
-                                    if currency_format_checker(instance) {
-                                        // all preconditions for minimum applying are met
-                                        let as_f64 = instance
-                                            .parse::<f64>()
-                                            .expect("format validated by regex checker");
-                                        println!("1 {:#?} {:#?}", as_f64, limit.as_f64().unwrap());
-                                        valid = !NumCmp::num_lt(as_f64, limit.as_f64().unwrap());
-                                        println!("valid {:#?}", valid);
-                                    }
+                                if format == "currency" && currency_format_checker(instance) {
+                                    // all preconditions for minimum applying are met
+                                    let as_f64 = instance
+                                        .parse::<f64>()
+                                        .expect("format validated by regex checker");
+                                    println!("1 {:#?} {:#?}", as_f64, limit.as_f64().unwrap());
+                                    valid = !NumCmp::num_lt(as_f64, limit.as_f64().unwrap());
+                                    println!("valid {:#?}", valid);
                                 }
                             }
                         }
@@ -491,7 +489,6 @@ mod tests {
             }
 
             fn is_valid(&mut self, instance: &Value, subschema: &Value, schema: &Value) -> bool {
-                let subschema: &Value = &subschema;
                 let limit = match subschema {
                     Value::Number(limit) => limit,
                     _ => return false,
@@ -513,16 +510,14 @@ mod tests {
                         let mut valid = true;
                         if let Some(schema) = schema.as_object() {
                             if let Some(format) = schema.get("format") {
-                                if format == "currency" {
-                                    if currency_format_checker(instance) {
-                                        // all preconditions for minimum applying are met
-                                        let as_f64 = instance
-                                            .parse::<f64>()
-                                            .expect("format validated by regex checker");
-                                        println!("1 {:#?} {:#?}", as_f64, limit.as_f64().unwrap());
-                                        valid = !NumCmp::num_lt(as_f64, limit.as_f64().unwrap());
-                                        println!("valid {:#?}", valid);
-                                    }
+                                if format == "currency" && currency_format_checker(instance) {
+                                    // all preconditions for minimum applying are met
+                                    let as_f64 = instance
+                                        .parse::<f64>()
+                                        .expect("format validated by regex checker");
+                                    println!("1 {:#?} {:#?}", as_f64, limit.as_f64().unwrap());
+                                    valid = !NumCmp::num_lt(as_f64, limit.as_f64().unwrap());
+                                    println!("valid {:#?}", valid);
                                 }
                             }
                         }
@@ -531,7 +526,7 @@ mod tests {
                     // in all other cases, the "minimum" keyword should not apply
                     _ => true,
                 };
-                return valid;
+                valid
             }
         }
 
@@ -588,39 +583,51 @@ mod tests {
         // Define a custom keyword validator that wraps "minimum"
         // but maintains a counter of how many times the validator was applied.
         struct CountingValidator {
-            count: u32,
+            count: Arc<Mutex<i64>>,
         }
-        impl<'instance> CustomKeywordValidator<'instance, '_> for CountingValidator {
-            fn validate(
+
+        impl CountingValidator {
+            fn increment(&mut self, amount: i64) {
+                let mut count = self.count.lock().expect("Lock is poisoned");
+                *count += amount;
+            }
+        }
+
+        impl CustomKeywordValidator for CountingValidator {
+            fn validate<'instance>(
                 &mut self,
-                instance: &'instance Value,
-                instance_path: JSONPointer,
+                _: &'instance Value,
+                _: JSONPointer,
                 subschema: Arc<Value>,
-                subschema_path: JSONPointer,
-                schema: Arc<Value>,
+                _: JSONPointer,
+                _: Arc<Value>,
             ) -> ErrorIterator<'instance> {
                 let amount = match &*subschema {
                     Value::Number(x) => x.as_i64().expect("countme value must be integer"),
                     _ => panic!("Validator requires numeric values"),
                 };
-                self.count += amount as u32;
+                self.increment(amount);
                 Box::new(None.into_iter())
             }
 
-            fn is_valid(&mut self, instance: &Value, subschema: &Value, schema: &Value) -> bool {
+            fn is_valid(&mut self, _: &Value, subschema: &Value, _: &Value) -> bool {
                 let amount = match subschema {
                     Value::Number(x) => x.as_i64().expect("countme value must be integer"),
                     _ => return false,
                 };
-                self.count += amount as u32;
+                self.increment(amount);
                 true
             }
         }
 
         // define compilation options that include the custom format and the overridden keyword
-        let validator = Arc::new(Mutex::new(Box::new(CountingValidator { count: 0 })));
+        let count = Arc::new(Mutex::new(0));
+        let boxed: Box<dyn CustomKeywordValidator> = Box::new(CountingValidator {
+            count: count.clone(),
+        });
+        let validator = Arc::new(Mutex::new(boxed));
         let mut options = JSONSchema::options();
-        let options = options.with_custom_keyword("countme", validator.clone());
+        let options = options.with_custom_keyword("countme", validator);
 
         // Define a schema that includes the custom keyword and therefore should increase the count
         let schema = json!({ "countme": 3, "type": "string" });
@@ -628,11 +635,11 @@ mod tests {
 
         // Because the schema has "countme" in it, whenever we run validation we should expect the validator's count to increase
         let instance_ok = json!("i am a string");
-        assert_eq!(validator.lock().expect("lock").count, 0);
+        assert_eq!(*count.lock().expect("Lock is poinsoned"), 0);
         assert!(compiled.validate(&instance_ok).is_err());
-        assert_eq!(validator.lock().expect("lock").count, 3);
+        assert_eq!(*count.lock().expect("Lock is poinsoned"), 3);
         assert!(!compiled.is_valid(&instance_ok));
-        assert_eq!(validator.lock().expect("lock").count, 6);
+        assert_eq!(*count.lock().expect("Lock is poinsoned"), 6);
 
         // TODO compile a schema that doesn't have "countme" and ensure count does not increase
     }
