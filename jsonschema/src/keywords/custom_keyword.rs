@@ -13,13 +13,12 @@ pub(crate) struct CompiledCustomKeywordValidator {
     schema: Arc<Value>,
     subschema: Arc<Value>,
     subschema_path: JSONPointer,
-    validator:
-        Arc<Mutex<Box<dyn for<'instance, 'schema> CustomKeywordValidator<'instance, 'schema>>>>,
+    validator: Arc<Mutex<Box<dyn CustomKeywordValidator>>>,
 }
 
 impl Display for CompiledCustomKeywordValidator {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "")
+    fn fmt(&self, _: &mut Formatter<'_>) -> std::fmt::Result {
+        Ok(())
     }
 }
 
@@ -48,9 +47,7 @@ impl Validate for CompiledCustomKeywordValidator {
 pub(crate) fn compile_custom_keyword_validator<'a>(
     context: &CompilationContext,
     keyword: impl Into<PathChunk>,
-    validator: Arc<
-        Mutex<Box<dyn for<'instance, 'schema> CustomKeywordValidator<'instance, 'schema>>>,
-    >,
+    validator: Arc<Mutex<Box<dyn CustomKeywordValidator>>>,
     subschema: Value,
     schema: Value,
 ) -> CompilationResult<'a> {
