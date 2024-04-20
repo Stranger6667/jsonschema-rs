@@ -6,14 +6,14 @@ use crate::validator::Validate;
 use crate::ErrorIterator;
 use serde_json::Value;
 use std::fmt::{Display, Formatter};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 /// Custom keyword validation implemented by user provided validation functions.
 pub(crate) struct CompiledCustomKeywordValidator {
     schema: Arc<Value>,
     subschema: Arc<Value>,
     subschema_path: JSONPointer,
-    validator: Arc<Mutex<Box<dyn CustomKeywordValidator>>>,
+    validator: Box<dyn CustomKeywordValidator>,
 }
 
 impl Display for CompiledCustomKeywordValidator {
@@ -28,8 +28,7 @@ impl Validate for CompiledCustomKeywordValidator {
         instance: &'instance Value,
         instance_path: &InstancePath,
     ) -> ErrorIterator<'instance> {
-        let mut validator = self.validator.lock().expect("Access to validator");
-        validator.validate(
+        self.validator.validate(
             instance,
             instance_path.into(),
             self.subschema.clone(),
@@ -39,15 +38,15 @@ impl Validate for CompiledCustomKeywordValidator {
     }
 
     fn is_valid(&self, instance: &Value) -> bool {
-        let mut validator = self.validator.lock().expect("Access to validator");
-        validator.is_valid(instance, &self.subschema, &self.schema)
+        self.validator
+            .is_valid(instance, &self.subschema, &self.schema)
     }
 }
 
 pub(crate) fn compile_custom_keyword_validator<'a>(
     context: &CompilationContext,
     keyword: impl Into<PathChunk>,
-    validator: Arc<Mutex<Box<dyn CustomKeywordValidator>>>,
+    validator: Box<dyn CustomKeywordValidator>,
     subschema: Value,
     schema: Value,
 ) -> CompilationResult<'a> {

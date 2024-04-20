@@ -200,13 +200,11 @@ pub(crate) fn compile_validators<'a>(
                     }
                     // first check if this keyword was added as a custom keyword
                     // it may override existing keyword behavior
-                    if let Some(keyword_definition) =
-                        context.config.get_custom_keyword_definition(keyword)
-                    {
+                    if let Some(f) = context.config.get_custom_keyword_constructor(keyword) {
                         let validator = compile_custom_keyword_validator(
                             &context,
                             keyword.clone(),
-                            keyword_definition.clone(),
+                            f(),
                             subschema.clone(),
                             schema.clone(),
                         )?;
@@ -334,7 +332,7 @@ mod tests {
         struct CustomObjectValidator;
         impl CustomKeywordValidator for CustomObjectValidator {
             fn validate<'instance>(
-                &mut self,
+                &self,
                 instance: &'instance Value,
                 instance_path: JSONPointer,
                 subschema: Arc<Value>,
@@ -365,7 +363,7 @@ mod tests {
                 Box::new(errors.into_iter())
             }
 
-            fn is_valid(&mut self, instance: &Value, subschema: &Value, _schema: &Value) -> bool {
+            fn is_valid(&self, instance: &Value, subschema: &Value, _schema: &Value) -> bool {
                 if subschema.as_str().map_or(true, |str| str != "ascii-keys") {
                     return false; // Invalid schema
                 }
@@ -382,10 +380,7 @@ mod tests {
         let schema =
             json!({ "custom-object-type": "ascii-keys", "type": "object", "minProperties": 1 });
         let json_schema = JSONSchema::options()
-            .with_custom_keyword(
-                "custom-object-type",
-                Arc::new(Mutex::new(Box::new(CustomObjectValidator))),
-            )
+            .with_custom_keyword("custom-object-type", || Box::new(CustomObjectValidator))
             .compile(&schema)
             .unwrap();
 
@@ -420,7 +415,7 @@ mod tests {
         struct CustomMinimumValidator;
         impl CustomKeywordValidator for CustomMinimumValidator {
             fn validate<'instance>(
-                &mut self,
+                &self,
                 instance: &'instance Value,
                 instance_path: JSONPointer,
                 subschema: Arc<Value>,
@@ -488,7 +483,7 @@ mod tests {
                 Box::new(errors.into_iter())
             }
 
-            fn is_valid(&mut self, instance: &Value, subschema: &Value, schema: &Value) -> bool {
+            fn is_valid(&self, instance: &Value, subschema: &Value, schema: &Value) -> bool {
                 let limit = match subschema {
                     Value::Number(limit) => limit,
                     _ => return false,
@@ -534,10 +529,7 @@ mod tests {
         let mut options = JSONSchema::options();
         let options = options
             .with_format("currency", currency_format_checker)
-            .with_custom_keyword(
-                "minimum",
-                Arc::new(Mutex::new(Box::new(CustomMinimumValidator))),
-            );
+            .with_custom_keyword("minimum", || Box::new(CustomMinimumValidator));
 
         // Define a schema that includes both the custom format and the overridden keyword
         let schema = json!({ "minimum": 2, "type": "string", "format": "currency" });
@@ -583,11 +575,11 @@ mod tests {
         // Define a custom keyword validator that wraps "minimum"
         // but maintains a counter of how many times the validator was applied.
         struct CountingValidator {
-            count: Arc<Mutex<i64>>,
+            count: Mutex<i64>,
         }
 
         impl CountingValidator {
-            fn increment(&mut self, amount: i64) {
+            fn increment(&self, amount: i64) {
                 let mut count = self.count.lock().expect("Lock is poisoned");
                 *count += amount;
             }
@@ -595,7 +587,7 @@ mod tests {
 
         impl CustomKeywordValidator for CountingValidator {
             fn validate<'instance>(
-                &mut self,
+                &self,
                 _: &'instance Value,
                 _: JSONPointer,
                 subschema: Arc<Value>,
@@ -610,7 +602,7 @@ mod tests {
                 Box::new(None.into_iter())
             }
 
-            fn is_valid(&mut self, _: &Value, subschema: &Value, _: &Value) -> bool {
+            fn is_valid(&self, _: &Value, subschema: &Value, _: &Value) -> bool {
                 let amount = match subschema {
                     Value::Number(x) => x.as_i64().expect("countme value must be integer"),
                     _ => return false,
@@ -621,18 +613,20 @@ mod tests {
         }
 
         // define compilation options that include the custom format and the overridden keyword
-        let count = Arc::new(Mutex::new(0));
-        let boxed: Box<dyn CustomKeywordValidator> = Box::new(CountingValidator {
-            count: count.clone(),
-        });
-        let validator = Arc::new(Mutex::new(boxed));
+        let count = Mutex::new(0);
         let mut options = JSONSchema::options();
-        let options = options.with_custom_keyword("countme", validator);
+        let options = options.with_custom_keyword("countme", || {
+            Box::new(CountingValidator {
+                count: Mutex::new(0),
+            })
+        });
 
         // Define a schema that includes the custom keyword and therefore should increase the count
         let schema = json!({ "countme": 3, "type": "string" });
         let compiled = options.compile(&schema).unwrap();
 
+        // TODO: Communicate the increment changes via `validate` output, e.g. fail after N
+        // increments, etc.
         // Because the schema has "countme" in it, whenever we run validation we should expect the validator's count to increase
         let instance_ok = json!("i am a string");
         assert_eq!(*count.lock().expect("Lock is poinsoned"), 0);
