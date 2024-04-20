@@ -11,10 +11,7 @@ use crate::{
 };
 use ahash::AHashMap;
 use once_cell::sync::Lazy;
-use std::{
-    fmt,
-    sync::{Arc, Mutex},
-};
+use std::{fmt, sync::Arc};
 
 macro_rules! schema {
     ($name:ident, $path:expr) => {
@@ -281,7 +278,7 @@ pub struct CompilationOptions {
     ignore_unknown_formats: bool,
     custom_keywords: AHashMap<
         String, // TODO<samgqroberts> 2024-04-13 should this also be a &'static str
-        Arc<Mutex<Box<dyn CustomKeywordValidator>>>,
+        CustomKeywordConstructor,
     >,
 }
 
@@ -659,7 +656,7 @@ impl CompilationOptions {
     /// struct MyCustomValidator;
     /// impl<'instance> CustomKeywordValidator<'instance, '_> for MyCustomValidator {
     ///     fn validate(
-    ///         &mut self,
+    ///         &self,
     ///         instance: &'instance Value,
     ///         instance_path: JSONPointer,
     ///         subschema: Arc<Value>,
@@ -670,13 +667,13 @@ impl CompilationOptions {
     ///         Box::new(None.into_iter())
     ///     }
     ///     fn is_valid(
-    ///         &mut self,
+    ///         &self,
     ///         instance: &Value,
     ///         subschema: &Value,
     ///         schema: &Value
     ///     ) -> bool {
     ///         // ... determine if instance is valid ...
-    ///         return true;
+    ///         true
     ///     }
     /// }
     ///
@@ -689,19 +686,20 @@ impl CompilationOptions {
     pub fn with_custom_keyword<T>(
         &mut self,
         keyword: T,
-        definition: Arc<Mutex<Box<dyn CustomKeywordValidator + 'static>>>,
+        definition: impl Fn() -> Box<dyn CustomKeywordValidator> + Send + Sync + 'static,
     ) -> &mut Self
     where
         T: Into<String>,
     {
-        self.custom_keywords.insert(keyword.into(), definition);
+        self.custom_keywords
+            .insert(keyword.into(), Arc::new(definition));
         self
     }
 
-    pub(crate) fn get_custom_keyword_definition(
+    pub(crate) fn get_custom_keyword_constructor(
         &self,
         keyword: &str,
-    ) -> Option<&Arc<Mutex<Box<dyn CustomKeywordValidator>>>> {
+    ) -> Option<&CustomKeywordConstructor> {
         self.custom_keywords.get(keyword)
     }
 }
@@ -721,6 +719,9 @@ impl fmt::Debug for CompilationOptions {
     }
 }
 
+pub(crate) type CustomKeywordConstructor =
+    Arc<dyn Fn() -> Box<dyn CustomKeywordValidator> + Send + Sync>;
+
 /// Trait that allows implementing custom validation for keywords.
 pub trait CustomKeywordValidator: Send + Sync {
     /// Validate [instance](serde_json::Value) according to a custom specification
@@ -731,7 +732,7 @@ pub trait CustomKeywordValidator: Send + Sync {
     /// The custom validation is applied in addition to the JSON schema validation.
     /// Validate an instance returning any and all detected validation errors
     fn validate<'instance>(
-        &mut self,
+        &self,
         instance: &'instance serde_json::Value,
         instance_path: JSONPointer,
         subschema: Arc<serde_json::Value>,
@@ -740,7 +741,7 @@ pub trait CustomKeywordValidator: Send + Sync {
     ) -> ErrorIterator<'instance>;
     /// Determine if an instance is valid
     fn is_valid<'schema>(
-        &mut self,
+        &self,
         instance: &serde_json::Value,
         subschema: &'schema serde_json::Value,
         schema: &'schema serde_json::Value,
