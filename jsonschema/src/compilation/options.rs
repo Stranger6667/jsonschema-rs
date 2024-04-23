@@ -6,9 +6,8 @@ use crate::{
         DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS,
     },
     content_media_type::{ContentMediaTypeCheckType, DEFAULT_CONTENT_MEDIA_TYPE_CHECKS},
-    paths::JSONPointer,
     resolver::{DefaultResolver, Resolver, SchemaResolver},
-    schemas, ErrorIterator, ValidationError,
+    schemas, ValidationError,
 };
 use ahash::AHashMap;
 use once_cell::sync::Lazy;
