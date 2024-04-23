@@ -1,3 +1,4 @@
+use crate::keywords::custom::KeywordFactory;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema, DEFAULT_SCOPE},
     content_encoding::{
@@ -276,10 +277,7 @@ pub struct CompilationOptions {
     validate_formats: Option<bool>,
     validate_schema: bool,
     ignore_unknown_formats: bool,
-    custom_keywords: AHashMap<
-        String, // TODO<samgqroberts> 2024-04-13 should this also be a &'static str
-        CustomKeywordConstructor,
-    >,
+    keywords: AHashMap<String, Arc<dyn KeywordFactory>>,
 }
 
 impl Default for CompilationOptions {
@@ -294,7 +292,7 @@ impl Default for CompilationOptions {
             formats: AHashMap::default(),
             validate_formats: None,
             ignore_unknown_formats: true,
-            custom_keywords: AHashMap::default(),
+            keywords: AHashMap::default(),
         }
     }
 }
@@ -678,29 +676,22 @@ impl CompilationOptions {
     /// }
     ///
     /// assert!(JSONSchema::options()
-    ///     .with_custom_keyword("my-type", MyCustomValidator)
+    ///     .with_keyword("my-type", MyCustomValidator)
     ///     .compile(&json!({ "my-type": "my-schema"}))
     ///     .expect("A valid schema")
     ///     .is_valid(&json!({ "a": "b"})));
     /// ```
-    pub fn with_custom_keyword<T>(
-        &mut self,
-        keyword: T,
-        definition: impl Fn() -> Box<dyn CustomKeywordValidator> + Send + Sync + 'static,
-    ) -> &mut Self
+    pub fn with_keyword<N, F>(&mut self, name: N, factory: F) -> &mut Self
     where
-        T: Into<String>,
+        N: Into<String>,
+        F: KeywordFactory + 'static,
     {
-        self.custom_keywords
-            .insert(keyword.into(), Arc::new(definition));
+        self.keywords.insert(name.into(), Arc::new(factory));
         self
     }
 
-    pub(crate) fn get_custom_keyword_constructor(
-        &self,
-        keyword: &str,
-    ) -> Option<&CustomKeywordConstructor> {
-        self.custom_keywords.get(keyword)
+    pub(crate) fn get_keyword_factory(&self, name: &str) -> Option<&Arc<dyn KeywordFactory>> {
+        self.keywords.get(name)
     }
 }
 // format name & a pointer to a check function
@@ -717,35 +708,6 @@ impl fmt::Debug for CompilationOptions {
             )
             .finish()
     }
-}
-
-pub(crate) type CustomKeywordConstructor =
-    Arc<dyn Fn() -> Box<dyn CustomKeywordValidator> + Send + Sync>;
-
-/// Trait that allows implementing custom validation for keywords.
-pub trait CustomKeywordValidator: Send + Sync {
-    /// Validate [instance](serde_json::Value) according to a custom specification
-    ///
-    /// A custom keyword validator may be used when a validation that cannot, or
-    /// cannot be be easily or efficiently expressed in JSON schema.
-    ///
-    /// The custom validation is applied in addition to the JSON schema validation.
-    /// Validate an instance returning any and all detected validation errors
-    fn validate<'instance>(
-        &self,
-        instance: &'instance serde_json::Value,
-        instance_path: JSONPointer,
-        subschema: Arc<serde_json::Value>,
-        subschema_path: JSONPointer,
-        schema: Arc<serde_json::Value>,
-    ) -> ErrorIterator<'instance>;
-    /// Determine if an instance is valid
-    fn is_valid<'schema>(
-        &self,
-        instance: &serde_json::Value,
-        subschema: &'schema serde_json::Value,
-        schema: &'schema serde_json::Value,
-    ) -> bool;
 }
 
 #[cfg(test)]

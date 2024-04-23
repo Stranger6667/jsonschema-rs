@@ -97,11 +97,9 @@ mod schema_node;
 mod schemas;
 mod validator;
 
-pub use compilation::{
-    options::{CompilationOptions, CustomKeywordValidator},
-    JSONSchema,
-};
+pub use compilation::{options::CompilationOptions, JSONSchema};
 pub use error::{ErrorIterator, ValidationError};
+pub use keywords::custom::Keyword;
 pub use resolver::{SchemaResolver, SchemaResolverError};
 pub use schemas::Draft;
 
