@@ -2,7 +2,7 @@ use crate::compilation::context::CompilationContext;
 use crate::keywords::CompilationResult;
 use crate::paths::{InstancePath, JSONPointer, PathChunk};
 use crate::validator::Validate;
-use crate::ErrorIterator;
+use crate::{ErrorIterator, ValidationError};
 use serde_json::Value;
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
@@ -128,17 +128,19 @@ pub trait CustomKeywordValidator: Send + Sync {
 }
 
 pub trait KeywordFactory: Send + Sync + sealed::Sealed {
-    // TODO: Should return `Result`
-    fn init(&self, schema: &Value) -> Box<dyn Keyword>;
+    fn init<'a>(&self, schema: &'a Value) -> Result<Box<dyn Keyword>, ValidationError<'a>>;
 }
 
-impl<F> sealed::Sealed for F where F: Fn(&Value) -> Box<dyn Keyword> + Send + Sync {}
+impl<F> sealed::Sealed for F where
+    F: for<'a> Fn(&'a Value) -> Result<Box<dyn Keyword>, ValidationError<'a>> + Send + Sync
+{
+}
 
 impl<F> KeywordFactory for F
 where
-    F: Fn(&Value) -> Box<dyn Keyword> + Send + Sync,
+    F: for<'a> Fn(&'a Value) -> Result<Box<dyn Keyword>, ValidationError<'a>> + Send + Sync,
 {
-    fn init(&self, schema: &Value) -> Box<dyn Keyword> {
+    fn init<'a>(&self, schema: &'a Value) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
         self(schema)
     }
 }

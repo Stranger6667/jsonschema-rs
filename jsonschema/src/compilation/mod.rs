@@ -202,7 +202,7 @@ pub(crate) fn compile_validators<'a>(
                     // it may override existing keyword behavior
                     if let Some(factory) = context.config.get_keyword_factory(keyword) {
                         // TODO: Pass other arguments
-                        let validator = CustomKeyword::new(factory.init(subschema));
+                        let validator = CustomKeyword::new(factory.init(subschema)?);
                         let validator: BoxedValidator = Box::new(validator);
                         // let validator = compile(
                         //     &context,
@@ -357,9 +357,6 @@ mod tests {
             }
 
             fn is_valid(&self, instance: &Value) -> bool {
-                //  if subschema.as_str().map_or(true, |str| str != "ascii-keys") {
-                //      return false; // Invalid schema
-                //  }
                 for (key, _value) in instance.as_object().unwrap() {
                     if !key.is_ascii() {
                         return false;
@@ -369,22 +366,26 @@ mod tests {
             }
         }
 
+        fn custom_object_type_factory(
+            schema: &Value,
+        ) -> Result<Box<dyn Keyword>, ValidationError<'_>> {
+            if schema.as_str().map_or(true, |key| key != "ascii-keys") {
+                //     let error = ValidationError {
+                //         instance: Cow::Borrowed(instance),
+                //         kind: crate::error::ValidationErrorKind::Schema,
+                //         instance_path,
+                //         schema_path: subschema_path,
+                //     };
+                //     return Box::new(Some(error).into_iter()); // Invalid schema
+            }
+            Ok(Box::new(CustomObjectValidator))
+        }
+
         // Define a JSON schema that enforces the top level object has ASCII keys and has at least 1 property
         let schema =
             json!({ "custom-object-type": "ascii-keys", "type": "object", "minProperties": 1 });
         let json_schema = JSONSchema::options()
-            .with_keyword("custom-object-type", |schema: &Value| -> Box<dyn Keyword> {
-                if schema.as_str().map_or(true, |key| key != "ascii-keys") {
-                    //     let error = ValidationError {
-                    //         instance: Cow::Borrowed(instance),
-                    //         kind: crate::error::ValidationErrorKind::Schema,
-                    //         instance_path,
-                    //         schema_path: subschema_path,
-                    //     };
-                    //     return Box::new(Some(error).into_iter()); // Invalid schema
-                }
-                Box::new(CustomObjectValidator)
-            })
+            .with_keyword("custom-object-type", custom_object_type_factory)
             .compile(&schema)
             .unwrap();
 
@@ -513,26 +514,28 @@ mod tests {
             }
         }
 
+        fn custom_minimum_factory(schema: &Value) -> Result<Box<dyn Keyword>, ValidationError<'_>> {
+            let limit = match schema {
+                Value::Number(limit) => limit.as_f64().expect("Always valid"),
+                _ => {
+                    todo!()
+                    //  let error = ValidationError {
+                    //      instance: Cow::Borrowed(instance),
+                    //      kind: crate::error::ValidationErrorKind::Schema,
+                    //      instance_path,
+                    //      schema_path: subschema_path,
+                    //  };
+                    //  return Box::new(Some(error).into_iter()); // Invalid schema
+                }
+            };
+            Ok(Box::new(CustomMinimumValidator { limit }))
+        }
+
         // define compilation options that include the custom format and the overridden keyword
         let mut options = JSONSchema::options();
         let options = options
             .with_format("currency", currency_format_checker)
-            .with_keyword("minimum", |schema: &Value| -> Box<dyn Keyword> {
-                let limit = match schema {
-                    Value::Number(limit) => limit.as_f64().expect("Always valid"),
-                    _ => {
-                        todo!()
-                        //  let error = ValidationError {
-                        //      instance: Cow::Borrowed(instance),
-                        //      kind: crate::error::ValidationErrorKind::Schema,
-                        //      instance_path,
-                        //      schema_path: subschema_path,
-                        //  };
-                        //  return Box::new(Some(error).into_iter()); // Invalid schema
-                    }
-                };
-                Box::new(CustomMinimumValidator { limit })
-            });
+            .with_keyword("minimum", custom_minimum_factory);
 
         // Define a schema that includes both the custom format and the overridden keyword
         let schema = json!({ "minimum": 2, "type": "string", "format": "currency" });
@@ -605,24 +608,24 @@ mod tests {
             }
         }
 
-        // define compilation options that include the custom format and the overridden keyword
-        let count = Mutex::new(0);
-        let mut options = JSONSchema::options();
-        let options = options.with_keyword("countme", |schema: &Value| -> Box<dyn Keyword> {
-            // TODO: Return Result
+        fn countme_factory(schema: &Value) -> Result<Box<dyn Keyword>, ValidationError<'_>> {
             let amount = match schema {
                 Value::Number(x) => x.as_i64().expect("countme value must be integer"),
                 _ => panic!("Validator requires numeric values"),
             };
-            Box::new(CountingValidator {
+            Ok(Box::new(CountingValidator {
                 amount,
                 count: Mutex::new(0),
-            })
-        });
-
+            }))
+        }
+        // define compilation options that include the custom format and the overridden keyword
+        let count = Mutex::new(0);
         // Define a schema that includes the custom keyword and therefore should increase the count
         let schema = json!({ "countme": 3, "type": "string" });
-        let compiled = options.compile(&schema).unwrap();
+        let compiled = JSONSchema::options()
+            .with_keyword("countme", countme_factory)
+            .compile(&schema)
+            .unwrap();
 
         // TODO: Communicate the increment changes via `validate` output, e.g. fail after N
         // increments, etc.

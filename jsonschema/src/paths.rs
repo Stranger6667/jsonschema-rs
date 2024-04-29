@@ -107,14 +107,14 @@ pub enum PathChunk {
 
 #[derive(Debug, Clone)]
 pub(crate) struct InstancePath<'a> {
-    pub(crate) chunk: Option<PathChunk>,
+    pub(crate) chunk: PathChunk,
     pub(crate) parent: Option<&'a InstancePath<'a>>,
 }
 
 impl<'a> InstancePath<'a> {
     pub(crate) const fn new() -> Self {
         InstancePath {
-            chunk: None,
+            chunk: PathChunk::Index(0),
             parent: None,
         }
     }
@@ -122,7 +122,7 @@ impl<'a> InstancePath<'a> {
     #[inline]
     pub(crate) fn push(&'a self, chunk: impl Into<PathChunk>) -> Self {
         InstancePath {
-            chunk: Some(chunk.into()),
+            chunk: chunk.into(),
             parent: Some(self),
         }
     }
@@ -130,14 +130,14 @@ impl<'a> InstancePath<'a> {
     pub(crate) fn to_vec(&'a self) -> Vec<PathChunk> {
         // The path capacity should be the average depth so we avoid extra allocations
         let mut result = Vec::with_capacity(6);
-        let mut current = self;
-        if let Some(chunk) = &current.chunk {
-            result.push(chunk.clone())
+        let mut head = self;
+        if head.parent.is_some() {
+            result.push(head.chunk.clone())
         }
-        while let Some(next) = current.parent {
-            current = next;
-            if let Some(chunk) = &current.chunk {
-                result.push(chunk.clone())
+        while let Some(next) = head.parent {
+            head = next;
+            if head.parent.is_some() {
+                result.push(head.chunk.clone());
             }
         }
         result.reverse();
