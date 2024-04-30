@@ -128,19 +128,31 @@ pub trait CustomKeywordValidator: Send + Sync {
 }
 
 pub trait KeywordFactory: Send + Sync + sealed::Sealed {
-    fn init<'a>(&self, schema: &'a Value) -> Result<Box<dyn Keyword>, ValidationError<'a>>;
+    fn init<'a>(
+        &self,
+        schema: &'a Value,
+        path: JSONPointer,
+    ) -> Result<Box<dyn Keyword>, ValidationError<'a>>;
 }
 
 impl<F> sealed::Sealed for F where
-    F: for<'a> Fn(&'a Value) -> Result<Box<dyn Keyword>, ValidationError<'a>> + Send + Sync
+    F: for<'a> Fn(&'a Value, JSONPointer) -> Result<Box<dyn Keyword>, ValidationError<'a>>
+        + Send
+        + Sync
 {
 }
 
 impl<F> KeywordFactory for F
 where
-    F: for<'a> Fn(&'a Value) -> Result<Box<dyn Keyword>, ValidationError<'a>> + Send + Sync,
+    F: for<'a> Fn(&'a Value, JSONPointer) -> Result<Box<dyn Keyword>, ValidationError<'a>>
+        + Send
+        + Sync,
 {
-    fn init<'a>(&self, schema: &'a Value) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
-        self(schema)
+    fn init<'a>(
+        &self,
+        schema: &'a Value,
+        path: JSONPointer,
+    ) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
+        self(schema, path)
     }
 }
