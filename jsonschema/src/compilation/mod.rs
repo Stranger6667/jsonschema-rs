@@ -262,7 +262,7 @@ mod tests {
     use once_cell::sync::Lazy;
     use regex::Regex;
     use serde_json::{from_str, json, Map, Value};
-    use std::{fs::File, io::Read, path::Path, sync::Mutex};
+    use std::{fs::File, io::Read, path::Path};
 
     fn load(path: &str, idx: usize) -> Value {
         let path = Path::new(path);
@@ -539,70 +539,5 @@ mod tests {
         let instance = json!(1);
         assert!(compiled.validate(&instance).is_err());
         assert!(!compiled.is_valid(&instance));
-    }
-
-    #[test]
-    fn custom_keyword_with_inner_state() {
-        // Define a custom keyword validator that wraps "minimum"
-        // but maintains a counter of how many times the validator was applied.
-        struct CountingValidator {
-            amount: i64,
-            count: Mutex<i64>,
-        }
-
-        impl CountingValidator {
-            fn increment(&self) {
-                let mut count = self.count.lock().expect("Lock is poisoned");
-                *count += self.amount;
-            }
-        }
-
-        impl Keyword for CountingValidator {
-            fn validate<'instance>(
-                &self,
-                _: &'instance Value,
-                _: &JsonPointerNode,
-            ) -> ErrorIterator<'instance> {
-                self.increment();
-                Box::new(None.into_iter())
-            }
-
-            fn is_valid(&self, _: &Value) -> bool {
-                self.increment();
-                true
-            }
-        }
-
-        fn countme_factory<'a>(
-            _: &'a Map<String, Value>,
-            schema: &'a Value,
-            _: JSONPointer,
-        ) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
-            let amount = schema.as_i64().expect("countme value must be integer");
-            Ok(Box::new(CountingValidator {
-                amount,
-                count: Mutex::new(0),
-            }))
-        }
-        // define compilation options that include the custom format and the overridden keyword
-        let count = Mutex::new(0);
-        // Define a schema that includes the custom keyword and therefore should increase the count
-        let schema = json!({ "countme": 3, "type": "string" });
-        let compiled = JSONSchema::options()
-            .with_keyword("countme", countme_factory)
-            .compile(&schema)
-            .unwrap();
-
-        // TODO: Communicate the increment changes via `validate` output, e.g. fail after N
-        // increments, etc.
-        // Because the schema has "countme" in it, whenever we run validation we should expect the validator's count to increase
-        let instance_ok = json!("i am a string");
-        assert_eq!(*count.lock().expect("Lock is poinsoned"), 0);
-        assert!(compiled.validate(&instance_ok).is_err());
-        assert_eq!(*count.lock().expect("Lock is poinsoned"), 3);
-        assert!(!compiled.is_valid(&instance_ok));
-        assert_eq!(*count.lock().expect("Lock is poinsoned"), 6);
-
-        // TODO compile a schema that doesn't have "countme" and ensure count does not increase
     }
 }

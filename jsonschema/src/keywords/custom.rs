@@ -1,66 +1,10 @@
 use crate::{
-    compilation::context::CompilationContext,
-    keywords::CompilationResult,
-    paths::{JSONPointer, JsonPointerNode, PathChunk},
+    paths::{JSONPointer, JsonPointerNode},
     validator::Validate,
     ErrorIterator, ValidationError,
 };
 use serde_json::{Map, Value};
-use std::{
-    fmt::{Display, Formatter},
-    sync::Arc,
-};
-
-/// Custom keyword validation implemented by user provided validation functions.
-pub(crate) struct CompiledCustomKeywordValidator {
-    schema: Arc<Value>,
-    subschema: Arc<Value>,
-    subschema_path: JSONPointer,
-    validator: Box<dyn CustomKeywordValidator>,
-}
-
-impl Display for CompiledCustomKeywordValidator {
-    fn fmt(&self, _: &mut Formatter<'_>) -> std::fmt::Result {
-        Ok(())
-    }
-}
-
-impl Validate for CompiledCustomKeywordValidator {
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &JsonPointerNode,
-    ) -> ErrorIterator<'instance> {
-        self.validator.validate(
-            instance,
-            instance_path.into(),
-            self.subschema.clone(),
-            self.subschema_path.clone(),
-            self.schema.clone(),
-        )
-    }
-
-    fn is_valid(&self, instance: &Value) -> bool {
-        self.validator
-            .is_valid(instance, &self.subschema, &self.schema)
-    }
-}
-
-pub(crate) fn compile<'a>(
-    context: &CompilationContext,
-    keyword: impl Into<PathChunk>,
-    validator: Box<dyn CustomKeywordValidator>,
-    subschema: Value,
-    schema: Value,
-) -> CompilationResult<'a> {
-    let subschema_path = context.as_pointer_with(keyword);
-    Ok(Box::new(CompiledCustomKeywordValidator {
-        schema: Arc::new(schema),
-        subschema: Arc::new(subschema),
-        subschema_path,
-        validator,
-    }))
-}
+use std::fmt::{Display, Formatter};
 
 mod sealed {
     pub trait Sealed {}
@@ -99,36 +43,18 @@ impl Validate for CustomKeyword {
 /// Trait that allows implementing custom validation for keywords.
 pub trait Keyword: Send + Sync {
     fn is_valid(&self, instance: &Value) -> bool;
+    /// Validate [instance](Value) according to a custom specification
+    ///
+    /// A custom keyword validator may be used when a validation that cannot be
+    /// easily or efficiently expressed in JSON schema.
+    ///
+    /// The custom validation is applied in addition to the JSON schema validation.
+    /// Validate an instance returning any and all detected validation errors.
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
         instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance>;
-}
-
-pub trait CustomKeywordValidator: Send + Sync {
-    /// Validate [instance](Value) according to a custom specification
-    ///
-    /// A custom keyword validator may be used when a validation that cannot, or
-    /// cannot be be easily or efficiently expressed in JSON schema.
-    ///
-    /// The custom validation is applied in addition to the JSON schema validation.
-    /// Validate an instance returning any and all detected validation errors
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: JSONPointer,
-        subschema: Arc<Value>,
-        subschema_path: JSONPointer,
-        schema: Arc<Value>,
-    ) -> ErrorIterator<'instance>;
-    /// Determine if an instance is valid
-    fn is_valid<'schema>(
-        &self,
-        instance: &Value,
-        subschema: &'schema Value,
-        schema: &'schema Value,
-    ) -> bool;
 }
 
 pub trait KeywordFactory: Send + Sync + sealed::Sealed {
