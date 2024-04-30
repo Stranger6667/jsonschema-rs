@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Custom keywords support. [#379](https://github.com/Stranger6667/jsonschema-rs/issues/429)
+
 ### Changed
 
 - Bump `base64` to `0.22`.
