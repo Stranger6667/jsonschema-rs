@@ -4,6 +4,7 @@
 
 ### Added
 
+- Custom keywords support. [#379](https://github.com/Stranger6667/jsonschema-rs/issues/429)
 - Expose `JsonPointerNode` that can be converted into `JSONPointer`.
   This is needed for the upcoming custom validators support.
 
