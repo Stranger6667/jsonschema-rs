@@ -5,7 +5,7 @@ use crate::{
     validator::Validate,
     ErrorIterator, ValidationError,
 };
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::{
     fmt::{Display, Formatter},
     sync::Arc,
@@ -134,13 +134,18 @@ pub trait CustomKeywordValidator: Send + Sync {
 pub trait KeywordFactory: Send + Sync + sealed::Sealed {
     fn init<'a>(
         &self,
+        parent: &'a Map<String, Value>,
         schema: &'a Value,
         path: JSONPointer,
     ) -> Result<Box<dyn Keyword>, ValidationError<'a>>;
 }
 
 impl<F> sealed::Sealed for F where
-    F: for<'a> Fn(&'a Value, JSONPointer) -> Result<Box<dyn Keyword>, ValidationError<'a>>
+    F: for<'a> Fn(
+            &'a Map<String, Value>,
+            &'a Value,
+            JSONPointer,
+        ) -> Result<Box<dyn Keyword>, ValidationError<'a>>
         + Send
         + Sync
 {
@@ -148,15 +153,20 @@ impl<F> sealed::Sealed for F where
 
 impl<F> KeywordFactory for F
 where
-    F: for<'a> Fn(&'a Value, JSONPointer) -> Result<Box<dyn Keyword>, ValidationError<'a>>
+    F: for<'a> Fn(
+            &'a Map<String, Value>,
+            &'a Value,
+            JSONPointer,
+        ) -> Result<Box<dyn Keyword>, ValidationError<'a>>
         + Send
         + Sync,
 {
     fn init<'a>(
         &self,
+        parent: &'a Map<String, Value>,
         schema: &'a Value,
         path: JSONPointer,
     ) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
-        self(schema, path)
+        self(parent, schema, path)
     }
 }
