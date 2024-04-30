@@ -1,4 +1,3 @@
-use crate::keywords::custom::KeywordFactory;
 use crate::{
     compilation::{compile_validators, context::CompilationContext, JSONSchema, DEFAULT_SCOPE},
     content_encoding::{
@@ -6,6 +5,7 @@ use crate::{
         DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS,
     },
     content_media_type::{ContentMediaTypeCheckType, DEFAULT_CONTENT_MEDIA_TYPE_CHECKS},
+    keywords::custom::KeywordFactory,
     resolver::{DefaultResolver, Resolver, SchemaResolver},
     schemas, ValidationError,
 };

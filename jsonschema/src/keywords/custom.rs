@@ -1,11 +1,15 @@
-use crate::compilation::context::CompilationContext;
-use crate::keywords::CompilationResult;
-use crate::paths::{JSONPointer, JsonPointerNode, PathChunk};
-use crate::validator::Validate;
-use crate::{ErrorIterator, ValidationError};
+use crate::{
+    compilation::context::CompilationContext,
+    keywords::CompilationResult,
+    paths::{JSONPointer, JsonPointerNode, PathChunk},
+    validator::Validate,
+    ErrorIterator, ValidationError,
+};
 use serde_json::Value;
-use std::fmt::{Display, Formatter};
-use std::sync::Arc;
+use std::{
+    fmt::{Display, Formatter},
+    sync::Arc,
+};
 
 /// Custom keyword validation implemented by user provided validation functions.
 pub(crate) struct CompiledCustomKeywordValidator {
@@ -128,19 +132,31 @@ pub trait CustomKeywordValidator: Send + Sync {
 }
 
 pub trait KeywordFactory: Send + Sync + sealed::Sealed {
-    fn init<'a>(&self, schema: &'a Value) -> Result<Box<dyn Keyword>, ValidationError<'a>>;
+    fn init<'a>(
+        &self,
+        schema: &'a Value,
+        path: JSONPointer,
+    ) -> Result<Box<dyn Keyword>, ValidationError<'a>>;
 }
 
 impl<F> sealed::Sealed for F where
-    F: for<'a> Fn(&'a Value) -> Result<Box<dyn Keyword>, ValidationError<'a>> + Send + Sync
+    F: for<'a> Fn(&'a Value, JSONPointer) -> Result<Box<dyn Keyword>, ValidationError<'a>>
+        + Send
+        + Sync
 {
 }
 
 impl<F> KeywordFactory for F
 where
-    F: for<'a> Fn(&'a Value) -> Result<Box<dyn Keyword>, ValidationError<'a>> + Send + Sync,
+    F: for<'a> Fn(&'a Value, JSONPointer) -> Result<Box<dyn Keyword>, ValidationError<'a>>
+        + Send
+        + Sync,
 {
-    fn init<'a>(&self, schema: &'a Value) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
-        self(schema)
+    fn init<'a>(
+        &self,
+        schema: &'a Value,
+        path: JSONPointer,
+    ) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
+        self(schema, path)
     }
 }

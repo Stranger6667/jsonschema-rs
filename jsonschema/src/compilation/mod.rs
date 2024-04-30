@@ -202,7 +202,8 @@ pub(crate) fn compile_validators<'a>(
                     // it may override existing keyword behavior
                     if let Some(factory) = context.config.get_keyword_factory(keyword) {
                         // TODO: Pass other arguments
-                        let validator = CustomKeyword::new(factory.init(subschema)?);
+                        let path = context.as_pointer_with(keyword.to_owned());
+                        let validator = CustomKeyword::new(factory.init(subschema, path)?);
                         let validator: BoxedValidator = Box::new(validator);
                         // let validator = compile(
                         //     &context,
@@ -258,8 +259,11 @@ pub(crate) fn compile_validators<'a>(
 mod tests {
     use super::JSONSchema;
     use crate::{
-        compilation::context::CompilationContext, error::ValidationError,
-        keywords::custom::Keyword, paths::JsonPointerNode, ErrorIterator,
+        compilation::context::CompilationContext,
+        error::ValidationError,
+        keywords::custom::Keyword,
+        paths::{JSONPointer, JsonPointerNode},
+        ErrorIterator,
     };
     use num_cmp::NumCmp;
     use regex::Regex;
@@ -368,6 +372,7 @@ mod tests {
 
         fn custom_object_type_factory(
             schema: &Value,
+            path: JSONPointer,
         ) -> Result<Box<dyn Keyword>, ValidationError<'_>> {
             if schema.as_str().map_or(true, |key| key != "ascii-keys") {
                 //     let error = ValidationError {
@@ -514,7 +519,10 @@ mod tests {
             }
         }
 
-        fn custom_minimum_factory(schema: &Value) -> Result<Box<dyn Keyword>, ValidationError<'_>> {
+        fn custom_minimum_factory(
+            schema: &Value,
+            path: JSONPointer,
+        ) -> Result<Box<dyn Keyword>, ValidationError<'_>> {
             let limit = match schema {
                 Value::Number(limit) => limit.as_f64().expect("Always valid"),
                 _ => {
@@ -608,11 +616,11 @@ mod tests {
             }
         }
 
-        fn countme_factory(schema: &Value) -> Result<Box<dyn Keyword>, ValidationError<'_>> {
-            let amount = match schema {
-                Value::Number(x) => x.as_i64().expect("countme value must be integer"),
-                _ => panic!("Validator requires numeric values"),
-            };
+        fn countme_factory(
+            schema: &Value,
+            _: JSONPointer,
+        ) -> Result<Box<dyn Keyword>, ValidationError<'_>> {
+            let amount = schema.as_i64().expect("countme value must be integer");
             Ok(Box::new(CountingValidator {
                 amount,
                 count: Mutex::new(0),
