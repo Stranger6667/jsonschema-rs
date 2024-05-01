@@ -646,36 +646,37 @@ impl CompilationOptions {
     /// Examples
     ///
     /// ```rust
-    /// # use jsonschema::{CustomKeywordValidator, ErrorIterator, JSONSchema, paths::JSONPointer};
-    /// # use serde_json::{json, Value};
+    /// # use jsonschema::{ErrorIterator, JSONSchema, paths::{JsonPointerNode, JSONPointer}, Keyword, ValidationError};
+    /// # use serde_json::{json, Value, Map};
     /// # use std::sync::Arc;
     ///
     /// struct MyCustomValidator;
-    /// impl<'instance> CustomKeywordValidator<'instance, '_> for MyCustomValidator {
-    ///     fn validate(
+    ///
+    /// impl Keyword for MyCustomValidator {
+    ///     fn validate<'instance>(
     ///         &self,
     ///         instance: &'instance Value,
-    ///         instance_path: JSONPointer,
-    ///         subschema: Arc<Value>,
-    ///         subschema_path: JSONPointer,
-    ///         schema: Arc<Value>
+    ///         instance_path: &JsonPointerNode,
     ///     ) -> ErrorIterator<'instance> {
     ///         // ... validate instance ...
     ///         Box::new(None.into_iter())
     ///     }
-    ///     fn is_valid(
-    ///         &self,
-    ///         instance: &Value,
-    ///         subschema: &Value,
-    ///         schema: &Value
-    ///     ) -> bool {
+    ///     fn is_valid(&self, instance: &Value) -> bool {
     ///         // ... determine if instance is valid ...
     ///         true
     ///     }
     /// }
     ///
+    /// fn custom_validator_factory<'a>(
+    ///     _: &'a Map<String, Value>,
+    ///     schema: &'a Value,
+    ///     path: JSONPointer,
+    /// ) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
+    ///     Ok(Box::new(MyCustomValidator))
+    /// }
+    ///
     /// assert!(JSONSchema::options()
-    ///     .with_keyword("my-type", MyCustomValidator)
+    ///     .with_keyword("my-type", custom_validator_factory)
     ///     .compile(&json!({ "my-type": "my-schema"}))
     ///     .expect("A valid schema")
     ///     .is_valid(&json!({ "a": "b"})));
