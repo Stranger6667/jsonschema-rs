@@ -57,6 +57,24 @@ validator = jsonschema_rs.JSONSchema.from_str('{"minimum": 42}')
 ...
 ```
 
+You can define custom format checkers:
+
+```python
+import jsonschema_rs
+
+def is_currency(value):
+    # The input value is always a string
+    return len(value) == 3 and value.isascii()
+
+
+validator = jsonschema_rs.JSONSchema(
+    {"type": "string", "format": "currency"}, 
+    formats={"currency": is_currency}
+)
+validator.is_valid("USD")  # True
+validator.is_valid("invalid")  # False
+```
+
 ## Performance
 
 According to our benchmarks, `jsonschema-rs` is usually faster than
