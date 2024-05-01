@@ -2,7 +2,7 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{no_error, ErrorIterator, ValidationError},
     keywords::{required, unique_items, CompilationResult},
-    paths::{InstancePath, JSONPointer},
+    paths::{JSONPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     schema_node::SchemaNode,
     validator::{format_key_value_validators, Validate},
@@ -65,7 +65,7 @@ impl Validate for DependenciesValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
@@ -158,7 +158,7 @@ impl Validate for DependentRequiredValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
@@ -225,7 +225,7 @@ impl Validate for DependentSchemasValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self

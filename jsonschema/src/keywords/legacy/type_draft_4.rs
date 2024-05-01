@@ -2,7 +2,7 @@ use crate::{
     compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{type_, CompilationResult},
-    paths::{InstancePath, JSONPointer},
+    paths::{JSONPointer, JsonPointerNode},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
 };
@@ -65,7 +65,7 @@ impl Validate for MultipleTypesValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if self.is_valid(instance) {
             no_error()
@@ -117,7 +117,7 @@ impl Validate for IntegerTypeValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if self.is_valid(instance) {
             no_error()

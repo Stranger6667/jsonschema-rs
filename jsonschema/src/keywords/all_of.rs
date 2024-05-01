@@ -2,7 +2,7 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{ErrorIterator, ValidationError},
     output::BasicOutput,
-    paths::{InstancePath, JSONPointer},
+    paths::{JSONPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     schema_node::SchemaNode,
     validator::{format_iter_of_validators, format_validators, PartialApplication, Validate},
@@ -41,7 +41,7 @@ impl Validate for AllOfValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         let errors: Vec<_> = self
             .schemas
@@ -54,7 +54,7 @@ impl Validate for AllOfValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> PartialApplication<'a> {
         self.schemas
             .iter()
@@ -98,7 +98,7 @@ impl Validate for SingleValueAllOfValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         self.node.validate(instance, instance_path)
     }
@@ -106,7 +106,7 @@ impl Validate for SingleValueAllOfValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> PartialApplication<'a> {
         self.node.apply_rooted(instance, instance_path).into()
     }

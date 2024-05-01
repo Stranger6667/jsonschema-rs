@@ -8,7 +8,7 @@ use crate::{
     error::ErrorIterator,
     keywords,
     output::Output,
-    paths::{InstancePath, JSONPointer},
+    paths::{JSONPointer, JsonPointerNode},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     schema_node::SchemaNode,
     validator::Validate,
@@ -67,7 +67,7 @@ impl JSONSchema {
         &'instance self,
         instance: &'instance Value,
     ) -> Result<(), ErrorIterator<'instance>> {
-        let instance_path = InstancePath::new();
+        let instance_path = JsonPointerNode::new();
         let mut errors = self.node.validate(instance, &instance_path).peekable();
         if errors.peek().is_none() {
             Ok(())

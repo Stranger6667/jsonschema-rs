@@ -5,7 +5,7 @@ use crate::{
     error::{no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     output::BasicOutput,
-    paths::{InstancePath, JSONPointer},
+    paths::{JSONPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     properties::*,
     schema_node::SchemaNode,
@@ -189,8 +189,8 @@ impl UnevaluatedPropertiesValidator {
     fn validate_property<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
-        property_path: &InstancePath,
+        instance_path: &JsonPointerNode,
+        property_path: &JsonPointerNode,
         property_instance: &'instance Value,
         property_name: &str,
     ) -> Option<ErrorIterator<'instance>> {
@@ -264,8 +264,8 @@ impl UnevaluatedPropertiesValidator {
     fn apply_property<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
-        property_path: &InstancePath,
+        instance_path: &JsonPointerNode,
+        property_path: &JsonPointerNode,
         property_instance: &Value,
         property_name: &str,
     ) -> Option<BasicOutput<'a>> {
@@ -354,7 +354,7 @@ impl Validate for UnevaluatedPropertiesValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::Object(props) = instance {
             let mut errors = vec![];
@@ -396,7 +396,7 @@ impl Validate for UnevaluatedPropertiesValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> PartialApplication<'a> {
         if let Value::Object(props) = instance {
             let mut output = BasicOutput::default();
@@ -471,7 +471,7 @@ impl PropertySubvalidator {
 
     fn validate_property<'instance>(
         &self,
-        property_path: &InstancePath,
+        property_path: &JsonPointerNode,
         property_instance: &'instance Value,
         property_name: &str,
     ) -> Option<ErrorIterator<'instance>> {
@@ -482,7 +482,7 @@ impl PropertySubvalidator {
 
     fn apply_property<'a>(
         &'a self,
-        property_path: &InstancePath,
+        property_path: &JsonPointerNode,
         property_instance: &Value,
         property_name: &str,
     ) -> Option<BasicOutput<'a>> {
@@ -528,7 +528,7 @@ impl PatternSubvalidator {
 
     fn validate_property<'instance>(
         &self,
-        property_path: &InstancePath,
+        property_path: &JsonPointerNode,
         property_instance: &'instance Value,
         property_name: &str,
     ) -> Option<ErrorIterator<'instance>> {
@@ -548,7 +548,7 @@ impl PatternSubvalidator {
 
     fn apply_property<'a>(
         &'a self,
-        property_path: &InstancePath,
+        property_path: &JsonPointerNode,
         property_instance: &Value,
         property_name: &str,
     ) -> Option<BasicOutput<'a>> {
@@ -692,8 +692,8 @@ impl SubschemaSubvalidator {
     fn validate_property<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
-        property_path: &InstancePath,
+        instance_path: &JsonPointerNode,
+        property_path: &JsonPointerNode,
         property_instance: &'instance Value,
         property_name: &str,
     ) -> Option<ErrorIterator<'instance>> {
@@ -774,8 +774,8 @@ impl SubschemaSubvalidator {
     fn apply_property<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
-        property_path: &InstancePath,
+        instance_path: &JsonPointerNode,
+        property_path: &JsonPointerNode,
         property_instance: &Value,
         property_name: &str,
     ) -> Option<BasicOutput<'a>> {
@@ -893,7 +893,7 @@ impl UnevaluatedSubvalidator {
 
     fn validate_property<'instance>(
         &self,
-        property_path: &InstancePath,
+        property_path: &JsonPointerNode,
         property_instance: &'instance Value,
         _property_name: &str,
     ) -> Option<ErrorIterator<'instance>> {
@@ -908,7 +908,7 @@ impl UnevaluatedSubvalidator {
 
     fn apply_property<'a>(
         &'a self,
-        property_path: &InstancePath,
+        property_path: &JsonPointerNode,
         property_instance: &Value,
         _property_name: &str,
     ) -> Option<BasicOutput<'a>> {
@@ -1014,8 +1014,8 @@ impl ConditionalSubvalidator {
     fn validate_property<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
-        property_path: &InstancePath,
+        instance_path: &JsonPointerNode,
+        property_path: &JsonPointerNode,
         property_instance: &'instance Value,
         property_name: &str,
     ) -> Option<ErrorIterator<'instance>> {
@@ -1058,8 +1058,8 @@ impl ConditionalSubvalidator {
     fn apply_property<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
-        property_path: &InstancePath,
+        instance_path: &JsonPointerNode,
+        property_path: &JsonPointerNode,
         property_instance: &Value,
         property_name: &str,
     ) -> Option<BasicOutput<'a>> {
@@ -1156,8 +1156,8 @@ impl DependentSchemaSubvalidator {
     fn validate_property<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
-        property_path: &InstancePath,
+        instance_path: &JsonPointerNode,
+        property_path: &JsonPointerNode,
         property_instance: &'instance Value,
         property_name: &str,
     ) -> Option<ErrorIterator<'instance>> {
@@ -1181,8 +1181,8 @@ impl DependentSchemaSubvalidator {
     fn apply_property<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
-        property_path: &InstancePath,
+        instance_path: &JsonPointerNode,
+        property_path: &JsonPointerNode,
         property_instance: &Value,
         property_name: &str,
     ) -> Option<BasicOutput<'a>> {
@@ -1263,8 +1263,8 @@ impl ReferenceSubvalidator {
     fn validate_property<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
-        property_path: &InstancePath,
+        instance_path: &JsonPointerNode,
+        property_path: &JsonPointerNode,
         property_instance: &'instance Value,
         property_name: &str,
     ) -> Option<ErrorIterator<'instance>> {
@@ -1280,8 +1280,8 @@ impl ReferenceSubvalidator {
     fn apply_property<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
-        property_path: &InstancePath,
+        instance_path: &JsonPointerNode,
+        property_path: &JsonPointerNode,
         property_instance: &Value,
         property_name: &str,
     ) -> Option<BasicOutput<'a>> {

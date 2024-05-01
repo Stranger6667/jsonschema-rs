@@ -1,7 +1,7 @@
 use super::options::CompilationOptions;
 use crate::{
     compilation::DEFAULT_SCOPE,
-    paths::{InstancePath, JSONPointer, PathChunk},
+    paths::{JSONPointer, JsonPointerNode, PathChunk},
     resolver::Resolver,
     schemas,
 };
@@ -17,7 +17,7 @@ pub(crate) struct CompilationContext<'a> {
     base_uri: BaseUri<'a>,
     pub(crate) config: Arc<CompilationOptions>,
     pub(crate) resolver: Arc<Resolver>,
-    pub(crate) schema_path: InstancePath<'a>,
+    pub(crate) schema_path: JsonPointerNode<'a>,
 }
 
 #[derive(Debug, Clone)]
@@ -84,7 +84,7 @@ impl<'a> CompilationContext<'a> {
             base_uri: scope,
             config,
             resolver,
-            schema_path: InstancePath::new(),
+            schema_path: JsonPointerNode::new(),
         }
     }
 

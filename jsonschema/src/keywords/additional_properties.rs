@@ -11,7 +11,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     output::{Annotations, BasicOutput, OutputUnit},
-    paths::{AbsolutePath, InstancePath, JSONPointer},
+    paths::{AbsolutePath, JSONPointer, JsonPointerNode},
     properties::*,
     schema_node::SchemaNode,
     validator::{format_validators, PartialApplication, Validate},
@@ -103,7 +103,7 @@ impl Validate for AdditionalPropertiesValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = item
@@ -119,7 +119,7 @@ impl Validate for AdditionalPropertiesValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             let mut matched_props = Vec::with_capacity(item.len());
@@ -182,7 +182,7 @@ impl Validate for AdditionalPropertiesFalseValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             if let Some((_, value)) = item.iter().next() {
@@ -260,7 +260,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
@@ -291,7 +291,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             let mut unexpected = Vec::with_capacity(item.len());
@@ -396,7 +396,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValida
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::Object(map) = instance {
             let mut errors = vec![];
@@ -418,7 +418,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValida
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> PartialApplication<'a> {
         if let Value::Object(map) = instance {
             let mut matched_propnames = Vec::with_capacity(map.len());
@@ -526,7 +526,7 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
@@ -554,7 +554,7 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             let mut output = BasicOutput::default();
@@ -663,7 +663,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
@@ -700,7 +700,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             let mut output = BasicOutput::default();
@@ -861,7 +861,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
@@ -899,7 +899,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             let mut output = BasicOutput::default();
@@ -1042,7 +1042,7 @@ impl<M: PropertiesValidatorsMap> Validate
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
@@ -1090,7 +1090,7 @@ impl<M: PropertiesValidatorsMap> Validate
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             let mut output = BasicOutput::default();

@@ -2,7 +2,7 @@ use crate::{
     compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers::fail_on_non_positive_integer, CompilationResult},
-    paths::{InstancePath, JSONPointer},
+    paths::{JSONPointer, JsonPointerNode},
     validator::Validate,
 };
 use serde_json::{Map, Value};
@@ -36,7 +36,7 @@ impl Validate for MinItemsValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             if (items.len() as u64) < self.limit {

@@ -105,43 +105,63 @@ pub enum PathChunk {
     Keyword(&'static str),
 }
 
-#[derive(Debug, Clone)]
-pub(crate) struct InstancePath<'a> {
-    pub(crate) chunk: Option<PathChunk>,
-    pub(crate) parent: Option<&'a InstancePath<'a>>,
+/// A node in a linked list representing a JSON pointer.
+///
+/// `JsonPointerNode` is used to build a JSON pointer incrementally during the JSON Schema validation process.
+/// Each node contains a segment of the JSON pointer and a reference to its parent node, forming
+/// a linked list.
+///
+/// The linked list representation allows for efficient traversal and manipulation of the JSON pointer
+/// without the need for memory allocation.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct JsonPointerNode<'a> {
+    pub(crate) segment: PathChunk,
+    pub(crate) parent: Option<&'a JsonPointerNode<'a>>,
 }
 
-impl<'a> InstancePath<'a> {
-    pub(crate) const fn new() -> Self {
-        InstancePath {
-            chunk: None,
+impl<'a> JsonPointerNode<'a> {
+    /// Create a root node of a JSON pointer.
+    pub const fn new() -> Self {
+        JsonPointerNode {
+            // The value does not matter, it will never be used
+            segment: PathChunk::Index(0),
             parent: None,
         }
     }
 
+    /// Push a new segment to the JSON pointer.
     #[inline]
-    pub(crate) fn push(&'a self, chunk: impl Into<PathChunk>) -> Self {
-        InstancePath {
-            chunk: Some(chunk.into()),
+    pub fn push(&'a self, segment: impl Into<PathChunk>) -> Self {
+        JsonPointerNode {
+            segment: segment.into(),
             parent: Some(self),
         }
     }
 
-    pub(crate) fn to_vec(&'a self) -> Vec<PathChunk> {
-        // The path capacity should be the average depth so we avoid extra allocations
-        let mut result = Vec::with_capacity(6);
-        let mut current = self;
-        if let Some(chunk) = &current.chunk {
-            result.push(chunk.clone())
+    /// Convert the JSON pointer node to a vector of path segments.
+    pub fn to_vec(&'a self) -> Vec<PathChunk> {
+        // Walk the linked list to calculate the capacity
+        let mut capacity = 0;
+        let mut head = self;
+        while let Some(next) = head.parent {
+            head = next;
+            capacity += 1;
         }
-        while let Some(next) = current.parent {
-            current = next;
-            if let Some(chunk) = &current.chunk {
-                result.push(chunk.clone())
+        // Callect the segments from the head to the tail
+        let mut buffer = Vec::with_capacity(capacity);
+        let mut head = self;
+        if head.parent.is_some() {
+            buffer.push(head.segment.clone())
+        }
+        while let Some(next) = head.parent {
+            head = next;
+            if head.parent.is_some() {
+                buffer.push(head.segment.clone());
             }
         }
-        result.reverse();
-        result
+        // Reverse the buffer to get the segments in the correct order
+        buffer.reverse();
+        buffer
     }
 }
 
@@ -182,16 +202,16 @@ impl From<usize> for PathChunk {
     }
 }
 
-impl<'a> From<&'a InstancePath<'a>> for JSONPointer {
+impl<'a> From<&'a JsonPointerNode<'a>> for JSONPointer {
     #[inline]
-    fn from(path: &'a InstancePath<'a>) -> Self {
+    fn from(path: &'a JsonPointerNode<'a>) -> Self {
         JSONPointer(path.to_vec())
     }
 }
 
-impl From<InstancePath<'_>> for JSONPointer {
+impl From<JsonPointerNode<'_>> for JSONPointer {
     #[inline]
-    fn from(path: InstancePath<'_>) -> Self {
+    fn from(path: JsonPointerNode<'_>) -> Self {
         JSONPointer(path.to_vec())
     }
 }

@@ -2,7 +2,7 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{no_error, ErrorIterator},
     keywords::CompilationResult,
-    paths::InstancePath,
+    paths::JsonPointerNode,
     schema_node::SchemaNode,
     validator::{format_validators, PartialApplication, Validate},
 };
@@ -46,7 +46,7 @@ impl Validate for IfThenValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if self.schema.is_valid(instance) {
             let errors: Vec<_> = self.then_schema.validate(instance, instance_path).collect();
@@ -59,7 +59,7 @@ impl Validate for IfThenValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> PartialApplication<'a> {
         let mut if_result = self.schema.apply_rooted(instance, instance_path);
         if if_result.is_valid() {
@@ -121,7 +121,7 @@ impl Validate for IfElseValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if self.schema.is_valid(instance) {
             no_error()
@@ -134,7 +134,7 @@ impl Validate for IfElseValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> PartialApplication<'a> {
         let if_result = self.schema.apply_rooted(instance, instance_path);
         if if_result.is_valid() {
@@ -202,7 +202,7 @@ impl Validate for IfThenElseValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if self.schema.is_valid(instance) {
             let errors: Vec<_> = self.then_schema.validate(instance, instance_path).collect();
@@ -216,7 +216,7 @@ impl Validate for IfThenElseValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> PartialApplication<'a> {
         let mut if_result = self.schema.apply_rooted(instance, instance_path);
         if if_result.is_valid() {

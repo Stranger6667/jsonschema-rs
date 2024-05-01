@@ -7,7 +7,7 @@ use crate::{
 use ahash::{AHashSet, AHasher};
 use serde_json::{Map, Value};
 
-use crate::paths::{InstancePath, JSONPointer};
+use crate::paths::{JSONPointer, JsonPointerNode};
 use std::hash::{Hash, Hasher};
 
 // Based on implementation proposed by Sven Marnach:
@@ -114,7 +114,7 @@ impl Validate for UniqueItemsValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if self.is_valid(instance) {
             no_error()

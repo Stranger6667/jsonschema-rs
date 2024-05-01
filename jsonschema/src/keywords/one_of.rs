@@ -3,7 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     output::BasicOutput,
-    paths::{InstancePath, JSONPointer},
+    paths::{JSONPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     schema_node::SchemaNode,
     validator::{format_iter_of_validators, PartialApplication, Validate},
@@ -74,7 +74,7 @@ impl Validate for OneOfValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         let first_valid_idx = self.get_first_valid(instance);
         if let Some(idx) = first_valid_idx {
@@ -97,7 +97,7 @@ impl Validate for OneOfValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> PartialApplication<'a> {
         let mut failures = Vec::new();
         let mut successes = Vec::new();

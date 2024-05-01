@@ -18,7 +18,7 @@ use ahash::AHashMap;
 use serde::ser::SerializeMap;
 
 use crate::{
-    paths::{AbsolutePath, InstancePath, JSONPointer},
+    paths::{AbsolutePath, JSONPointer, JsonPointerNode},
     schema_node::SchemaNode,
     JSONSchema,
 };
@@ -107,7 +107,7 @@ impl<'a, 'b> Output<'a, 'b> {
     #[must_use]
     pub fn basic(&self) -> BasicOutput<'a> {
         self.root_node
-            .apply_rooted(self.instance, &InstancePath::new())
+            .apply_rooted(self.instance, &JsonPointerNode::new())
     }
 }
 
