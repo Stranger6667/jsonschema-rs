@@ -93,7 +93,7 @@ pub enum ValidationErrorKind {
     /// If the referenced file is not found during ref resolution.
     FileNotFound { error: io::Error },
     /// When the input doesn't match to the specified format.
-    Format { format: &'static str },
+    Format { format: String },
     /// May happen in `contentEncoding` validation if `base64` encoded data is invalid.
     FromUtf8 { error: FromUtf8Error },
     /// Invalid UTF-8 string during percent encoding when resolving happens
@@ -416,16 +416,18 @@ impl<'a> ValidationError<'a> {
             schema_path: JSONPointer::default(),
         }
     }
-    pub(crate) const fn format(
+    pub(crate) fn format(
         schema_path: JSONPointer,
         instance_path: JSONPointer,
         instance: &'a Value,
-        format: &'static str,
+        format: impl Into<String>,
     ) -> ValidationError<'a> {
         ValidationError {
             instance_path,
             instance: Cow::Borrowed(instance),
-            kind: ValidationErrorKind::Format { format },
+            kind: ValidationErrorKind::Format {
+                format: format.into(),
+            },
             schema_path,
         }
     }

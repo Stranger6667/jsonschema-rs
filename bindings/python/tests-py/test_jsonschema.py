@@ -275,3 +275,41 @@ def test_dict_subclasses(type_, value, expected):
     schema = {"type": "object", "properties": {"foo": {"type": "integer"}}}
     document = type_({"foo": value})
     assert is_valid(schema, document) is expected
+
+
+def test_custom_format():
+    def is_currency(value):
+        return len(value) == 3 and value.isascii()
+
+    validator = JSONSchema({"type": "string", "format": "currency"}, formats={"currency": is_currency})
+    assert validator.is_valid("USD")
+    assert not validator.is_valid(42)
+    assert not validator.is_valid("invalid")
+
+
+def test_custom_format_invalid_callback():
+    with pytest.raises(ValueError, match="Format checker for 'currency' must be a callable"):
+        JSONSchema({"type": "string", "format": "currency"}, formats={"currency": 42})
+
+
+def test_custom_format_with_exception():
+    def is_currency(_):
+        raise ValueError("Invalid currency")
+
+    schema = {"type": "string", "format": "currency"}
+    formats = {"currency": is_currency}
+    validator = JSONSchema(schema, formats=formats)
+    with pytest.raises(ValueError, match="Invalid currency"):
+        validator.is_valid("USD")
+    with pytest.raises(ValueError, match="Invalid currency"):
+        validator.validate("USD")
+    with pytest.raises(ValueError, match="Invalid currency"):
+        for _ in validator.iter_errors("USD"):
+            pass
+    with pytest.raises(ValueError, match="Invalid currency"):
+        is_valid(schema, "USD", formats=formats)
+    with pytest.raises(ValueError, match="Invalid currency"):
+        validate(schema, "USD", formats=formats)
+    with pytest.raises(ValueError, match="Invalid currency"):
+        for _ in iter_errors(schema, "USD", formats=formats):
+            pass

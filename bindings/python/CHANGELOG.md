@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Defining custom format checkers. [#245](https://github.com/Stranger6667/jsonschema-rs/issues/245)
+
 ### Changed
 
 - Update `pyo3` to `0.21`.

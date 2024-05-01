@@ -1,5 +1,5 @@
 //! Validator for `format` keyword.
-use std::{net::IpAddr, str::FromStr};
+use std::{net::IpAddr, str::FromStr, sync::Arc};
 
 use fancy_regex::Regex;
 use once_cell::sync::Lazy;
@@ -369,14 +369,14 @@ impl Validate for DurationValidator {
 
 struct CustomFormatValidator {
     schema_path: JSONPointer,
-    format_name: &'static str,
-    check: fn(&str) -> bool,
+    format_name: String,
+    check: Arc<dyn Format>,
 }
 impl CustomFormatValidator {
     pub(crate) fn compile<'a>(
         context: &CompilationContext,
-        format_name: &'static str,
-        check: fn(&str) -> bool,
+        format_name: String,
+        check: Arc<dyn Format>,
     ) -> CompilationResult<'a> {
         let schema_path = context.as_pointer_with("format");
         Ok(Box::new(CustomFormatValidator {
@@ -398,25 +398,37 @@ impl Validate for CustomFormatValidator {
         instance: &'instance Value,
         instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
-        if let Value::String(_item) = instance {
-            if !self.is_valid(instance) {
-                return error(ValidationError::format(
-                    self.schema_path.clone(),
-                    instance_path.into(),
-                    instance,
-                    self.format_name,
-                ));
-            }
+        if !self.is_valid(instance) {
+            return error(ValidationError::format(
+                self.schema_path.clone(),
+                instance_path.into(),
+                instance,
+                self.format_name.clone(),
+            ));
         }
         no_error()
     }
 
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            (self.check)(item)
+            self.check.is_valid(item)
         } else {
             true
         }
+    }
+}
+
+pub(crate) trait Format: Send + Sync + 'static {
+    fn is_valid(&self, value: &str) -> bool;
+}
+
+impl<F> Format for F
+where
+    F: Fn(&str) -> bool + Send + Sync + 'static,
+{
+    #[inline]
+    fn is_valid(&self, value: &str) -> bool {
+        self(value)
     }
 }
 
@@ -431,8 +443,12 @@ pub(crate) fn compile<'a>(
     }
 
     if let Value::String(format) = schema {
-        if let Some((format, func)) = context.config.format(format) {
-            return Some(CustomFormatValidator::compile(context, format, *func));
+        if let Some((name, func)) = context.config.get_format(format) {
+            return Some(CustomFormatValidator::compile(
+                context,
+                name.clone(),
+                func.clone(),
+            ));
         }
         let draft_version = context.config.draft();
         match format.as_str() {

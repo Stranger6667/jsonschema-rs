@@ -5,7 +5,7 @@ use crate::{
         DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS,
     },
     content_media_type::{ContentMediaTypeCheckType, DEFAULT_CONTENT_MEDIA_TYPE_CHECKS},
-    keywords::custom::KeywordFactory,
+    keywords::{custom::KeywordFactory, format::Format},
     paths::JSONPointer,
     resolver::{DefaultResolver, Resolver, SchemaResolver},
     schemas, Keyword, ValidationError,
@@ -273,7 +273,7 @@ pub struct CompilationOptions {
     content_encoding_checks_and_converters:
         AHashMap<&'static str, Option<(ContentEncodingCheckType, ContentEncodingConverterType)>>,
     store: AHashMap<String, Arc<serde_json::Value>>,
-    formats: AHashMap<&'static str, fn(&str) -> bool>,
+    formats: AHashMap<String, Arc<dyn Format>>,
     validate_formats: Option<bool>,
     validate_schema: bool,
     ignore_unknown_formats: bool,
@@ -598,11 +598,15 @@ impl CompilationOptions {
     /// ```
     ///
     /// The format check function should receive `&str` and return `bool`.
-    pub fn with_format(&mut self, name: &'static str, format: fn(&str) -> bool) -> &mut Self {
-        self.formats.insert(name, format);
+    pub fn with_format<N, F>(&mut self, name: N, format: F) -> &mut Self
+    where
+        N: Into<String>,
+        F: Fn(&str) -> bool + Send + Sync + 'static,
+    {
+        self.formats.insert(name.into(), Arc::new(format));
         self
     }
-    pub(crate) fn format(&self, format: &str) -> FormatKV<'_> {
+    pub(crate) fn get_format(&self, format: &str) -> Option<(&String, &Arc<dyn Format>)> {
         self.formats.get_key_value(format)
     }
     /// Do not perform schema validation during compilation.
@@ -717,8 +721,6 @@ impl CompilationOptions {
         self.keywords.get(name)
     }
 }
-// format name & a pointer to a check function
-type FormatKV<'a> = Option<(&'a &'static str, &'a fn(&str) -> bool)>;
 
 impl fmt::Debug for CompilationOptions {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -16,12 +16,18 @@
 )]
 #![allow(clippy::upper_case_acronyms)]
 
+use std::{
+    any::Any,
+    cell::RefCell,
+    panic::{self, AssertUnwindSafe},
+};
+
 use jsonschema::{paths::JSONPointer, Draft};
 use pyo3::{
     exceptions::{self, PyValueError},
     ffi::PyUnicode_AsUTF8AndSize,
     prelude::*,
-    types::{PyAny, PyList, PyType},
+    types::{PyAny, PyDict, PyList, PyString, PyType},
     wrap_pyfunction,
 };
 #[macro_use]
@@ -128,9 +134,14 @@ fn get_draft(draft: u8) -> PyResult<Draft> {
     }
 }
 
+thread_local! {
+    static LAST_FORMAT_ERROR: RefCell<Option<PyErr>> = const { RefCell::new(None) };
+}
+
 fn make_options(
     draft: Option<u8>,
     with_meta_schemas: Option<bool>,
+    formats: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<jsonschema::CompilationOptions> {
     let mut options = jsonschema::JSONSchema::options();
     if let Some(raw_draft_version) = draft {
@@ -138,6 +149,37 @@ fn make_options(
     }
     if with_meta_schemas == Some(true) {
         options.with_meta_schemas();
+    }
+    if let Some(formats) = formats {
+        for (name, callback) in formats.iter() {
+            if !callback.is_callable() {
+                return Err(exceptions::PyValueError::new_err(format!(
+                    "Format checker for '{}' must be a callable",
+                    name
+                )));
+            }
+            let callback: Py<PyAny> = callback.clone().unbind();
+            let call_py_callback = move |value: &str| {
+                Python::with_gil(|py| {
+                    let value = PyString::new_bound(py, value);
+                    callback.call_bound(py, (value,), None)?.is_truthy(py)
+                })
+            };
+            options.with_format(
+                name.to_string(),
+                move |value: &str| match call_py_callback(value) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        LAST_FORMAT_ERROR.with(|last| {
+                            *last.borrow_mut() = Some(e);
+                        });
+                        std::panic::set_hook(Box::new(|_| {}));
+                        // Should be caught
+                        panic!("Format checker failed")
+                    }
+                },
+            );
+        }
     }
     Ok(options)
 }
@@ -150,11 +192,15 @@ fn iter_on_error(
     let instance = ser::to_value(instance)?;
     let mut pyerrors = vec![];
 
-    if let Err(errors) = compiled.validate(&instance) {
-        for error in errors {
-            pyerrors.push(into_py_err(py, error)?);
-        }
-    };
+    panic::catch_unwind(AssertUnwindSafe(|| {
+        if let Err(errors) = compiled.validate(&instance) {
+            for error in errors {
+                pyerrors.push(into_py_err(py, error)?);
+            }
+        };
+        PyResult::Ok(())
+    }))
+    .map_err(handle_format_checked_panic)??;
     Ok(ValidationErrorIter {
         iter: pyerrors.into_iter(),
     })
@@ -166,7 +212,8 @@ fn raise_on_error(
     instance: &Bound<'_, PyAny>,
 ) -> PyResult<()> {
     let instance = ser::to_value(instance)?;
-    let result = compiled.validate(&instance);
+    let result = panic::catch_unwind(AssertUnwindSafe(|| compiled.validate(&instance)))
+        .map_err(handle_format_checked_panic)?;
     let error = result
         .err()
         .map(|mut errors| errors.next().expect("Iterator should not be empty"));
@@ -227,7 +274,7 @@ fn to_error_message(error: &jsonschema::ValidationError<'_>) -> String {
     message
 }
 
-/// is_valid(schema, instance, draft=None, with_meta_schemas=False)
+/// is_valid(schema, instance, draft=None, with_meta_schemas=False, formats=None)
 ///
 /// A shortcut for validating the input instance against the schema.
 ///
@@ -237,26 +284,28 @@ fn to_error_message(error: &jsonschema::ValidationError<'_>) -> String {
 /// If your workflow implies validating against the same schema, consider using `JSONSchema.is_valid`
 /// instead.
 #[pyfunction]
-#[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False)")]
+#[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False, formats=None)")]
 fn is_valid(
     py: Python<'_>,
     schema: &Bound<'_, PyAny>,
     instance: &Bound<'_, PyAny>,
     draft: Option<u8>,
     with_meta_schemas: Option<bool>,
+    formats: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<bool> {
-    let options = make_options(draft, with_meta_schemas)?;
+    let options = make_options(draft, with_meta_schemas, formats)?;
     let schema = ser::to_value(schema)?;
     match options.compile(&schema) {
         Ok(compiled) => {
             let instance = ser::to_value(instance)?;
-            Ok(compiled.is_valid(&instance))
+            panic::catch_unwind(AssertUnwindSafe(|| Ok(compiled.is_valid(&instance))))
+                .map_err(handle_format_checked_panic)?
         }
         Err(error) => Err(into_py_err(py, error)?),
     }
 }
 
-/// validate(schema, instance, draft=None, with_meta_schemas=False)
+/// validate(schema, instance, draft=None, with_meta_schemas=False, formats=None)
 ///
 /// Validate the input instance and raise `ValidationError` in the error case
 ///
@@ -268,15 +317,16 @@ fn is_valid(
 /// If your workflow implies validating against the same schema, consider using `JSONSchema.validate`
 /// instead.
 #[pyfunction]
-#[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False)")]
+#[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False, formats=None)")]
 fn validate(
     py: Python<'_>,
     schema: &Bound<'_, PyAny>,
     instance: &Bound<'_, PyAny>,
     draft: Option<u8>,
     with_meta_schemas: Option<bool>,
+    formats: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<()> {
-    let options = make_options(draft, with_meta_schemas)?;
+    let options = make_options(draft, with_meta_schemas, formats)?;
     let schema = ser::to_value(schema)?;
     match options.compile(&schema) {
         Ok(compiled) => raise_on_error(py, &compiled, instance),
@@ -284,7 +334,7 @@ fn validate(
     }
 }
 
-/// iter_errors(schema, instance, draft=None, with_meta_schemas=False)
+/// iter_errors(schema, instance, draft=None, with_meta_schemas=False, formats=None)
 ///
 /// Iterate the validation errors of the input instance
 ///
@@ -295,15 +345,16 @@ fn validate(
 /// If your workflow implies validating against the same schema, consider using `JSONSchema.iter_errors`
 /// instead.
 #[pyfunction]
-#[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False)")]
+#[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False, formats=None)")]
 fn iter_errors(
     py: Python<'_>,
     schema: &Bound<'_, PyAny>,
     instance: &Bound<'_, PyAny>,
     draft: Option<u8>,
     with_meta_schemas: Option<bool>,
+    formats: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<ValidationErrorIter> {
-    let options = make_options(draft, with_meta_schemas)?;
+    let options = make_options(draft, with_meta_schemas, formats)?;
     let schema = ser::to_value(schema)?;
     match options.compile(&schema) {
         Ok(compiled) => iter_on_error(py, &compiled, instance),
@@ -338,17 +389,29 @@ fn get_schema_repr(schema: &serde_json::Value) -> String {
     repr
 }
 
+fn handle_format_checked_panic(err: Box<dyn Any + Send>) -> PyErr {
+    LAST_FORMAT_ERROR.with(|last| {
+        if let Some(err) = last.borrow_mut().take() {
+            let _ = panic::take_hook();
+            err
+        } else {
+            exceptions::PyRuntimeError::new_err(format!("Validation panicked: {:?}", err))
+        }
+    })
+}
+
 #[pymethods]
 impl JSONSchema {
     #[new]
-    #[pyo3(text_signature = "(schema, draft=None, with_meta_schemas=False)")]
+    #[pyo3(text_signature = "(schema, draft=None, with_meta_schemas=False, formats=None)")]
     fn new(
         py: Python<'_>,
         pyschema: &Bound<'_, PyAny>,
         draft: Option<u8>,
         with_meta_schemas: Option<bool>,
+        formats: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<Self> {
-        let options = make_options(draft, with_meta_schemas)?;
+        let options = make_options(draft, with_meta_schemas, formats)?;
         let raw_schema = ser::to_value(pyschema)?;
         match options.compile(&raw_schema) {
             Ok(schema) => Ok(JSONSchema {
@@ -358,7 +421,7 @@ impl JSONSchema {
             Err(error) => Err(into_py_err(py, error)?),
         }
     }
-    /// from_str(string, draft=None, with_meta_schemas=False)
+    /// from_str(string, draft=None, with_meta_schemas=False, formats=None)
     ///
     /// Create `JSONSchema` from a serialized JSON string.
     ///
@@ -366,13 +429,14 @@ impl JSONSchema {
     ///
     /// Use it if you have your schema as a string and want to utilize Rust JSON parsing.
     #[classmethod]
-    #[pyo3(text_signature = "(string, draft=None, with_meta_schemas=False)")]
+    #[pyo3(text_signature = "(string, draft=None, with_meta_schemas=False, formats=None)")]
     fn from_str(
         _: &Bound<'_, PyType>,
         py: Python<'_>,
         pyschema: &Bound<'_, PyAny>,
         draft: Option<u8>,
         with_meta_schemas: Option<bool>,
+        formats: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<Self> {
         let obj_ptr = pyschema.as_ptr();
         let object_type = unsafe { pyo3::ffi::Py_TYPE(obj_ptr) };
@@ -389,7 +453,7 @@ impl JSONSchema {
             let slice = unsafe { std::slice::from_raw_parts(ptr.cast::<u8>(), str_size as usize) };
             let raw_schema = serde_json::from_slice(slice)
                 .map_err(|error| PyValueError::new_err(format!("Invalid string: {}", error)))?;
-            let options = make_options(draft, with_meta_schemas)?;
+            let options = make_options(draft, with_meta_schemas, formats)?;
             match options.compile(&raw_schema) {
                 Ok(schema) => Ok(JSONSchema {
                     schema,
@@ -412,7 +476,8 @@ impl JSONSchema {
     #[pyo3(text_signature = "(instance)")]
     fn is_valid(&self, instance: &Bound<'_, PyAny>) -> PyResult<bool> {
         let instance = ser::to_value(instance)?;
-        Ok(self.schema.is_valid(&instance))
+        panic::catch_unwind(AssertUnwindSafe(|| Ok(self.schema.is_valid(&instance))))
+            .map_err(handle_format_checked_panic)?
     }
 
     /// validate(instance)

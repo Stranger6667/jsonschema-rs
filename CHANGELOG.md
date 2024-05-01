@@ -4,7 +4,7 @@
 
 ### Added
 
-- Custom keywords support. [#379](https://github.com/Stranger6667/jsonschema-rs/issues/429)
+- Custom keywords support. [#379](https://github.com/Stranger6667/jsonschema-rs/issues/379)
 - Expose `JsonPointerNode` that can be converted into `JSONPointer`.
   This is needed for the upcoming custom validators support.
 
@@ -24,6 +24,8 @@
 - Bump `regex` to `1.10`.
 - Bump `url` to `2.5`.
 - Build CLI only if the `cli` feature is enabled.
+- **BREAKING**: Extend `CompilationOptions` to support more ways to define custom format checkers (for example in Python bindings).
+  In turn it changes `ValidationErrorKind::Format` to contain a `String` instead of a `&'static str`.
 
 ## [0.17.1] - 2023-07-05
 
