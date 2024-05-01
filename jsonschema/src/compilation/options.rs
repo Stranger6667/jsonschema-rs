@@ -5,8 +5,10 @@ use crate::{
         DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS,
     },
     content_media_type::{ContentMediaTypeCheckType, DEFAULT_CONTENT_MEDIA_TYPE_CHECKS},
+    keywords::custom::KeywordFactory,
+    paths::JSONPointer,
     resolver::{DefaultResolver, Resolver, SchemaResolver},
-    schemas, ValidationError,
+    schemas, Keyword, ValidationError,
 };
 use ahash::AHashMap;
 use once_cell::sync::Lazy;
@@ -275,6 +277,7 @@ pub struct CompilationOptions {
     validate_formats: Option<bool>,
     validate_schema: bool,
     ignore_unknown_formats: bool,
+    keywords: AHashMap<String, Arc<dyn KeywordFactory>>,
 }
 
 impl Default for CompilationOptions {
@@ -289,6 +292,7 @@ impl Default for CompilationOptions {
             formats: AHashMap::default(),
             validate_formats: None,
             ignore_unknown_formats: true,
+            keywords: AHashMap::default(),
         }
     }
 }
@@ -636,6 +640,78 @@ impl CompilationOptions {
 
     pub(crate) const fn are_unknown_formats_ignored(&self) -> bool {
         self.ignore_unknown_formats
+    }
+
+    /// Register a custom keyword definition.
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// # use jsonschema::{ErrorIterator, JSONSchema, paths::{JsonPointerNode, JSONPointer}, Keyword, ValidationError};
+    /// # use serde_json::{json, Value, Map};
+    /// # use std::{sync::Arc, iter::once};
+    ///
+    /// struct MyCustomValidator;
+    ///
+    /// impl Keyword for MyCustomValidator {
+    ///     fn validate<'instance>(
+    ///         &self,
+    ///         instance: &'instance Value,
+    ///         instance_path: &JsonPointerNode,
+    ///     ) -> ErrorIterator<'instance> {
+    ///         // ... validate instance ...
+    ///         if !instance.is_object() {
+    ///             let error = ValidationError::custom(
+    ///                 JSONPointer::default(),
+    ///                 instance_path.into(),
+    ///                 instance,
+    ///                 "Boom!",
+    ///             );
+    ///             Box::new(once(error))
+    ///         } else {
+    ///             Box::new(None.into_iter())
+    ///         }
+    ///     }
+    ///     fn is_valid(&self, instance: &Value) -> bool {
+    ///         // ... determine if instance is valid ...
+    ///         true
+    ///     }
+    /// }
+    ///
+    /// // You can create a factory function, or use a closure to create new validator instances.
+    /// fn custom_validator_factory<'a>(
+    ///     parent: &'a Map<String, Value>,
+    ///     schema: &'a Value,
+    ///     path: JSONPointer,
+    /// ) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
+    ///     Ok(Box::new(MyCustomValidator))
+    /// }
+    ///
+    /// assert!(JSONSchema::options()
+    ///     .with_keyword("my-type", custom_validator_factory)
+    ///     .with_keyword("my-type-with-closure", |_, _, _| Ok(Box::new(MyCustomValidator)))
+    ///     .compile(&json!({ "my-type": "my-schema"}))
+    ///     .expect("A valid schema")
+    ///     .is_valid(&json!({ "a": "b"})));
+    /// ```
+    pub fn with_keyword<N, F>(&mut self, name: N, factory: F) -> &mut Self
+    where
+        N: Into<String>,
+        F: for<'a> Fn(
+                &'a serde_json::Map<String, serde_json::Value>,
+                &'a serde_json::Value,
+                JSONPointer,
+            ) -> Result<Box<dyn Keyword>, ValidationError<'a>>
+            + Send
+            + Sync
+            + 'static,
+    {
+        self.keywords.insert(name.into(), Arc::new(factory));
+        self
+    }
+
+    pub(crate) fn get_keyword_factory(&self, name: &str) -> Option<&Arc<dyn KeywordFactory>> {
+        self.keywords.get(name)
     }
 }
 // format name & a pointer to a check function

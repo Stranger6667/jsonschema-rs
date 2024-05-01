@@ -7,8 +7,8 @@ use crate::{
 use serde_json::{Map, Number, Value};
 use std::{
     borrow::Cow,
-    error, fmt,
-    fmt::Formatter,
+    error,
+    fmt::{self, Formatter},
     io,
     iter::{empty, once},
     str::Utf8Error,
@@ -80,6 +80,8 @@ pub enum ValidationErrorKind {
     ContentEncoding { content_encoding: String },
     /// The input value does not respect the defined contentMediaType
     ContentMediaType { content_media_type: String },
+    /// Custom error message for user-defined validation.
+    Custom { message: String },
     /// The input value doesn't match any of specified options.
     Enum { options: Value },
     /// Value is too large.
@@ -735,6 +737,22 @@ impl<'a> ValidationError<'a> {
             schema_path: JSONPointer::default(),
         }
     }
+    /// Create a new custom validation error.
+    pub fn custom(
+        schema_path: JSONPointer,
+        instance_path: JSONPointer,
+        instance: &'a Value,
+        message: impl Into<String>,
+    ) -> ValidationError<'a> {
+        ValidationError {
+            instance_path,
+            instance: Cow::Borrowed(instance),
+            kind: ValidationErrorKind::Custom {
+                message: message.into(),
+            },
+            schema_path,
+        }
+    }
 }
 
 impl error::Error for ValidationError<'_> {}
@@ -994,6 +1012,7 @@ impl fmt::Display for ValidationError<'_> {
                     .collect::<Vec<String>>()
                     .join(", ")
             ),
+            ValidationErrorKind::Custom { message } => f.write_str(message),
         }
     }
 }
