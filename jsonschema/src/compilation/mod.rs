@@ -335,13 +335,13 @@ mod tests {
                 let mut errors = vec![];
                 for key in instance.as_object().unwrap().keys() {
                     if !key.is_ascii() {
-                        //         let error = ValidationError {
-                        //             instance: Cow::Borrowed(instance),
-                        //             kind: crate::error::ValidationErrorKind::Format { format: "ASCII" },
-                        //             instance_path: instance_path.clone(),
-                        //             schema_path: subschema_path.clone(),
-                        //         };
-                        //         errors.push(error);
+                        let error = ValidationError::custom(
+                            JSONPointer::default(),
+                            instance_path.into(),
+                            instance,
+                            "Key is not ASCII",
+                        );
+                        errors.push(error);
                     }
                 }
                 Box::new(errors.into_iter())
@@ -395,7 +395,12 @@ mod tests {
 
         // Verify validator detects invalid custom-object-type
         let instance = json!({ "å" : 1 });
-        assert!(compiled.validate(&instance).is_err());
+        let error = compiled
+            .validate(&instance)
+            .expect_err("Should fail")
+            .next()
+            .expect("Not empty");
+        assert_eq!(error.to_string(), "Key is not ASCII");
         assert!(!compiled.is_valid(&instance));
     }
 

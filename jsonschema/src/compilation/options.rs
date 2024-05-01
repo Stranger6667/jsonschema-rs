@@ -648,7 +648,7 @@ impl CompilationOptions {
     /// ```rust
     /// # use jsonschema::{ErrorIterator, JSONSchema, paths::{JsonPointerNode, JSONPointer}, Keyword, ValidationError};
     /// # use serde_json::{json, Value, Map};
-    /// # use std::sync::Arc;
+    /// # use std::{sync::Arc, iter::once};
     ///
     /// struct MyCustomValidator;
     ///
@@ -659,7 +659,17 @@ impl CompilationOptions {
     ///         instance_path: &JsonPointerNode,
     ///     ) -> ErrorIterator<'instance> {
     ///         // ... validate instance ...
-    ///         Box::new(None.into_iter())
+    ///         if !instance.is_object() {
+    ///             let error = ValidationError::custom(
+    ///                 JSONPointer::default(),
+    ///                 instance_path.into(),
+    ///                 instance,
+    ///                 "Boom!",
+    ///             );
+    ///             Box::new(once(error))
+    ///         } else {
+    ///             Box::new(None.into_iter())
+    ///         }
     ///     }
     ///     fn is_valid(&self, instance: &Value) -> bool {
     ///         // ... determine if instance is valid ...

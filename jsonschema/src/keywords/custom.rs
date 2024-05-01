@@ -42,19 +42,20 @@ impl Validate for CustomKeyword {
 
 /// Trait that allows implementing custom validation for keywords.
 pub trait Keyword: Send + Sync {
-    fn is_valid(&self, instance: &Value) -> bool;
     /// Validate [instance](Value) according to a custom specification
     ///
     /// A custom keyword validator may be used when a validation that cannot be
     /// easily or efficiently expressed in JSON schema.
     ///
     /// The custom validation is applied in addition to the JSON schema validation.
-    /// Validate an instance returning any and all detected validation errors.
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
         instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance>;
+    /// Validate [instance](Value) and return a boolean result.
+    /// Could be potentilly faster than `validate` method.
+    fn is_valid(&self, instance: &Value) -> bool;
 }
 
 pub trait KeywordFactory: Send + Sync + sealed::Sealed {
