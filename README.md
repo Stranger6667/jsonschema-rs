@@ -118,6 +118,73 @@ fn main() {
 }
 ```
 
+## Custom keywords
+
+`jsonschema` allows you to implement custom validation logic by defining custom keywords.
+To use your own keyword, you need to implement the `Keyword` trait and add it to the `JSONSchema` instance via the `with_keyword` method:
+
+```rust
+use jsonschema::{
+    paths::{JSONPointer, JsonPointerNode},
+    ErrorIterator, JSONSchema, Keyword, ValidationError,
+};
+use serde_json::{json, Map, Value};
+use std::iter::once;
+
+struct MyCustomValidator;
+
+impl Keyword for MyCustomValidator {
+    fn validate<'instance>(
+        &self,
+        instance: &'instance Value,
+        instance_path: &JsonPointerNode,
+    ) -> ErrorIterator<'instance> {
+        // ... validate instance ...
+        if !instance.is_object() {
+            let error = ValidationError::custom(
+                JSONPointer::default(),
+                instance_path.into(),
+                instance,
+                "Boom!",
+            );
+            Box::new(once(error))
+        } else {
+            Box::new(None.into_iter())
+        }
+    }
+    fn is_valid(&self, instance: &Value) -> bool {
+        // ... determine if instance is valid ...
+        true
+    }
+}
+
+// You can create a factory function, or use a closure to create new validator instances.
+fn custom_validator_factory<'a>(
+    // Parent object where your keyword is defined
+    parent: &'a Map<String, Value>,
+    // Your keyword value
+    value: &'a Value,
+    // JSON Pointer to your keyword within the schema
+    path: JSONPointer,
+) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
+    // You may return validation error if the keyword is misused for some reason
+    Ok(Box::new(MyCustomValidator))
+}
+
+fn main() {
+    let schema = json!({"my-type": "my-schema"});
+    let instance = json!({"a": "b"});
+    let compiled = JSONSchema::options()
+        // Register your keyword via a factory function
+        .with_keyword("my-type", custom_validator_factory)
+        // Or use a closure
+        .with_keyword("my-type-with-closure", |_, _, _| Ok(Box::new(MyCustomValidator)))
+        .compile(&schema)
+        .expect("A valid schema");
+    assert!(compiled.is_valid(instance));
+}
+```
+
 ## Reference resolving and TLS
 
 By default, `jsonschema` resolves HTTP references via `reqwest` without TLS support.

@@ -647,9 +647,12 @@ impl CompilationOptions {
     /// ## Example
     ///
     /// ```rust
-    /// # use jsonschema::{ErrorIterator, JSONSchema, paths::{JsonPointerNode, JSONPointer}, Keyword, ValidationError};
-    /// # use serde_json::{json, Value, Map};
-    /// # use std::{sync::Arc, iter::once};
+    /// # use jsonschema::{
+    /// #    paths::{JSONPointer, JsonPointerNode},
+    /// #    ErrorIterator, JSONSchema, Keyword, ValidationError,
+    /// # };
+    /// # use serde_json::{json, Map, Value};
+    /// # use std::iter::once;
     ///
     /// struct MyCustomValidator;
     ///
@@ -681,7 +684,7 @@ impl CompilationOptions {
     /// // You can create a factory function, or use a closure to create new validator instances.
     /// fn custom_validator_factory<'a>(
     ///     parent: &'a Map<String, Value>,
-    ///     schema: &'a Value,
+    ///     value: &'a Value,
     ///     path: JSONPointer,
     /// ) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
     ///     Ok(Box::new(MyCustomValidator))
