@@ -544,5 +544,13 @@ mod tests {
         let instance = json!(1);
         assert!(compiled.validate(&instance).is_err());
         assert!(!compiled.is_valid(&instance));
+
+        // Invalid `minimum` value
+        let schema = json!({ "minimum": "foo" });
+        let error = JSONSchema::options()
+            .with_keyword("minimum", custom_minimum_factory)
+            .compile(&schema)
+            .expect_err("Should fail");
+        assert_eq!(error.to_string(), "\"foo\" is not of type \"number\"");
     }
 }
