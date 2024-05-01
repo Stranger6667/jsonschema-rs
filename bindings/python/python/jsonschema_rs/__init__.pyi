@@ -1,13 +1,15 @@
-from typing import Any, TypeVar
+from typing import Any, Callable, TypeVar
 from collections.abc import Iterator
 
 _SchemaT = TypeVar("_SchemaT", bool, dict[str, Any])
+_FormatFunc = TypeVar("_FormatFunc", bound=Callable[[str], bool])
 
 def is_valid(
     schema: _SchemaT,
     instance: Any,
     draft: int | None = None,
     with_meta_schemas: bool | None = None,
+    formats: dict[str, _FormatFunc] | None = None,
 ) -> bool:
     pass
 
@@ -16,6 +18,7 @@ def validate(
     instance: Any,
     draft: int | None = None,
     with_meta_schemas: bool | None = None,
+    formats: dict[str, _FormatFunc] | None = None,
 ) -> None:
     pass
 
@@ -24,6 +27,7 @@ def iter_errors(
     instance: Any,
     draft: int | None = None,
     with_meta_schemas: bool | None = None,
+    formats: dict[str, _FormatFunc] | None = None,
 ) -> Iterator[ValidationError]:
     pass
 
@@ -33,6 +37,7 @@ class JSONSchema:
         schema: _SchemaT,
         draft: int | None = None,
         with_meta_schemas: bool | None = None,
+        formats: dict[str, _FormatFunc] | None = None,
     ) -> None:
         pass
 
@@ -42,6 +47,7 @@ class JSONSchema:
         schema: str,
         draft: int | None = None,
         with_meta_schemas: bool | None = None,
+        formats: dict[str, _FormatFunc] | None = None,
     ) -> "JSONSchema":
         pass
 
