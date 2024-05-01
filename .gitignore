@@ -3,7 +3,6 @@
 /bindings/*/target
 /bench_helpers/target
 /jsonschema-test-suite/target
-/jsonschema-csr/target
 .hypothesis
 .benchmarks
 /jsonschema/Cargo.lock
@@ -12,3 +11,5 @@
 # IDEs
 /.idea
 /.vscode
+
+Cargo.lock
