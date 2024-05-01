@@ -89,19 +89,19 @@ impl ValidationErrorIter {
 }
 
 fn into_py_err(py: Python<'_>, error: jsonschema::ValidationError<'_>) -> PyResult<PyErr> {
-    let pyerror_type = PyType::new::<ValidationError>(py);
+    let pyerror_type = PyType::new_bound::<ValidationError>(py);
     let message = error.to_string();
     let verbose_message = to_error_message(&error);
     let schema_path = into_path(py, error.schema_path)?;
     let instance_path = into_path(py, error.instance_path)?;
-    Ok(PyErr::from_type(
+    Ok(PyErr::from_type_bound(
         pyerror_type,
         (message, verbose_message, schema_path, instance_path),
     ))
 }
 
 fn into_path(py: Python<'_>, pointer: JSONPointer) -> PyResult<Py<PyList>> {
-    let path = PyList::empty(py);
+    let path = PyList::empty_bound(py);
     for chunk in pointer {
         match chunk {
             jsonschema::paths::PathChunk::Property(property) => {
@@ -111,7 +111,7 @@ fn into_path(py: Python<'_>, pointer: JSONPointer) -> PyResult<Py<PyList>> {
             jsonschema::paths::PathChunk::Keyword(keyword) => path.append(keyword)?,
         };
     }
-    Ok(path.into_py(py))
+    Ok(path.unbind())
 }
 
 fn get_draft(draft: u8) -> PyResult<Draft> {
@@ -145,7 +145,7 @@ fn make_options(
 fn iter_on_error(
     py: Python<'_>,
     compiled: &jsonschema::JSONSchema,
-    instance: &PyAny,
+    instance: &Bound<'_, PyAny>,
 ) -> PyResult<ValidationErrorIter> {
     let instance = ser::to_value(instance)?;
     let mut pyerrors = vec![];
@@ -163,7 +163,7 @@ fn iter_on_error(
 fn raise_on_error(
     py: Python<'_>,
     compiled: &jsonschema::JSONSchema,
-    instance: &PyAny,
+    instance: &Bound<'_, PyAny>,
 ) -> PyResult<()> {
     let instance = ser::to_value(instance)?;
     let result = compiled.validate(&instance);
@@ -240,8 +240,8 @@ fn to_error_message(error: &jsonschema::ValidationError<'_>) -> String {
 #[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False)")]
 fn is_valid(
     py: Python<'_>,
-    schema: &PyAny,
-    instance: &PyAny,
+    schema: &Bound<'_, PyAny>,
+    instance: &Bound<'_, PyAny>,
     draft: Option<u8>,
     with_meta_schemas: Option<bool>,
 ) -> PyResult<bool> {
@@ -271,8 +271,8 @@ fn is_valid(
 #[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False)")]
 fn validate(
     py: Python<'_>,
-    schema: &PyAny,
-    instance: &PyAny,
+    schema: &Bound<'_, PyAny>,
+    instance: &Bound<'_, PyAny>,
     draft: Option<u8>,
     with_meta_schemas: Option<bool>,
 ) -> PyResult<()> {
@@ -298,8 +298,8 @@ fn validate(
 #[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False)")]
 fn iter_errors(
     py: Python<'_>,
-    schema: &PyAny,
-    instance: &PyAny,
+    schema: &Bound<'_, PyAny>,
+    instance: &Bound<'_, PyAny>,
     draft: Option<u8>,
     with_meta_schemas: Option<bool>,
 ) -> PyResult<ValidationErrorIter> {
@@ -344,7 +344,7 @@ impl JSONSchema {
     #[pyo3(text_signature = "(schema, draft=None, with_meta_schemas=False)")]
     fn new(
         py: Python<'_>,
-        pyschema: &PyAny,
+        pyschema: &Bound<'_, PyAny>,
         draft: Option<u8>,
         with_meta_schemas: Option<bool>,
     ) -> PyResult<Self> {
@@ -368,9 +368,9 @@ impl JSONSchema {
     #[classmethod]
     #[pyo3(text_signature = "(string, draft=None, with_meta_schemas=False)")]
     fn from_str(
-        _: &PyType,
+        _: &Bound<'_, PyType>,
         py: Python<'_>,
-        pyschema: &PyAny,
+        pyschema: &Bound<'_, PyAny>,
         draft: Option<u8>,
         with_meta_schemas: Option<bool>,
     ) -> PyResult<Self> {
@@ -410,7 +410,7 @@ impl JSONSchema {
     ///
     /// The output is a boolean value, that indicates whether the instance is valid or not.
     #[pyo3(text_signature = "(instance)")]
-    fn is_valid(&self, instance: &PyAny) -> PyResult<bool> {
+    fn is_valid(&self, instance: &Bound<'_, PyAny>) -> PyResult<bool> {
         let instance = ser::to_value(instance)?;
         Ok(self.schema.is_valid(&instance))
     }
@@ -426,7 +426,7 @@ impl JSONSchema {
     ///
     /// If the input instance is invalid, only the first occurred error is raised.
     #[pyo3(text_signature = "(instance)")]
-    fn validate(&self, py: Python<'_>, instance: &PyAny) -> PyResult<()> {
+    fn validate(&self, py: Python<'_>, instance: &Bound<'_, PyAny>) -> PyResult<()> {
         raise_on_error(py, &self.schema, instance)
     }
 
@@ -439,7 +439,11 @@ impl JSONSchema {
     ///     ...
     ///     ValidationError: 3 is less than the minimum of 5
     #[pyo3(text_signature = "(instance)")]
-    fn iter_errors(&self, py: Python<'_>, instance: &PyAny) -> PyResult<ValidationErrorIter> {
+    fn iter_errors(
+        &self,
+        py: Python<'_>,
+        instance: &Bound<'_, PyAny>,
+    ) -> PyResult<ValidationErrorIter> {
         iter_on_error(py, &self.schema, instance)
     }
     fn __repr__(&self) -> String {
@@ -454,7 +458,7 @@ mod build {
 
 /// JSON Schema validation for Python written in Rust.
 #[pymodule]
-fn jsonschema_rs(py: Python<'_>, module: &PyModule) -> PyResult<()> {
+fn jsonschema_rs(py: Python<'_>, module: &Bound<'_, PyModule>) -> PyResult<()> {
     // To provide proper signatures for PyCharm, all the functions have their signatures as the
     // first line in docstrings. The idea is taken from NumPy.
     types::init();
@@ -462,7 +466,7 @@ fn jsonschema_rs(py: Python<'_>, module: &PyModule) -> PyResult<()> {
     module.add_wrapped(wrap_pyfunction!(validate))?;
     module.add_wrapped(wrap_pyfunction!(iter_errors))?;
     module.add_class::<JSONSchema>()?;
-    module.add("ValidationError", py.get_type::<ValidationError>())?;
+    module.add("ValidationError", py.get_type_bound::<ValidationError>())?;
     module.add("Draft4", DRAFT4)?;
     module.add("Draft6", DRAFT6)?;
     module.add("Draft7", DRAFT7)?;
