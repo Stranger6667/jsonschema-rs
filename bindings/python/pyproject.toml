@@ -8,7 +8,7 @@ authors = [
 maintainers = [
     {name = "Dmitry Dygalo", email = "dmitry@dygalo.dev"}
 ]
-readme = "README.rst"
+readme = "README.md"
 license = { text = "MIT" }
 classifiers = [
     "Development Status :: 3 - Alpha",
