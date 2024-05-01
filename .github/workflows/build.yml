@@ -140,13 +140,6 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: |
-            jsonschema
-            bindings/python
-          key: ${{ matrix.python-version }}-${{ matrix.os }}
-
       - name: Run ${{ matrix.python }} tox job
         run: tox -e py
         working-directory: ./bindings/python
