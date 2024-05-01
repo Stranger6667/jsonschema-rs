@@ -2,7 +2,7 @@ use crate::{
     compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::InstancePath,
+    paths::JsonPointerNode,
     primitive_type::PrimitiveType,
     validator::Validate,
 };
@@ -61,7 +61,7 @@ impl Validate for PatternValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::String(item) = instance {
             match self.pattern.is_match(item) {

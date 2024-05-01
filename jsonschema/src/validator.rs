@@ -2,7 +2,7 @@ use crate::{
     error::ErrorIterator,
     keywords::BoxedValidator,
     output::{Annotations, ErrorDescription, OutputUnit},
-    paths::InstancePath,
+    paths::JsonPointerNode,
     schema_node::SchemaNode,
 };
 use serde_json::Value;
@@ -26,7 +26,7 @@ pub(crate) trait Validate: Send + Sync + core::fmt::Display {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance>;
     // The same as above, but does not construct ErrorIterator.
     // It is faster for cases when the result is not needed (like anyOf), since errors are
@@ -79,7 +79,7 @@ pub(crate) trait Validate: Send + Sync + core::fmt::Display {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> PartialApplication<'a> {
         let errors: Vec<ErrorDescription> = self
             .validate(instance, instance_path)

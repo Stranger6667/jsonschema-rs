@@ -2,7 +2,7 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{no_error, ErrorIterator},
     keywords::CompilationResult,
-    paths::InstancePath,
+    paths::JsonPointerNode,
     schema_node::SchemaNode,
     validator::{format_iter_of_validators, format_validators, PartialApplication, Validate},
 };
@@ -43,7 +43,7 @@ impl Validate for ItemsArrayValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = items
@@ -97,7 +97,7 @@ impl Validate for ItemsObjectValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = items
@@ -114,7 +114,7 @@ impl Validate for ItemsObjectValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> PartialApplication<'a> {
         if let Value::Array(items) = instance {
             let mut results = Vec::with_capacity(items.len());
@@ -180,7 +180,7 @@ impl Validate for ItemsObjectSkipPrefixValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = items
@@ -201,7 +201,7 @@ impl Validate for ItemsObjectSkipPrefixValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> PartialApplication<'a> {
         if let Value::Array(items) = instance {
             let mut results = Vec::with_capacity(items.len().saturating_sub(self.skip_prefix));

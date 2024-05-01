@@ -2,7 +2,7 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{error, ErrorIterator},
     keywords::CompilationResult,
-    paths::{InstancePath, JSONPointer},
+    paths::{JSONPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     resolver::Resolver,
     schema_node::SchemaNode,
@@ -72,7 +72,7 @@ impl Validate for RefValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Some(node) = self.sub_nodes.read().as_ref() {
             return Box::new(

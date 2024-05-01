@@ -1,8 +1,8 @@
 use bench_helpers::{
     bench_citm, bench_fast, bench_geojson, bench_keywords, bench_openapi, bench_swagger,
 };
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use jsonschema::JSONSchema;
+use criterion::{criterion_group, criterion_main, Bencher, BenchmarkId, Criterion};
+use jsonschema::{paths::JsonPointerNode, JSONSchema};
 use serde_json::Value;
 
 macro_rules! jsonschema_rs_bench {
@@ -136,5 +136,37 @@ fn validate_invalid(c: &mut Criterion, name: &str, schema: &Value, instance: &Va
     );
 }
 
-criterion_group!(arbitrary, large_schemas, fast_schema, keywords);
+fn json_pointer_node(c: &mut Criterion) {
+    fn bench(b: &mut Bencher, pointer: &JsonPointerNode) {
+        b.iter(|| {
+            let _ = pointer.to_vec();
+        })
+    }
+    let empty = JsonPointerNode::new();
+    c.bench_with_input(BenchmarkId::new("jsonpointer", "empty"), &empty, bench);
+    let root = JsonPointerNode::new();
+    let node = root.push("entry");
+    let node = node.push("entry");
+    let node = node.push("entry");
+    c.bench_with_input(BenchmarkId::new("jsonpointer", "small"), &node, bench);
+    let root = JsonPointerNode::new();
+    let node = root.push("entry");
+    let node = node.push("entry");
+    let node = node.push("entry");
+    let node = node.push("entry");
+    let node = node.push("entry");
+    let node = node.push("entry");
+    let node = node.push("entry");
+    let node = node.push("entry");
+    let node = node.push("entry");
+    c.bench_with_input(BenchmarkId::new("jsonpointer", "big"), &node, bench);
+}
+
+criterion_group!(
+    arbitrary,
+    large_schemas,
+    fast_schema,
+    keywords,
+    json_pointer_node
+);
 criterion_main!(arbitrary);

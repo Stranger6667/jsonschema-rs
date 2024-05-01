@@ -1,4 +1,4 @@
-use crate::paths::{InstancePath, JSONPointer};
+use crate::paths::{JSONPointer, JsonPointerNode};
 
 use crate::{
     error::{error, ErrorIterator, ValidationError},
@@ -24,7 +24,7 @@ impl Validate for FalseValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         error(ValidationError::false_schema(
             self.schema_path.clone(),

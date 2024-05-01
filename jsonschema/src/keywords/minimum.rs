@@ -2,7 +2,7 @@ use crate::{
     compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{InstancePath, JSONPointer},
+    paths::{JSONPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
@@ -31,7 +31,7 @@ macro_rules! validate {
             fn validate<'instance>(
                 &self,
                 instance: &'instance Value,
-                instance_path: &InstancePath,
+                instance_path: &JsonPointerNode,
             ) -> ErrorIterator<'instance> {
                 if self.is_valid(instance) {
                     no_error()
@@ -88,7 +88,7 @@ impl Validate for MinimumF64Validator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if self.is_valid(instance) {
             no_error()

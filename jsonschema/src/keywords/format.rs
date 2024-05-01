@@ -11,7 +11,7 @@ use crate::{
     compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{pattern, CompilationResult},
-    paths::{InstancePath, JSONPointer},
+    paths::{JSONPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     validator::Validate,
     Draft,
@@ -65,7 +65,7 @@ macro_rules! validate {
         fn validate<'instance>(
             &self,
             instance: &'instance Value,
-            instance_path: &InstancePath,
+            instance_path: &JsonPointerNode,
         ) -> ErrorIterator<'instance> {
             if let Value::String(_item) = instance {
                 if !self.is_valid(instance) {
@@ -396,7 +396,7 @@ impl Validate for CustomFormatValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &InstancePath,
+        instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         if let Value::String(_item) = instance {
             if !self.is_valid(instance) {

@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Added
+
+- Expose `JsonPointerNode` that can be converted into `JSONPointer`.
+  This is needed for the upcoming custom validators support.
+
+### Performance
+
+- Optimize building `JSONPointer` for validation errors by allocating the exact amount of memory needed.
+
 ### Changed
 
 - Bump `base64` to `0.22`.
