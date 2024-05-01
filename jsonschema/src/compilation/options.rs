@@ -6,8 +6,9 @@ use crate::{
     },
     content_media_type::{ContentMediaTypeCheckType, DEFAULT_CONTENT_MEDIA_TYPE_CHECKS},
     keywords::custom::KeywordFactory,
+    paths::JSONPointer,
     resolver::{DefaultResolver, Resolver, SchemaResolver},
-    schemas, ValidationError,
+    schemas, Keyword, ValidationError,
 };
 use ahash::AHashMap;
 use once_cell::sync::Lazy;
@@ -643,7 +644,7 @@ impl CompilationOptions {
 
     /// Register a custom keyword definition.
     ///
-    /// Examples
+    /// ## Example
     ///
     /// ```rust
     /// # use jsonschema::{ErrorIterator, JSONSchema, paths::{JsonPointerNode, JSONPointer}, Keyword, ValidationError};
@@ -677,8 +678,9 @@ impl CompilationOptions {
     ///     }
     /// }
     ///
+    /// // You can create a factory function, or use a closure to create new validator instances.
     /// fn custom_validator_factory<'a>(
-    ///     _: &'a Map<String, Value>,
+    ///     parent: &'a Map<String, Value>,
     ///     schema: &'a Value,
     ///     path: JSONPointer,
     /// ) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
@@ -687,6 +689,7 @@ impl CompilationOptions {
     ///
     /// assert!(JSONSchema::options()
     ///     .with_keyword("my-type", custom_validator_factory)
+    ///     .with_keyword("my-type-with-closure", |_, _, _| Ok(Box::new(MyCustomValidator)))
     ///     .compile(&json!({ "my-type": "my-schema"}))
     ///     .expect("A valid schema")
     ///     .is_valid(&json!({ "a": "b"})));
@@ -694,7 +697,14 @@ impl CompilationOptions {
     pub fn with_keyword<N, F>(&mut self, name: N, factory: F) -> &mut Self
     where
         N: Into<String>,
-        F: KeywordFactory + 'static,
+        F: for<'a> Fn(
+                &'a serde_json::Map<String, serde_json::Value>,
+                &'a serde_json::Value,
+                JSONPointer,
+            ) -> Result<Box<dyn Keyword>, ValidationError<'a>>
+            + Send
+            + Sync
+            + 'static,
     {
         self.keywords.insert(name.into(), Arc::new(factory));
         self

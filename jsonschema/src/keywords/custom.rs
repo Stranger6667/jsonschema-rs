@@ -6,10 +6,6 @@ use crate::{
 use serde_json::{Map, Value};
 use std::fmt::{Display, Formatter};
 
-mod sealed {
-    pub trait Sealed {}
-}
-
 pub(crate) struct CustomKeyword {
     inner: Box<dyn Keyword>,
 }
@@ -58,24 +54,13 @@ pub trait Keyword: Send + Sync {
     fn is_valid(&self, instance: &Value) -> bool;
 }
 
-pub trait KeywordFactory: Send + Sync + sealed::Sealed {
+pub(crate) trait KeywordFactory: Send + Sync {
     fn init<'a>(
         &self,
         parent: &'a Map<String, Value>,
         schema: &'a Value,
         path: JSONPointer,
     ) -> Result<Box<dyn Keyword>, ValidationError<'a>>;
-}
-
-impl<F> sealed::Sealed for F where
-    F: for<'a> Fn(
-            &'a Map<String, Value>,
-            &'a Value,
-            JSONPointer,
-        ) -> Result<Box<dyn Keyword>, ValidationError<'a>>
-        + Send
-        + Sync
-{
 }
 
 impl<F> KeywordFactory for F

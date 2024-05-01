@@ -198,8 +198,7 @@ pub(crate) fn compile_validators<'a>(
                     {
                         is_props = true;
                     }
-                    // first check if this keyword was added as a custom keyword
-                    // it may override existing keyword behavior
+                    // Check if this keyword is overridden, then check the standard definitions
                     if let Some(factory) = context.config.get_keyword_factory(keyword) {
                         let path = context.as_pointer_with(keyword.to_owned());
                         let validator = CustomKeyword::new(factory.init(object, subschema, path)?);
@@ -504,6 +503,7 @@ mod tests {
         let compiled = JSONSchema::options()
             .with_format("currency", currency_format_checker)
             .with_keyword("minimum", custom_minimum_factory)
+            .with_keyword("minimum-2", |_, _, _| todo!())
             .compile(&schema)
             .expect("Invalid schema");
 
