@@ -86,12 +86,12 @@ impl Validate for ContainsValidator {
                     .into(),
                 );
             } else {
-                result.annotate(serde_json::Value::from(indices).into());
+                result.annotate(Value::from(indices).into());
             }
             result
         } else {
             let mut result = PartialApplication::valid_empty();
-            result.annotate(serde_json::Value::Array(Vec::new()).into());
+            result.annotate(Value::Array(Vec::new()).into());
             result
         }
     }

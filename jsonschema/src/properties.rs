@@ -95,7 +95,7 @@ pub(crate) fn compile_small_map<'a>(
     let mut properties = Vec::with_capacity(map.len());
     let keyword_context = context.with_path("properties");
     for (key, subschema) in map {
-        let property_context = keyword_context.with_path(key.clone());
+        let property_context = keyword_context.with_path(key.as_str());
         properties.push((
             key.clone(),
             compile_validators(subschema, &property_context)?,
@@ -111,7 +111,7 @@ pub(crate) fn compile_big_map<'a>(
     let mut properties = AHashMap::with_capacity(map.len());
     let keyword_context = context.with_path("properties");
     for (key, subschema) in map {
-        let property_context = keyword_context.with_path(key.clone());
+        let property_context = keyword_context.with_path(key.as_str());
         properties.insert(
             key.clone(),
             compile_validators(subschema, &property_context)?,
@@ -143,7 +143,7 @@ pub(crate) fn compile_patterns<'a>(
     let keyword_context = context.with_path("patternProperties");
     let mut compiled_patterns = Vec::with_capacity(obj.len());
     for (pattern, subschema) in obj {
-        let pattern_context = keyword_context.with_path(pattern.to_string());
+        let pattern_context = keyword_context.with_path(pattern.as_str());
         if let Ok(compiled_pattern) = Regex::new(pattern) {
             let node = compile_validators(subschema, &pattern_context)?;
             compiled_patterns.push((compiled_pattern, node));

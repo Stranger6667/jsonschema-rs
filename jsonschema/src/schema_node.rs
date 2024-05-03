@@ -216,7 +216,7 @@ impl SchemaNode {
     ) -> PartialApplication<'a>
     where
         I: Iterator<Item = (P, &'a Box<dyn Validate + Send + Sync + 'a>)> + 'a,
-        P: Into<crate::paths::PathChunk> + std::fmt::Display,
+        P: Into<crate::paths::PathChunk> + fmt::Display,
     {
         let mut success_results: VecDeque<OutputUnit<Annotations>> = VecDeque::new();
         let mut error_results = VecDeque::new();
@@ -283,7 +283,7 @@ impl Validate for SchemaNode {
         instance: &'instance serde_json::Value,
         instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
-        return Box::new(self.err_iter(instance, instance_path));
+        Box::new(self.err_iter(instance, instance_path))
     }
 
     fn is_valid(&self, instance: &serde_json::Value) -> bool {

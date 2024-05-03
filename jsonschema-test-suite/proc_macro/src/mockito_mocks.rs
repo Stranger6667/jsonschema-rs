@@ -41,7 +41,7 @@ pub(crate) fn setup(json_schema_test_suite_path: &Path) -> Vec<TokenStream> {
             let path = remote_path
                 .trim_start_matches(base_path)
                 .replace(std::path::MAIN_SEPARATOR, "/");
-            if let Ok(file_content) = std::fs::read_to_string(remote_path) {
+            if let Ok(file_content) = fs::read_to_string(remote_path) {
                 Some(quote! {
                     mockito::mock("GET", #path)
                         .with_body(

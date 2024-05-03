@@ -225,7 +225,7 @@ $ cargo test
 
 ## Performance
 
-There is a comparison with other JSON Schema validators written in Rust - `jsonschema_valid==0.4.0` and `valico==3.6.0`.
+There is a comparison with other JSON Schema validators written in Rust - `jsonschema_valid==0.5.2` and `valico==4.0.0`.
 
 Test machine i8700K (12 cores), 32GB RAM.
 
@@ -250,12 +250,12 @@ Here is the average time for each contender to validate. Ratios are given agains
 
 | Case           | jsonschema_valid        | valico                  | jsonschema (validate) | jsonschema (is_valid)  |
 | -------------- | ----------------------- | ----------------------- | --------------------- | ---------------------- |
-| OpenAPI        |                   - (1) |                   - (1) |              4.717 ms |   4.279 ms (**x0.90**) |
-| Swagger        |                   - (2) |  83.357 ms (**x12.47**) |              6.681 ms |   4.533 ms (**x0.67**) |
-| Canada         |  32.987 ms (**x31.38**) | 141.41 ms (**x134.54**) |              1.051 ms |   1.046 ms (**x0.99**) |
-| CITM catalog   |    4.735 ms (**x2.00**) |   13.222 ms (**x5.58**) |              2.367 ms |  535.07 us (**x0.22**) |
-| Fast (valid)   |     2.00 us (**x3.85**) |     3.18 us (**x6.13**) |             518.39 ns |   97.91 ns (**x0.18**) |
-| Fast (invalid) |   339.28 ns (**x0.50**) |     3.34 us (**x5.00**) |             667.55 ns |     5.41ns (**x0.01**) |
+| OpenAPI        |                   - (1) |                   - (1) |              3.500 ms |   3.147 ms (**x0.89**) |
+| Swagger        |                   - (2) |  180.65 ms (**x32.12**) |              5.623 ms |   3.634 ms (**x0.64**) |
+| Canada         |  40.363 ms (**x33.13**) | 427.40 ms (**x350.90**) |              1.218 ms |   1.217 ms (**x0.99**) |
+| CITM catalog   |    5.357 ms (**x2.51**) |  39.215 ms (**x18.44**) |              2.126 ms |  569.23 us (**x0.26**) |
+| Fast (valid)   |     2.27 us (**x4.87**) |    6.55 us (**x14.05**) |             465.89 ns |  113.94 ns (**x0.24**) |
+| Fast (invalid) |   412.21 ns (**x0.46**) |     6.69 us (**x7.61**) |             878.23 ns |    4.21ns (**x0.004**) |
 
 Notes:
 
@@ -263,7 +263,7 @@ Notes:
 
 2. `jsonschema_valid` fails to resolve local references (e.g. `#/definitions/definitions`).
 
-You can find benchmark code in `benches/jsonschema.rs`, Rust version is `1.57`.
+You can find benchmark code in `benches/jsonschema.rs`, Rust version is `1.78`.
 
 ## Support
 

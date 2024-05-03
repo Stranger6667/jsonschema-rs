@@ -1,7 +1,7 @@
 use super::options::CompilationOptions;
 use crate::{
     compilation::DEFAULT_SCOPE,
-    paths::{JSONPointer, JsonPointerNode, PathChunk},
+    paths::{JSONPointer, JsonPointerNode, PathChunkRef},
     resolver::Resolver,
     schemas,
 };
@@ -17,7 +17,7 @@ pub(crate) struct CompilationContext<'a> {
     base_uri: BaseUri<'a>,
     pub(crate) config: Arc<CompilationOptions>,
     pub(crate) resolver: Arc<Resolver>,
-    pub(crate) schema_path: JsonPointerNode<'a>,
+    pub(crate) schema_path: JsonPointerNode<'a, 'a>,
 }
 
 #[derive(Debug, Clone)]
@@ -118,7 +118,7 @@ impl<'a> CompilationContext<'a> {
     }
 
     #[inline]
-    pub(crate) fn with_path(&'a self, chunk: impl Into<PathChunk>) -> Self {
+    pub(crate) fn with_path(&'a self, chunk: impl Into<PathChunkRef<'a>>) -> Self {
         let schema_path = self.schema_path.push(chunk);
         CompilationContext {
             base_uri: self.base_uri.clone(),
@@ -136,7 +136,7 @@ impl<'a> CompilationContext<'a> {
 
     /// Create a JSON Pointer from the current `schema_path` & a new chunk.
     #[inline]
-    pub(crate) fn as_pointer_with(&self, chunk: impl Into<PathChunk>) -> JSONPointer {
+    pub(crate) fn as_pointer_with(&'a self, chunk: impl Into<PathChunkRef<'a>>) -> JSONPointer {
         self.schema_path.push(chunk).into()
     }
 

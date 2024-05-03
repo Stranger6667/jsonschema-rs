@@ -25,7 +25,7 @@ impl PropertiesValidator {
                 let context = context.with_path("properties");
                 let mut properties = Vec::with_capacity(map.len());
                 for (key, subschema) in map {
-                    let property_context = context.with_path(key.clone());
+                    let property_context = context.with_path(key.as_str());
                     properties.push((
                         key.clone(),
                         compile_validators(subschema, &property_context)?,
@@ -68,7 +68,7 @@ impl Validate for PropertiesValidator {
                 .flat_map(move |(name, node)| {
                     let option = item.get(name);
                     option.into_iter().flat_map(move |item| {
-                        let instance_path = instance_path.push(name.clone());
+                        let instance_path = instance_path.push(name.as_str());
                         node.validate(item, &instance_path)
                     })
                 })
@@ -89,13 +89,13 @@ impl Validate for PropertiesValidator {
             let mut matched_props = Vec::with_capacity(props.len());
             for (prop_name, node) in &self.properties {
                 if let Some(prop) = props.get(prop_name) {
-                    let path = instance_path.push(prop_name.clone());
+                    let path = instance_path.push(prop_name.as_str());
                     matched_props.push(prop_name.clone());
                     result += node.apply_rooted(prop, &path);
                 }
             }
             let mut application: PartialApplication = result.into();
-            application.annotate(serde_json::Value::from(matched_props).into());
+            application.annotate(Value::from(matched_props).into());
             application
         } else {
             PartialApplication::valid_empty()

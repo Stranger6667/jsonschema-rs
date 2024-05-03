@@ -17,11 +17,6 @@ use url::Url;
 pub(crate) struct RefValidator {
     original_reference: String,
     reference: Url,
-    /// Precomputed validators.
-    /// They are behind a RwLock as is not possible to compute them
-    /// at compile time without risking infinite loops of references
-    /// and at the same time during validation we iterate over shared
-    /// references (&self) and not owned references (&mut self).
     sub_nodes: RwLock<Option<SchemaNode>>,
     schema_path: JSONPointer,
     config: Arc<CompilationOptions>,

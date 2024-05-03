@@ -80,7 +80,6 @@ impl fmt::Display for JSONPointer {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
 /// A key within a JSON object or an index within a JSON array.
 /// A sequence of chunks represents a valid path within a JSON value.
 ///
@@ -96,6 +95,7 @@ impl fmt::Display for JSONPointer {
 /// 2. Take the 2nd value from the array - `PathChunk::Index(2)`
 ///
 /// The primary purpose of this enum is to avoid converting indexes to strings during validation.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PathChunk {
     /// Property name within a JSON object.
     Property(Box<str>),
@@ -103,6 +103,15 @@ pub enum PathChunk {
     Index(usize),
     /// JSON Schema keyword.
     Keyword(&'static str),
+}
+
+/// A borrowed variant of `PathChunk`.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum PathChunkRef<'a> {
+    /// Property name within a JSON object.
+    Property(&'a str),
+    /// JSON Schema keyword.
+    Index(usize),
 }
 
 /// A node in a linked list representing a JSON pointer.
@@ -114,24 +123,30 @@ pub enum PathChunk {
 /// The linked list representation allows for efficient traversal and manipulation of the JSON pointer
 /// without the need for memory allocation.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct JsonPointerNode<'a> {
-    pub(crate) segment: PathChunk,
-    pub(crate) parent: Option<&'a JsonPointerNode<'a>>,
+pub struct JsonPointerNode<'a, 'b> {
+    pub(crate) segment: PathChunkRef<'a>,
+    pub(crate) parent: Option<&'b JsonPointerNode<'b, 'a>>,
 }
 
-impl<'a> JsonPointerNode<'a> {
+impl Default for JsonPointerNode<'_, '_> {
+    fn default() -> Self {
+        JsonPointerNode::new()
+    }
+}
+
+impl<'a, 'b> JsonPointerNode<'a, 'b> {
     /// Create a root node of a JSON pointer.
     pub const fn new() -> Self {
         JsonPointerNode {
             // The value does not matter, it will never be used
-            segment: PathChunk::Index(0),
+            segment: PathChunkRef::Index(0),
             parent: None,
         }
     }
 
     /// Push a new segment to the JSON pointer.
     #[inline]
-    pub fn push(&'a self, segment: impl Into<PathChunk>) -> Self {
+    pub fn push(&'a self, segment: impl Into<PathChunkRef<'a>>) -> Self {
         JsonPointerNode {
             segment: segment.into(),
             parent: Some(self),
@@ -151,12 +166,12 @@ impl<'a> JsonPointerNode<'a> {
         let mut buffer = Vec::with_capacity(capacity);
         let mut head = self;
         if head.parent.is_some() {
-            buffer.push(head.segment.clone())
+            buffer.push(head.segment.into())
         }
         while let Some(next) = head.parent {
             head = next;
             if head.parent.is_some() {
-                buffer.push(head.segment.clone());
+                buffer.push(head.segment.into());
             }
         }
         // Reverse the buffer to get the segments in the correct order
@@ -189,12 +204,14 @@ impl From<String> for PathChunk {
         PathChunk::Property(value.into_boxed_str())
     }
 }
+
 impl From<&'static str> for PathChunk {
     #[inline]
     fn from(value: &'static str) -> Self {
         PathChunk::Keyword(value)
     }
 }
+
 impl From<usize> for PathChunk {
     #[inline]
     fn from(value: usize) -> Self {
@@ -202,16 +219,40 @@ impl From<usize> for PathChunk {
     }
 }
 
-impl<'a> From<&'a JsonPointerNode<'a>> for JSONPointer {
+impl<'a> From<&'a str> for PathChunkRef<'a> {
     #[inline]
-    fn from(path: &'a JsonPointerNode<'a>) -> Self {
+    fn from(value: &'a str) -> PathChunkRef<'a> {
+        PathChunkRef::Property(value)
+    }
+}
+
+impl From<usize> for PathChunkRef<'_> {
+    #[inline]
+    fn from(value: usize) -> Self {
+        PathChunkRef::Index(value)
+    }
+}
+
+impl<'a> From<PathChunkRef<'a>> for PathChunk {
+    #[inline]
+    fn from(value: PathChunkRef<'a>) -> Self {
+        match value {
+            PathChunkRef::Property(value) => PathChunk::Property(value.into()),
+            PathChunkRef::Index(value) => PathChunk::Index(value),
+        }
+    }
+}
+
+impl<'a, 'b> From<&'a JsonPointerNode<'a, 'b>> for JSONPointer {
+    #[inline]
+    fn from(path: &'a JsonPointerNode<'a, 'b>) -> Self {
         JSONPointer(path.to_vec())
     }
 }
 
-impl From<JsonPointerNode<'_>> for JSONPointer {
+impl From<JsonPointerNode<'_, '_>> for JSONPointer {
     #[inline]
-    fn from(path: JsonPointerNode<'_>) -> Self {
+    fn from(path: JsonPointerNode<'_, '_>) -> Self {
         JSONPointer(path.to_vec())
     }
 }
