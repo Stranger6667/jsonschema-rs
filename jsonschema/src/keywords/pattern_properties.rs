@@ -24,7 +24,7 @@ impl PatternPropertiesValidator {
         let keyword_context = context.with_path("patternProperties");
         let mut patterns = Vec::with_capacity(map.len());
         for (pattern, subschema) in map {
-            let pattern_context = keyword_context.with_path(pattern.to_string());
+            let pattern_context = keyword_context.with_path(pattern.as_str());
             patterns.push((
                 match Regex::new(pattern) {
                     Ok(r) => r,
@@ -71,7 +71,7 @@ impl Validate for PatternPropertiesValidator {
                     item.iter()
                         .filter(move |(key, _)| re.is_match(key).unwrap_or(false))
                         .flat_map(move |(key, value)| {
-                            let instance_path = instance_path.push(key.clone());
+                            let instance_path = instance_path.push(key.as_str());
                             node.validate(value, &instance_path)
                         })
                 })
@@ -93,14 +93,14 @@ impl Validate for PatternPropertiesValidator {
             for (pattern, node) in &self.patterns {
                 for (key, value) in item {
                     if pattern.is_match(key).unwrap_or(false) {
-                        let path = instance_path.push(key.clone());
+                        let path = instance_path.push(key.as_str());
                         matched_propnames.push(key.clone());
                         sub_results += node.apply_rooted(value, &path);
                     }
                 }
             }
             let mut result: PartialApplication = sub_results.into();
-            result.annotate(serde_json::Value::from(matched_propnames).into());
+            result.annotate(Value::from(matched_propnames).into());
             result
         } else {
             PartialApplication::valid_empty()
@@ -135,7 +135,7 @@ impl SingleValuePatternPropertiesValidator {
         context: &CompilationContext,
     ) -> CompilationResult<'a> {
         let keyword_context = context.with_path("patternProperties");
-        let pattern_context = keyword_context.with_path(pattern.to_string());
+        let pattern_context = keyword_context.with_path(pattern);
         Ok(Box::new(SingleValuePatternPropertiesValidator {
             pattern: match Regex::new(pattern) {
                 Ok(r) => r,
@@ -175,7 +175,7 @@ impl Validate for SingleValuePatternPropertiesValidator {
                 .iter()
                 .filter(move |(key, _)| self.pattern.is_match(key).unwrap_or(false))
                 .flat_map(move |(key, value)| {
-                    let instance_path = instance_path.push(key.clone());
+                    let instance_path = instance_path.push(key.as_str());
                     self.node.validate(value, &instance_path)
                 })
                 .collect();
@@ -195,13 +195,13 @@ impl Validate for SingleValuePatternPropertiesValidator {
             let mut outputs = BasicOutput::default();
             for (key, value) in item {
                 if self.pattern.is_match(key).unwrap_or(false) {
-                    let path = instance_path.push(key.clone());
+                    let path = instance_path.push(key.as_str());
                     matched_propnames.push(key.clone());
                     outputs += self.node.apply_rooted(value, &path);
                 }
             }
             let mut result: PartialApplication = outputs.into();
-            result.annotate(serde_json::Value::from(matched_propnames).into());
+            result.annotate(Value::from(matched_propnames).into());
             result
         } else {
             PartialApplication::valid_empty()

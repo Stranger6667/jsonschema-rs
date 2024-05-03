@@ -361,7 +361,7 @@ impl Validate for UnevaluatedPropertiesValidator {
             let mut unevaluated = vec![];
 
             for (property_name, property_instance) in props {
-                let property_path = instance_path.push(property_name.clone());
+                let property_path = instance_path.push(property_name.as_str());
                 let maybe_property_errors = self.validate_property(
                     instance,
                     instance_path,
@@ -403,7 +403,7 @@ impl Validate for UnevaluatedPropertiesValidator {
             let mut unevaluated = vec![];
 
             for (property_name, property_instance) in props {
-                let property_path = instance_path.push(property_name.clone());
+                let property_path = instance_path.push(property_name.as_str());
                 let maybe_property_output = self.apply_property(
                     instance,
                     instance_path,
@@ -610,7 +610,7 @@ impl SubschemaSubvalidator {
 
         for (i, value) in values.iter().enumerate() {
             if let Value::Object(subschema) = value {
-                let subschema_context = keyword_context.with_path(i.to_string());
+                let subschema_context = keyword_context.with_path(i);
 
                 let node = compile_validators(value, &subschema_context)?;
                 let subvalidator = UnevaluatedPropertiesValidator::compile(
@@ -1124,7 +1124,7 @@ impl DependentSchemaSubvalidator {
                 .as_object()
                 .ok_or_else(ValidationError::null_schema)?;
 
-            let schema_context = keyword_context.with_path(dependent_property_name.to_string());
+            let schema_context = keyword_context.with_path(dependent_property_name.as_str());
             let node = UnevaluatedPropertiesValidator::compile(
                 dependent_schema,
                 get_transitive_unevaluated_props_schema(dependent_schema, parent),

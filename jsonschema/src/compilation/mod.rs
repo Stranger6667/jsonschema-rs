@@ -32,7 +32,7 @@ pub struct JSONSchema {
 }
 
 pub(crate) static DEFAULT_SCOPE: Lazy<Url> =
-    Lazy::new(|| url::Url::parse(DEFAULT_ROOT_URL).expect("Is a valid URL"));
+    Lazy::new(|| Url::parse(DEFAULT_ROOT_URL).expect("Is a valid URL"));
 
 impl JSONSchema {
     /// Return a default `CompilationOptions` that can configure
@@ -200,7 +200,7 @@ pub(crate) fn compile_validators<'a>(
                     }
                     // Check if this keyword is overridden, then check the standard definitions
                     if let Some(factory) = context.config.get_keyword_factory(keyword) {
-                        let path = context.as_pointer_with(keyword.to_owned());
+                        let path = context.as_pointer_with(keyword.as_str());
                         let validator = CustomKeyword::new(factory.init(object, subschema, path)?);
                         let validator: BoxedValidator = Box::new(validator);
                         validators.push((keyword.clone(), validator));

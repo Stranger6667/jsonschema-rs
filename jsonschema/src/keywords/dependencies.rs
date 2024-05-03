@@ -23,7 +23,7 @@ impl DependenciesValidator {
             let keyword_context = context.with_path("dependencies");
             let mut dependencies = Vec::with_capacity(map.len());
             for (key, subschema) in map {
-                let item_context = keyword_context.with_path(key.to_string());
+                let item_context = keyword_context.with_path(key.as_str());
                 let s = match subschema {
                     Value::Array(_) => {
                         let validators = vec![required::compile_with_path(
@@ -106,7 +106,7 @@ impl DependentRequiredValidator {
             let keyword_context = context.with_path("dependentRequired");
             let mut dependencies = Vec::with_capacity(map.len());
             for (key, subschema) in map {
-                let item_context = keyword_context.with_path(key.to_string());
+                let item_context = keyword_context.with_path(key.as_str());
                 if let Value::Array(dependency_array) = subschema {
                     if !unique_items::is_unique(dependency_array) {
                         return Err(ValidationError::unique_items(
@@ -196,7 +196,7 @@ impl DependentSchemasValidator {
             let keyword_context = context.with_path("dependentSchemas");
             let mut dependencies = Vec::with_capacity(map.len());
             for (key, subschema) in map {
-                let item_context = keyword_context.with_path(key.to_string());
+                let item_context = keyword_context.with_path(key.as_str());
                 let schema_nodes = compile_validators(subschema, &item_context)?;
                 dependencies.push((key.clone(), schema_nodes));
             }

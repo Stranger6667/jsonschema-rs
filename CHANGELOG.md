@@ -11,6 +11,7 @@
 ### Performance
 
 - Optimize building `JSONPointer` for validation errors by allocating the exact amount of memory needed.
+- Avoid cloning path segments during validation.
 
 ### Changed
 
