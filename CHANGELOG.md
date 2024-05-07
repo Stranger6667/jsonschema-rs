@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.18.0] - 2024-05-07
+
 ### Added
 
 - Custom keywords support. [#379](https://github.com/Stranger6667/jsonschema-rs/issues/379)
@@ -449,7 +451,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.17.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.18.0...HEAD
+[0.18.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.17.1...rust-v0.18.0
 [0.17.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.17.0...rust-v0.17.1
 [0.17.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.16.1...rust-v0.17.0
 [0.16.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.16.0...rust-v0.16.1
