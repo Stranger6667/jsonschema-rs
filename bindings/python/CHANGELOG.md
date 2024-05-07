@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.18.0] - 2024-05-07
+
 ### Added
 
 - Defining custom format checkers. [#245](https://github.com/Stranger6667/jsonschema-rs/issues/245)
@@ -331,7 +333,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.17.3...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.18.0...HEAD
+[0.18.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.17.3...python-v0.18.0
 [0.17.3]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.17.2...python-v0.17.3
 [0.17.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.17.1...python-v0.17.2
 [0.17.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.16.3...python-v0.17.1
