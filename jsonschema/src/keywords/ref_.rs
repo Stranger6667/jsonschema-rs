@@ -69,9 +69,15 @@ impl Validate for RefValidator {
         instance: &'instance Value,
         instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
+        let extend_error_schema_path = move |mut error: ValidationError<'instance>| {
+            let schema_path = self.schema_path.clone();
+            error.schema_path = schema_path.extend_with(error.schema_path.as_slice());
+            error
+        };
         if let Some(node) = self.sub_nodes.read().as_ref() {
             return Box::new(
-                node.validate(instance, instance_path)
+                node.err_iter(instance, instance_path)
+                    .map(extend_error_schema_path)
                     .collect::<Vec<_>>()
                     .into_iter(),
             );
@@ -91,12 +97,7 @@ impl Validate for RefValidator {
                     Ok(node) => {
                         let result = Box::new(
                             node.err_iter(instance, instance_path)
-                                .map(move |mut error| {
-                                    let schema_path = self.schema_path.clone();
-                                    error.schema_path =
-                                        schema_path.extend_with(error.schema_path.as_slice());
-                                    error
-                                })
+                                .map(extend_error_schema_path)
                                 .collect::<Vec<_>>()
                                 .into_iter(),
                         );
@@ -150,15 +151,70 @@ pub(crate) const fn supports_adjacent_validation(draft: Draft) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests_util;
-    use serde_json::json;
+    use crate::{tests_util, JSONSchema};
+    use serde_json::{json, Value};
+    use test_case::test_case;
+
+    #[test_case(
+        &json!({
+            "properties": {
+                "foo": {"$ref": "#/definitions/foo"}
+            },
+            "definitions": {
+                "foo": {"type": "string"}
+            }
+        }),
+        &json!({"foo": 42}),
+        "/properties/foo/type"
+    )]
+    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_path(schema, instance, expected)
+    }
 
     #[test]
-    fn schema_path() {
-        tests_util::assert_schema_path(
-            &json!({"properties": {"foo": {"$ref": "#/definitions/foo"}}, "definitions": {"foo": {"type": "string"}}}),
-            &json!({"foo": 42}),
-            "/properties/foo/type",
-        )
+    fn multiple_errors_schema_paths() {
+        let instance = json!({
+            "things": [
+                { "code": "CC" },
+                { "code": "CC" },
+            ]
+        });
+        let schema = json!({
+                "type": "object",
+                "properties": {
+                    "things": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "code": {
+                                    "type": "string",
+                                    "$ref": "#/$defs/codes"
+                                }
+                            },
+                            "required": ["code"]
+                        }
+                    }
+                },
+                "required": ["things"],
+                "$defs": { "codes": { "enum": ["AA", "BB"] } }
+        });
+        let compiled = JSONSchema::options().compile(&schema).unwrap();
+        let mut iter = compiled.validate(&instance).expect_err("Should fail");
+        let expected = "/properties/things/items/properties/code/enum";
+        assert_eq!(
+            iter.next()
+                .expect("Should be present")
+                .schema_path
+                .to_string(),
+            expected
+        );
+        assert_eq!(
+            iter.next()
+                .expect("Should be present")
+                .schema_path
+                .to_string(),
+            expected
+        );
     }
 }
