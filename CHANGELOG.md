@@ -8,11 +8,6 @@
 - Expose `JsonPointerNode` that can be converted into `JSONPointer`.
   This is needed for the upcoming custom validators support.
 
-### Performance
-
-- Optimize building `JSONPointer` for validation errors by allocating the exact amount of memory needed.
-- Avoid cloning path segments during validation.
-
 ### Changed
 
 - Bump `base64` to `0.22`.
@@ -27,6 +22,15 @@
 - Build CLI only if the `cli` feature is enabled.
 - **BREAKING**: Extend `CompilationOptions` to support more ways to define custom format checkers (for example in Python bindings).
   In turn it changes `ValidationErrorKind::Format` to contain a `String` instead of a `&'static str`.
+
+### Fixed
+
+- Incorrect `schema_path` when multiple errors coming from the `$ref` keyword [#426](https://github.com/Stranger6667/jsonschema-rs/issues/426)
+
+### Performance
+
+- Optimize building `JSONPointer` for validation errors by allocating the exact amount of memory needed.
+- Avoid cloning path segments during validation.
 
 ## [0.17.1] - 2023-07-05
 
