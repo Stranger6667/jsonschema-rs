@@ -1,4 +1,4 @@
-use criterion::Criterion;
+use codspeed_criterion_compat::Criterion;
 use serde::Deserialize;
 use serde_json::{from_reader, Value};
 use std::{

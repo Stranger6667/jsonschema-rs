@@ -1,5 +1,5 @@
 use bench_helpers::{bench_citm, bench_fast, bench_geojson, bench_keywords, bench_swagger};
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use codspeed_criterion_compat::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use serde_json::Value;
 use valico::json_schema;
 
