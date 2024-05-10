@@ -9,3 +9,4 @@ license = "MIT"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 criterion = { version = "0.5.1", features = [], default-features = false }
+codspeed-criterion-compat = "2.6.0"

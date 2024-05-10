@@ -1,0 +1,31 @@
+name: Benchmarks
+
+on:
+  push:
+    branches:
+      - "master"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  rust:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: jsonschema
+
+      - run: cargo install cargo-codspeed
+
+      - run: cargo codspeed build
+        working-directory: ./jsonschema
+
+      - uses: CodSpeedHQ/action@v2
+        with:
+          run: cargo codspeed run jsonschema
+          token: ${{ secrets.CODSPEED_TOKEN }}
+          working-directory: ./jsonschema
