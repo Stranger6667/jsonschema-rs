@@ -68,11 +68,12 @@ getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
 bench_helpers = { path = "../bench_helpers" }
+boon = "0.5"
 codspeed-criterion-compat = "2.6.0"
 criterion = { version = "0.5.1", features = [], default-features = false }
 json_schema_test_suite = { version = "0.3.0", path = "../jsonschema-test-suite" }
 jsonschema-valid = "0.5"
-lazy_static = "1.4"                                                               # Needed for json schema test suite
+lazy_static = "1.4"   #   Needed for json schema test suite
 mockito = "0.31"
 paste = "1.0"
 test-case = "3"
@@ -92,6 +93,11 @@ name = "valico"
 [[bench]]
 harness = false
 name = "jsonschema_valid"
+
+# Benchmarks for `boon`
+[[bench]]
+harness = false
+name = "boon"
 
 [profile.release]
 codegen-units = 1
