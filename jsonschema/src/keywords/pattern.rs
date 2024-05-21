@@ -32,7 +32,7 @@ impl PatternValidator {
     ) -> CompilationResult<'a> {
         match pattern {
             Value::String(item) => {
-                let pattern = match convert_regex(item, context.config.pattern_regex_engine()) {
+                let pattern = match convert_regex(item, context.config.patterns_regex_engine()) {
                     Ok(r) => r,
                     Err(_) => {
                         return Err(ValidationError::format(

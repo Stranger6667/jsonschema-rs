@@ -144,7 +144,7 @@ pub(crate) fn compile_patterns<'a>(
     let mut compiled_patterns = Vec::with_capacity(obj.len());
     for (pattern, subschema) in obj {
         let pattern_context = keyword_context.with_path(pattern.as_str());
-        if let Ok(compiled_pattern) = Regex::new(pattern, context.config.pattern_regex_engine()) {
+        if let Ok(compiled_pattern) = Regex::new(pattern, context.config.patterns_regex_engine()) {
             let node = compile_validators(subschema, &pattern_context)?;
             compiled_patterns.push((compiled_pattern, node));
         } else {

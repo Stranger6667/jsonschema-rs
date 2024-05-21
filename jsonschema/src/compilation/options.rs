@@ -552,7 +552,7 @@ impl CompilationOptions {
         self
     }
 
-    pub(crate) fn pattern_regex_engine(&self) -> &RegexEngine {
+    pub(crate) fn patterns_regex_engine(&self) -> &RegexEngine {
         &self.patterns_regex_engine
     }
 

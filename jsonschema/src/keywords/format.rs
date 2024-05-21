@@ -302,7 +302,7 @@ impl Validate for RegexValidator {
     validate!("regex");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            pattern::convert_regex(item, self.config.pattern_regex_engine()).is_ok()
+            pattern::convert_regex(item, self.config.patterns_regex_engine()).is_ok()
         } else {
             true
         }
