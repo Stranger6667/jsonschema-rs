@@ -1,7 +1,6 @@
 //! Validator for `format` keyword.
 use std::{net::IpAddr, str::FromStr, sync::Arc};
 
-use fancy_regex::Regex;
 use once_cell::sync::Lazy;
 use serde_json::{Map, Value};
 use url::Url;
@@ -15,26 +14,27 @@ use crate::{
     primitive_type::PrimitiveType,
     validator::Validate,
     Draft,
+    CompilationOptions,
 };
 
-static DATE_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}\z").expect("Is a valid regex"));
-static IRI_REFERENCE_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^(\w+:(/?/?))?[^#\\\s]*(#[^\\\s]*)?\z").expect("Is a valid regex"));
-static JSON_POINTER_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^(/(([^/~])|(~[01]))*)*\z").expect("Is a valid regex"));
-static RELATIVE_JSON_POINTER_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^(?:0|[1-9][0-9]*)(?:#|(?:/(?:[^~/]|~0|~1)*)*)\z").expect("Is a valid regex")
+static DATE_RE: Lazy<fancy_regex::Regex> =
+    Lazy::new(|| fancy_regex::Regex::new(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}\z").expect("Is a valid regex"));
+static IRI_REFERENCE_RE: Lazy<fancy_regex::Regex> =
+    Lazy::new(|| fancy_regex::Regex::new(r"^(\w+:(/?/?))?[^#\\\s]*(#[^\\\s]*)?\z").expect("Is a valid regex"));
+static JSON_POINTER_RE: Lazy<fancy_regex::Regex> =
+    Lazy::new(|| fancy_regex::Regex::new(r"^(/(([^/~])|(~[01]))*)*\z").expect("Is a valid regex"));
+static RELATIVE_JSON_POINTER_RE: Lazy<fancy_regex::Regex> = Lazy::new(|| {
+    fancy_regex::Regex::new(r"^(?:0|[1-9][0-9]*)(?:#|(?:/(?:[^~/]|~0|~1)*)*)\z").expect("Is a valid regex")
 });
-static TIME_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(
+static TIME_RE: Lazy<fancy_regex::Regex> = Lazy::new(|| {
+    fancy_regex::Regex::new(
         r"^([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])(\.[0-9]{6})?(([Zz])|([+|\-]([01][0-9]|2[0-3]):[0-5][0-9]))\z",
     ).expect("Is a valid regex")
 });
-static URI_REFERENCE_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^(\w+:(/?/?))?[^#\\\s]*(#[^\\\s]*)?\z").expect("Is a valid regex"));
-static URI_TEMPLATE_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(
+static URI_REFERENCE_RE: Lazy<fancy_regex::Regex> =
+    Lazy::new(|| fancy_regex::Regex::new(r"^(\w+:(/?/?))?[^#\\\s]*(#[^\\\s]*)?\z").expect("Is a valid regex"));
+static URI_TEMPLATE_RE: Lazy<fancy_regex::Regex> = Lazy::new(|| {
+    fancy_regex::Regex::new(
         r#"^(?:(?:[^\x00-\x20"'<>%\\^`{|}]|%[0-9a-f]{2})|\{[+#./;?&=,!@|]?(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?(?:,(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?)*})*\z"#
     )
     .expect("Is a valid regex")
@@ -281,12 +281,28 @@ impl Validate for JSONPointerValidator {
         }
     }
 }
-format_validator!(RegexValidator, "regex");
+struct RegexValidator {
+    schema_path: JSONPointer,
+    config: Arc<CompilationOptions>,
+}
+impl RegexValidator {
+    pub(crate) fn compile<'a>(context: &CompilationContext) -> CompilationResult<'a> {
+        let schema_path = context.as_pointer_with("format");
+        Ok(Box::new(Self { schema_path, config: Arc::clone(&context.config) }))
+    }
+}
+
+impl core::fmt::Display for RegexValidator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        concat!("format: ", "regex").fmt(f)
+    }
+}
+
 impl Validate for RegexValidator {
     validate!("regex");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            pattern::convert_regex(item).is_ok()
+            pattern::convert_regex(item, self.config.pattern_regex_engine()).is_ok()
         } else {
             true
         }
