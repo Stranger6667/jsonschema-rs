@@ -542,11 +542,10 @@ impl CompilationOptions {
     /// Default: [RegexEngine::FancyRegex]
     ///
     /// ```rust
-    /// # use jsonschema::CompilationOptions;
-    /// # use jsonschema::RegexEngine;
-    /// # let mut options = CompilationOptions::default();
+    /// use jsonschema::{CompilationOptions, RegexEngine, RegexOptions};
+    /// let mut options = CompilationOptions::default();
     /// // Set Regex as a default engine for pattern keyword
-    /// options.with_patterns_regex_engine(RegexEngine::Regex(Default::default()));
+    /// options.with_patterns_regex_engine(RegexEngine::Regex(RegexOptions::default()));
     /// ```
     pub fn with_patterns_regex_engine(&mut self, regex_engine: RegexEngine) -> &mut Self {
         self.patterns_regex_engine = regex_engine;
