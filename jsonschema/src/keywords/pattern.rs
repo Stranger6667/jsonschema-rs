@@ -5,6 +5,8 @@ use crate::{
     paths::JsonPointerNode,
     primitive_type::PrimitiveType,
     validator::Validate,
+    RegexEngine,
+    regex::{Regex, RegexError}
 };
 use once_cell::sync::Lazy;
 use serde_json::{Map, Value};
@@ -18,7 +20,7 @@ static CONTROL_GROUPS_RE: Lazy<regex::Regex> =
 
 pub(crate) struct PatternValidator {
     original: String,
-    pattern: fancy_regex::Regex,
+    pattern: Regex,
     schema_path: JSONPointer,
 }
 
@@ -30,7 +32,7 @@ impl PatternValidator {
     ) -> CompilationResult<'a> {
         match pattern {
             Value::String(item) => {
-                let pattern = match convert_regex(item) {
+                let pattern = match convert_regex(item, context.config.patterns_regex_engine()) {
                     Ok(r) => r,
                     Err(_) => {
                         return Err(ValidationError::format(
@@ -76,11 +78,15 @@ impl Validate for PatternValidator {
                     }
                 }
                 Err(e) => {
+                    let RegexError::FancyRegex(fancy_error) = e else {
+                        unreachable!("Only fancy regex returns an error")
+                    };
+
                     return error(ValidationError::backtrack_limit(
                         self.schema_path.clone(),
                         instance_path.into(),
                         instance,
-                        e,
+                        fancy_error,
                     ));
                 }
             }
@@ -104,7 +110,7 @@ impl core::fmt::Display for PatternValidator {
 
 // ECMA 262 has differences
 #[allow(clippy::result_large_err)]
-pub(crate) fn convert_regex(pattern: &str) -> Result<fancy_regex::Regex, fancy_regex::Error> {
+pub(crate) fn convert_regex(pattern: &str, regex_engine: &RegexEngine) -> Result<Regex, RegexError> {
     // replace control chars
     let new_pattern = CONTROL_GROUPS_RE.replace_all(pattern, replace_control_group);
     let mut out = String::with_capacity(new_pattern.len());
@@ -143,7 +149,7 @@ pub(crate) fn convert_regex(pattern: &str) -> Result<fancy_regex::Regex, fancy_r
             out.push(current);
         }
     }
-    fancy_regex::Regex::new(&out)
+    Regex::new(&out, regex_engine)
 }
 
 #[allow(clippy::arithmetic_side_effects)]
@@ -186,7 +192,8 @@ mod tests {
     #[test_case(r"^\W+$", "1_0", false)]
     #[test_case(r"\\w", r"\w", true)]
     fn regex_matches(pattern: &str, text: &str, is_matching: bool) {
-        let compiled = convert_regex(pattern).expect("A valid regex");
+        let regex_engine = RegexEngine::FancyRegex(Default::default());
+        let compiled = convert_regex(pattern, &regex_engine).expect("A valid regex");
         assert_eq!(
             compiled.is_match(text).expect("A valid pattern"),
             is_matching
@@ -196,7 +203,8 @@ mod tests {
     #[test_case(r"\")]
     #[test_case(r"\d\")]
     fn invalid_escape_sequences(pattern: &str) {
-        assert!(convert_regex(pattern).is_err())
+        let regex_engine = RegexEngine::FancyRegex(Default::default());
+        assert!(convert_regex(pattern, &regex_engine).is_err())
     }
 
     #[test_case("^(?!eo:)", "eo:bands", false)]
