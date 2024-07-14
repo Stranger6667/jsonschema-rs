@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+
+### Added
+
+- `ErrorDescription::into_inner` to retrieve the inner `String` value.
+
 ## [0.18.0] - 2024-05-07
 
 ### Added

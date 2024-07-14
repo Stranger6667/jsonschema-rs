@@ -5,7 +5,6 @@ use crate::{
     validator::Validate,
 };
 use serde_json::{Map, Number, Value};
-use std::f64::EPSILON;
 
 use crate::paths::{JSONPointer, JsonPointerNode};
 
@@ -186,7 +185,7 @@ impl Validate for ConstNumberValidator {
 
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::Number(item) = instance {
-            (self.value - item.as_f64().expect("Always representable as f64")).abs() < EPSILON
+            (self.value - item.as_f64().expect("Always representable as f64")).abs() < f64::EPSILON
         } else {
             false
         }
