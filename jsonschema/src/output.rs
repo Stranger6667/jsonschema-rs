@@ -318,6 +318,14 @@ impl<'a> From<serde_json::Value> for Annotations<'a> {
 #[derive(serde::Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ErrorDescription(String);
 
+impl ErrorDescription {
+    /// Returns the inner [`String`] of the error description.
+    #[inline]
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+}
+
 impl fmt::Display for ErrorDescription {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.0)
