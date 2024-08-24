@@ -7,6 +7,10 @@
 //!   - JSON Schema drafts 4, 6, 7 (except some optional test cases);
 //!   - Loading remote documents via HTTP(S);
 //!
+//! Partially supported drafts (some keywords are not implemented):
+//!   - Draft 2019-09 (requires the `draft201909` feature enabled)
+//!   - Draft 2020-12 (requires the `draft202012` feature enabled)
+//!
 //! This library is functional and ready for use, but its API is still evolving to the 1.0 API.
 //!
 //! ## Usage Examples:
