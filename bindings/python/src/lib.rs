@@ -284,7 +284,7 @@ fn to_error_message(error: &jsonschema::ValidationError<'_>) -> String {
 /// If your workflow implies validating against the same schema, consider using `JSONSchema.is_valid`
 /// instead.
 #[pyfunction]
-#[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False, formats=None)")]
+#[pyo3(signature = (schema, instance, draft=None, with_meta_schemas=false, formats=None))]
 fn is_valid(
     py: Python<'_>,
     schema: &Bound<'_, PyAny>,
@@ -317,7 +317,7 @@ fn is_valid(
 /// If your workflow implies validating against the same schema, consider using `JSONSchema.validate`
 /// instead.
 #[pyfunction]
-#[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False, formats=None)")]
+#[pyo3(signature = (schema, instance, draft=None, with_meta_schemas=false, formats=None))]
 fn validate(
     py: Python<'_>,
     schema: &Bound<'_, PyAny>,
@@ -345,7 +345,7 @@ fn validate(
 /// If your workflow implies validating against the same schema, consider using `JSONSchema.iter_errors`
 /// instead.
 #[pyfunction]
-#[pyo3(text_signature = "(schema, instance, draft=None, with_meta_schemas=False, formats=None)")]
+#[pyo3(signature = (schema, instance, draft=None, with_meta_schemas=false, formats=None))]
 fn iter_errors(
     py: Python<'_>,
     schema: &Bound<'_, PyAny>,
@@ -403,16 +403,16 @@ fn handle_format_checked_panic(err: Box<dyn Any + Send>) -> PyErr {
 #[pymethods]
 impl JSONSchema {
     #[new]
-    #[pyo3(text_signature = "(schema, draft=None, with_meta_schemas=False, formats=None)")]
+    #[pyo3(signature = (schema, draft=None, with_meta_schemas=false, formats=None))]
     fn new(
         py: Python<'_>,
-        pyschema: &Bound<'_, PyAny>,
+        schema: &Bound<'_, PyAny>,
         draft: Option<u8>,
         with_meta_schemas: Option<bool>,
         formats: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<Self> {
         let options = make_options(draft, with_meta_schemas, formats)?;
-        let raw_schema = ser::to_value(pyschema)?;
+        let raw_schema = ser::to_value(schema)?;
         match options.compile(&raw_schema) {
             Ok(schema) => Ok(JSONSchema {
                 schema,
@@ -429,16 +429,16 @@ impl JSONSchema {
     ///
     /// Use it if you have your schema as a string and want to utilize Rust JSON parsing.
     #[classmethod]
-    #[pyo3(text_signature = "(string, draft=None, with_meta_schemas=False, formats=None)")]
+    #[pyo3(signature = (string, draft=None, with_meta_schemas=false, formats=None))]
     fn from_str(
         _: &Bound<'_, PyType>,
         py: Python<'_>,
-        pyschema: &Bound<'_, PyAny>,
+        string: &Bound<'_, PyAny>,
         draft: Option<u8>,
         with_meta_schemas: Option<bool>,
         formats: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<Self> {
-        let obj_ptr = pyschema.as_ptr();
+        let obj_ptr = string.as_ptr();
         let object_type = unsafe { pyo3::ffi::Py_TYPE(obj_ptr) };
         if unsafe { object_type != types::STR_TYPE } {
             let type_name =
