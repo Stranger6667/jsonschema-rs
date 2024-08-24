@@ -246,7 +246,7 @@
 
 - Not necessary network requests for schemas with `$id` values with trailing `#` symbol. [#163](https://github.com/Stranger6667/jsonschema-rs/issues/163)
 - Source code distribution. It was missing the source code for the underlying Rust crate and were leading to
-  a build error during `pip install css-inline` on platforms that we don't have wheels for.
+  a build error during `pip install jsonschema_rs` on platforms that we don't have wheels for.
   [#159](https://github.com/Stranger6667/jsonschema-rs/issues/159)
 
 ### Performance
