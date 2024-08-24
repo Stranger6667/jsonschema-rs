@@ -19,6 +19,7 @@
 ### Fixed
 
 - Incorrect `schema_path` when multiple errors coming from the `$ref` keyword [#426](https://github.com/Stranger6667/jsonschema-rs/issues/426)
+
 ## [0.17.3] - 2024-03-22
 
 ### Added
