@@ -8,8 +8,8 @@ use crate::{
     schema_node::SchemaNode,
     validator::{format_validators, PartialApplication, Validate},
 };
-use fancy_regex::Regex;
 use serde_json::{Map, Value};
+use crate::regex::Regex;
 
 pub(crate) struct PatternPropertiesValidator {
     patterns: Vec<(Regex, SchemaNode)>,
@@ -26,7 +26,7 @@ impl PatternPropertiesValidator {
         for (pattern, subschema) in map {
             let pattern_context = keyword_context.with_path(pattern.as_str());
             patterns.push((
-                match Regex::new(pattern) {
+                match Regex::new(pattern, context.config.patterns_regex_engine()) {
                     Ok(r) => r,
                     Err(_) => {
                         return Err(ValidationError::format(
@@ -137,7 +137,7 @@ impl SingleValuePatternPropertiesValidator {
         let keyword_context = context.with_path("patternProperties");
         let pattern_context = keyword_context.with_path(pattern);
         Ok(Box::new(SingleValuePatternPropertiesValidator {
-            pattern: match Regex::new(pattern) {
+            pattern: match Regex::new(pattern, context.config.patterns_regex_engine()) {
                 Ok(r) => r,
                 Err(_) => {
                     return Err(ValidationError::format(

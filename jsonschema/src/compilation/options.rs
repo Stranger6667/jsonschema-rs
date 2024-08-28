@@ -261,6 +261,107 @@ static META_SCHEMA_VALIDATORS: Lazy<AHashMap<schemas::Draft, JSONSchema>> = Lazy
     store
 });
 
+/// Fancy regex crate options
+#[derive(Clone, Default)]
+pub struct FancyRegexOptions {
+    /// Limit for how many times backtracking should be attempted for fancy regexes (where
+    /// backtracking is used). If this limit is exceeded, execution returns an error.
+    /// This is for preventing a regex with catastrophic backtracking to run for too long.
+    ///
+    /// Default is `1_000_000` (1 million).
+    pub backtrack_limit: Option<usize>,
+    /// Set the approximate size limit of the compiled regular expression.
+    ///
+    /// This option is forwarded from the wrapped `regex` crate. Note that depending on the used
+    /// regex features there may be multiple delegated sub-regexes fed to the `regex` crate. As
+    /// such the actual limit is closer to `<number of delegated regexes> * delegate_size_limit`.
+    pub delegate_size_limit: Option<usize>,
+    /// Set the approximate size of the cache used by the DFA.
+    ///
+    /// This option is forwarded from the wrapped `regex` crate. Note that depending on the used
+    /// regex features there may be multiple delegated sub-regexes fed to the `regex` crate. As
+    /// such the actual limit is closer to `<number of delegated regexes> *
+    /// delegate_dfa_size_limit`.
+    pub delegate_dfa_size_limit: Option<usize>,
+}
+
+/// Regex crate options
+#[derive(Clone, Default)]
+pub struct RegexOptions {
+    /// Sets the approximate size limit, in bytes, of the compiled regex.
+    ///
+    /// This roughly corresponds to the number of heap memory, in
+    /// bytes, occupied by a single regex. If the regex would otherwise
+    /// approximately exceed this limit, then compiling that regex will
+    /// fail.
+    ///
+    /// The main utility of a method like this is to avoid compiling
+    /// regexes that use an unexpected amount of resources, such as
+    /// time and memory. Even if the memory usage of a large regex is
+    /// acceptable, its search time may not be. Namely, worst case time
+    /// complexity for search is `O(m * n)`, where `m ~ len(pattern)` and
+    /// `n ~ len(haystack)`. That is, search time depends, in part, on the
+    /// size of the compiled regex. This means that putting a limit on the
+    /// size of the regex limits how much a regex can impact search time.
+    ///
+    /// The default for this is some reasonable number that permits most
+    /// patterns to compile successfully.
+    pub size_limit: Option<usize>,
+
+    /// Set the approximate capacity, in bytes, of the cache of transitions
+    /// used by the lazy DFA.
+    ///
+    /// While the lazy DFA isn't always used, in tends to be the most
+    /// commonly use regex engine in default configurations. It tends to
+    /// adopt the performance profile of a fully build DFA, but without the
+    /// downside of taking worst case exponential time to build.
+    ///
+    /// The downside is that it needs to keep a cache of transitions and
+    /// states that are built while running a search, and this cache
+    /// can fill up. When it fills up, the cache will reset itself. Any
+    /// previously generated states and transitions will then need to be
+    /// re-generated. If this happens too many times, then this library
+    /// will bail out of using the lazy DFA and switch to a different regex
+    /// engine.
+    ///
+    /// If your regex provokes this particular downside of the lazy DFA,
+    /// then it may be beneficial to increase its cache capacity. This will
+    /// potentially reduce the frequency of cache resetting (ideally to
+    /// `0`). While it won't fix all potential performance problems with
+    /// the lazy DFA, increasing the cache capacity does fix some.
+    ///
+    /// There is no easy way to determine, a priori, whether increasing
+    /// this cache capacity will help. In general, the larger your regex,
+    /// the more cache it's likely to use. But that isn't an ironclad rule.
+    /// For example, a regex like `[01]*1[01]{N}` would normally produce a
+    /// fully build DFA that is exponential in size with respect to `N`.
+    /// The lazy DFA will prevent exponential space blow-up, but it cache
+    /// is likely to fill up, even when it's large and even for smallish
+    /// values of `N`.
+    ///
+    /// If you aren't sure whether this helps or not, it is sensible to
+    /// set this to some arbitrarily large number in testing, such as
+    /// `usize::MAX`. Namely, this represents the amount of capacity that
+    /// *may* be used. It's probably not a good idea to use `usize::MAX` in
+    /// production though, since it implies there are no controls on heap
+    /// memory used by this library during a search. In effect, set it to
+    /// whatever you're willing to allocate for a single regex search.
+    pub dfa_size_limit: Option<usize>,
+}
+
+/// Regex implementations with options
+#[derive(Clone)]
+pub enum RegexEngine {
+    FancyRegex(FancyRegexOptions),
+    Regex(RegexOptions),
+}
+
+impl Default for RegexEngine {
+    fn default() -> Self {
+        RegexEngine::FancyRegex(FancyRegexOptions::default())
+    }
+}
+
 /// Full configuration to guide the `JSONSchema` compilation.
 ///
 /// Using a `CompilationOptions` instance you can configure the supported draft,
@@ -278,6 +379,7 @@ pub struct CompilationOptions {
     validate_schema: bool,
     ignore_unknown_formats: bool,
     keywords: AHashMap<String, Arc<dyn KeywordFactory>>,
+    patterns_regex_engine: RegexEngine,
 }
 
 impl Default for CompilationOptions {
@@ -293,6 +395,7 @@ impl Default for CompilationOptions {
             validate_formats: None,
             ignore_unknown_formats: true,
             keywords: AHashMap::default(),
+            patterns_regex_engine: Default::default(),
         }
     }
 }
@@ -428,6 +531,29 @@ impl CompilationOptions {
     pub fn without_content_media_type_support(&mut self, media_type: &'static str) -> &mut Self {
         self.content_media_type_checks.insert(media_type, None);
         self
+    }
+
+    /// Use specific regex engine with options for patterns.
+    ///
+    /// Available engines:
+    ///  - [RegexEngine::Regex] - An implementation of regular expressions for Rust. This implementation uses finite automata and guarantees linear time matching on all inputs. https://github.com/rust-lang/regex
+    ///  - [RegexEngine::FancyRegex] - Rust library for regular expressions using "fancy" features like look-around and backreferences. https://github.com/fancy-regex/fancy-regex
+    ///
+    /// Default: [RegexEngine::FancyRegex]
+    ///
+    /// ```rust
+    /// use jsonschema::{CompilationOptions, RegexEngine, RegexOptions};
+    /// let mut options = CompilationOptions::default();
+    /// // Set Regex as a default engine for pattern keyword
+    /// options.with_patterns_regex_engine(RegexEngine::Regex(RegexOptions::default()));
+    /// ```
+    pub fn with_patterns_regex_engine(&mut self, regex_engine: RegexEngine) -> &mut Self {
+        self.patterns_regex_engine = regex_engine;
+        self
+    }
+
+    pub(crate) fn patterns_regex_engine(&self) -> &RegexEngine {
+        &self.patterns_regex_engine
     }
 
     #[inline]
