@@ -168,4 +168,17 @@ mod tests {
     fn schema_path(schema: &Value, instance: &Value, expected: &str) {
         tests_util::assert_schema_path(schema, instance, expected)
     }
+
+    // https://github.com/Stranger6667/jsonschema-rs/issues/397
+    #[test]
+    fn multiple_of_error_cases() {
+        // is not a multiple - but remainder of division is less than epsilon
+        let schema = &json!({"multipleOf": 1.3});
+        let instance = &json!(1.3e-16);
+        tests_util::is_valid(schema, instance);
+        // is a multiple - but remainder of division is greater than epsilon
+        let schema = &json!({"multipleOf": 1e-16});
+        let instance = &json!(1e-15);
+        tests_util::is_not_valid(schema, instance);
+    }
 }
