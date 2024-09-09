@@ -184,14 +184,14 @@ impl Draft {
 /// Get the `Draft` from a JSON Schema URL.
 #[inline]
 pub(crate) fn draft_from_url(url: &str) -> Option<Draft> {
-    match url {
+    match url.trim_end_matches('#') {
         #[cfg(feature = "draft202012")]
-        "https://json-schema.org/draft/2020-12/schema#" => Some(Draft::Draft202012),
+        "https://json-schema.org/draft/2020-12/schema" => Some(Draft::Draft202012),
         #[cfg(feature = "draft201909")]
-        "https://json-schema.org/draft/2019-09/schema#" => Some(Draft::Draft201909),
-        "http://json-schema.org/draft-07/schema#" => Some(Draft::Draft7),
-        "http://json-schema.org/draft-06/schema#" => Some(Draft::Draft6),
-        "http://json-schema.org/draft-04/schema#" => Some(Draft::Draft4),
+        "https://json-schema.org/draft/2019-09/schema" => Some(Draft::Draft201909),
+        "http://json-schema.org/draft-07/schema" => Some(Draft::Draft7),
+        "http://json-schema.org/draft-06/schema" => Some(Draft::Draft6),
+        "http://json-schema.org/draft-04/schema" => Some(Draft::Draft4),
         _ => None,
     }
 }
@@ -225,8 +225,8 @@ mod tests {
     use serde_json::{json, Value};
     use test_case::test_case;
 
-    #[cfg_attr(feature = "draft201909", test_case(&json!({"$schema": "https://json-schema.org/draft/2019-09/schema#"}), Some(Draft::Draft201909)))]
-    #[cfg_attr(feature = "draft202012", test_case(&json!({"$schema": "https://json-schema.org/draft/2020-12/schema#"}), Some(Draft::Draft202012)))]
+    #[cfg_attr(feature = "draft201909", test_case(&json!({"$schema": "https://json-schema.org/draft/2019-09/schema"}), Some(Draft::Draft201909)))]
+    #[cfg_attr(feature = "draft202012", test_case(&json!({"$schema": "https://json-schema.org/draft/2020-12/schema"}), Some(Draft::Draft202012)))]
     #[test_case(&json!({"$schema": "http://json-schema.org/draft-07/schema#"}), Some(Draft::Draft7))]
     #[test_case(&json!({"$schema": "http://json-schema.org/draft-06/schema#"}), Some(Draft::Draft6))]
     #[test_case(&json!({"$schema": "http://json-schema.org/draft-04/schema#"}), Some(Draft::Draft4))]
