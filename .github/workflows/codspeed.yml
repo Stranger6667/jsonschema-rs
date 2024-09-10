@@ -24,7 +24,7 @@ jobs:
       - run: cargo codspeed build
         working-directory: ./jsonschema
 
-      - uses: CodSpeedHQ/action@v2
+      - uses: CodSpeedHQ/action@v3
         with:
           run: cargo codspeed run jsonschema
           token: ${{ secrets.CODSPEED_TOKEN }}
