@@ -120,7 +120,7 @@ pub(crate) struct Resolver {
     // canonical_id is composed with the root document id
     // (if not specified, then `DEFAULT_ROOT_URL` is used for this purpose)
     schemas: AHashMap<String, Arc<Value>>,
-    store: RwLock<AHashMap<String, Arc<Value>>>,
+    store: RwLock<AHashMap<Cow<'static, str>, Arc<Value>>>,
 }
 
 impl std::fmt::Debug for Resolver {
@@ -139,7 +139,7 @@ impl Resolver {
         draft: Draft,
         scope: &Url,
         schema: Arc<Value>,
-        store: AHashMap<String, Arc<Value>>,
+        store: AHashMap<Cow<'static, str>, Arc<Value>>,
     ) -> Result<Resolver, ValidationError<'a>> {
         let mut schemas: AHashMap<String, Arc<Value>> = AHashMap::new();
         // traverse the schema and store all named ones under their canonical ids
@@ -175,7 +175,7 @@ impl Resolver {
                         .map_err(|error| ValidationError::resolver(url.clone(), error))?;
                     self.store
                         .write()
-                        .insert(url.clone().into(), resolved.clone());
+                        .insert(url.to_string().into(), resolved.clone());
                     Ok(resolved)
                 }
             },

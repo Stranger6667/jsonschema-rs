@@ -83,19 +83,19 @@ def args(request, variant, is_compiled):
     schema, instance = request.node.get_closest_marker("data").args
     if variant == "jsonschema-rs-is-valid":
         if is_compiled:
-            return jsonschema_rs.JSONSchema(schema, with_meta_schemas=True).is_valid, instance
+            return jsonschema_rs.JSONSchema(schema).is_valid, instance
         else:
             return (
-                partial(jsonschema_rs.is_valid, with_meta_schemas=True),
+                jsonschema_rs.is_valid,
                 schema,
                 instance,
             )
     if variant == "jsonschema-rs-validate":
         if is_compiled:
-            return jsonschema_rs.JSONSchema(schema, with_meta_schemas=True).validate, instance
+            return jsonschema_rs.JSONSchema(schema).validate, instance
         else:
             return (
-                partial(jsonschema_rs.validate, with_meta_schemas=True),
+                jsonschema_rs.validate,
                 schema,
                 instance,
             )

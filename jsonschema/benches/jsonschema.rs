@@ -8,13 +8,12 @@ use serde_json::Value;
 macro_rules! jsonschema_bench {
     ($c:tt, $name:expr, $schema:ident, $instance:ident) => {{
         let compiled = JSONSchema::options()
-            .with_meta_schemas()
             .compile(&$schema)
             .expect("Invalid schema");
         assert!(compiled.is_valid(&$instance), "Invalid instance");
         assert!(compiled.validate(&$instance).is_ok(), "Invalid instance");
         $c.bench_function(&format!("{} jsonschema/compile", $name), |b| {
-            b.iter(|| JSONSchema::options().with_meta_schemas().compile(&$schema))
+            b.iter(|| JSONSchema::options().compile(&$schema))
         });
         $c.bench_function(&format!("{} jsonschema/is_valid", $name), |b| {
             b.iter(|| compiled.is_valid(&$instance))

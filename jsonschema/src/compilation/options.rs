@@ -12,12 +12,13 @@ use crate::{
 };
 use ahash::AHashMap;
 use once_cell::sync::Lazy;
-use std::{fmt, sync::Arc};
+use std::{borrow::Cow, fmt, sync::Arc};
 
 macro_rules! schema {
     ($name:ident, $path:expr) => {
-        static $name: Lazy<serde_json::Value> =
-            Lazy::new(|| serde_json::from_str(include_str!($path)).expect("Invalid schema"));
+        static $name: Lazy<Arc<serde_json::Value>> = Lazy::new(|| {
+            Arc::new(serde_json::from_slice(include_bytes!($path)).expect("Invalid schema"))
+        });
     };
 }
 
@@ -79,84 +80,84 @@ schema!(
     "../../meta_schemas/draft2020-12/meta/content.json"
 );
 
-static META_SCHEMAS: Lazy<AHashMap<String, Arc<serde_json::Value>>> = Lazy::new(|| {
+static META_SCHEMAS: Lazy<AHashMap<Cow<'static, str>, Arc<serde_json::Value>>> = Lazy::new(|| {
     let mut store = AHashMap::with_capacity(3);
     store.insert(
-        "http://json-schema.org/draft-04/schema".to_string(),
-        Arc::new(DRAFT4.clone()),
+        "http://json-schema.org/draft-04/schema".into(),
+        Arc::clone(&DRAFT4),
     );
     store.insert(
-        "http://json-schema.org/draft-06/schema".to_string(),
-        Arc::new(DRAFT6.clone()),
+        "http://json-schema.org/draft-06/schema".into(),
+        Arc::clone(&DRAFT6),
     );
     store.insert(
-        "http://json-schema.org/draft-07/schema".to_string(),
-        Arc::new(DRAFT7.clone()),
+        "http://json-schema.org/draft-07/schema".into(),
+        Arc::clone(&DRAFT7),
     );
     #[cfg(feature = "draft201909")]
     {
         store.insert(
-            "https://json-schema.org/draft/2019-09/schema".to_string(),
-            Arc::new(DRAFT201909.clone()),
+            "https://json-schema.org/draft/2019-09/schema".into(),
+            Arc::clone(&DRAFT201909),
         );
         store.insert(
-            "https://json-schema.org/draft/2019-09/meta/applicator".to_string(),
-            Arc::new(DRAFT201909_APPLICATOR.clone()),
+            "https://json-schema.org/draft/2019-09/meta/applicator".into(),
+            Arc::clone(&DRAFT201909_APPLICATOR),
         );
         store.insert(
-            "https://json-schema.org/draft/2019-09/meta/content".to_string(),
-            Arc::new(DRAFT201909_CONTENT.clone()),
+            "https://json-schema.org/draft/2019-09/meta/content".into(),
+            Arc::clone(&DRAFT201909_CONTENT),
         );
         store.insert(
-            "https://json-schema.org/draft/2019-09/meta/core".to_string(),
-            Arc::new(DRAFT201909_CORE.clone()),
+            "https://json-schema.org/draft/2019-09/meta/core".into(),
+            Arc::clone(&DRAFT201909_CORE),
         );
         store.insert(
-            "https://json-schema.org/draft/2019-09/meta/format".to_string(),
-            Arc::new(DRAFT201909_FORMAT.clone()),
+            "https://json-schema.org/draft/2019-09/meta/format".into(),
+            Arc::clone(&DRAFT201909_FORMAT),
         );
         store.insert(
-            "https://json-schema.org/draft/2019-09/meta/meta-data".to_string(),
-            Arc::new(DRAFT201909_META_DATA.clone()),
+            "https://json-schema.org/draft/2019-09/meta/meta-data".into(),
+            Arc::clone(&DRAFT201909_META_DATA),
         );
         store.insert(
-            "https://json-schema.org/draft/2019-09/meta/validation".to_string(),
-            Arc::new(DRAFT201909_VALIDATION.clone()),
+            "https://json-schema.org/draft/2019-09/meta/validation".into(),
+            Arc::clone(&DRAFT201909_VALIDATION),
         );
     }
     #[cfg(feature = "draft202012")]
     {
         store.insert(
-            "https://json-schema.org/draft/2020-12/schema".to_string(),
-            Arc::new(DRAFT202012.clone()),
+            "https://json-schema.org/draft/2020-12/schema".into(),
+            Arc::clone(&DRAFT202012),
         );
         store.insert(
-            "https://json-schema.org/draft/2020-12/meta/core".to_string(),
-            Arc::new(DRAFT202012_CORE.clone()),
+            "https://json-schema.org/draft/2020-12/meta/core".into(),
+            Arc::clone(&DRAFT202012_CORE),
         );
         store.insert(
-            "https://json-schema.org/draft/2020-12/meta/applicator".to_string(),
-            Arc::new(DRAFT202012_APPLICATOR.clone()),
+            "https://json-schema.org/draft/2020-12/meta/applicator".into(),
+            Arc::clone(&DRAFT202012_APPLICATOR),
         );
         store.insert(
-            "https://json-schema.org/draft/2020-12/meta/unevaluated".to_string(),
-            Arc::new(DRAFT202012_UNEVALUATED.clone()),
+            "https://json-schema.org/draft/2020-12/meta/unevaluated".into(),
+            Arc::clone(&DRAFT202012_UNEVALUATED),
         );
         store.insert(
-            "https://json-schema.org/draft/2020-12/meta/validation".to_string(),
-            Arc::new(DRAFT202012_VALIDATION.clone()),
+            "https://json-schema.org/draft/2020-12/meta/validation".into(),
+            Arc::clone(&DRAFT202012_VALIDATION),
         );
         store.insert(
-            "https://json-schema.org/draft/2020-12/meta/meta-data".to_string(),
-            Arc::new(DRAFT202012_META_DATA.clone()),
+            "https://json-schema.org/draft/2020-12/meta/meta-data".into(),
+            Arc::clone(&DRAFT202012_META_DATA),
         );
         store.insert(
-            "https://json-schema.org/draft/2020-12/meta/format-annotation".to_string(),
-            Arc::new(DRAFT202012_FORMAT_ANNOTATION.clone()),
+            "https://json-schema.org/draft/2020-12/meta/format-annotation".into(),
+            Arc::clone(&DRAFT202012_FORMAT_ANNOTATION),
         );
         store.insert(
-            "https://json-schema.org/draft/2020-12/meta/content".to_string(),
-            Arc::new(DRAFT202012_CONTENT.clone()),
+            "https://json-schema.org/draft/2020-12/meta/content".into(),
+            Arc::clone(&DRAFT202012_CONTENT),
         );
     }
     store
@@ -187,77 +188,83 @@ static META_SCHEMA_VALIDATORS: Lazy<AHashMap<schemas::Draft, JSONSchema>> = Lazy
             .expect(EXPECT_MESSAGE),
     );
     #[cfg(feature = "draft201909")]
-    store.insert(
-        schemas::Draft::Draft201909,
-        JSONSchema::options()
-            .without_schema_validation()
-            .with_document(
-                "https://json-schema.org/draft/2019-09/meta/applicator".to_string(),
-                DRAFT201909_APPLICATOR.clone(),
-            )
-            .with_document(
-                "https://json-schema.org/draft/2019-09/meta/content".to_string(),
-                DRAFT201909_CONTENT.clone(),
-            )
-            .with_document(
-                "https://json-schema.org/draft/2019-09/meta/core".to_string(),
-                DRAFT201909_CORE.clone(),
-            )
-            .with_document(
-                "https://json-schema.org/draft/2019-09/meta/format".to_string(),
-                DRAFT201909_FORMAT.clone(),
-            )
-            .with_document(
-                "https://json-schema.org/draft/2019-09/meta/meta-data".to_string(),
-                DRAFT201909_META_DATA.clone(),
-            )
-            .with_document(
-                "https://json-schema.org/draft/2019-09/meta/validation".to_string(),
-                DRAFT201909_VALIDATION.clone(),
-            )
-            .compile(&DRAFT201909)
-            .expect(EXPECT_MESSAGE),
-    );
+    {
+        let mut options = JSONSchema::options();
+        options.store.insert(
+            "https://json-schema.org/draft/2019-09/meta/applicator".into(),
+            Arc::clone(&DRAFT201909_APPLICATOR),
+        );
+        options.store.insert(
+            "https://json-schema.org/draft/2019-09/meta/content".into(),
+            Arc::clone(&DRAFT201909_CONTENT),
+        );
+        options.store.insert(
+            "https://json-schema.org/draft/2019-09/meta/core".into(),
+            Arc::clone(&DRAFT201909_CORE),
+        );
+        options.store.insert(
+            "https://json-schema.org/draft/2019-09/meta/format".into(),
+            Arc::clone(&DRAFT201909_FORMAT),
+        );
+        options.store.insert(
+            "https://json-schema.org/draft/2019-09/meta/meta-data".into(),
+            Arc::clone(&DRAFT201909_META_DATA),
+        );
+        options.store.insert(
+            "https://json-schema.org/draft/2019-09/meta/validation".into(),
+            Arc::clone(&DRAFT201909_VALIDATION),
+        );
+        store.insert(
+            schemas::Draft::Draft201909,
+            options
+                .without_schema_validation()
+                .compile(&DRAFT201909)
+                .expect(EXPECT_MESSAGE),
+        );
+    }
     #[cfg(feature = "draft202012")]
-    store.insert(
-        schemas::Draft::Draft202012,
-        JSONSchema::options()
-            .without_schema_validation()
-            .with_document(
-                "https://json-schema.org/draft/2020-12/meta/applicator".to_string(),
-                DRAFT202012_APPLICATOR.clone(),
-            )
-            .with_document(
-                "https://json-schema.org/draft/2020-12/meta/core".to_string(),
-                DRAFT202012_CORE.clone(),
-            )
-            .with_document(
-                "https://json-schema.org/draft/2020-12/meta/applicator".to_string(),
-                DRAFT202012_APPLICATOR.clone(),
-            )
-            .with_document(
-                "https://json-schema.org/draft/2020-12/meta/unevaluated".to_string(),
-                DRAFT202012_UNEVALUATED.clone(),
-            )
-            .with_document(
-                "https://json-schema.org/draft/2020-12/meta/validation".to_string(),
-                DRAFT202012_VALIDATION.clone(),
-            )
-            .with_document(
-                "https://json-schema.org/draft/2020-12/meta/meta-data".to_string(),
-                DRAFT202012_META_DATA.clone(),
-            )
-            .with_document(
-                "https://json-schema.org/draft/2020-12/meta/format-annotation".to_string(),
-                DRAFT202012_FORMAT_ANNOTATION.clone(),
-            )
-            .with_document(
-                "https://json-schema.org/draft/2020-12/meta/content".to_string(),
-                DRAFT202012_CONTENT.clone(),
-            )
-            .compile(&DRAFT202012)
-            .expect(EXPECT_MESSAGE),
-    );
+    {
+        let mut options = JSONSchema::options();
+        options.store.insert(
+            "https://json-schema.org/draft/2020-12/meta/applicator".into(),
+            Arc::clone(&DRAFT202012_APPLICATOR),
+        );
+        options.store.insert(
+            "https://json-schema.org/draft/2020-12/meta/core".into(),
+            Arc::clone(&DRAFT202012_CORE),
+        );
+        options.store.insert(
+            "https://json-schema.org/draft/2020-12/meta/applicator".into(),
+            Arc::clone(&DRAFT202012_APPLICATOR),
+        );
+        options.store.insert(
+            "https://json-schema.org/draft/2020-12/meta/unevaluated".into(),
+            Arc::clone(&DRAFT202012_UNEVALUATED),
+        );
+        options.store.insert(
+            "https://json-schema.org/draft/2020-12/meta/validation".into(),
+            Arc::clone(&DRAFT202012_VALIDATION),
+        );
+        options.store.insert(
+            "https://json-schema.org/draft/2020-12/meta/meta-data".into(),
+            Arc::clone(&DRAFT202012_META_DATA),
+        );
+        options.store.insert(
+            "https://json-schema.org/draft/2020-12/meta/format-annotation".into(),
+            Arc::clone(&DRAFT202012_FORMAT_ANNOTATION),
+        );
+        options.store.insert(
+            "https://json-schema.org/draft/2020-12/meta/content".into(),
+            Arc::clone(&DRAFT202012_CONTENT),
+        );
+        store.insert(
+            schemas::Draft::Draft202012,
+            options
+                .without_schema_validation()
+                .compile(&DRAFT202012)
+                .expect(EXPECT_MESSAGE),
+        )
+    };
     store
 });
 
@@ -272,7 +279,7 @@ pub struct CompilationOptions {
     content_media_type_checks: AHashMap<&'static str, Option<ContentMediaTypeCheckType>>,
     content_encoding_checks_and_converters:
         AHashMap<&'static str, Option<(ContentEncodingCheckType, ContentEncodingConverterType)>>,
-    store: AHashMap<String, Arc<serde_json::Value>>,
+    store: AHashMap<Cow<'static, str>, Arc<serde_json::Value>>,
     formats: AHashMap<String, Arc<dyn Format>>,
     validate_formats: Option<bool>,
     validate_schema: bool,
@@ -288,7 +295,7 @@ impl Default for CompilationOptions {
             draft: Option::default(),
             content_media_type_checks: AHashMap::default(),
             content_encoding_checks_and_converters: AHashMap::default(),
-            store: AHashMap::default(),
+            store: META_SCHEMAS.clone(),
             formats: AHashMap::default(),
             validate_formats: None,
             ignore_unknown_formats: true,
@@ -561,8 +568,8 @@ impl CompilationOptions {
     ///
     /// The example above is taken from the Swagger 2.0 JSON schema.
     #[inline]
+    #[deprecated(since = "0.19.0", note = "Meta schemas are now included by default")]
     pub fn with_meta_schemas(&mut self) -> &mut Self {
-        self.store.extend(META_SCHEMAS.clone());
         self
     }
 
@@ -570,7 +577,7 @@ impl CompilationOptions {
     /// calls to remote schemas via the `$ref` keyword.
     #[inline]
     pub fn with_document(&mut self, id: String, document: serde_json::Value) -> &mut Self {
-        self.store.insert(id, Arc::new(document));
+        self.store.insert(id.into(), Arc::new(document));
         self
     }
     /// Register a custom "format" validator.

@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Ignoring ``$schema`` in resolved references.
+
+### Deprecated
+
+- `with_meta_schemas` argument. Meta schemas are included by default.
+
 ## [0.18.1] - 2024-08-24
 
 ### Changed
