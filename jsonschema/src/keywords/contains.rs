@@ -457,6 +457,30 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    fn max_contains_with_decimal() {
+        tests_util::is_valid(
+            &json!({
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "contains": {"const": 1},
+                "maxContains": 1.0
+            }),
+            &json!([1]),
+        );
+    }
+
+    #[test]
+    fn min_contains_with_decimal() {
+        tests_util::is_valid(
+            &json!({
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "contains": {"const": 1},
+                "minContains": 2.0
+            }),
+            &json!([1, 1]),
+        );
+    }
+
+    #[test]
     fn schema_path() {
         tests_util::assert_schema_path(&json!({"contains": {"const": 2}}), &json!([]), "/contains")
     }
