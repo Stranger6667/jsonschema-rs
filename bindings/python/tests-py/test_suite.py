@@ -92,7 +92,7 @@ def pytest_generate_tests(metafunc):
 def test_draft(filename, draft, schema, instance, expected, description):
     error_message = f"[{filename}] {description}: {schema} | {instance}"
     try:
-        result = jsonschema_rs.is_valid(schema, instance, int(draft), with_meta_schemas=True)
+        result = jsonschema_rs.is_valid(schema, instance, int(draft))
         assert result is expected, error_message
     except ValueError:
         pytest.fail(error_message)

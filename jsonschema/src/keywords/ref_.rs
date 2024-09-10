@@ -6,6 +6,7 @@ use crate::{
     primitive_type::PrimitiveType,
     resolver::Resolver,
     schema_node::SchemaNode,
+    schemas::draft_from_schema,
     validator::Validate,
     CompilationOptions, Draft, ValidationError,
 };
@@ -38,6 +39,16 @@ impl RefValidator {
             resolver: Arc::clone(&context.resolver),
         }))
     }
+
+    fn get_config_for_resolved_schema(&self, resolved: &Value) -> Arc<CompilationOptions> {
+        if let Some(draft) = draft_from_schema(resolved) {
+            let mut config = (*self.config).clone();
+            config.with_draft(draft);
+            Arc::new(config)
+        } else {
+            Arc::clone(&self.config)
+        }
+    }
 }
 
 impl Validate for RefValidator {
@@ -50,11 +61,8 @@ impl Validate for RefValidator {
             &self.reference,
             &self.original_reference,
         ) {
-            let context = CompilationContext::new(
-                scope.into(),
-                Arc::clone(&self.config),
-                Arc::clone(&self.resolver),
-            );
+            let config = self.get_config_for_resolved_schema(&resolved);
+            let context = CompilationContext::new(scope.into(), config, Arc::clone(&self.resolver));
             if let Ok(node) = compile_validators(&resolved, &context) {
                 let result = node.is_valid(instance);
                 *self.sub_nodes.write() = Some(node);
@@ -88,11 +96,9 @@ impl Validate for RefValidator {
             &self.original_reference,
         ) {
             Ok((scope, resolved)) => {
-                let context = CompilationContext::new(
-                    scope.into(),
-                    Arc::clone(&self.config),
-                    Arc::clone(&self.resolver),
-                );
+                let config = self.get_config_for_resolved_schema(&resolved);
+                let context =
+                    CompilationContext::new(scope.into(), config, Arc::clone(&self.resolver));
                 match compile_validators(&resolved, &context) {
                     Ok(node) => {
                         let result = Box::new(
@@ -154,6 +160,72 @@ mod tests {
     use crate::{tests_util, JSONSchema};
     use serde_json::{json, Value};
     use test_case::test_case;
+
+    #[test_case(
+        &json!({
+            "$ref": "http://json-schema.org/draft-04/schema#"
+        }),
+        &json!({
+            "definitions": {
+                "foo": {
+                    "type": "integer"
+                }
+            }
+        })
+    )]
+    #[test_case(
+        &json!({
+            "$ref": "http://json-schema.org/draft-06/schema#"
+        }),
+        &json!({
+            "definitions": {
+                "foo": {
+                    "type": "integer"
+                }
+            }
+        })
+    )]
+    #[test_case(
+        &json!({
+            "$ref": "http://json-schema.org/draft-07/schema#"
+        }),
+        &json!({
+            "definitions": {
+                "foo": {
+                    "type": "integer"
+                }
+            }
+        })
+    )]
+    #[cfg_attr(feature = "draft201909", test_case(
+        &json!({
+            "$schema": "https://json-schema.org/draft/2019-09/schema",
+            "$ref": "https://json-schema.org/draft/2019-09/schema"
+        }),
+        &json!({
+            "$defs": {
+                "foo": {
+                    "type": "integer"
+                }
+            }
+        })
+    ))]
+    #[cfg_attr(feature = "draft202012", test_case(
+        &json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$ref": "https://json-schema.org/draft/2020-12/schema"
+        }),
+        &json!({
+            "$defs": {
+                "foo": {
+                    "type": "integer"
+                }
+            }
+        })
+    ))]
+    fn definition_against_metaschema(schema: &Value, instance: &Value) {
+        tests_util::is_valid(schema, instance);
+    }
 
     #[test_case(
         &json!({

@@ -82,7 +82,6 @@ fn test_draft(_server_address: &str, test_case: TestCase) {
 
     let compiled = JSONSchema::options()
         .with_draft(draft_version)
-        .with_meta_schemas()
         .should_validate_formats(true)
         .compile(&test_case.schema)
         .expect("should not fail to compile schema");
@@ -175,7 +174,6 @@ fn test_instance_path() {
             let suite_id = item["suite_id"].as_u64().expect("Is integer") as usize;
             let raw_schema = &data[suite_id]["schema"];
             let schema = JSONSchema::options()
-                .with_meta_schemas()
                 .compile(raw_schema)
                 .unwrap_or_else(|_| {
                     panic!(

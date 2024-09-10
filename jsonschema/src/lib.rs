@@ -178,14 +178,16 @@ pub(crate) mod tests_util {
     }
 
     fn is_valid_inner(compiled: &JSONSchema, instance: &Value) {
+        if let Err(mut errors) = compiled.validate(instance) {
+            let first = errors.next().expect("Errors iterator is empty");
+            panic!(
+                "{} should be valid (via validate). Error: {} at {}",
+                instance, first, first.instance_path
+            );
+        }
         assert!(
             compiled.is_valid(instance),
             "{} should be valid (via is_valid)",
-            instance
-        );
-        assert!(
-            compiled.validate(instance).is_ok(),
-            "{} should be valid (via validate)",
             instance
         );
         assert!(

@@ -140,15 +140,11 @@ thread_local! {
 
 fn make_options(
     draft: Option<u8>,
-    with_meta_schemas: Option<bool>,
     formats: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<jsonschema::CompilationOptions> {
     let mut options = jsonschema::JSONSchema::options();
     if let Some(raw_draft_version) = draft {
         options.with_draft(get_draft(raw_draft_version)?);
-    }
-    if with_meta_schemas == Some(true) {
-        options.with_meta_schemas();
     }
     if let Some(formats) = formats {
         for (name, callback) in formats.iter() {
@@ -284,6 +280,7 @@ fn to_error_message(error: &jsonschema::ValidationError<'_>) -> String {
 /// If your workflow implies validating against the same schema, consider using `JSONSchema.is_valid`
 /// instead.
 #[pyfunction]
+#[allow(unused_variables)]
 #[pyo3(signature = (schema, instance, draft=None, with_meta_schemas=false, formats=None))]
 fn is_valid(
     py: Python<'_>,
@@ -293,7 +290,7 @@ fn is_valid(
     with_meta_schemas: Option<bool>,
     formats: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<bool> {
-    let options = make_options(draft, with_meta_schemas, formats)?;
+    let options = make_options(draft, formats)?;
     let schema = ser::to_value(schema)?;
     match options.compile(&schema) {
         Ok(compiled) => {
@@ -317,6 +314,7 @@ fn is_valid(
 /// If your workflow implies validating against the same schema, consider using `JSONSchema.validate`
 /// instead.
 #[pyfunction]
+#[allow(unused_variables)]
 #[pyo3(signature = (schema, instance, draft=None, with_meta_schemas=false, formats=None))]
 fn validate(
     py: Python<'_>,
@@ -326,7 +324,7 @@ fn validate(
     with_meta_schemas: Option<bool>,
     formats: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<()> {
-    let options = make_options(draft, with_meta_schemas, formats)?;
+    let options = make_options(draft, formats)?;
     let schema = ser::to_value(schema)?;
     match options.compile(&schema) {
         Ok(compiled) => raise_on_error(py, &compiled, instance),
@@ -345,6 +343,7 @@ fn validate(
 /// If your workflow implies validating against the same schema, consider using `JSONSchema.iter_errors`
 /// instead.
 #[pyfunction]
+#[allow(unused_variables)]
 #[pyo3(signature = (schema, instance, draft=None, with_meta_schemas=false, formats=None))]
 fn iter_errors(
     py: Python<'_>,
@@ -354,7 +353,7 @@ fn iter_errors(
     with_meta_schemas: Option<bool>,
     formats: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<ValidationErrorIter> {
-    let options = make_options(draft, with_meta_schemas, formats)?;
+    let options = make_options(draft, formats)?;
     let schema = ser::to_value(schema)?;
     match options.compile(&schema) {
         Ok(compiled) => iter_on_error(py, &compiled, instance),
@@ -403,6 +402,7 @@ fn handle_format_checked_panic(err: Box<dyn Any + Send>) -> PyErr {
 #[pymethods]
 impl JSONSchema {
     #[new]
+    #[allow(unused_variables)]
     #[pyo3(signature = (schema, draft=None, with_meta_schemas=false, formats=None))]
     fn new(
         py: Python<'_>,
@@ -411,7 +411,7 @@ impl JSONSchema {
         with_meta_schemas: Option<bool>,
         formats: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<Self> {
-        let options = make_options(draft, with_meta_schemas, formats)?;
+        let options = make_options(draft, formats)?;
         let raw_schema = ser::to_value(schema)?;
         match options.compile(&raw_schema) {
             Ok(schema) => Ok(JSONSchema {
@@ -429,6 +429,7 @@ impl JSONSchema {
     ///
     /// Use it if you have your schema as a string and want to utilize Rust JSON parsing.
     #[classmethod]
+    #[allow(unused_variables)]
     #[pyo3(signature = (string, draft=None, with_meta_schemas=false, formats=None))]
     fn from_str(
         _: &Bound<'_, PyType>,
@@ -453,7 +454,7 @@ impl JSONSchema {
             let slice = unsafe { std::slice::from_raw_parts(ptr.cast::<u8>(), str_size as usize) };
             let raw_schema = serde_json::from_slice(slice)
                 .map_err(|error| PyValueError::new_err(format!("Invalid string: {}", error)))?;
-            let options = make_options(draft, with_meta_schemas, formats)?;
+            let options = make_options(draft, formats)?;
             match options.compile(&raw_schema) {
                 Ok(schema) => Ok(JSONSchema {
                     schema,
