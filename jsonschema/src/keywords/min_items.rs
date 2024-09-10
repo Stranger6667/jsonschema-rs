@@ -4,6 +4,7 @@ use crate::{
     keywords::{helpers::fail_on_non_positive_integer, CompilationResult},
     paths::{JSONPointer, JsonPointerNode},
     validator::Validate,
+    Draft,
 };
 use serde_json::{Map, Value};
 
@@ -14,12 +15,27 @@ pub(crate) struct MinItemsValidator {
 
 impl MinItemsValidator {
     #[inline]
-    pub(crate) fn compile(schema: &Value, schema_path: JSONPointer) -> CompilationResult {
+    pub(crate) fn compile(
+        schema: &Value,
+        schema_path: JSONPointer,
+        draft: Draft,
+    ) -> CompilationResult {
         if let Some(limit) = schema.as_u64() {
-            Ok(Box::new(MinItemsValidator { limit, schema_path }))
-        } else {
-            Err(fail_on_non_positive_integer(schema, schema_path))
+            return Ok(Box::new(MinItemsValidator { limit, schema_path }));
         }
+        if !matches!(draft, Draft::Draft4) {
+            if let Some(limit) = schema.as_f64() {
+                if limit.trunc() == limit {
+                    #[allow(clippy::cast_possible_truncation)]
+                    return Ok(Box::new(MinItemsValidator {
+                        // NOTE: Imprecise cast as big integers are not supported yet
+                        limit: limit as u64,
+                        schema_path,
+                    }));
+                }
+            }
+        }
+        Err(fail_on_non_positive_integer(schema, schema_path))
     }
 }
 
@@ -65,13 +81,22 @@ pub(crate) fn compile<'a>(
     context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     let schema_path = context.as_pointer_with("minItems");
-    Some(MinItemsValidator::compile(schema, schema_path))
+    Some(MinItemsValidator::compile(
+        schema,
+        schema_path,
+        context.config.draft(),
+    ))
 }
 
 #[cfg(test)]
 mod tests {
     use crate::tests_util;
     use serde_json::json;
+
+    #[test]
+    fn with_decimal() {
+        tests_util::is_valid(&json!({"minItems": 1.0}), &json!([1, 2]));
+    }
 
     #[test]
     fn schema_path() {

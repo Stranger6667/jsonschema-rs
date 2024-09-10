@@ -78,12 +78,21 @@ pub(crate) fn map_get_u64<'a>(
             value,
             0.into(),
         ))),
-        None => Some(Err(ValidationError::single_type_error(
-            JSONPointer::default(),
-            context.clone().into_pointer(),
-            value,
-            PrimitiveType::Integer,
-        ))),
+        None => {
+            if let Some(value) = value.as_f64() {
+                if value.trunc() == value {
+                    // NOTE: Imprecise cast as big integers are not supported yet
+                    #[allow(clippy::cast_possible_truncation)]
+                    return Some(Ok(value as u64));
+                }
+            }
+            Some(Err(ValidationError::single_type_error(
+                JSONPointer::default(),
+                context.clone().into_pointer(),
+                value,
+                PrimitiveType::Integer,
+            )))
+        }
     }
 }
 

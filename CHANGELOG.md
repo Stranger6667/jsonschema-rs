@@ -5,6 +5,7 @@
 ### Fixed
 
 - Ignoring `$schema` in resolved references.
+- Support integer-valued numbers for `maxItems`, `maxLength`, `maxProperties`, `maxContains`, `minItems`, `minLength`, `minProperties`, `minContains`.
 
 ### Deprecated
 
