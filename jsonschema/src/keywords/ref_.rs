@@ -56,6 +56,7 @@ impl Validate for RefValidator {
         if let Some(sub_nodes) = self.sub_nodes.read().as_ref() {
             return sub_nodes.is_valid(instance);
         }
+        dbg!(777);
         if let Ok((scope, resolved)) = self.resolver.resolve_fragment(
             self.config.draft(),
             &self.reference,
@@ -157,7 +158,7 @@ pub(crate) const fn supports_adjacent_validation(draft: Draft) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::{tests_util, JSONSchema};
+    use crate::{tests_util, Draft, JSONSchema};
     use serde_json::{json, Value};
     use test_case::test_case;
 
@@ -225,6 +226,37 @@ mod tests {
     ))]
     fn definition_against_metaschema(schema: &Value, instance: &Value) {
         tests_util::is_valid(schema, instance);
+    }
+
+    #[test]
+    fn test_ref_prevents_sibling_id_from_changing_the_base_uri() {
+        let schema = json!({
+            "id": "http://localhost:1234/sibling_id/base/",
+            "definitions": {
+                "foo": {
+                    "id": "http://localhost:1234/sibling_id/foo.json",
+                    "type": "string"
+                },
+                "base_foo": {
+                    "$comment": "this canonical uri is http://localhost:1234/sibling_id/base/foo.json",
+                    "id": "foo.json",
+                    "type": "number"
+                }
+            },
+            "allOf": [
+                {
+                    "$comment": "$ref resolves to http://localhost:1234/sibling_id/base/foo.json, not http://localhost:1234/sibling_id/foo.json",
+                    "id": "http://localhost:1234/sibling_id/",
+                    "$ref": "foo.json"
+                }
+            ]
+        });
+        let instance = json!("a");
+        let compiled = JSONSchema::options()
+            .with_draft(Draft::Draft4)
+            .compile(&schema)
+            .expect("Invalid schema");
+        tests_util::is_not_valid_with(&compiled, &instance);
     }
 
     #[test_case(

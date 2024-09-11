@@ -3,7 +3,7 @@ use crate::{
     compilation::DEFAULT_SCOPE,
     paths::{JSONPointer, JsonPointerNode, PathChunkRef},
     resolver::Resolver,
-    schemas,
+    schemas, Draft,
 };
 use serde_json::Value;
 use std::{borrow::Cow, sync::Arc};
@@ -101,12 +101,26 @@ impl<'a> CompilationContext<'a> {
     #[inline]
     pub(crate) fn push(&'a self, schema: &Value) -> Result<Self, ParseError> {
         if let Some(id) = schemas::id_of(self.config.draft(), schema) {
-            Ok(CompilationContext {
-                base_uri: self.base_uri.with_new_scope(id)?,
-                config: Arc::clone(&self.config),
-                resolver: Arc::clone(&self.resolver),
-                schema_path: self.schema_path.clone(),
-            })
+            if matches!(
+                self.config.draft(),
+                Draft::Draft4 | Draft::Draft6 | Draft::Draft7
+            ) && schema.get("$ref").is_some()
+            {
+                // If `$ref` is present, then other keywords are ignored in Drafts 7 and earlier
+                Ok(CompilationContext {
+                    base_uri: self.base_uri.clone(),
+                    config: Arc::clone(&self.config),
+                    resolver: Arc::clone(&self.resolver),
+                    schema_path: self.schema_path.clone(),
+                })
+            } else {
+                Ok(CompilationContext {
+                    base_uri: self.base_uri.with_new_scope(id)?,
+                    config: Arc::clone(&self.config),
+                    resolver: Arc::clone(&self.resolver),
+                    schema_path: self.schema_path.clone(),
+                })
+            }
         } else {
             Ok(CompilationContext {
                 base_uri: self.base_uri.clone(),
