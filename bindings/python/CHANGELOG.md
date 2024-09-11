@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Changing base URI when `$ref` is present in drafts 7 and earlier.
+
 ## [0.18.2] - 2024-09-11
 
 ### Fixed

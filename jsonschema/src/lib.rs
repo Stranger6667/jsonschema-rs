@@ -133,7 +133,7 @@ pub(crate) mod tests_util {
     use crate::ValidationError;
     use serde_json::Value;
 
-    fn is_not_valid_inner(compiled: &JSONSchema, instance: &Value) {
+    pub(crate) fn is_not_valid_with(compiled: &JSONSchema, instance: &Value) {
         assert!(
             !compiled.is_valid(instance),
             "{} should not be valid (via is_valid)",
@@ -153,7 +153,7 @@ pub(crate) mod tests_util {
 
     pub(crate) fn is_not_valid(schema: &Value, instance: &Value) {
         let compiled = JSONSchema::compile(schema).unwrap();
-        is_not_valid_inner(&compiled, instance)
+        is_not_valid_with(&compiled, instance)
     }
 
     #[cfg(any(feature = "draft201909", feature = "draft202012"))]
@@ -162,7 +162,7 @@ pub(crate) mod tests_util {
             .with_draft(draft)
             .compile(schema)
             .unwrap();
-        is_not_valid_inner(&compiled, instance)
+        is_not_valid_with(&compiled, instance)
     }
 
     pub(crate) fn expect_errors(schema: &Value, instance: &Value, errors: &[&str]) {
@@ -177,7 +177,7 @@ pub(crate) mod tests_util {
         )
     }
 
-    fn is_valid_inner(compiled: &JSONSchema, instance: &Value) {
+    pub(crate) fn is_valid_with(compiled: &JSONSchema, instance: &Value) {
         if let Err(mut errors) = compiled.validate(instance) {
             let first = errors.next().expect("Errors iterator is empty");
             panic!(
@@ -199,7 +199,7 @@ pub(crate) mod tests_util {
 
     pub(crate) fn is_valid(schema: &Value, instance: &Value) {
         let compiled = JSONSchema::compile(schema).unwrap();
-        is_valid_inner(&compiled, instance);
+        is_valid_with(&compiled, instance);
     }
 
     #[cfg(any(feature = "draft201909", feature = "draft202012"))]
@@ -208,7 +208,7 @@ pub(crate) mod tests_util {
             .with_draft(draft)
             .compile(schema)
             .unwrap();
-        is_valid_inner(&compiled, instance)
+        is_valid_with(&compiled, instance)
     }
 
     pub(crate) fn validate(schema: &Value, instance: &Value) -> ValidationError<'static> {
