@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "cargo"
+    directory: "/jsonschema"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "cargo"
+    directory: "/bindings/python"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "cargo"
+    directory: "/bench_helpers"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "cargo"
+    directory: "/perf-helpers"
+    schedule:
+      interval: "daily"
