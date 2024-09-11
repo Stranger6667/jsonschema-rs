@@ -68,7 +68,7 @@ getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
 bench_helpers = { path = "../bench_helpers" }
-boon = "0.5"
+boon = "0.6"
 codspeed-criterion-compat = "2.6.0"
 criterion = { version = "0.5.1", features = [], default-features = false }
 json_schema_test_suite = { version = "0.3.0", path = "../jsonschema-test-suite" }
