@@ -56,7 +56,6 @@ impl Validate for RefValidator {
         if let Some(sub_nodes) = self.sub_nodes.read().as_ref() {
             return sub_nodes.is_valid(instance);
         }
-        dbg!(777);
         if let Ok((scope, resolved)) = self.resolver.resolve_fragment(
             self.config.draft(),
             &self.reference,
