@@ -16,16 +16,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: jsonschema
 
       - run: cargo install cargo-codspeed
 
-      - run: cargo codspeed build
-        working-directory: ./jsonschema
+      - run: cargo codspeed build -p jsonschema jsonschema
 
       - uses: CodSpeedHQ/action@v3
         with:
-          run: cargo codspeed run jsonschema
+          run: cargo codspeed run -p jsonschema jsonschema
           token: ${{ secrets.CODSPEED_TOKEN }}
-          working-directory: ./jsonschema

@@ -1,0 +1,36 @@
+[package]
+name = "benchmark-suite"
+version = "0.1.0"
+readme = "README.md"
+rust-version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dev-dependencies]
+benchmark = { path = "../benchmark/" }
+boon = "0.6.0"
+criterion = { version = "0.5", default-features = false }
+jsonschema = { path = "../jsonschema/" }
+jsonschema-valid = "0.5.2"
+serde_json.workspace = true
+valico = "4.0.0"
+
+[[bench]]
+harness = false
+name = "jsonschema"
+
+[[bench]]
+harness = false
+name = "valico"
+
+[[bench]]
+harness = false
+name = "jsonschema_valid"
+
+[[bench]]
+harness = false
+name = "boon"
+

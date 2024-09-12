@@ -1,12 +1,8 @@
 # Rust
-/jsonschema/target
-/bindings/*/target
-/bench_helpers/target
-/jsonschema-test-suite/target
+/crates/*/target
+/target/
 .hypothesis
 .benchmarks
-/jsonschema/Cargo.lock
-/jsonschema-test-suite/Cargo.lock
 
 # IDEs
 /.idea

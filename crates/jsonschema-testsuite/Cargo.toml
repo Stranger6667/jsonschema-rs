@@ -1,0 +1,11 @@
+[package]
+name = "jsonschema-testsuite"
+version = "0.1.0"
+rust-version.workspace = true
+edition.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+codegen = { package = "jsonschema-testsuite-codegen", path = "../jsonschema-testsuite-codegen/" }
+internal = { package = "jsonschema-testsuite-internal", path = "../jsonschema-testsuite-internal/" }

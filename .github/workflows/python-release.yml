@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - python-v*
+  workflow_dispatch:
 
 defaults:
   run:
@@ -21,24 +22,22 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.7"
-          architecture: x64
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          default: true
-      - name: Build sdist
-        uses: messense/maturin-action@v1
-        with:
-          command: sdist
-          args: -m bindings/python/Cargo.toml --out dist
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: hynek/setup-cached-uv@v2
+
+      - run: uv python install "3.12"
+
+      - run: uv build --sdist --out-dir dist
+        working-directory: crates/jsonschema-py
+
       - name: Install sdist
         run: |
-          pip install dist/${{ env.PACKAGE_NAME }}-*.tar.gz --force-reinstall
+          uv pip install dist/${{ env.PACKAGE_NAME }}-*.tar.gz --force-reinstall
+
       - name: Upload sdist
         uses: actions/upload-artifact@v4
         with:
@@ -49,24 +48,19 @@ jobs:
     runs-on: macos-12
     strategy:
       matrix:
-        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12' ]
+        python-version: [ '3.8', '3.9', '3.10', '3.11', '3.12' ]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           architecture: x64
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          default: true
+      - uses: dtolnay/rust-toolchain@stable
       - name: Build wheels - x86_64
         uses: messense/maturin-action@v1
         with:
           target: x86_64
-          args: --release -m bindings/python/Cargo.toml --out dist --interpreter ${{ matrix.python-version }}
+          args: --release -m crates/jsonschema-py/Cargo.toml --out dist --interpreter ${{ matrix.python-version }}
       - name: Install built wheel - x86_64
         run: |
           pip install dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
@@ -80,23 +74,18 @@ jobs:
     runs-on: macos-12
     strategy:
       matrix:
-        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12' ]
+        python-version: [ '3.8', '3.9', '3.10', '3.11', '3.12' ]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           architecture: x64
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          default: true
+      - uses: dtolnay/rust-toolchain@stable
       - name: Build wheels - universal2
         uses: messense/maturin-action@v1
         with:
-          args: --release -m bindings/python/Cargo.toml --target universal2-apple-darwin --out dist --interpreter ${{ matrix.python-version }}
+          args: --release -m crates/jsonschema-py/Cargo.toml --target universal2-apple-darwin --out dist --interpreter ${{ matrix.python-version }}
       - name: Install built wheel - universal2
         run: |
           pip install dist/${{ env.PACKAGE_NAME }}-*universal2.whl --force-reinstall
@@ -110,7 +99,7 @@ jobs:
     runs-on: windows-2022
     strategy:
       matrix:
-        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12' ]
+        python-version: [ '3.8', '3.9', '3.10', '3.11', '3.12' ]
         target: [ x64, x86 ]
     steps:
       - uses: actions/checkout@v4
@@ -118,17 +107,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.target }}
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          default: true
+      - uses: dtolnay/rust-toolchain@stable
       - name: Build wheels
         uses: messense/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release -m bindings/python/Cargo.toml --out dist --interpreter ${{ matrix.python-version }}
+          args: --release -m crates/jsonschema-py/Cargo.toml --out dist --interpreter ${{ matrix.python-version }}
       - name: Install built wheel
         shell: bash
         run: |
@@ -143,7 +127,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12' ]
+        python-version: [ '3.8', '3.9', '3.10', '3.11', '3.12' ]
         target: [ x86_64, i686, aarch64 ]
     steps:
       - uses: actions/checkout@v4
@@ -155,7 +139,7 @@ jobs:
         with:
           target: ${{ matrix.target }}
           manylinux: auto
-          args: --release -m bindings/python/Cargo.toml --out dist --interpreter ${{ matrix.python-version }}
+          args: --release -m crates/jsonschema-py/Cargo.toml --out dist --interpreter ${{ matrix.python-version }}
       - name: Install built wheel on native architecture
         if: matrix.target == 'x86_64'
         run: |
