@@ -2,9 +2,12 @@
 
 ## [Unreleased]
 
+## [0.18.3] - 2024-09-12
+
 ### Fixed
 
 - Changing base URI when `$ref` is present in drafts 7 and earlier.
+- Removed `dbg!` macro.
 
 ## [0.18.2] - 2024-09-11
 
@@ -472,7 +475,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.18.2...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.18.3...HEAD
+[0.18.3]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.18.2...rust-v0.18.3
 [0.18.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.18.1...rust-v0.18.2
 [0.18.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.18.0...rust-v0.18.1
 [0.18.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.17.1...rust-v0.18.0

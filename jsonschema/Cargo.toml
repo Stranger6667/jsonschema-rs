@@ -18,7 +18,7 @@ license = "MIT"
 name = "jsonschema"
 readme = "../README.md"
 repository = "https://github.com/Stranger6667/jsonschema-rs"
-version = "0.18.2"
+version = "0.18.3"
 rust-version = "1.56.1"
 
 categories = ["web-programming"]
