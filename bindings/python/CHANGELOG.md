@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.18.3] - 2024-09-12
+
 ### Fixed
 
 - Changing base URI when `$ref` is present in drafts 7 and earlier.
@@ -355,7 +357,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.18.2...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.18.3...HEAD
+[0.18.3]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.18.2...python-v0.18.3
 [0.18.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.18.1...python-v0.18.2
 [0.18.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.18.0...python-v0.18.1
 [0.18.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.17.3...python-v0.18.0
