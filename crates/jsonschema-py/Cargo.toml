@@ -1,0 +1,27 @@
+[package]
+name = "jsonschema-py"
+version = "0.18.3"
+description = "JSON schema validaton library"
+keywords = ["jsonschema", "validation"]
+categories = ["web-programming"]
+readme = "README.md"
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[lib]
+name = "jsonschema_rs"
+crate-type = ["cdylib"]
+
+[build-dependencies]
+built = { version = "0.7.1", features = ["cargo-lock", "chrono"] }
+pyo3-build-config = { version = "0.22.2", features = ["resolve-config"] }
+
+[dependencies]
+jsonschema = { path = "../jsonschema/" }
+serde_json.workspace = true
+serde = "1.0.152"
+pyo3 = { version = "0.22.2", features = ["extension-module"] }
+pyo3-built = "0.5"

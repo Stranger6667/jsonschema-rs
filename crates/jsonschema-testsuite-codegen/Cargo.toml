@@ -1,0 +1,21 @@
+[package]
+name = "jsonschema-testsuite-codegen"
+version = "0.1.0"
+rust-version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+proc-macro = true
+
+[dependencies]
+internal = { package = "jsonschema-testsuite-internal", path = "../jsonschema-testsuite-internal/" }
+heck = "0.5"
+proc-macro2 = "1"
+quote = "1"
+serde_json.workspace = true
+syn = { version = "2", features = ["full"] }
+walkdir = "2.5"

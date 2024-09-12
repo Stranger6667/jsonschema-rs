@@ -8,15 +8,3 @@ updates:
     directory: "/jsonschema"
     schedule:
       interval: "daily"
-  - package-ecosystem: "cargo"
-    directory: "/bindings/python"
-    schedule:
-      interval: "daily"
-  - package-ecosystem: "cargo"
-    directory: "/bench_helpers"
-    schedule:
-      interval: "daily"
-  - package-ecosystem: "cargo"
-    directory: "/perf-helpers"
-    schedule:
-      interval: "daily"

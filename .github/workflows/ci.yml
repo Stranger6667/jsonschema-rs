@@ -1,0 +1,189 @@
+name: ci
+
+on:
+  pull_request: {}
+  push:
+    branches:
+      - master
+
+jobs:
+
+  commitsar:
+    name: Verify commit messages
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: aevea/commitsar@v0.20.2
+
+  msrv:
+    name: MSRV
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.70"
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: cargo build -p jsonschema
+
+  test-stable:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-12, windows-2022]
+
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: "true"
+          key: ${{ matrix.os }}
+
+      - run: cargo test --no-fail-fast
+
+  build-wasm32:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ['wasm32-unknown-unknown']
+
+    name: Build on ${{ matrix.target }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: "true"
+
+      - run: cargo build --target ${{ matrix.target }} --no-default-features -p jsonschema
+
+  coverage:
+    name: Run test coverage
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: "true"
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Run tests
+        run: cargo llvm-cov --no-report --all-features
+
+      - name: Generate coverage reports
+        run: cargo llvm-cov report --lcov --output-path lcov.info
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          name: coverage
+          files: lcov.info
+          fail_ci_if_error: true
+
+  lints-python:
+    name: Python lints
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hynek/setup-cached-uv@v2
+
+      - run: uvx ruff check python tests-py
+        working-directory: crates/jsonschema-py
+
+      - run: uvx mypy python
+        working-directory: crates/jsonschema-py
+
+  test-python:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-12, windows-2022]
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+
+    name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: hynek/setup-cached-uv@v2
+
+      - run: uv python install ${{ matrix.python-version }}
+
+      - run: uvx --with="tox" --with="tox-gh-actions" --with="tox-uv" tox -e py
+        working-directory: crates/jsonschema-py
+
+  fmt:
+    name: Rustfmt
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
+
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+
+  features:
+    name: Check features
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@cargo-hack
+
+      - run: cargo hack check --feature-powerset
