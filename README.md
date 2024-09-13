@@ -2,7 +2,7 @@
 
 [<img alt="crates.io" src="https://img.shields.io/crates/v/jsonschema.svg?style=flat-square&color=fc8d62&logo=rust" height="20">](https://crates.io/crates/jsonschema)
 [<img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-jsonschema-66c2a5?style=flat-square&labelColor=555555&logo=docs.rs" height="20">](https://docs.rs/jsonschema)
-[<img alt="build status" src="https://img.shields.io/github/actions/workflow/status/Stranger6667/jsonschema-rs/ci.yml?branch=master&style=flat-square" height="20">](https://github.com/Stranger6667/jsonschema-rs/actions?query=branch%3Amain)
+[<img alt="build status" src="https://img.shields.io/github/actions/workflow/status/Stranger6667/jsonschema-rs/ci.yml?branch=master&style=flat-square" height="20">](https://github.com/Stranger6667/jsonschema-rs/actions?query=branch%3Amaster)
 [<img alt="codecov.io" src="https://img.shields.io/codecov/c/gh/Stranger6667/jsonschema-rs?logo=codecov&style=flat-square&token=B1EnafGlRL" height="20">](https://app.codecov.io/github/Stranger6667/jsonschema-rs)
 <img alt="Supported Dialects" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Frust-jsonschema%2Fsupported_versions.json&style=flat-square">
 
