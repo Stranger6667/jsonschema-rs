@@ -13,6 +13,7 @@
 ### Fixed
 
 - `uuid` format validation.
+- Combination of `unevaluatedProperties` with `allOf` and `oneOf`. [#496](https://github.com/Stranger6667/jsonschema-rs/issues/496)
 
 ### Deprecated
 

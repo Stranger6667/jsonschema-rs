@@ -313,7 +313,7 @@ impl UnevaluatedPropertiesValidator {
                 })
             })
             .or_else(|| {
-                let result = self.subschemas.as_ref().and_then(|subschemas| {
+                self.subschemas.as_ref().and_then(|subschemas| {
                     subschemas.iter().find_map(|subschema| {
                         subschema.apply_property(
                             instance,
@@ -323,9 +323,7 @@ impl UnevaluatedPropertiesValidator {
                             property_name,
                         )
                     })
-                });
-
-                result
+                })
             })
             .or_else(|| {
                 self.additional.as_ref().and_then(|additional| {
@@ -649,14 +647,16 @@ impl SubschemaSubvalidator {
                 let results = mapped.collect::<Vec<_>>();
                 let all_subschemas_valid =
                     results.iter().all(|(_, instance_valid)| *instance_valid);
-                all_subschemas_valid.then(|| {
+                if all_subschemas_valid {
                     // We only need to find the first valid evaluation because we know if that
                     // all subschemas were valid against the instance that there can't actually
                     // be any subschemas where the property was evaluated but invalid.
                     results
                         .iter()
-                        .any(|(property_result, _)| matches!(property_result, Some(true)))
-                })
+                        .find_map(|(property_result, _)| *property_result)
+                } else {
+                    None
+                }
             }
 
             // The instance must be valid against only _one_ subschema, and for that subschema, the
@@ -1428,6 +1428,45 @@ mod tests {
             Draft::Draft202012,
             &schema,
             &json!({ "foo": "wee", "another": false }),
+        );
+    }
+
+    #[test]
+    fn test_unevaluated_properties_with_allof_oneof() {
+        let schema = json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "allOf": [{}],
+            "oneOf": [
+                {
+                    "properties": {
+                        "blah": true
+                    }
+                }
+            ],
+            "unevaluatedProperties": false
+        });
+
+        let valid = json!({
+            "blah": 1
+        });
+
+        let validator = crate::compile(&schema).expect("Schema should compile");
+
+        assert!(validator.validate(&valid).is_ok(), "Validation should pass");
+        assert!(validator.is_valid(&valid), "Instance should be valid");
+
+        let invalid = json!({
+            "blah": 1,
+            "extra": "property"
+        });
+
+        assert!(
+            !validator.is_valid(&invalid),
+            "Instance with extra property should be invalid"
+        );
+        assert!(
+            validator.validate(&invalid).is_err(),
+            "Validation should fail for instance with extra property"
         );
     }
 }
