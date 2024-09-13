@@ -10,10 +10,18 @@
 
 - Bump MSRV to `1.70`.
 
+### Fixed
+
+- `uuid` format validation.
+
 ### Deprecated
 
 - `cli` feature in favor of a separate `jsonschema-cli` crate.
 - `draft201909` and `draft202012` features. The relevant functionality is now enabled by default.
+
+### Performance
+
+- `uuid` validation via `uuid-simd`.
 
 ## [0.18.3] - 2024-09-12
 
