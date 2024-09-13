@@ -4,19 +4,53 @@
 [![Version](https://img.shields.io/pypi/v/jsonschema-rs.svg)](https://pypi.org/project/jsonschema-rs/)
 [![Python versions](https://img.shields.io/pypi/pyversions/jsonschema-rs.svg)](https://pypi.org/project/jsonschema-rs/)
 [![License](https://img.shields.io/pypi/l/jsonschema-rs.svg)](https://opensource.org/licenses/MIT)
+![Supported Dialects](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Frust-jsonschema%2Fsupported_versions.json)
 
-Fast JSON Schema validation for Python implemented in Rust.
+A high-performance JSON Schema validator for Python.
 
-Supported drafts:
+```python
+import jsonschema_rs
 
-- Draft 7
-- Draft 6
-- Draft 4
+validator = jsonschema_rs.JSONSchema({"minimum": 42})
 
-There are some notable restrictions at the moment:
+# Boolean result
+validator.is_valid(45)
 
-- The underlying Rust crate doesn't support arbitrary precision integers yet, which may lead to `SystemError` when such value is used;
-- Unicode surrogates are not supported;
+# Raise a ValidationError
+validator.validate(41)
+# ValidationError: 41 is less than the minimum of 42
+#
+# Failed validating "minimum" in schema
+#
+# On instance:
+#    41
+
+# Iterate over all validation errors
+for error in validator.iter_errors(40):
+    print(f"Error: {error}")
+```
+
+## Highlights
+
+- 📚 Support for popular JSON Schema drafts
+- 🌐 Remote reference fetching (network/file)
+- 🔧 Custom format validators
+
+### Supported drafts
+
+Compliance levels vary across drafts, with newer versions having some unimplemented keywords.
+
+- ![Draft 2020-12](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Frust-jsonschema%2Fcompliance%2Fdraft2020-12.json)
+- ![Draft 2019-09](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Frust-jsonschema%2Fcompliance%2Fdraft2019-09.json)
+- ![Draft 7](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Frust-jsonschema%2Fcompliance%2Fdraft7.json)
+- ![Draft 6](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Frust-jsonschema%2Fcompliance%2Fdraft6.json)
+- ![Draft 4](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Frust-jsonschema%2Fcompliance%2Fdraft4.json)
+
+You can check the current status on the [Bowtie Report](https://bowtie.report/#/implementations/rust-jsonschema).
+
+## Limitations
+
+- No support for arbitrary precision numbers
 
 ## Installation
 
@@ -28,36 +62,34 @@ pip install jsonschema-rs
 
 ## Usage
 
-To check if the input document is valid:
-
-```python
-import jsonschema_rs
-
-validator = jsonschema_rs.JSONSchema({"minimum": 42})
-validator.is_valid(45)  # True
-```
-
-or:
-
-```python
-import jsonschema_rs
-
-validator = jsonschema_rs.JSONSchema({"minimum": 42})
-validator.validate(41)  # raises ValidationError
-```
-
 If you have a schema as a JSON string, then you could use
 `jsonschema_rs.JSONSchema.from_str` to avoid parsing on the
 Python side:
 
 ```python
-import jsonschema_rs
-
 validator = jsonschema_rs.JSONSchema.from_str('{"minimum": 42}')
 ...
 ```
 
-You can define custom format checkers:
+You can specify a custom JSON Schema draft using the `draft` argument:
+
+```python
+import jsonschema_rs
+
+validator = jsonschema_rs.JSONSchema(
+    {"minimum": 42}, 
+    draft=jsonschema_rs.Draft7
+)
+```
+
+JSON Schema allows for format validation through the `format` keyword. While `jsonschema-rs`
+provides built-in validators for standard formats, you can also define custom format validators
+for domain-specific string formats.
+
+To implement a custom format validator:
+
+1. Define a function that takes a `str` and returns a `bool`.
+2. Pass it with the `formats` argument.
 
 ```python
 import jsonschema_rs
@@ -77,80 +109,37 @@ validator.is_valid("invalid")  # False
 
 ## Performance
 
-According to our benchmarks, `jsonschema-rs` is usually faster than
-existing alternatives in real-life scenarios.
+`jsonschema-rs` is designed for high performance, outperforming other Python JSON Schema validators in most scenarios:
 
-However, for small schemas & inputs it might be slower than
-`fastjsonschema` or `jsonschema` on PyPy.
+- Up to **30-390x** faster than `jsonschema` for complex schemas and large instances
+- Generally 2-5x faster than `fastjsonschema` on CPython
+- Comparable or slightly slower performance for very small schemas
 
-### Input values and schemas
-
-- [Zuora](https://github.com/APIs-guru/openapi-directory/blob/master/APIs/zuora.com/2021-04-23/openapi.yaml) OpenAPI schema (`zuora.json`). Validated against [OpenAPI 3.0 JSON Schema](https://github.com/OAI/OpenAPI-Specification/blob/main/schemas/v3.0/schema.json) (`openapi.json`).
-- [Kubernetes](https://raw.githubusercontent.com/APIs-guru/openapi-directory/master/APIs/kubernetes.io/v1.10.0/swagger.yaml) Swagger schema (`kubernetes.json`). Validated against [Swagger JSON Schema](https://github.com/OAI/OpenAPI-Specification/blob/main/schemas/v2.0/schema.json) (`swagger.json`).
-- Canadian border in GeoJSON format (`canada.json`). Schema is taken from the [GeoJSON website](https://geojson.org/schema/FeatureCollection.json) (`geojson.json`).
-- Concert data catalog (`citm_catalog.json`). Schema is inferred via [infers-jsonschema](https://github.com/Stranger6667/infers-jsonschema) & manually adjusted (`citm_catalog_schema.json`).
-- `Fast` is taken from [fastjsonschema benchmarks](https://github.com/horejsek/python-fastjsonschema/blob/master/performance.py#L15) (`fast_schema.json`, `fast_valid.json` and `fast_invalid.json`).
-
-| Case             | Schema size   | Instance size   |
-| ---------------- | ------------- | --------------- |
-| OpenAPI          |  18 KB        |  4.5 MB         |
-| Swagger          |  25 KB        |  3.0 MB         |
-| Canada           |  4.8 KB       |  2.1 MB         |
-| CITM catalog     |  2.3 KB       |  501 KB         |
-| Fast (valid)     |  595 B        |  55 B           |
-| Fast (invalid)   |  595 B        |  60 B           |
-
-Compiled validators (when the input schema is compiled once and reused
-later). `jsonschema-rs` comes in three variants in the tables below:
-
-- `validate`. This method raises `ValidationError` on errors or returns `None` on their absence.
-- `is_valid`. A faster method that returns a boolean result whether the instance is valid.
-- `overhead`. Only transforms data to underlying Rust types and do not perform any validation. Shows the Python -> Rust data conversion cost.
-
-Ratios are given against the `validate` variant.
-
-Small schemas:
-
-| library                   | `true`                | `{"minimum": 10}`      | `Fast (valid)`         | `Fast (invalid)`       |
-|---------------------------|-----------------------|------------------------|------------------------|------------------------|
-| jsonschema-rs\[validate\] | 93.84 ns             | 94.83 ns               | 1.2 us                 | 1.84 us                |
-| jsonschema-rs\[is_valid\] | 70.22 ns (**x0.74**) | 68.26 ns (**x0.71**)   | 688.70 ns (**x0.57**)  | 1.26 us (**x0.68**)    |
-| jsonschema-rs\[overhead\] | 65.27 ns (**x0.69**) | 66.90 ns (**x0.70**)   | 461.53 ns (**x0.38**)  | 925.16 ns (**x0.50**)  |
-| fastjsonschema\[CPython\] | 58.19 ns (**x0.62**) | 105.77 ns (**x1.11**)  | 3.98 us (**x3.31**)    | 4.57 us (**x2.48**)    |
-| fastjsonschema\[PyPy\]    | 10.39 ns (**x0.11**) | 34.96 ns (**x0.36**)   | 866 ns (**x0.72**)     | 916 ns (**x0.49**)     |
-| jsonschema\[CPython\]     | 235.06 ns (**x2.50**)| 1.86 us (**x19.6**)    | 56.26 us (**x46.88**)  | 59.39 us (**x32.27**)  |
-| jsonschema\[PyPy\]        | 40.83 ns (**x0.43**) | 232.41 ns (**x2.45**)  | 21.82 us (**x18.18**)  | 22.23 us (**x12.08**)  |
-
-Large schemas:
-
-| library                   | `Zuora (OpenAPI)`      | `Kubernetes (Swagger)` | `Canada (GeoJSON)`     | `CITM catalog`         |
-|---------------------------|------------------------|------------------------|------------------------|------------------------|
-| jsonschema-rs\[validate\] | 17.311 ms              | 15.194 ms              | 5.018 ms               | 4.765 ms               |
-| jsonschema-rs\[is_valid\] | 16.605 ms (**x0.95**)  | 12.610 ms (**x0.82**)  | 4.954 ms (**x0.98**)   | 2.792 ms (**x0.58**)   |
-| jsonschema-rs\[overhead\] | 12.017 ms (**x0.69**)  | 8.005 ms (**x0.52**)   | 3.702 ms (**x0.73**)   | 2.303 ms (**x0.48**)   |
-| fastjsonschema\[CPython\] | -- (1)                 | 90.305 ms (**x5.94**)  | 32.389 ms (**6.45**)   | 12.020 ms (**x2.52**)  |
-| fastjsonschema\[PyPy\]    | -- (1)                 | 37.204 ms (**x2.44**)  | 8.450 ms (**x1.68**)   | 4.888 ms (**x1.02**)   |
-| jsonschema\[CPython\]     | 764.172 ms (**x44.14**)| 1.063 s (**x69.96**)   | 1.301 s (**x259.26**)  | 115.362 ms (**x24.21**)|
-| jsonschema\[PyPy\]        | 604.557 ms (**x34.92**)| 619.744 ms (**x40.78**)| 524.275 ms (**x104.47**)| 25.275 ms (**x5.30**) |
-
-Notes:
-
-1. `fastjsonschema` fails to compile the Open API spec due to the presence of the `uri-reference` format (that is not defined in Draft 4). However, unknown formats are [explicitly supported](https://tools.ietf.org/html/draft-fge-json-schema-validation-00#section-7.1) by the spec.
-
-The bigger the input is the bigger is performance win. You can take a look at benchmarks in `benches/bench.py`.
-
-Package versions:
-
-- `jsonschema-rs` - latest version from the repository
-- `jsonschema` - `3.2.0`
-- `fastjsonschema` - `2.15.1`
-
-Measured with stable Rust 1.56, CPython 3.9.7 / PyPy3 7.3.6 on Intel i8700K
+For detailed benchmarks, see our [full performance comparison](BENCHMARKS.md).
 
 ## Python support
 
 `jsonschema-rs` supports CPython 3.8, 3.9, 3.10, 3.11, and 3.12.
 
+## Support
+
+If you have questions, need help, or want to suggest improvements, please use [GitHub Discussions](https://github.com/Stranger6667/jsonschema-rs/discussions).
+
+## Sponsorship
+
+If you find `jsonschema-rs` useful, please consider [sponsoring its development](https://github.com/sponsors/Stranger6667).
+
+## Contributing
+
+We welcome contributions! Here's how you can help:
+
+- Share your use cases
+- Implement missing keywords
+- Fix failing test cases from the [JSON Schema test suite](https://bowtie.report/#/implementations/rust-jsonschema)
+
+See [CONTRIBUTING.md](../../CONTRIBUTING.md) for more details.
+
 ## License
 
-The code in this project is licensed under [MIT license](https://opensource.org/licenses/MIT). By contributing to `jsonschema-rs`, you agree that your contributions will be licensed under its MIT license.
+Licensed under [MIT License](LICENSE).
+
