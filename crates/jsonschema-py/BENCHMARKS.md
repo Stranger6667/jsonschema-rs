@@ -1,20 +1,25 @@
 # Benchmark Suite
 
-A benchmarking suite for comparing different Rust JSON Schema implementations.
+A benchmarking suite for comparing different Python JSON Schema implementations.
 
 ## Implementations
 
-- `jsonschema` (latest version in this repo)
-- [valico](https://crates.io/crates/valico) (v4.0.0)
-- [jsonschema-valid](https://crates.io/crates/jsonschema-valid) (v0.5.2)
-- [boon](https://crates.io/crates/boon) (v0.6.0)
+- `jsonschema-rs` (latest version in this repo)
+- [jsonschema](https://pypi.org/project/jsonschema/) (v4.23.0)
+- [fastjsonschema](https://pypi.org/project/fastjsonschema/) (v2.20.0)
 
 ## Usage
 
-To run the benchmarks:
+Install the dependencies:
 
 ```console
-$ cargo bench
+$ pip install -e ".[bench]"
+```
+
+Run the benchmarks:
+
+```console
+$ pytest benches/bench.py
 ```
 
 ## Overview
@@ -38,35 +43,32 @@ Sources:
 
 ### Comparison with Other Libraries
 
-| Benchmark     | jsonschema_valid | valico        | boon          | jsonschema (validate) |
-|---------------|------------------|---------------|---------------|------------------------|
-| OpenAPI       | -                | -             | 12.23 ms (**x2.25**) | 5.43 ms              |
-| Swagger       | -                | 201.98 ms  (**x28.98**)   | 18.24 ms (**x2.62**)     | 6.97 ms              |
-| GeoJSON       | 35.75 ms   (**x30.56**)      | 559.52 ms  (**x478.22**)   | 29.01 ms (**x24.79**)  | 1.17 ms              |
-| CITM Catalog  | 5.51 ms  (**x2.45**)        | 46.31 ms  (**x20.58**)    | 2.07 ms  (**x0.92**)     | 2.25 ms              |
-| Fast (Valid)  | 2.10 µs     (**x4.27**)     | 6.61 µs  (**x13.44**)     | 597.00 ns  (**x1.21**)   | 491.82 ns            |
-| Fast (Invalid)| 368.53 ns     (**x0.56**)   | 6.77 µs  (**x10.22**)     | 748.22 ns (**x1.13**)    | 662.52 ns            |
+| Benchmark     | fastjsonschema | jsonschema    | jsonschema-rs |
+|---------------|----------------|---------------|--------------------------|
+| OpenAPI       | - (1)          | 1477.92 ms (**x92.70**) | 15.94 ms     |
+| Swagger       | - (1)          | 2586.88 ms (**x177.61**)| 14.56 ms     |
+| Canada (GeoJSON) | 22.64 ms (**x5.03**)  | 1775.93 ms (**x394.76**) | 4.50 ms |
+| CITM Catalog  | 10.16 ms (**x1.92**)  | 178.60 ms (**x33.73**) | 5.29 ms  |
+| Fast (Valid)  | 3.73 µs (**x3.38**)   | 83.84 µs (**x75.94**) | 1.10 µs  |
+| Fast (Invalid)| 4.24 µs (**x2.77**)   | 83.11 µs (**x54.18**) | 1.53 µs  |
 
-### jsonschema Performance: `validate` vs `is_valid`
+### jsonschema-rs Performance: `validate` vs `is_valid`
 
 | Benchmark     | validate   | is_valid   | Speedup |
 |---------------|------------|------------|---------|
-| OpenAPI       | 5.43 ms  | 4.70 ms  | 1.16x   |
-| Swagger       | 6.97 ms  | 5.35 ms  | 1.30x   |
-| GeoJSON       | 1.17 ms  | 1.16 ms  | 1.00x   |
-| CITM Catalog  | 2.2510 ms  | 630.82 µs  | 3.57x   |
-| Fast (Valid)  | 491.82 ns  | 111.09 ns  | 4.43x   |
-| Fast (Invalid)| 662.52 ns  | 7.1289 ns  | 92.93x  |
+| OpenAPI       | 15.94 ms   | 15.49 ms   | 1.03x   |
+| Swagger       | 14.56 ms   | 14.42 ms   | 1.01x   |
+| Canada (GeoJSON) | 4.50 ms | 4.46 ms    | 1.01x   |
+| CITM Catalog  | 5.29 ms    | 3.01 ms    | 1.76x   |
+| Fast (Valid)  | 1.10 µs    | 696.00 ns  | 1.59x   |
+| Fast (Invalid)| 1.53 µs    | 1.08 µs    | 1.42x   |
 
 Notes:
 
-1. `jsonschema_valid` and `valico` do not handle valid path instances matching the `^\\/` regex.
+1. `fastjsonschema` fails to compile the Open API spec due to the presence of the `uri-reference` format (that is not defined in Draft 4). However, unknown formats are explicitly supported by the spec.
 
-2. `jsonschema_valid` fails to resolve local references (e.g. `#/definitions/definitions`).
-
-You can find benchmark code in [benches/](benches/), Rust version is `1.81`.
+You can find benchmark code in [benches/](benches/), Python version `3.12.5`, Rust version `1.81`.
 
 ## Contributing
 
 Contributions to improve, expand, or optimize the benchmark suite are welcome. This includes adding new benchmarks, ensuring fair representation of real-world use cases, and optimizing the configuration and usage of benchmarked libraries. Such efforts are highly appreciated as they ensure accurate and meaningful performance comparisons.
-

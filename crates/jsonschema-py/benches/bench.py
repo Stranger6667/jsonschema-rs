@@ -1,7 +1,6 @@
 import json
 import sys
 from contextlib import suppress
-from functools import partial
 
 import fastjsonschema
 import jsonschema
@@ -53,12 +52,6 @@ FAST_INSTANCE_INVALID = [
     5,
 ]
 
-
-@pytest.fixture(params=[True, False], ids=("compiled", "raw"))
-def is_compiled(request):
-    return request.param
-
-
 if jsonschema_rs is not None:
     variants = [
         "jsonschema-rs-is-valid",
@@ -79,36 +72,18 @@ def variant(request):
 
 
 @pytest.fixture
-def args(request, variant, is_compiled):
+def args(request, variant):
     schema, instance = request.node.get_closest_marker("data").args
+    if (schema is OPENAPI or schema is SWAGGER) and variant == "fastjsonschema":
+        pytest.skip("fastjsonschema does not support the uri-reference format and errors")
     if variant == "jsonschema-rs-is-valid":
-        if is_compiled:
-            return jsonschema_rs.JSONSchema(schema).is_valid, instance
-        else:
-            return (
-                jsonschema_rs.is_valid,
-                schema,
-                instance,
-            )
+        return jsonschema_rs.JSONSchema(schema).is_valid, instance
     if variant == "jsonschema-rs-validate":
-        if is_compiled:
-            return jsonschema_rs.JSONSchema(schema).validate, instance
-        else:
-            return (
-                jsonschema_rs.validate,
-                schema,
-                instance,
-            )
+        return jsonschema_rs.JSONSchema(schema).validate, instance
     if variant == "jsonschema":
-        if is_compiled:
-            return jsonschema.validators.validator_for(schema)(schema).is_valid, instance
-        else:
-            return jsonschema.validate, instance, schema
+        return jsonschema.validators.validator_for(schema)(schema).is_valid, instance
     if variant == "fastjsonschema":
-        if is_compiled:
-            return fastjsonschema.compile(schema, use_default=False), instance
-        else:
-            return partial(fastjsonschema.validate, use_default=False), schema, instance
+        return fastjsonschema.compile(schema, use_default=False), instance
 
 
 @pytest.mark.parametrize(

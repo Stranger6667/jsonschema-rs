@@ -39,6 +39,8 @@ tests = [
     "pytest>=7.4.4",
 ]
 bench = [
+    "fastjsonschema>=2.20.0",
+    "jsonschema>=4.23.0",
     "pytest-benchmark>=4.0.0",
 ]
 
@@ -85,7 +87,7 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["jsonschema_rs"]
-known-third-party = ["hypothesis", "pytest"]
+known-third-party = ["hypothesis", "pytest", "jsonschema", "fastjsonschema"]
 
 [tool.ruff.format]
 skip-magic-trailing-comma = false
