@@ -14,6 +14,8 @@ cargo install jsonschema-cli
 jsonschema [OPTIONS] <SCHEMA>
 ```
 
+**NOTE**: It only supports valid JSON as input.
+
 ### Options:
 
 - `-i, --instance <FILE>`: JSON instance(s) to validate (can be used multiple times)
