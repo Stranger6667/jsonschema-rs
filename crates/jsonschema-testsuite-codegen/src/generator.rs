@@ -59,6 +59,7 @@ fn generate_nested_structure(
                         case_path.push(test_name.clone());
 
                         let full_test_path = case_path.join("::");
+                        let is_optional = case_path.iter().any(|segment| segment == "optional");
                         let should_ignore = xfail.iter().any(|x| full_test_path.starts_with(x));
                         let ignore_attr = if should_ignore {
                             quote! { #[ignore] }
@@ -78,6 +79,7 @@ fn generate_nested_structure(
                                 let test = testsuite::Test {
                                     draft: #draft,
                                     schema: serde_json::from_str(#schema).expect("Failed to load JSON"),
+                                    is_optional: #is_optional,
                                     case: #case_description,
                                     description: #test_description,
                                     data: serde_json::from_str(#data).expect("Failed to load JSON"),

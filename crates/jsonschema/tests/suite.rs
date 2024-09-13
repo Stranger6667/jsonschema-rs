@@ -26,8 +26,6 @@ use testsuite::{suite, Test};
         "draft7::ref_remote::ref_to_ref_finds_location_independent_id",
         "draft2019-09::anchor",
         "draft2019-09::defs",
-        "draft2019-09::format::validation_of",
-        "draft2019-09::id::invalid_use_of_fragments_in_location_independent_id",
         "draft2019-09::optional::anchor",
         "draft2019-09::optional::cross_draft::refs_to_historic_drafts_are_processed_as_historic_drafts",
         "draft2019-09::optional::ecmascript_regex::d_in_pattern_properties_matches_0_9_not_unicode_digits",
@@ -51,29 +49,6 @@ use testsuite::{suite, Test};
         "draft2020-12::anchor",
         "draft2020-12::defs::validate_definition_against_metaschema::invalid_definition_schema",
         "draft2020-12::dynamic_ref",
-        "draft2020-12::format::date_format",
-        "draft2020-12::format::date_format",
-        "draft2020-12::format::date_time_format",
-        "draft2020-12::format::date_time_format",
-        "draft2020-12::format::email_format",
-        "draft2020-12::format::email_format",
-        "draft2020-12::format::hostname_format",
-        "draft2020-12::format::hostname_format",
-        "draft2020-12::format::idn_email_format",
-        "draft2020-12::format::idn_email_format",
-        "draft2020-12::format::ipv4_format",
-        "draft2020-12::format::ipv4_format",
-        "draft2020-12::format::ipv6_format",
-        "draft2020-12::format::ipv6_format",
-        "draft2020-12::format::regex_format",
-        "draft2020-12::format::regex_format",
-        "draft2020-12::format::time_format",
-        "draft2020-12::format::time_format",
-        "draft2020-12::format::uri_format",
-        "draft2020-12::format::uri_format",
-        "draft2020-12::format::uuid_format::invalid_uuid",
-        "draft2020-12::format::validation_of",
-        "draft2020-12::id::invalid_use_of_fragments_in_location_independent_id",
         "draft2020-12::optional::anchor::anchor_inside_an_enum_is_not_a_real_identifier",
         "draft2020-12::optional::cross_draft::refs_to_historic_drafts_are_processed_as_historic_drafts",
         "draft2020-12::optional::dynamic_ref::dynamic_ref_skips_over_intermediate_resources_pointer_reference_across_resource_boundary",
@@ -106,21 +81,26 @@ use testsuite::{suite, Test};
     ]
 )]
 fn test_suite(test: Test) {
-    let draft = match test.draft {
-        "draft4" => Draft::Draft4,
-        "draft6" => Draft::Draft6,
-        "draft7" => Draft::Draft7,
-        "draft2019-09" => Draft::Draft201909,
-        "draft2020-12" => Draft::Draft202012,
+    let mut options = JSONSchema::options();
+    match test.draft {
+        "draft4" => {
+            options.with_draft(Draft::Draft4);
+        }
+        "draft6" => {
+            options.with_draft(Draft::Draft6);
+        }
+        "draft7" => {
+            options.with_draft(Draft::Draft7);
+        }
+        "draft2019-09" | "draft2020-12" => {}
         _ => panic!("Unsupported draft"),
     };
-
-    let compiled = JSONSchema::options()
-        .with_draft(draft)
-        .should_validate_formats(true)
+    if test.is_optional {
+        options.should_validate_formats(true);
+    }
+    let compiled = options
         .compile(&test.schema)
         .expect("should not fail to compile schema");
-
     let result = compiled.validate(&test.data);
 
     if test.valid {

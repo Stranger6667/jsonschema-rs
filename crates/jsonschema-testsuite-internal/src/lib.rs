@@ -29,6 +29,7 @@ pub struct Test {
     pub draft: &'static str,
     pub schema: Value,
     pub case: &'static str,
+    pub is_optional: bool,
     /// The test description, briefly explaining which behavior it exercises.
     pub description: &'static str,
     /// The instance which should be validated against the schema in schema.
