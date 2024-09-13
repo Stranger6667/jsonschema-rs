@@ -5,7 +5,7 @@ use fancy_regex::Regex;
 use once_cell::sync::Lazy;
 use serde_json::{Map, Value};
 use url::Url;
-use uuid::Uuid;
+use uuid_simd::{parse_hyphenated, Out};
 
 use crate::{
     compilation::context::CompilationContext,
@@ -348,7 +348,8 @@ impl Validate for UUIDValidator {
     validate!("uuid");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            Uuid::from_str(item.as_str()).is_ok()
+            let mut out = [0; 16];
+            parse_hyphenated(item.as_bytes(), Out::from_mut(&mut out)).is_ok()
         } else {
             true
         }
@@ -450,60 +451,60 @@ pub(crate) fn compile<'a>(
                 func.clone(),
             ));
         }
-        let draft_version = context.config.draft();
+        let draft = context.config.draft();
         match format.as_str() {
             "date-time" => Some(DateTimeValidator::compile(context)),
             "date" => Some(DateValidator::compile(context)),
             "email" => Some(EmailValidator::compile(context)),
             "hostname" => Some(HostnameValidator::compile(context)),
             "idn-email" => Some(IDNEmailValidator::compile(context)),
-            "idn-hostname" if draft_version == Draft::Draft7 => {
+            "idn-hostname" if draft == Draft::Draft7 => {
                 Some(IDNHostnameValidator::compile(context))
             }
-            "idn-hostname" if draft_version == Draft::Draft201909 => {
+            "idn-hostname" if draft == Draft::Draft201909 => {
                 Some(IDNHostnameValidator::compile(context))
             }
             "ipv4" => Some(IpV4Validator::compile(context)),
             "ipv6" => Some(IpV6Validator::compile(context)),
-            "iri-reference" if draft_version == Draft::Draft7 => {
+            "iri-reference" if draft == Draft::Draft7 => {
                 Some(IRIReferenceValidator::compile(context))
             }
-            "iri-reference" if draft_version == Draft::Draft201909 => {
+            "iri-reference" if draft == Draft::Draft201909 => {
                 Some(IRIReferenceValidator::compile(context))
             }
-            "iri" if draft_version == Draft::Draft7 => Some(IRIValidator::compile(context)),
-            "iri" if draft_version == Draft::Draft201909 => Some(IRIValidator::compile(context)),
-            "json-pointer" if draft_version == Draft::Draft6 || draft_version == Draft::Draft7 => {
+            "iri" if draft == Draft::Draft7 => Some(IRIValidator::compile(context)),
+            "iri" if draft == Draft::Draft201909 => Some(IRIValidator::compile(context)),
+            "json-pointer" if draft == Draft::Draft6 || draft == Draft::Draft7 => {
                 Some(JSONPointerValidator::compile(context))
             }
-            "json-pointer" if draft_version == Draft::Draft201909 => {
+            "json-pointer" if draft == Draft::Draft201909 => {
                 Some(JSONPointerValidator::compile(context))
             }
             "regex" => Some(RegexValidator::compile(context)),
-            "relative-json-pointer" if draft_version == Draft::Draft7 => {
+            "relative-json-pointer" if draft == Draft::Draft7 => {
                 Some(RelativeJSONPointerValidator::compile(context))
             }
-            "relative-json-pointer" if draft_version == Draft::Draft201909 => {
+            "relative-json-pointer" if draft == Draft::Draft201909 => {
                 Some(RelativeJSONPointerValidator::compile(context))
             }
             "time" => Some(TimeValidator::compile(context)),
-            "uri-reference" if draft_version == Draft::Draft6 || draft_version == Draft::Draft7 => {
+            "uri-reference" if draft == Draft::Draft6 || draft == Draft::Draft7 => {
                 Some(URIReferenceValidator::compile(context))
             }
-            "uri-reference" if draft_version == Draft::Draft201909 => {
+            "uri-reference" if draft == Draft::Draft201909 => {
                 Some(URIReferenceValidator::compile(context))
             }
-            "uri-template" if draft_version == Draft::Draft6 || draft_version == Draft::Draft7 => {
+            "uri-template" if draft == Draft::Draft6 || draft == Draft::Draft7 => {
                 Some(URITemplateValidator::compile(context))
             }
-            "uri-template" if draft_version == Draft::Draft201909 => {
+            "uri-template" if draft == Draft::Draft201909 => {
                 Some(URITemplateValidator::compile(context))
             }
-            "uuid" if draft_version == Draft::Draft201909 => Some(UUIDValidator::compile(context)),
+            "uuid" if matches!(draft, Draft::Draft201909 | Draft::Draft202012) => {
+                Some(UUIDValidator::compile(context))
+            }
             "uri" => Some(URIValidator::compile(context)),
-            "duration" if draft_version == Draft::Draft201909 => {
-                Some(DurationValidator::compile(context))
-            }
+            "duration" if draft == Draft::Draft201909 => Some(DurationValidator::compile(context)),
             _ => {
                 if context.config.are_unknown_formats_ignored() {
                     None

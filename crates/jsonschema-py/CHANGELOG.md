@@ -2,9 +2,17 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `uuid` format validation.
+
+### Performance
+
+- `uuid` validation.
+
 ### Removed
 
-- Support for Python 3.7
+- Support for Python 3.7.
 
 ## [0.18.3] - 2024-09-12
 
