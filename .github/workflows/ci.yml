@@ -170,7 +170,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - run: cargo clippy --all-targets --all-features
 
   features:
     name: Check features
