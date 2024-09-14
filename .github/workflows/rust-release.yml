@@ -17,4 +17,6 @@ jobs:
         env:
           CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
 
-      - run: cargo publish --manifest-path crates/Cargo.toml
+      - run: cargo publish --manifest-path crates/jsonschema/Cargo.toml
+
+      - run: cargo publish --manifest-path crates/jsonschema-cli/Cargo.toml
