@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "definitions": {
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "properties": {
+    "id": { "$ref": "#/definitions/positiveInteger" },
+    "name": { "$ref": "#/definitions/nonEmptyString" },
+    "tags": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/nonEmptyString" },
+      "uniqueItems": true
+    },
+    "metadata": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/definitions/nonEmptyString" },
+      "additionalProperties": {
+        "oneOf": [
+          { "$ref": "#/definitions/positiveInteger" },
+          { "$ref": "#/definitions/nonEmptyString" }
+        ]
+      }
+    }
+  },
+  "required": ["id", "name"]
+}

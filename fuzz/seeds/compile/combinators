@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "allOf": [
+    { "properties": { "name": { "type": "string" } } },
+    { "properties": { "age": { "type": "integer", "minimum": 0 } } }
+  ],
+  "anyOf": [
+    { "properties": { "email": { "type": "string", "format": "email" } } },
+    { "properties": { "phone": { "type": "string", "pattern": "^\\+?[0-9]{10,14}$" } } }
+  ],
+  "oneOf": [
+    { "properties": { "type": { "const": "user" } } },
+    { "properties": { "type": { "const": "admin" } } }
+  ]
+}

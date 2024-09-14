@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "color": { "enum": ["red", "green", "blue"] },
+    "version": { "const": "1.0" },
+    "features": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["color", "version"]
+}

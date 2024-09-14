@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "user": { "$ref": "https://example.com/schemas/user.json" },
+    "order": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "items": { "$ref": "https://example.com/schemas/order-items.json" }
+      },
+      "required": ["id", "items"]
+    }
+  },
+  "required": ["user", "order"]
+}
