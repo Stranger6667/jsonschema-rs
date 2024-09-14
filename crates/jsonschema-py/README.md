@@ -1,10 +1,10 @@
 # jsonschema-rs
 
-[![Build](https://github.com/Stranger6667/jsonschema-rs/workflows/ci/badge.svg)](https://github.com/Stranger6667/jsonschema-rs/actions)
-[![Version](https://img.shields.io/pypi/v/jsonschema-rs.svg)](https://pypi.org/project/jsonschema-rs/)
-[![Python versions](https://img.shields.io/pypi/pyversions/jsonschema-rs.svg)](https://pypi.org/project/jsonschema-rs/)
-[![License](https://img.shields.io/pypi/l/jsonschema-rs.svg)](https://opensource.org/licenses/MIT)
-![Supported Dialects](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Frust-jsonschema%2Fsupported_versions.json)
+[![Build](https://img.shields.io/github/actions/workflow/status/Stranger6667/jsonschema-rs/ci.yml?branch=master&style=flat-square)](https://github.com/Stranger6667/jsonschema-rs/actions)
+[![Version](https://img.shields.io/pypi/v/jsonschema-rs.svg?style=flat-square)](https://pypi.org/project/jsonschema-rs/)
+[![Python versions](https://img.shields.io/pypi/pyversions/jsonschema-rs.svg?style=flat-square)](https://pypi.org/project/jsonschema-rs/)
+[![License](https://img.shields.io/pypi/l/jsonschema-rs.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[<img alt="Supported Dialects" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Frust-jsonschema%2Fsupported_versions.json&style=flat-square">](https://bowtie.report/#/implementations/rust-jsonschema)
 
 A high-performance JSON Schema validator for Python.
 
