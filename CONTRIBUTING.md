@@ -10,7 +10,22 @@ To open an issue, [follow this link](https://github.com/Stranger6667/jsonschema-
 
 When making a feature request, please make it clear what problem you intend to solve with the feature and provide some ideas on how to implement it.
 
-## Making Changes
+## Running the Tests
+
+The tests in jsonschema depend on the [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite). Before running the tests, you need to download the suite.
+
+Initialize and update the git submodules:
+
+   ```console
+   $ git submodule init
+   $ git submodule update
+   ```
+
+This will clone the JSON Schema Test Suite to `crates/jsonschema/tests/suite/`.
+
+Then follow instructions below to run the tests either for the Rust Core or Python Bindings.
+
+## Rust Core
 
 ### Rust Toolchain
 
@@ -18,24 +33,13 @@ jsonschema targets Rust 1.70 as its Minimum Supported Rust Version (MSRV). Pleas
 
 You can use [rustup](https://rustup.rs/) to manage your installed toolchains. To set up the correct version for the jsonschema project:
 
-```console
-$ rustup override set 1.70
-```
+   ```console
+   $ rustup override set 1.70
+   ```
 
 ### Running the Tests
 
-The tests in jsonschema depend on the [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite). Before running the tests, you need to download the suite:
-
-1. Initialize and update the git submodules:
-
-   ```console
-   $ git submodule init
-   $ git submodule update
-   ```
-
-   This will clone the JSON Schema Test Suite to `crates/jsonschema/tests/suite/`.
-
-2. Run the tests:
+Run the tests with:
 
    ```console
    $ cargo test --all-features
@@ -47,15 +51,62 @@ Make sure all tests pass before submitting your pull request. If you've added ne
 
 Format your code using:
 
-```console
-$ cargo fmt --all
-```
+   ```console
+   $ cargo fmt --all
+   ```
 
 And lint it using:
 
-```console
-$ cargo clippy --all-targets --all-features -- -D warnings
-```
+   ```console
+   $ cargo clippy --all-targets --all-features -- -D warnings
+   ```
+
+## Python Bindings
+
+The Python bindings are located in the `crates/jsonschema-py` directory. If you're working on or testing the Python bindings, follow these steps:
+
+### Setting Up the Python Environment
+
+We recommend using [uv](https://github.com/astral-sh/uv) for managing the Python environment. To set up the environment:
+
+1. Navigate to the `crates/jsonschema-py` directory:
+
+   ```console
+   $ cd crates/jsonschema-py
+   ```
+
+2. Create a virtual environment and install the package in editable mode with test dependencies:
+
+   ```console
+   $ uv venv
+   $ uv pip install -e ".[tests]"
+   ```
+
+### Running Python Tests
+
+To run the Python tests:
+
+   ```console
+   $ uv run pytest tests-py
+   ```
+
+Make sure all Python tests pass before submitting your pull request. If you've added new functionality to the Python bindings, please include appropriate Python tests as well.
+
+### Formatting and Linting
+
+Format your code using:
+
+   ```console
+   $ uvx ruff format benches python tests-py
+   $ cargo fmt --all
+   ```
+
+And lint it using:
+
+   ```console
+   $ uvx ruff check benches python tests-py
+   $ cargo clippy --all-targets --all-features -- -D warnings
+   ```
 
 ### Adding New Functionality
 
