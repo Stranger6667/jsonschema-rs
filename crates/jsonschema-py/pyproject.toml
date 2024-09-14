@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "jsonschema_rs"
-description = "Fast JSON Schema validation for Python implemented in Rust"
+description = "A high-performance JSON Schema validator for Python"
 keywords = ["jsonschema", "validation", "rust"]
 authors = [
     {name = "Dmitry Dygalo", email = "dmitry@dygalo.dev"}
@@ -28,6 +28,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Rust",
+    "Topic :: File Formats :: JSON :: JSON Schema",
 ]
 requires-python = ">=3.8"
 dependencies = []

@@ -1,7 +1,7 @@
 [package]
 name = "jsonschema-py"
 version = "0.18.3"
-description = "JSON schema validaton library"
+description = "A high-performance JSON Schema validator for Python"
 keywords = ["jsonschema", "validation"]
 categories = ["web-programming"]
 readme = "README.md"

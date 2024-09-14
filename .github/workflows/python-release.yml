@@ -35,10 +35,12 @@ jobs:
         working-directory: crates/jsonschema-py
 
       - run: uv venv
+        working-directory: crates/jsonschema-py
 
       - name: Install sdist
         run: |
           uv pip install dist/${{ env.PACKAGE_NAME }}-*.tar.gz --force-reinstall
+        working-directory: crates/jsonschema-py
 
       - name: Upload sdist
         uses: actions/upload-artifact@v4
