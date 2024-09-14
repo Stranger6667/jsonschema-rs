@@ -1,6 +1,6 @@
 [package]
 name = "jsonschema"
-version = "0.18.3"
+version = "0.19.0"
 description = "JSON schema validaton library"
 keywords = ["jsonschema", "validation"]
 categories = ["web-programming"]

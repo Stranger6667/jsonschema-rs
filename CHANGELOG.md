@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.19.0] - 2024-09-14
+
 ### Added
 
 - `jsonschema::compile` shortcut.
@@ -497,7 +499,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.18.3...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.19.0...HEAD
+[0.19.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.18.3...rust-v0.19.0
 [0.18.3]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.18.2...rust-v0.18.3
 [0.18.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.18.1...rust-v0.18.2
 [0.18.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.18.0...rust-v0.18.1
