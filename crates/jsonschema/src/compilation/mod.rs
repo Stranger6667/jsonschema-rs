@@ -34,6 +34,16 @@ pub struct JSONSchema {
 pub(crate) static DEFAULT_SCOPE: Lazy<Url> =
     Lazy::new(|| Url::parse(DEFAULT_ROOT_URL).expect("Is a valid URL"));
 
+/// This function exists solely to trigger a deprecation warning if any
+/// deprecated features are enabled.
+#[deprecated(
+    since = "0.19.0",
+    note = "The features 'draft201909', 'draft202012', and 'cli' are deprecated and will be removed in a future version."
+)]
+#[allow(dead_code)]
+#[cfg(any(feature = "draft201909", feature = "draft202012", feature = "cli"))]
+fn deprecated_features_used() {}
+
 impl JSONSchema {
     /// Return a default `CompilationOptions` that can configure
     /// `JSONSchema` compilation flow.
@@ -51,6 +61,8 @@ impl JSONSchema {
     /// ```
     #[must_use]
     pub fn options() -> CompilationOptions {
+        #[cfg(any(feature = "draft201909", feature = "draft202012", feature = "cli"))]
+        deprecated_features_used();
         CompilationOptions::default()
     }
 
