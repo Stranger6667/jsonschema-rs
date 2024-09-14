@@ -112,7 +112,7 @@ validator.is_valid("invalid")  # False
 `jsonschema-rs` is designed for high performance, outperforming other Python JSON Schema validators in most scenarios:
 
 - Up to **30-390x** faster than `jsonschema` for complex schemas and large instances
-- Generally 2-5x faster than `fastjsonschema` on CPython
+- Generally **2-5x** faster than `fastjsonschema` on CPython
 - Comparable or slightly slower performance for very small schemas
 
 For detailed benchmarks, see our [full performance comparison](BENCHMARKS.md).
