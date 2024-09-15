@@ -14,7 +14,7 @@ use crate::{
     paths::{AbsolutePath, JSONPointer, JsonPointerNode},
     properties::*,
     schema_node::SchemaNode,
-    validator::{format_validators, PartialApplication, Validate},
+    validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
 
@@ -138,16 +138,6 @@ impl Validate for AdditionalPropertiesValidator {
     }
 }
 
-impl core::fmt::Display for AdditionalPropertiesValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "additionalProperties: {}",
-            format_validators(self.node.validators())
-        )
-    }
-}
-
 /// # Schema example
 ///
 /// ```json
@@ -194,11 +184,6 @@ impl Validate for AdditionalPropertiesFalseValidator {
             }
         }
         no_error()
-    }
-}
-impl core::fmt::Display for AdditionalPropertiesFalseValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        "additionalProperties: false".fmt(f)
     }
 }
 
@@ -445,16 +430,6 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValida
     }
 }
 
-impl<M: PropertiesValidatorsMap> core::fmt::Display for AdditionalPropertiesNotEmptyValidator<M> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "additionalProperties: {}",
-            format_validators(self.node.validators())
-        )
-    }
-}
-
 /// # Schema example
 ///
 /// ```json
@@ -592,16 +567,6 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
         } else {
             PartialApplication::valid_empty()
         }
-    }
-}
-
-impl core::fmt::Display for AdditionalPropertiesWithPatternsValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "additionalProperties: {}",
-            format_validators(self.node.validators())
-        )
     }
 }
 
@@ -745,12 +710,6 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
         } else {
             PartialApplication::valid_empty()
         }
-    }
-}
-
-impl core::fmt::Display for AdditionalPropertiesWithPatternsFalseValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        "additionalProperties: false".fmt(f)
     }
 }
 
@@ -933,17 +892,6 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
         } else {
             PartialApplication::valid_empty()
         }
-    }
-}
-impl<M: PropertiesValidatorsMap> core::fmt::Display
-    for AdditionalPropertiesWithPatternsNotEmptyValidator<M>
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "additionalProperties: {}",
-            format_validators(self.node.validators())
-        )
     }
 }
 

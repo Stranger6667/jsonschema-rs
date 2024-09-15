@@ -6,7 +6,7 @@ use crate::{
     paths::{JSONPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     schema_node::SchemaNode,
-    validator::{format_iter_of_validators, PartialApplication, Validate},
+    validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
 
@@ -117,16 +117,6 @@ impl Validate for OneOfValidator {
         } else {
             unreachable!("compilation should fail for oneOf with no subschemas")
         }
-    }
-}
-
-impl core::fmt::Display for OneOfValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "oneOf: [{}]",
-            format_iter_of_validators(self.schemas.iter().map(SchemaNode::validators))
-        )
     }
 }
 

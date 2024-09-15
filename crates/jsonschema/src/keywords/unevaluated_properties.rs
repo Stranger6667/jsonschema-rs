@@ -437,12 +437,6 @@ impl Validate for UnevaluatedPropertiesValidator {
     }
 }
 
-impl core::fmt::Display for UnevaluatedPropertiesValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        "unevaluatedProperties: {}".fmt(f)
-    }
-}
-
 /// A subvalidator for properties.
 #[derive(Debug)]
 struct PropertySubvalidator {

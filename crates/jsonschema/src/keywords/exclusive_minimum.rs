@@ -59,11 +59,6 @@ macro_rules! validate {
                 true
             }
         }
-        impl core::fmt::Display for $validator {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "exclusiveMinimum: {}", self.limit)
-            }
-        }
     };
 }
 
@@ -100,11 +95,6 @@ impl Validate for ExclusiveMinimumF64Validator {
                 self.limit_val.clone(),
             ))
         }
-    }
-}
-impl core::fmt::Display for ExclusiveMinimumF64Validator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "exclusiveMinimum: {}", self.limit)
     }
 }
 

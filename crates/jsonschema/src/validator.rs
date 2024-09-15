@@ -1,12 +1,10 @@
 use crate::{
     error::ErrorIterator,
-    keywords::BoxedValidator,
     output::{Annotations, ErrorDescription, OutputUnit},
     paths::JsonPointerNode,
-    schema_node::SchemaNode,
 };
 use serde_json::Value;
-use std::{collections::VecDeque, fmt};
+use std::collections::VecDeque;
 
 /// The Validate trait represents a predicate over some JSON value. Some validators are very simple
 /// predicates such as "a value which is a string", whereas others may be much more complex,
@@ -22,7 +20,7 @@ use std::{collections::VecDeque, fmt};
 /// If you are implementing `Validate` it is often sufficient to implement `validate` and
 /// `is_valid`. `apply` is only necessary for validators which compose other validators. See the
 /// documentation for `apply` for more information.
-pub(crate) trait Validate: Send + Sync + core::fmt::Display {
+pub(crate) trait Validate: Send + Sync {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
@@ -161,55 +159,4 @@ impl<'a> PartialApplication<'a> {
             }
         }
     }
-}
-
-impl fmt::Debug for dyn Validate + Send + Sync {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.to_string())
-    }
-}
-
-pub(crate) fn format_validators<'a, I: ExactSizeIterator + Iterator<Item = &'a BoxedValidator>>(
-    mut validators: I,
-) -> String {
-    match validators.len() {
-        0 => "{}".to_string(),
-        1 => {
-            // Unwrap is okay due to the check on len
-            let validator = validators.next().unwrap();
-            let name = validator.to_string();
-            match name.as_str() {
-                // boolean validators are represented as is, without brackets because if they
-                // occur in a vector, then the schema is not a key/value mapping
-                "true" | "false" => name,
-                _ => format!("{{{}}}", name),
-            }
-        }
-        _ => format!(
-            "{{{}}}",
-            validators
-                .map(|validator| format!("{:?}", validator))
-                .collect::<Vec<String>>()
-                .join(", ")
-        ),
-    }
-}
-
-pub(crate) fn format_iter_of_validators<'a, G, I>(validators: I) -> String
-where
-    I: Iterator<Item = G>,
-    G: ExactSizeIterator + Iterator<Item = &'a BoxedValidator>,
-{
-    validators
-        .map(format_validators)
-        .collect::<Vec<String>>()
-        .join(", ")
-}
-
-pub(crate) fn format_key_value_validators(validators: &[(String, SchemaNode)]) -> String {
-    validators
-        .iter()
-        .map(|(name, node)| format!("{}: {}", name, format_validators(node.validators())))
-        .collect::<Vec<String>>()
-        .join(", ")
 }

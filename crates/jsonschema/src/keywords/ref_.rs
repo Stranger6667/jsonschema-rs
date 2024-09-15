@@ -118,12 +118,6 @@ impl Validate for RefValidator {
     }
 }
 
-impl core::fmt::Display for RefValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "$ref: {}", self.reference)
-    }
-}
-
 #[inline]
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,

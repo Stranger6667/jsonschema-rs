@@ -62,12 +62,6 @@ impl Validate for MultipleOfFloatValidator {
     }
 }
 
-impl core::fmt::Display for MultipleOfFloatValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "multipleOf: {}", self.multiple_of)
-    }
-}
-
 pub(crate) struct MultipleOfIntegerValidator {
     multiple_of: f64,
     schema_path: JSONPointer,
@@ -112,11 +106,6 @@ impl Validate for MultipleOfIntegerValidator {
     }
 }
 
-impl core::fmt::Display for MultipleOfIntegerValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "multipleOf: {}", self.multiple_of)
-    }
-}
 #[inline]
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,

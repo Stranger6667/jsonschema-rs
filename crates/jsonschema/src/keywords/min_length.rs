@@ -68,12 +68,6 @@ impl Validate for MinLengthValidator {
     }
 }
 
-impl core::fmt::Display for MinLengthValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "minLength: {}", self.limit)
-    }
-}
-
 #[inline]
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,

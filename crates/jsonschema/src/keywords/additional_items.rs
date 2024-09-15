@@ -5,7 +5,7 @@ use crate::{
     paths::{JSONPointer, JsonPointerNode},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     schema_node::SchemaNode,
-    validator::{format_validators, Validate},
+    validator::Validate,
 };
 use serde_json::{Map, Value};
 
@@ -59,16 +59,6 @@ impl Validate for AdditionalItemsObjectValidator {
     }
 }
 
-impl core::fmt::Display for AdditionalItemsObjectValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "additionalItems: {}",
-            format_validators(self.node.validators())
-        )
-    }
-}
-
 pub(crate) struct AdditionalItemsBooleanValidator {
     items_count: usize,
     schema_path: JSONPointer,
@@ -111,11 +101,6 @@ impl Validate for AdditionalItemsBooleanValidator {
             }
         }
         no_error()
-    }
-}
-impl core::fmt::Display for AdditionalItemsBooleanValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        "additionalItems: false".fmt(f)
     }
 }
 

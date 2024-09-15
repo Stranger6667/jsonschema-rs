@@ -128,11 +128,6 @@ impl Validate for UniqueItemsValidator {
     }
 }
 
-impl core::fmt::Display for UniqueItemsValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        "uniqueItems: true".fmt(f)
-    }
-}
 #[inline]
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,

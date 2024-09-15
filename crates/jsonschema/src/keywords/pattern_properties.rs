@@ -6,7 +6,7 @@ use crate::{
     paths::{JSONPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     schema_node::SchemaNode,
-    validator::{format_validators, PartialApplication, Validate},
+    validator::{PartialApplication, Validate},
 };
 use fancy_regex::Regex;
 use serde_json::{Map, Value};
@@ -108,20 +108,6 @@ impl Validate for PatternPropertiesValidator {
     }
 }
 
-impl core::fmt::Display for PatternPropertiesValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "patternProperties: {{{}}}",
-            self.patterns
-                .iter()
-                .map(|(key, node)| { format!("{}: {}", key, format_validators(node.validators())) })
-                .collect::<Vec<String>>()
-                .join(", ")
-        )
-    }
-}
-
 pub(crate) struct SingleValuePatternPropertiesValidator {
     pattern: Regex,
     node: SchemaNode,
@@ -206,17 +192,6 @@ impl Validate for SingleValuePatternPropertiesValidator {
         } else {
             PartialApplication::valid_empty()
         }
-    }
-}
-
-impl core::fmt::Display for SingleValuePatternPropertiesValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "patternProperties: {{{}: {}}}",
-            self.pattern,
-            format_validators(self.node.validators())
-        )
     }
 }
 

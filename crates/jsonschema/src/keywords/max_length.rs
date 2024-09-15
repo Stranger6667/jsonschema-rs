@@ -68,12 +68,6 @@ impl Validate for MaxLengthValidator {
     }
 }
 
-impl core::fmt::Display for MaxLengthValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "maxLength: {}", self.limit)
-    }
-}
-
 #[inline]
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,

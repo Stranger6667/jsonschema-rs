@@ -96,12 +96,6 @@ impl Validate for PatternValidator {
     }
 }
 
-impl core::fmt::Display for PatternValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "pattern: {}", self.pattern)
-    }
-}
-
 // ECMA 262 has differences
 #[allow(clippy::result_large_err)]
 pub(crate) fn convert_regex(pattern: &str) -> Result<fancy_regex::Regex, fancy_regex::Error> {

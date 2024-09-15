@@ -4,7 +4,7 @@ use crate::{
     keywords::CompilationResult,
     paths::{JSONPointer, JsonPointerNode},
     schema_node::SchemaNode,
-    validator::{format_validators, Validate},
+    validator::Validate,
 };
 use serde_json::{Map, Value};
 
@@ -50,12 +50,6 @@ impl Validate for NotValidator {
                 self.original.clone(),
             ))
         }
-    }
-}
-
-impl core::fmt::Display for NotValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "not: {}", format_validators(self.node.validators()))
     }
 }
 

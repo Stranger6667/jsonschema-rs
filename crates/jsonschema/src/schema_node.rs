@@ -4,7 +4,7 @@ use crate::{
     keywords::BoxedValidator,
     output::{Annotations, BasicOutput, ErrorDescription, OutputUnit},
     paths::{AbsolutePath, JSONPointer, JsonPointerNode},
-    validator::{format_validators, PartialApplication, Validate},
+    validator::{PartialApplication, Validate},
 };
 use ahash::AHashMap;
 use std::{collections::VecDeque, fmt};
@@ -17,7 +17,6 @@ pub(crate) struct SchemaNode {
     absolute_path: Option<AbsolutePath>,
 }
 
-#[derive(Debug)]
 enum NodeValidators {
     /// The result of compiling a boolean valued schema, e.g
     ///
@@ -37,7 +36,16 @@ enum NodeValidators {
     Array { validators: Vec<BoxedValidator> },
 }
 
-#[derive(Debug)]
+impl fmt::Debug for NodeValidators {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Boolean { .. } => f.debug_struct("Boolean").finish(),
+            Self::Keyword(_) => f.debug_tuple("Keyword").finish(),
+            Self::Array { .. } => f.debug_struct("Array").finish(),
+        }
+    }
+}
+
 struct KeywordValidators {
     /// The keywords on this node which were not recognized by any vocabularies. These are
     /// stored so we can later produce them as annotations
@@ -103,10 +111,6 @@ impl SchemaNode {
                 NodeValidatorsIter::ArrayValidators(validators.iter())
             }
         }
-    }
-
-    fn format_validators(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(&format_validators(self.validators()))
     }
 
     /// This is similar to `Validate::apply` except that `SchemaNode` knows where it is in the
@@ -268,12 +272,6 @@ impl SchemaNode {
                 child_results: error_results,
             }
         }
-    }
-}
-
-impl fmt::Display for SchemaNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.format_validators(f)
     }
 }
 

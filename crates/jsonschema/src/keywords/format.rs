@@ -55,12 +55,6 @@ macro_rules! format_validator {
                 Ok(Box::new($validator { schema_path }))
             }
         }
-
-        impl core::fmt::Display for $validator {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                concat!("format: ", $format_name).fmt(f)
-            }
-        }
     };
 }
 
@@ -380,11 +374,6 @@ impl CustomFormatValidator {
             format_name,
             check,
         }))
-    }
-}
-impl core::fmt::Display for CustomFormatValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "format: {}", self.format_name)
     }
 }
 

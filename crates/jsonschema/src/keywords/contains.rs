@@ -4,7 +4,7 @@ use crate::{
     keywords::CompilationResult,
     paths::{JSONPointer, JsonPointerNode},
     schema_node::SchemaNode,
-    validator::{format_validators, PartialApplication, Validate},
+    validator::{PartialApplication, Validate},
     Draft,
 };
 use serde_json::{Map, Value};
@@ -96,12 +96,6 @@ impl Validate for ContainsValidator {
     }
 }
 
-impl core::fmt::Display for ContainsValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "contains: {}", format_validators(self.node.validators()))
-    }
-}
-
 /// `minContains` validation. Used only if there is no `maxContains` present.
 ///
 /// Docs: <https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.6.4.5>
@@ -186,17 +180,6 @@ impl Validate for MinContainsValidator {
         } else {
             true
         }
-    }
-}
-
-impl core::fmt::Display for MinContainsValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "minContains: {}, contains: {}",
-            self.min_contains,
-            format_validators(self.node.validators())
-        )
     }
 }
 
@@ -293,17 +276,6 @@ impl Validate for MaxContainsValidator {
     }
 }
 
-impl core::fmt::Display for MaxContainsValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "maxContains: {}, contains: {}",
-            self.max_contains,
-            format_validators(self.node.validators())
-        )
-    }
-}
-
 /// `maxContains` & `minContains` validation combined.
 ///
 /// Docs:
@@ -392,18 +364,6 @@ impl Validate for MinMaxContainsValidator {
         } else {
             true
         }
-    }
-}
-
-impl core::fmt::Display for MinMaxContainsValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "minContains: {}, maxContains: {}, contains: {}",
-            self.min_contains,
-            self.max_contains,
-            format_validators(self.node.validators())
-        )
     }
 }
 

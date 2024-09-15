@@ -74,12 +74,6 @@ impl Validate for RequiredValidator {
     }
 }
 
-impl core::fmt::Display for RequiredValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "required: [{}]", self.required.join(", "))
-    }
-}
-
 pub(crate) struct SingleItemRequiredValidator {
     value: String,
     schema_path: JSONPointer,
@@ -119,12 +113,6 @@ impl Validate for SingleItemRequiredValidator {
         } else {
             true
         }
-    }
-}
-
-impl core::fmt::Display for SingleItemRequiredValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "required: [{}]", self.value)
     }
 }
 

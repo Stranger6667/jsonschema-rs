@@ -5,7 +5,7 @@ use crate::{
     paths::{JSONPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     schema_node::SchemaNode,
-    validator::{format_iter_of_validators, format_validators, PartialApplication, Validate},
+    validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
 
@@ -64,15 +64,6 @@ impl Validate for AllOfValidator {
     }
 }
 
-impl core::fmt::Display for AllOfValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "allOf: [{}]",
-            format_iter_of_validators(self.schemas.iter().map(SchemaNode::validators))
-        )
-    }
-}
 pub(crate) struct SingleValueAllOfValidator {
     node: SchemaNode,
 }
@@ -112,11 +103,6 @@ impl Validate for SingleValueAllOfValidator {
     }
 }
 
-impl core::fmt::Display for SingleValueAllOfValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "allOf: [{}]", format_validators(self.node.validators()))
-    }
-}
 #[inline]
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
