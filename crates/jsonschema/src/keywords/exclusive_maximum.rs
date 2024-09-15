@@ -60,11 +60,6 @@ macro_rules! validate {
                 }
             }
         }
-        impl core::fmt::Display for $validator {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "exclusiveMaximum: {}", self.limit)
-            }
-        }
     };
 }
 
@@ -102,11 +97,6 @@ impl Validate for ExclusiveMaximumF64Validator {
                 self.limit_val.clone(),
             ))
         }
-    }
-}
-impl core::fmt::Display for ExclusiveMaximumF64Validator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "exclusiveMaximum: {}", self.limit)
     }
 }
 

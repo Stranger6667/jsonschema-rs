@@ -4,7 +4,7 @@ use crate::{
     keywords::CompilationResult,
     paths::JsonPointerNode,
     schema_node::SchemaNode,
-    validator::{format_validators, PartialApplication, Validate},
+    validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
 
@@ -72,17 +72,6 @@ impl Validate for IfThenValidator {
     }
 }
 
-impl core::fmt::Display for IfThenValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "if: {}, then: {}",
-            format_validators(self.schema.validators()),
-            format_validators(self.then_schema.validators())
-        )
-    }
-}
-
 pub(crate) struct IfElseValidator {
     schema: SchemaNode,
     else_schema: SchemaNode,
@@ -144,17 +133,6 @@ impl Validate for IfElseValidator {
                 .apply_rooted(instance, instance_path)
                 .into()
         }
-    }
-}
-
-impl core::fmt::Display for IfElseValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "if: {}, else: {}",
-            format_validators(self.schema.validators()),
-            format_validators(self.else_schema.validators())
-        )
     }
 }
 
@@ -227,18 +205,6 @@ impl Validate for IfThenElseValidator {
                 .apply_rooted(instance, instance_path)
                 .into()
         }
-    }
-}
-
-impl core::fmt::Display for IfThenElseValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "if: {}, then: {}, else: {}",
-            format_validators(self.schema.validators()),
-            format_validators(self.then_schema.validators()),
-            format_validators(self.else_schema.validators())
-        )
     }
 }
 

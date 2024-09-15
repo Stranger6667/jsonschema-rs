@@ -4,7 +4,7 @@ use crate::{
     keywords::CompilationResult,
     paths::JsonPointerNode,
     schema_node::SchemaNode,
-    validator::{format_iter_of_validators, format_validators, PartialApplication, Validate},
+    validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
 
@@ -56,16 +56,6 @@ impl Validate for ItemsArrayValidator {
         } else {
             no_error()
         }
-    }
-}
-
-impl core::fmt::Display for ItemsArrayValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "items: [{}]",
-            format_iter_of_validators(self.items.iter().map(SchemaNode::validators))
-        )
     }
 }
 
@@ -134,12 +124,6 @@ impl Validate for ItemsObjectValidator {
         } else {
             PartialApplication::valid_empty()
         }
-    }
-}
-
-impl core::fmt::Display for ItemsObjectValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "items: {}", format_validators(self.node.validators()))
     }
 }
 
@@ -219,12 +203,6 @@ impl Validate for ItemsObjectSkipPrefixValidator {
         } else {
             PartialApplication::valid_empty()
         }
-    }
-}
-
-impl core::fmt::Display for ItemsObjectSkipPrefixValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "items: {}", format_validators(self.node.validators()))
     }
 }
 

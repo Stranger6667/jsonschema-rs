@@ -67,20 +67,6 @@ impl Validate for EnumValidator {
     }
 }
 
-impl core::fmt::Display for EnumValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "enum: [{}]",
-            self.items
-                .iter()
-                .map(Value::to_string)
-                .collect::<Vec<String>>()
-                .join(", ")
-        )
-    }
-}
-
 #[derive(Debug)]
 pub(crate) struct SingleValueEnumValidator {
     value: Value,
@@ -123,12 +109,6 @@ impl Validate for SingleValueEnumValidator {
 
     fn is_valid(&self, instance: &Value) -> bool {
         helpers::equal(&self.value, instance)
-    }
-}
-
-impl core::fmt::Display for SingleValueEnumValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "enum: [{}]", self.value)
     }
 }
 

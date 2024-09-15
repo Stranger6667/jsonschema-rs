@@ -4,7 +4,7 @@ use crate::{
     paths::{JSONPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     schema_node::SchemaNode,
-    validator::{format_iter_of_validators, PartialApplication, Validate},
+    validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
 
@@ -97,16 +97,6 @@ impl Validate for PrefixItemsValidator {
     }
 }
 
-impl core::fmt::Display for PrefixItemsValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "prefixItems: [{}]",
-            format_iter_of_validators(self.schemas.iter().map(SchemaNode::validators))
-        )
-    }
-}
-
 #[inline]
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
@@ -137,15 +127,6 @@ mod tests {
     #[test_case(&json!({"prefixItems": [{"type": "integer"}, {"maximum": 5}], "items": {"type": "boolean"}}), &json!([42, 42, true]), "/prefixItems/1/maximum")]
     fn schema_path(schema: &Value, instance: &Value, expected: &str) {
         tests_util::assert_schema_path(schema, instance, expected)
-    }
-
-    #[test_case(&json!({"prefixItems": [{"type": "integer"}, {"maximum": 5}]}), "prefixItems: [{type: integer}, {maximum: 5}]")]
-    fn debug_representation(schema: &Value, expected: &str) {
-        let compiled = JSONSchema::compile(schema).unwrap();
-        assert_eq!(
-            format!("{:?}", compiled.node.validators().next().unwrap()),
-            expected
-        );
     }
 
     #[test_case{

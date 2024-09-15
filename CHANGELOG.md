@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Make `Debug` implementation for `SchemaNode` opaque.
+
 ## [0.19.1] - 2024-09-15
 
 ### Fixed

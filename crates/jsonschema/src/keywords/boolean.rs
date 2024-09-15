@@ -34,12 +34,6 @@ impl Validate for FalseValidator {
     }
 }
 
-impl core::fmt::Display for FalseValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        "false".fmt(f)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::tests_util;

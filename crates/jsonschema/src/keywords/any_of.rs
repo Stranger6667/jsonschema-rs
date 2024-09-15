@@ -4,7 +4,7 @@ use crate::{
     paths::JsonPointerNode,
     primitive_type::PrimitiveType,
     schema_node::SchemaNode,
-    validator::{format_iter_of_validators, PartialApplication, Validate},
+    validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
 
@@ -89,15 +89,6 @@ impl Validate for AnyOfValidator {
     }
 }
 
-impl core::fmt::Display for AnyOfValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "anyOf: [{}]",
-            format_iter_of_validators(self.schemas.iter().map(SchemaNode::validators))
-        )
-    }
-}
 #[inline]
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,

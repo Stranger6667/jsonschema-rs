@@ -68,12 +68,6 @@ impl Validate for MaxItemsValidator {
     }
 }
 
-impl core::fmt::Display for MaxItemsValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "maxItems: {}", self.limit)
-    }
-}
-
 #[inline]
 pub(crate) fn compile<'a>(
     _: &Map<String, Value>,

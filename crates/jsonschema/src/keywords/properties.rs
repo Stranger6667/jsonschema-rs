@@ -6,7 +6,7 @@ use crate::{
     paths::{JSONPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     schema_node::SchemaNode,
-    validator::{format_key_value_validators, PartialApplication, Validate},
+    validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
 
@@ -100,16 +100,6 @@ impl Validate for PropertiesValidator {
         } else {
             PartialApplication::valid_empty()
         }
-    }
-}
-
-impl core::fmt::Display for PropertiesValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "properties: {{{}}}",
-            format_key_value_validators(&self.properties)
-        )
     }
 }
 

@@ -68,12 +68,6 @@ impl Validate for MaxPropertiesValidator {
     }
 }
 
-impl core::fmt::Display for MaxPropertiesValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "maxProperties: {}", self.limit)
-    }
-}
-
 #[inline]
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,

@@ -65,12 +65,6 @@ impl Validate for ContentMediaTypeValidator {
     }
 }
 
-impl core::fmt::Display for ContentMediaTypeValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "contentMediaType: {}", self.media_type)
-    }
-}
-
 /// Validator for `contentEncoding` keyword.
 pub(crate) struct ContentEncodingValidator {
     encoding: String,
@@ -121,12 +115,6 @@ impl Validate for ContentEncodingValidator {
         } else {
             no_error()
         }
-    }
-}
-
-impl core::fmt::Display for ContentEncodingValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "contentEncoding: {}", self.encoding)
     }
 }
 
@@ -201,16 +189,6 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
         } else {
             no_error()
         }
-    }
-}
-
-impl core::fmt::Display for ContentMediaTypeAndEncodingValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{{contentMediaType: {}, contentEncoding: {}}}",
-            self.media_type, self.encoding
-        )
     }
 }
 

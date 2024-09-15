@@ -68,12 +68,6 @@ impl Validate for MinPropertiesValidator {
     }
 }
 
-impl core::fmt::Display for MinPropertiesValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "minProperties: {}", self.limit)
-    }
-}
-
 #[inline]
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,

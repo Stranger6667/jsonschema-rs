@@ -4,7 +4,7 @@ use crate::{
     keywords::CompilationResult,
     paths::{JSONPointer, JsonPointerNode},
     schema_node::SchemaNode,
-    validator::{format_validators, PartialApplication, Validate},
+    validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
 
@@ -86,15 +86,6 @@ impl Validate for PropertyNamesObjectValidator {
         }
     }
 }
-impl core::fmt::Display for PropertyNamesObjectValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "propertyNames: {}",
-            format_validators(self.node.validators())
-        )
-    }
-}
 
 pub(crate) struct PropertyNamesBooleanValidator {
     schema_path: JSONPointer,
@@ -132,12 +123,6 @@ impl Validate for PropertyNamesBooleanValidator {
                 instance,
             ))
         }
-    }
-}
-
-impl core::fmt::Display for PropertyNamesBooleanValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        "propertyNames: false".fmt(f)
     }
 }
 

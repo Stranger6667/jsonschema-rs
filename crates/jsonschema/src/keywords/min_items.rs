@@ -68,12 +68,6 @@ impl Validate for MinItemsValidator {
     }
 }
 
-impl core::fmt::Display for MinItemsValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "minItems: {}", self.limit)
-    }
-}
-
 #[inline]
 pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,

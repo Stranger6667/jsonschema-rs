@@ -80,20 +80,6 @@ impl Validate for MultipleTypesValidator {
     }
 }
 
-impl core::fmt::Display for MultipleTypesValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "type: [{}]",
-            self.types
-                .into_iter()
-                .map(|type_| format!("{}", type_))
-                .collect::<Vec<String>>()
-                .join(", ")
-        )
-    }
-}
-
 pub(crate) struct IntegerTypeValidator {
     schema_path: JSONPointer,
 }
@@ -129,12 +115,6 @@ impl Validate for IntegerTypeValidator {
                 PrimitiveType::Integer,
             ))
         }
-    }
-}
-
-impl core::fmt::Display for IntegerTypeValidator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        "type: integer".fmt(f)
     }
 }
 
