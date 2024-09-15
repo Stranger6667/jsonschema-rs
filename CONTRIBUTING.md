@@ -10,6 +10,8 @@ To open an issue, [follow this link](https://github.com/Stranger6667/jsonschema-
 
 When making a feature request, please make it clear what problem you intend to solve with the feature and provide some ideas on how to implement it.
 
+**NOTE**: Many commands are available via a [Justfile](https://github.com/casey/just) located in the root of the repository.
+
 ## Running the Tests
 
 The tests in jsonschema depend on the [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite). Before running the tests, you need to download the suite.

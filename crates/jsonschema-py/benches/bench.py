@@ -1,6 +1,7 @@
 import json
 import sys
 from contextlib import suppress
+from pathlib import Path
 
 import fastjsonschema
 import jsonschema
@@ -10,6 +11,9 @@ if sys.implementation.name != "pypy":
     import jsonschema_rs
 else:
     jsonschema_rs = None
+
+
+BENCHMARK_DATA = Path(__file__).parent.parent.parent / "benchmark/data"
 
 
 def load_json(filename):
@@ -23,7 +27,7 @@ def load_json_str(filename):
 
 
 def load_from_benches(filename, loader=load_json):
-    return loader(f"../benchmark/data/{filename}")
+    return loader(BENCHMARK_DATA / filename)
 
 
 OPENAPI = load_from_benches("openapi.json")

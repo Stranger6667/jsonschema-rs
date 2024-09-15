@@ -4,6 +4,7 @@ import random
 import socket
 import subprocess
 import sys
+from pathlib import Path
 from time import sleep
 from urllib.parse import urlparse
 
@@ -11,7 +12,7 @@ import pytest
 
 import jsonschema_rs
 
-TEST_SUITE_PATH = "../jsonschema/tests/suite"
+TEST_SUITE_PATH = Path(__file__).parent.parent.parent / "jsonschema/tests/suite"
 EXPONENTIAL_BASE = 2
 JITTER = (0.0, 0.5)
 INITIAL_RETRY_DELAY = 0.05
@@ -41,7 +42,7 @@ def wait_until_responsive(url: str, retries: int = MAX_WAITING_RETRIES, delay: f
 
 @pytest.fixture(scope="session", autouse=True)
 def mock_server():
-    process = subprocess.Popen(args=[sys.executable, f"{TEST_SUITE_PATH}/bin/jsonschema_suite", "serve"])
+    process = subprocess.Popen(args=[sys.executable, TEST_SUITE_PATH / "bin/jsonschema_suite", "serve"])
     wait_until_responsive("http://127.0.0.1:1234")
     try:
         yield
@@ -89,7 +90,7 @@ def pytest_generate_tests(metafunc):
             filename,
         )
         for draft in SUPPORTED_DRAFTS
-        for root, _, files in os.walk(f"{TEST_SUITE_PATH}/tests/draft{draft}/")
+        for root, _, files in os.walk(TEST_SUITE_PATH / f"tests/draft{draft}/")
         for filename in files
         for block in load_file(os.path.join(root, filename))
         for test in block["tests"]

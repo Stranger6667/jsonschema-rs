@@ -1,5 +1,5 @@
-from typing import Any, Callable, TypeVar
 from collections.abc import Iterator
+from typing import Any, Callable, TypeVar
 
 _SchemaT = TypeVar("_SchemaT", bool, dict[str, Any])
 _FormatFunc = TypeVar("_FormatFunc", bound=Callable[[str], bool])
