@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `ipv4` format validation. [#512](https://github.com/Stranger6667/jsonschema-rs/issues/512)
+
 ## [0.19.0] - 2024-09-14
 
 ### Fixed

@@ -1,5 +1,9 @@
 //! Validator for `format` keyword.
-use std::{net::IpAddr, str::FromStr, sync::Arc};
+use std::{
+    net::{Ipv4Addr, Ipv6Addr},
+    str::FromStr,
+    sync::Arc,
+};
 
 use fancy_regex::Regex;
 use once_cell::sync::Lazy;
@@ -206,13 +210,7 @@ impl Validate for IpV4Validator {
     validate!("ipv4");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            if item.starts_with('0') {
-                return false;
-            }
-            match IpAddr::from_str(item.as_str()) {
-                Ok(i) => i.is_ipv4(),
-                Err(_) => false,
-            }
+            Ipv4Addr::from_str(item).is_ok()
         } else {
             true
         }
@@ -224,10 +222,7 @@ impl Validate for IpV6Validator {
     validate!("ipv6");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            match IpAddr::from_str(item.as_str()) {
-                Ok(i) => i.is_ipv6(),
-                Err(_) => false,
-            }
+            Ipv6Addr::from_str(item).is_ok()
         } else {
             true
         }
@@ -531,6 +526,7 @@ pub(crate) fn compile<'a>(
 #[cfg(test)]
 mod tests {
     use serde_json::json;
+    use test_case::test_case;
 
     use crate::{
         compilation::JSONSchema, error::ValidationErrorKind, schemas::Draft::Draft201909,
@@ -641,5 +637,27 @@ mod tests {
             matches!(validation_error.kind, ValidationErrorKind::Format { format } if format == "unknown format")
         );
         assert_eq!("\"custom\"", validation_error.instance.to_string())
+    }
+
+    #[test_case("127.0.0.1", true)]
+    #[test_case("192.168.1.1", true)]
+    #[test_case("10.0.0.1", true)]
+    #[test_case("0.0.0.0", true)]
+    #[test_case("256.1.2.3", false; "first octet too large")]
+    #[test_case("1.256.3.4", false; "second octet too large")]
+    #[test_case("1.2.256.4", false; "third octet too large")]
+    #[test_case("1.2.3.256", false; "fourth octet too large")]
+    #[test_case("01.2.3.4", false; "leading zero in first octet")]
+    #[test_case("1.02.3.4", false; "leading zero in second octet")]
+    #[test_case("1.2.03.4", false; "leading zero in third octet")]
+    #[test_case("1.2.3.04", false; "leading zero in fourth octet")]
+    #[test_case("1.2.3", false; "too few octets")]
+    #[test_case("1.2.3.4.5", false; "too many octets")]
+    fn ip_v4(input: &str, expected: bool) {
+        let validator = JSONSchema::options()
+            .should_validate_formats(true)
+            .compile(&json!({"format": "ipv4", "type": "string"}))
+            .expect("Invalid schema");
+        assert_eq!(validator.is_valid(&json!(input)), expected);
     }
 }
