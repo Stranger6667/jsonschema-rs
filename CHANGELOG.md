@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.19.1] - 2024-09-15
+
 ### Fixed
 
 - `ipv4` format validation. [#512](https://github.com/Stranger6667/jsonschema-rs/issues/512)
@@ -503,7 +505,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.19.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.19.1...HEAD
+[0.19.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.19.0...rust-v0.19.1
 [0.19.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.18.3...rust-v0.19.0
 [0.18.3]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.18.2...rust-v0.18.3
 [0.18.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.18.1...rust-v0.18.2
