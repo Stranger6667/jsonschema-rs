@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.19.1] - 2024-09-15
+
 ### Fixed
 
 - `ipv4` format validation. [#512](https://github.com/Stranger6667/jsonschema-rs/issues/512)
@@ -376,7 +378,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.19.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.19.1...HEAD
+[0.19.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.19.0...python-v0.19.1
 [0.19.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.18.3...python-v0.19.0
 [0.18.3]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.18.2...python-v0.18.3
 [0.18.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.18.1...python-v0.18.2
