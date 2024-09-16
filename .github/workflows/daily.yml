@@ -34,5 +34,5 @@ jobs:
 
       - run: |
           mkdir -p fuzz/corpus/${{ matrix.target }}
-          cargo +nightly fuzz run --release ${{ matrix.target }} fuzz/corpus/${{ matrix.target }}  fuzz/seeds/${{ matrix.target }} -- -dict=fuzz/dict -max_total_time=60
+          cargo +nightly fuzz run --release ${{ matrix.target }} fuzz/corpus/${{ matrix.target }} fuzz/seeds/${{ matrix.target }} -- -dict=fuzz/dict -max_total_time=3600
 
