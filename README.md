@@ -74,7 +74,7 @@ You can check the current status on the [Bowtie Report](https://bowtie.report/#/
 
 ## Performance
 
-`jsonschema`` outperforms other Rust JSON Schema validators in most scenarios:
+`jsonschema` outperforms other Rust JSON Schema validators in most scenarios:
 
 - Up to **20-470x** faster than `valico` and `jsonschema_valid` for complex schemas
 - Generally **2-3x** faster than `boon`
