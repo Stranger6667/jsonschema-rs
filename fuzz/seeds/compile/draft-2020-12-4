@@ -1,0 +1,65 @@
+{
+  "$id": "https://example.com/device.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "deviceType": {
+      "type": "string"
+    }
+  },
+  "required": ["deviceType"],
+  "oneOf": [
+    {
+      "properties": {
+        "deviceType": { "const": "smartphone" }
+      },
+      "$ref": "https://example.com/smartphone.schema.json"
+    },
+    {
+      "properties": {
+        "deviceType": { "const": "laptop" }
+      },
+      "$ref": "https://example.com/laptop.schema.json"
+    }
+  ]
+}
+
+{
+  "$id": "https://example.com/smartphone.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "brand": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "screenSize": {
+      "type": "number"
+    }
+  },
+  "required": ["brand", "model", "screenSize"]
+}
+
+{
+  "$id": "https://example.com/laptop.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "brand": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "processor": {
+      "type": "string"
+    },
+    "ramSize": {
+      "type": "number"
+    }
+  },
+  "required": ["brand", "model", "processor", "ramSize"]
+}
+
