@@ -1,0 +1,38 @@
+name: Daily
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Run daily at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  fuzz:
+    name: Fuzzing ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ["compile"]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Download previous corpus
+        uses: actions/cache@v4
+        with:
+          path: ./fuzz/corpus/${{ matrix.target }}
+          key: ${{ runner.os }}-corpus-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-corpus-${{ matrix.target }}-
+
+      - run: cargo install cargo-fuzz
+
+      - run: |
+          mkdir -p fuzz/corpus/${{ matrix.target }}
+          cargo +nightly fuzz run --release ${{ matrix.target }} fuzz/corpus/${{ matrix.target }}  fuzz/seeds/${{ matrix.target }} -- -dict=fuzz/dict -max_total_time=60
+
