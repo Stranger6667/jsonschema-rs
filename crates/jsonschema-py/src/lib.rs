@@ -126,7 +126,7 @@ fn make_options(
     draft: Option<u8>,
     formats: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<jsonschema::CompilationOptions> {
-    let mut options = jsonschema::JSONSchema::options();
+    let mut options = jsonschema::options();
     if let Some(raw_draft_version) = draft {
         options.with_draft(get_draft(raw_draft_version)?);
     }
@@ -166,14 +166,14 @@ fn make_options(
 
 fn iter_on_error(
     py: Python<'_>,
-    compiled: &jsonschema::JSONSchema,
+    validator: &jsonschema::JSONSchema,
     instance: &Bound<'_, PyAny>,
 ) -> PyResult<ValidationErrorIter> {
     let instance = ser::to_value(instance)?;
     let mut pyerrors = vec![];
 
     panic::catch_unwind(AssertUnwindSafe(|| {
-        if let Err(errors) = compiled.validate(&instance) {
+        if let Err(errors) = validator.validate(&instance) {
             for error in errors {
                 pyerrors.push(into_py_err(py, error)?);
             }
@@ -188,11 +188,11 @@ fn iter_on_error(
 
 fn raise_on_error(
     py: Python<'_>,
-    compiled: &jsonschema::JSONSchema,
+    validator: &jsonschema::JSONSchema,
     instance: &Bound<'_, PyAny>,
 ) -> PyResult<()> {
     let instance = ser::to_value(instance)?;
-    let result = panic::catch_unwind(AssertUnwindSafe(|| compiled.validate(&instance)))
+    let result = panic::catch_unwind(AssertUnwindSafe(|| validator.validate(&instance)))
         .map_err(handle_format_checked_panic)?;
     let error = result
         .err()
@@ -277,9 +277,9 @@ fn is_valid(
     let options = make_options(draft, formats)?;
     let schema = ser::to_value(schema)?;
     match options.compile(&schema) {
-        Ok(compiled) => {
+        Ok(validator) => {
             let instance = ser::to_value(instance)?;
-            panic::catch_unwind(AssertUnwindSafe(|| Ok(compiled.is_valid(&instance))))
+            panic::catch_unwind(AssertUnwindSafe(|| Ok(validator.is_valid(&instance))))
                 .map_err(handle_format_checked_panic)?
         }
         Err(error) => Err(into_py_err(py, error)?),
@@ -311,7 +311,7 @@ fn validate(
     let options = make_options(draft, formats)?;
     let schema = ser::to_value(schema)?;
     match options.compile(&schema) {
-        Ok(compiled) => raise_on_error(py, &compiled, instance),
+        Ok(validator) => raise_on_error(py, &validator, instance),
         Err(error) => Err(into_py_err(py, error)?),
     }
 }
@@ -340,17 +340,17 @@ fn iter_errors(
     let options = make_options(draft, formats)?;
     let schema = ser::to_value(schema)?;
     match options.compile(&schema) {
-        Ok(compiled) => iter_on_error(py, &compiled, instance),
+        Ok(validator) => iter_on_error(py, &validator, instance),
         Err(error) => Err(into_py_err(py, error)?),
     }
 }
 
 /// JSONSchema(schema, draft=None, with_meta_schemas=False)
 ///
-/// JSON Schema compiled into a validation tree.
+/// A JSON Schema validator.
 ///
-///     >>> compiled = JSONSchema({"minimum": 5})
-///     >>> compiled.is_valid(3)
+///     >>> validator = JSONSchema({"minimum": 5})
+///     >>> validator.is_valid(3)
 ///     False
 ///
 /// By default Draft 7 will be used for compilation.
@@ -409,7 +409,7 @@ impl JSONSchema {
     ///
     /// Create `JSONSchema` from a serialized JSON string.
     ///
-    ///     >>> compiled = JSONSchema.from_str('{"minimum": 5}')
+    ///     >>> validator = JSONSchema.from_str('{"minimum": 5}')
     ///
     /// Use it if you have your schema as a string and want to utilize Rust JSON parsing.
     #[classmethod]
@@ -451,10 +451,10 @@ impl JSONSchema {
 
     /// is_valid(instance)
     ///
-    /// Perform fast validation against the compiled schema.
+    /// Perform fast validation against the schema.
     ///
-    ///     >>> compiled = JSONSchema({"minimum": 5})
-    ///     >>> compiled.is_valid(3)
+    ///     >>> validator = JSONSchema({"minimum": 5})
+    ///     >>> validator.is_valid(3)
     ///     False
     ///
     /// The output is a boolean value, that indicates whether the instance is valid or not.
@@ -469,8 +469,8 @@ impl JSONSchema {
     ///
     /// Validate the input instance and raise `ValidationError` in the error case
     ///
-    ///     >>> compiled = JSONSchema({"minimum": 5})
-    ///     >>> compiled.validate(3)
+    ///     >>> validator = JSONSchema({"minimum": 5})
+    ///     >>> validator.validate(3)
     ///     ...
     ///     ValidationError: 3 is less than the minimum of 5
     ///
@@ -484,8 +484,8 @@ impl JSONSchema {
     ///
     /// Iterate the validation errors of the input instance
     ///
-    ///     >>> compiled = JSONSchema({"minimum": 5})
-    ///     >>> next(compiled.iter_errors(3))
+    ///     >>> validator = JSONSchema({"minimum": 5})
+    ///     >>> next(validator.iter_errors(3))
     ///     ...
     ///     ValidationError: 3 is less than the minimum of 5
     #[pyo3(text_signature = "(instance)")]

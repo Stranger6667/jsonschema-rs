@@ -119,7 +119,7 @@ impl Validate for ItemsObjectValidator {
             // `ItemsObjectValidator` is not used when prefixItems is defined, this is true if
             // there are any items in the instance.
             let schema_was_applied = !items.is_empty();
-            output.annotate(serde_json::json! {schema_was_applied}.into());
+            output.annotate(serde_json::json!(schema_was_applied).into());
             output
         } else {
             PartialApplication::valid_empty()
@@ -198,7 +198,7 @@ impl Validate for ItemsObjectSkipPrefixValidator {
             // we must produce an annotation with a boolean value indicating whether the subschema
             // was applied to any positions in the underlying array.
             let schema_was_applied = items.len() > self.skip_prefix;
-            output.annotate(serde_json::json! {schema_was_applied}.into());
+            output.annotate(serde_json::json!(schema_was_applied).into());
             output
         } else {
             PartialApplication::valid_empty()

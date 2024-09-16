@@ -1,4 +1,4 @@
-use jsonschema::{Draft, JSONSchema};
+use jsonschema::Draft;
 use std::fs;
 use testsuite::{suite, Test};
 
@@ -81,7 +81,7 @@ use testsuite::{suite, Test};
     ]
 )]
 fn test_suite(test: Test) {
-    let mut options = JSONSchema::options();
+    let mut options = jsonschema::options();
     match test.draft {
         "draft4" => {
             options.with_draft(Draft::Draft4);
@@ -98,10 +98,10 @@ fn test_suite(test: Test) {
     if test.is_optional {
         options.should_validate_formats(true);
     }
-    let compiled = options
+    let validator = options
         .compile(&test.schema)
         .expect("should not fail to compile schema");
-    let result = compiled.validate(&test.data);
+    let result = validator.validate(&test.data);
 
     if test.valid {
         if let Err(mut errors_iterator) = result {
@@ -117,14 +117,14 @@ fn test_suite(test: Test) {
             );
         }
         assert!(
-            compiled.is_valid(&test.data),
+            validator.is_valid(&test.data),
             "Test case should be valid:\nCase: {}\nTest: {}\nSchema: {}\nInstance: {}",
             test.case,
             test.description,
             test.schema,
             test.data,
         );
-        let output = compiled.apply(&test.data).basic();
+        let output = validator.apply(&test.data).basic();
         assert!(
             output.is_valid(),
             "Test case should be valid via basic output:\nCase: {}\nTest: {}\nSchema: {}\nInstance: {}\nError: {:?}",
@@ -158,14 +158,14 @@ fn test_suite(test: Test) {
             );
         }
         assert!(
-            !compiled.is_valid(&test.data),
+            !validator.is_valid(&test.data),
             "Test case should be invalid:\nCase: {}\nTest: {}\nSchema: {}\nInstance: {}",
             test.case,
             test.description,
             test.schema,
             test.data,
         );
-        let output = compiled.apply(&test.data).basic();
+        let output = validator.apply(&test.data).basic();
         assert!(
             !output.is_valid(),
             "Test case should be invalid via basic output:\nCase: {}\nTest: {}\nSchema: {}\nInstance: {}",
@@ -187,15 +187,13 @@ fn test_instance_path() {
         let data: serde_json::Value = serde_json::from_str(&test_file).expect("Valid JSON");
         for item in expected.as_array().expect("Is array") {
             let suite_id = item["suite_id"].as_u64().expect("Is integer") as usize;
-            let raw_schema = &data[suite_id]["schema"];
-            let schema = JSONSchema::options()
-                .compile(raw_schema)
-                .unwrap_or_else(|_| {
-                    panic!(
-                        "Valid schema. File: {}; Suite ID: {}; Schema: {}",
-                        filename, suite_id, raw_schema
-                    )
-                });
+            let schema = &data[suite_id]["schema"];
+            let validator = jsonschema::options().compile(schema).unwrap_or_else(|_| {
+                panic!(
+                    "Valid schema. File: {}; Suite ID: {}; Schema: {}",
+                    filename, suite_id, schema
+                )
+            });
             for test_data in item["tests"].as_array().expect("Valid array") {
                 let test_id = test_data["id"].as_u64().expect("Is integer") as usize;
                 let instance_path: Vec<&str> = test_data["instance_path"]
@@ -205,7 +203,7 @@ fn test_instance_path() {
                     .map(|value| value.as_str().expect("A string"))
                     .collect();
                 let instance = &data[suite_id]["tests"][test_id]["data"];
-                let error = schema
+                let error = validator
                     .validate(instance)
                     .expect_err(&format!(
                         "\nFile: {}\nSuite: {}\nTest: {}",

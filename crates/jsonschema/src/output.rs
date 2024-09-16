@@ -75,14 +75,15 @@ impl<'a, 'b> Output<'a, 'b> {
     /// # Examples
     ///
     /// ```rust
-    /// # use crate::jsonschema::{Draft, output::{Output, BasicOutput}, JSONSchema};
-    /// # let schema_json = serde_json::json!({
+    /// # use jsonschema::BasicOutput;
+    /// # use serde_json::json;
+    /// # let schema = json!({
     /// #     "title": "string value",
     /// #     "type": "string"
     /// # });
-    /// # let instance = serde_json::json!{"some string"};
-    /// # let schema = JSONSchema::options().compile(&schema_json).unwrap();
-    /// let output: BasicOutput = schema.apply(&instance).basic();
+    /// # let instance = json!("some string");
+    /// # let validator = jsonschema::validator_for(&schema).expect("Invalid schema");
+    /// let output = validator.apply(&instance).basic();
     /// match output {
     ///     BasicOutput::Valid(annotations) => {
     ///         for annotation in annotations {

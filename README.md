@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert!(jsonschema::is_valid(&schema, &instance));
 
     // Build & reuse (faster)
-    let validator = jsonschema::compile(&schema)
+    let validator = jsonschema::validator_for(&schema)
         .expect("Invalid schema");
 
     // Iterate over errors

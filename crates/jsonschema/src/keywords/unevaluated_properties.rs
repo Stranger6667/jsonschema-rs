@@ -1318,7 +1318,7 @@ pub(crate) fn compile<'a>(
     }
 
     match UnevaluatedPropertiesValidator::compile(parent, schema, context) {
-        Ok(compiled) => Some(Ok(Box::new(compiled))),
+        Ok(validator) => Some(Ok(Box::new(validator))),
         Err(e) => Some(Err(e)),
     }
 }
@@ -1444,7 +1444,7 @@ mod tests {
             "blah": 1
         });
 
-        let validator = crate::compile(&schema).expect("Schema should compile");
+        let validator = crate::validator_for(&schema).expect("Schema should compile");
 
         assert!(validator.validate(&valid).is_ok(), "Validation should pass");
         assert!(validator.is_valid(&valid), "Instance should be valid");

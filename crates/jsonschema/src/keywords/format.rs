@@ -517,17 +517,14 @@ mod tests {
     use serde_json::json;
     use test_case::test_case;
 
-    use crate::{
-        compilation::JSONSchema, error::ValidationErrorKind, schemas::Draft::Draft201909,
-        tests_util,
-    };
+    use crate::{error::ValidationErrorKind, schemas::Draft::Draft201909, tests_util};
 
     #[test]
     fn ignored_format() {
         let schema = json!({"format": "custom", "type": "string"});
         let instance = json!("foo");
-        let compiled = JSONSchema::compile(&schema).unwrap();
-        assert!(compiled.is_valid(&instance))
+        let validator = crate::validator_for(&schema).unwrap();
+        assert!(validator.is_valid(&instance))
     }
 
     #[test]
@@ -536,11 +533,11 @@ mod tests {
         let email_instance = json!("email@example.com");
         let not_email_instance = json!("foo");
 
-        let with_validation = JSONSchema::options()
+        let with_validation = crate::options()
             .should_validate_formats(true)
             .compile(&schema)
             .unwrap();
-        let without_validation = JSONSchema::options()
+        let without_validation = crate::options()
             .should_validate_formats(false)
             .compile(&schema)
             .unwrap();
@@ -556,8 +553,8 @@ mod tests {
         // See GH-230
         let schema = json!({"format": "regex", "type": "string"});
         let instance = json!("^\\cc$");
-        let compiled = JSONSchema::compile(&schema).unwrap();
-        assert!(compiled.is_valid(&instance))
+        let validator = crate::validator_for(&schema).unwrap();
+        assert!(validator.is_valid(&instance))
     }
 
     #[test]
@@ -572,14 +569,14 @@ mod tests {
         let passing_instance = json!("f308a72c-fa84-11eb-9a03-0242ac130003");
         let failing_instance = json!("1");
 
-        let compiled = JSONSchema::options()
+        let validator = crate::options()
             .with_draft(Draft201909)
             .should_validate_formats(true)
             .compile(&schema)
             .unwrap();
 
-        assert!(compiled.is_valid(&passing_instance));
-        assert!(!compiled.is_valid(&failing_instance))
+        assert!(validator.is_valid(&passing_instance));
+        assert!(!validator.is_valid(&failing_instance))
     }
 
     #[test]
@@ -600,24 +597,24 @@ mod tests {
         let passing_instances = vec![json!("P15DT1H22M1.5S"), json!("P30D"), json!("PT5M")];
         let failing_instances = vec![json!("15DT1H22M1.5S"), json!("unknown")];
 
-        let compiled = JSONSchema::options()
+        let validator = crate::options()
             .with_draft(Draft201909)
             .should_validate_formats(true)
             .compile(&schema)
             .unwrap();
 
         for passing_instance in passing_instances {
-            assert!(compiled.is_valid(&passing_instance));
+            assert!(validator.is_valid(&passing_instance));
         }
         for failing_instance in failing_instances {
-            assert!(!compiled.is_valid(&failing_instance));
+            assert!(!validator.is_valid(&failing_instance));
         }
     }
 
     #[test]
     fn unknown_formats_should_not_be_ignored() {
         let schema = json!({ "format": "custom", "type": "string"});
-        let validation_error = JSONSchema::options()
+        let validation_error = crate::options()
             .should_ignore_unknown_formats(false)
             .compile(&schema)
             .expect_err("the validation error should be returned");
@@ -643,7 +640,7 @@ mod tests {
     #[test_case("1.2.3", false; "too few octets")]
     #[test_case("1.2.3.4.5", false; "too many octets")]
     fn ip_v4(input: &str, expected: bool) {
-        let validator = JSONSchema::options()
+        let validator = crate::options()
             .should_validate_formats(true)
             .compile(&json!({"format": "ipv4", "type": "string"}))
             .expect("Invalid schema");

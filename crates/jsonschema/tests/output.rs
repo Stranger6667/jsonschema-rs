@@ -1,10 +1,9 @@
-use jsonschema::JSONSchema;
 use serde_json::json;
 use test_case::test_case;
 
 #[test_case{
     &json!({"allOf": [{"type": "string", "typeannotation": "value"}, {"maxLength": 20, "lengthannotation": "value"}]}),
-    &json!{"some string"},
+    &json!("some string"),
     &json!({
         "valid": true,
         "annotations": [
@@ -24,7 +23,7 @@ use test_case::test_case;
 }]
 #[test_case{
     &json!({"allOf": [{"type": "array"}, {"maxLength": 4}]}),
-    &json!{"some string"},
+    &json!("some string"),
     &json!({
         "valid": false,
         "errors": [
@@ -43,7 +42,7 @@ use test_case::test_case;
 }]
 #[test_case{
     &json!({"allOf": [{"type": "string", "typeannotation": "value"}]}),
-    &json!{"some string"},
+    &json!("some string"),
     &json!({
         "valid": true,
         "annotations": [
@@ -59,7 +58,7 @@ use test_case::test_case;
 }]
 #[test_case{
     &json!({"allOf": [{"type": "array"}]}),
-    &json!{"some string"},
+    &json!("some string"),
     &json!({
         "valid": false,
         "errors": [
@@ -73,7 +72,7 @@ use test_case::test_case;
 }]
 #[test_case{
     &json!({"anyOf": [{"type": "string", "someannotation": "value"}, {"maxLength": 4}, {"minLength": 1}]}),
-    &json!{"some string"},
+    &json!("some string"),
     &json!({
         "valid": true,
         "annotations": [
@@ -89,7 +88,7 @@ use test_case::test_case;
 }]
 #[test_case{
     &json!({"anyOf": [{"type": "object"}, {"maxLength": 4}]}),
-    &json!{"some string"},
+    &json!("some string"),
     &json!({
         "valid": false,
         "errors": [
@@ -108,7 +107,7 @@ use test_case::test_case;
 }]
 #[test_case{
     &json!({"oneOf": [{"type": "object", "someannotation": "somevalue"}, {"type": "string"}]}),
-    &json!{{"somekey": "some value"}},
+    &json!({"somekey": "some value"}),
     &json!({
         "valid": true,
         "annotations": [
@@ -124,7 +123,7 @@ use test_case::test_case;
 }]
 #[test_case{
     &json!({"oneOf": [{"type": "object"}, {"maxLength": 4}]}),
-    &json!{"some string"},
+    &json!("some string"),
     &json!({
         "valid": false,
         "errors": [
@@ -143,7 +142,7 @@ use test_case::test_case;
 }]
 #[test_case{
     &json!({"oneOf": [{"type": "string"}, {"maxLength": 40}]}),
-    &json!{"some string"},
+    &json!("some string"),
     &json!({
         "valid": false,
         "errors": [
@@ -160,7 +159,7 @@ use test_case::test_case;
         "if": {"type": "string", "ifannotation": "ifvalue"},
         "then": {"maxLength": 20, "thenannotation": "thenvalue"}
     }),
-    &json!{"some string"},
+    &json!("some string"),
     &json!({
         "valid": true,
         "annotations": [
@@ -186,7 +185,7 @@ use test_case::test_case;
         "if": {"type": "string", "ifannotation": "ifvalue"},
         "then": {"maxLength": 4, "thenannotation": "thenvalue"}
     }),
-    &json!{"some string"},
+    &json!("some string"),
     &json!({
         "valid": false,
         "errors": [
@@ -203,7 +202,7 @@ use test_case::test_case;
         "if": {"type": "object", "ifannotation": "ifvalue"},
         "else": {"maxLength": 20, "elseannotation": "elsevalue"}
     }),
-    &json!{"some string"},
+    &json!("some string"),
     &json!({
         "valid": true,
         "annotations": [
@@ -222,7 +221,7 @@ use test_case::test_case;
         "if": {"type": "string", "ifannotation": "ifvalue"},
         "else": {"type": "array", "elseannotation": "elsevalue"}
     }),
-    &json!{{"some": "object"}},
+    &json!({"some": "object"}),
     &json!({
         "valid": false,
         "errors": [
@@ -240,7 +239,7 @@ use test_case::test_case;
         "then": {"maxLength": 20, "thenannotation": "thenvalue"},
         "else": {"type": "number", "elseannotation": "elsevalue"}
     }),
-    &json!{"some string"},
+    &json!("some string"),
     &json!({
         "valid": true,
         "annotations": [
@@ -267,7 +266,7 @@ use test_case::test_case;
         "then": {"maxLength": 20, "thenannotation": "thenvalue"},
         "else": {"type": "number", "elseannotation": "elsevalue"}
     }),
-    &json!{12},
+    &json!(12),
     &json!({
         "valid": true,
         "annotations": [
@@ -287,7 +286,7 @@ use test_case::test_case;
         "then": {"maxLength": 4, "thenannotation": "thenvalue"},
         "else": {"type": "number", "elseannotation": "elsevalue"}
     }),
-    &json!{"12345"},
+    &json!("12345"),
     &json!({
         "valid": false,
         "errors": [
@@ -304,7 +303,7 @@ use test_case::test_case;
         "then": {"maxLength": 20, "thenannotation": "thenvalue"},
         "else": {"type": "number", "elseannotation": "elsevalue"}
     }),
-    &json!{{"some": "object"}},
+    &json!({"some": "object"}),
     &json!({
         "valid": false,
         "errors": [
@@ -324,7 +323,7 @@ use test_case::test_case;
             "annotation": "value"
         }
     }),
-    &json!{[1,2]},
+    &json!([1,2]),
     &json!({
         "valid": true,
         "annotations": [
@@ -358,7 +357,7 @@ use test_case::test_case;
             "annotation": "value"
         }
     }),
-    &json!{[]},
+    &json!([]),
     &json!({
         "valid": true,
         "annotations": [
@@ -378,7 +377,7 @@ use test_case::test_case;
             "annotation": "value"
         }
     }),
-    &json!{[1,2,"3"]},
+    &json!([1,2,"3"]),
     &json!({
         "valid": false,
         "errors": [
@@ -403,7 +402,7 @@ use test_case::test_case;
             "maximum": 2
         }
     }),
-    &json!{[1,3,2]},
+    &json!([1,3,2]),
     &json!({
         "valid": true,
         "annotations": [
@@ -437,7 +436,7 @@ use test_case::test_case;
             "maximum": 2
         }
     }),
-    &json!{["one"]},
+    &json!(["one"]),
     &json!({
         "valid": false,
         "errors": [
@@ -456,10 +455,10 @@ use test_case::test_case;
             "age": {"type": "number"}
         }
     }),
-    &json!{{
+    &json!({
         "name": "some name",
         "age": 10
-    }},
+    }),
     &json!({
         "valid": true,
         "annotations": [
@@ -489,11 +488,11 @@ use test_case::test_case;
             "unmatchedProp\\S": {"type": "object"},
         }
     }),
-    &json!{{
+    &json!({
         "numProp1": 1,
         "numProp2": 2,
         "stringProp1": "1"
-    }},
+    }),
     &json!({
         "valid": true,
         "annotations": [
@@ -529,11 +528,11 @@ use test_case::test_case;
             "numProp(\\d+)": {"type": "number", "some": "subannotation"}
         }
     }),
-    &json!{{
+    &json!({
         "numProp1": 1,
         "numProp2": 2,
         "stringProp1": "1"
-    }},
+    }),
     &json!({
         "valid": true,
         "annotations": [
@@ -566,9 +565,9 @@ use test_case::test_case;
     &json!({
         "propertyNames": {"maxLength": 10, "some": "annotation"}
     }),
-    &json!{{
+    &json!({
         "name": "some name",
-    }},
+    }),
     &json!({
         "valid": true,
         "annotations": [
@@ -581,13 +580,13 @@ use test_case::test_case;
     }); "valid propertyNames"
 }]
 fn test_basic_output(
-    schema_json: &serde_json::Value,
+    schema: &serde_json::Value,
     instance: &serde_json::Value,
     expected_output: &serde_json::Value,
 ) {
-    let schema = JSONSchema::options().compile(schema_json).unwrap();
-    let output_json = serde_json::to_value(schema.apply(instance).basic()).unwrap();
-    assert_eq!(&output_json, expected_output);
+    let validator = jsonschema::validator_for(schema).unwrap();
+    let output = serde_json::to_value(validator.apply(instance).basic()).unwrap();
+    assert_eq!(&output, expected_output);
 }
 
 /// These tests are separated from the rest of the basic output tests for convenience, there's
@@ -610,10 +609,10 @@ fn test_basic_output(
     &json!({
         "additionalProperties": {"type": "number" }
     }),
-    &json!{{
+    &json!({
         "name": "somename",
         "otherprop": "one"
-    }},
+    }),
     &json!({
         "valid": false,
         "errors": [
@@ -634,10 +633,10 @@ fn test_basic_output(
     &json!({
         "additionalProperties": {"type": "number", "some": "annotation" }
     }),
-    &json!{{
+    &json!({
         "name": 1,
         "otherprop": 2
-    }},
+    }),
     &json!({
         "valid": true,
         "annotations": [
@@ -667,9 +666,9 @@ fn test_basic_output(
     &json!({
         "additionalProperties": false
     }),
-    &json!{{
+    &json!({
         "name": "somename",
-    }},
+    }),
     &json!({
         "valid": false,
         "errors": [
@@ -685,7 +684,7 @@ fn test_basic_output(
     &json!({
         "additionalProperties": false
     }),
-    &json!{{}},
+    &json!({}),
     &json!({
         "valid": true,
         "annotations": []
@@ -698,9 +697,9 @@ fn test_basic_output(
             "name": {"type": "string", "prop": "annotation"}
         }
     }),
-    &json!{{
+    &json!({
         "name": "somename",
-    }},
+    }),
     &json!({
         "valid": true,
         "annotations": [
@@ -719,10 +718,10 @@ fn test_basic_output(
             "name": {"type": "string", "prop": "annotation"}
         }
     }),
-    &json!{{
+    &json!({
         "name": "somename",
         "other": "prop"
-    }},
+    }),
     &json!({
         "valid": false,
         "errors": [
@@ -741,10 +740,10 @@ fn test_basic_output(
             "name": {"type": "string", "prop": "annotation"}
         }
     }),
-    &json!{{
+    &json!({
         "name": "somename",
         "otherprop": 1
-    }},
+    }),
     &json!({
         "valid": true,
         "annotations": [
@@ -773,10 +772,10 @@ fn test_basic_output(
             "name": {"type": "string", "prop": "annotation"}
         }
     }),
-    &json!{{
+    &json!({
         "name": "somename",
         "otherprop": "one"
-    }},
+    }),
     &json!({
         "valid": false,
         "errors": [
@@ -795,10 +794,10 @@ fn test_basic_output(
             "^x-": {"type": "integer", "minimum": 5, "patternio": "annotation"},
         }
     }),
-    &json!{{
+    &json!({
         "otherprop": "one",
         "x-foo": 7
-    }},
+    }),
     &json!({
         "valid": true,
         "annotations": [
@@ -832,10 +831,10 @@ fn test_basic_output(
             "^x-": {"type": "integer", "minimum": 5 },
         }
     }),
-    &json!{{
+    &json!({
         "otherprop":1,
         "x-foo": 3
-    }},
+    }),
     &json!({
         "valid": false,
         "errors": [
@@ -862,10 +861,10 @@ fn test_basic_output(
         },
         "additionalProperties": {"type": "number" }
     }),
-    &json!{{
+    &json!({
         "name": "somename",
         "otherprop": "one"
-    }},
+    }),
     &json!({
         "valid": false,
         "errors": [
@@ -887,10 +886,10 @@ fn test_basic_output(
         },
         "additionalProperties": {"type": "number" }
     }),
-    &json!{{
+    &json!({
         "name": "somename",
         "otherprop": 1
-    }},
+    }),
     &json!({
         "valid": true,
         "annotations": [
@@ -912,10 +911,10 @@ fn test_basic_output(
         },
         "additionalProperties": false
     }),
-    &json!{{
+    &json!({
         "name": "somename",
         "stringProp1": "one"
-    }},
+    }),
     &json!({
         "valid": true,
         "annotations": [
@@ -939,11 +938,11 @@ fn test_basic_output(
         },
         "additionalProperties": false
     }),
-    &json!{{
+    &json!({
         "name": "somename",
         "stringProp1": "one",
         "otherprop": "something"
-    }},
+    }),
     &json!({
         "valid": false,
         "errors": [
@@ -962,9 +961,9 @@ fn test_basic_output(
         },
         "additionalProperties": false
     }),
-    &json!{{
+    &json!({
         "stringProp1": "one",
-    }},
+    }),
     &json!({
         "valid": true,
         "annotations": [
@@ -990,10 +989,10 @@ fn test_basic_output(
         },
         "additionalProperties": false
     }),
-    &json!{{
+    &json!({
         "stringProp1": "one",
         "otherprop": "something"
-    }},
+    }),
     &json!({
         "valid": false,
         "errors": [
@@ -1006,15 +1005,15 @@ fn test_basic_output(
     }); "invalid AdditionalPropertiesWithPatternsFalseValidator"
 }]
 fn test_additional_properties_basic_output(
-    schema_json: &serde_json::Value,
+    schema: &serde_json::Value,
     instance: &serde_json::Value,
-    expected_output: &serde_json::Value,
+    expected: &serde_json::Value,
 ) {
-    let schema = JSONSchema::options().compile(schema_json).unwrap();
-    let output_json = serde_json::to_value(schema.apply(instance).basic()).unwrap();
-    if &output_json != expected_output {
-        let expected_str = serde_json::to_string_pretty(expected_output).unwrap();
-        let actual_str = serde_json::to_string_pretty(&output_json).unwrap();
+    let validator = jsonschema::validator_for(schema).unwrap();
+    let output = serde_json::to_value(validator.apply(instance).basic()).unwrap();
+    if &output != expected {
+        let expected_str = serde_json::to_string_pretty(expected).unwrap();
+        let actual_str = serde_json::to_string_pretty(&output).unwrap();
         panic!("\nExpected:\n{}\n\nGot:\n{}\n", expected_str, actual_str);
     }
 }
