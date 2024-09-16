@@ -16,7 +16,7 @@ fn bench_compile(c: &mut Criterion, name: &str, schema: &Value) {
 
 fn bench_validate(c: &mut Criterion, name: &str, schema: &Value, instance: &Value) {
     let mut scope = json_schema::Scope::new();
-    let compiled = scope
+    let validator = scope
         .compile_and_return(schema.clone(), false)
         .expect("Valid schema");
     c.bench_with_input(
@@ -24,7 +24,7 @@ fn bench_validate(c: &mut Criterion, name: &str, schema: &Value, instance: &Valu
         instance,
         |b, instance| {
             b.iter(|| {
-                compiled.validate(instance).is_valid();
+                validator.validate(instance).is_valid();
             })
         },
     );

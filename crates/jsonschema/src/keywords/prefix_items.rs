@@ -117,7 +117,7 @@ pub(crate) fn compile<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::{compilation::JSONSchema, tests_util};
+    use crate::tests_util;
     use serde_json::{json, Value};
     use test_case::test_case;
 
@@ -138,7 +138,7 @@ mod tests {
                 }
             ]
         }),
-        &json!{[]},
+        &json!([]),
         &json!({
             "valid": true,
             "annotations": []
@@ -156,7 +156,7 @@ mod tests {
                 }
             ]
         }),
-        &json!{["string", 1]},
+        &json!(["string", 1]),
         &json!({
             "valid": true,
             "annotations": [
@@ -177,7 +177,7 @@ mod tests {
                 }
             ]
         }),
-        &json!{["string", 1]},
+        &json!(["string", 1]),
         &json!({
             "valid": true,
             "annotations": [
@@ -205,7 +205,7 @@ mod tests {
                 }
             ]
         }),
-        &json!{["string", true, 2, 3]},
+        &json!(["string", true, 2, 3]),
         &json!({
             "valid": true,
             "annotations": [
@@ -233,8 +233,8 @@ mod tests {
         }); "valid prefixItems with mixed items"
     }]
     fn test_basic_output(schema_json: &Value, instance: &Value, expected_output: &Value) {
-        let schema = JSONSchema::options().compile(schema_json).unwrap();
-        let output_json = serde_json::to_value(schema.apply(instance).basic()).unwrap();
-        assert_eq!(&output_json, expected_output);
+        let schema = crate::options().compile(schema_json).unwrap();
+        let output = serde_json::to_value(schema.apply(instance).basic()).unwrap();
+        assert_eq!(&output, expected_output);
     }
 }

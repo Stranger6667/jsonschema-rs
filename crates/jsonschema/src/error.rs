@@ -35,13 +35,12 @@ pub struct ValidationError<'a> {
 /// # Examples
 ///
 /// ```rust
-/// use jsonschema::JSONSchema;
 /// use serde_json::json;
 ///
 /// let schema = json!({"maxLength": 5});
 /// let instance = json!("foo");
-/// if let Ok(compiled) = JSONSchema::compile(&schema) {
-///     let result = compiled.validate(&instance);
+/// if let Ok(validator) = jsonschema::validator_for(&schema) {
+///     let result = validator.validate(&instance);
 ///     if let Err(errors) = result {
 ///         for error in errors {
 ///             println!("Validation error: {}", error)
@@ -1022,7 +1021,7 @@ impl fmt::Display for ValidationError<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{paths::PathChunk, JSONSchema};
+    use crate::paths::PathChunk;
     use serde_json::json;
     use test_case::test_case;
 
@@ -1071,8 +1070,8 @@ mod tests {
                 }
             }
         );
-        let compiled = JSONSchema::compile(&schema).unwrap();
-        let mut result = compiled.validate(instance).expect_err("error iterator");
+        let validator = crate::validator_for(&schema).unwrap();
+        let mut result = validator.validate(instance).expect_err("error iterator");
         let error = result.next().expect("validation error");
 
         assert!(result.next().is_none());
@@ -1112,8 +1111,8 @@ mod tests {
                 ]
             }
         );
-        let compiled = JSONSchema::compile(&schema).unwrap();
-        let mut result = compiled.validate(instance).expect_err("error iterator");
+        let validator = crate::validator_for(&schema).unwrap();
+        let mut result = validator.validate(instance).expect_err("error iterator");
         let error = result.next().expect("validation error");
 
         assert!(result.next().is_none());
@@ -1141,8 +1140,8 @@ mod tests {
                 }
             }
         );
-        let compiled = JSONSchema::compile(&schema).unwrap();
-        let mut result = compiled.validate(instance).expect_err("error iterator");
+        let validator = crate::validator_for(&schema).unwrap();
+        let mut result = validator.validate(instance).expect_err("error iterator");
         let error = result.next().expect("validation error");
 
         assert!(result.next().is_none());
@@ -1163,8 +1162,8 @@ mod tests {
                 }
             }
         );
-        let compiled = JSONSchema::compile(&schema).unwrap();
-        let mut result = compiled.validate(instance).expect_err("error iterator");
+        let validator = crate::validator_for(&schema).unwrap();
+        let mut result = validator.validate(instance).expect_err("error iterator");
         let error = result.next().expect("validation error");
 
         assert!(result.next().is_none());

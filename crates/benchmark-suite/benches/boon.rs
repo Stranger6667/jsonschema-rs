@@ -12,7 +12,7 @@ fn bench_compile(c: &mut Criterion, name: &str, schema: &Value) {
         b.iter(|| {
             compiler
                 .compile("schema.json", &mut Schemas::new())
-                .expect("Failed to compiled");
+                .expect("Failed to compile");
         })
     });
 }

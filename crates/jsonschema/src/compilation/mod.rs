@@ -55,7 +55,7 @@ impl JSONSchema {
     /// ```rust
     /// # use crate::jsonschema::{Draft, JSONSchema};
     /// # let schema = serde_json::json!({});
-    /// let maybe_jsonschema: Result<JSONSchema, _> = JSONSchema::options()
+    /// let validator = jsonschema::options()
     ///     .with_draft(Draft::Draft7)
     ///     .compile(&schema);
     /// ```
@@ -104,40 +104,49 @@ impl JSONSchema {
     /// "basic" output format
     ///
     /// ```rust
-    /// # use crate::jsonschema::{Draft, JSONSchema, output::{Output, BasicOutput}};
-    /// let schema_json = serde_json::json!({
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use serde_json::json;
+    ///
+    /// let schema = json!({
     ///     "title": "string value",
     ///     "type": "string"
     /// });
-    /// let instance = serde_json::json!{"some string"};
-    /// let schema = JSONSchema::options().compile(&schema_json).unwrap();
-    /// let output: BasicOutput = schema.apply(&instance).basic();
-    /// let output_json = serde_json::to_value(output).unwrap();
-    /// assert_eq!(output_json, serde_json::json!({
-    ///     "valid": true,
-    ///     "annotations": [
-    ///         {
-    ///             "keywordLocation": "",
-    ///             "instanceLocation": "",
-    ///             "annotations": {
-    ///                 "title": "string value"
+    /// let instance = json!("some string");
+    ///
+    /// let validator = jsonschema::validator_for(&schema)
+    ///     .expect("Invalid schema");
+    ///
+    /// let output = validator.apply(&instance).basic();
+    /// assert_eq!(
+    ///     serde_json::to_value(output)?,
+    ///     json!({
+    ///         "valid": true,
+    ///         "annotations": [
+    ///             {
+    ///                 "keywordLocation": "",
+    ///                 "instanceLocation": "",
+    ///                 "annotations": {
+    ///                     "title": "string value"
+    ///                 }
     ///             }
-    ///         }
-    ///     ]
-    /// }));
+    ///         ]
+    ///     })
+    /// );
+    /// # Ok(())
+    /// # }
     /// ```
     #[must_use]
     pub const fn apply<'a, 'b>(&'a self, instance: &'b Value) -> Output<'a, 'b> {
         Output::new(self, &self.node, instance)
     }
 
-    /// The [`Draft`] which this schema was compiled against
+    /// The [`Draft`] which was used to build this validator.
     #[must_use]
     pub fn draft(&self) -> Draft {
         self.config.draft()
     }
 
-    /// The [`CompilationOptions`] that were used to compile this schema
+    /// The [`CompilationOptions`] that were used to build this validator.
     #[must_use]
     pub fn config(&self) -> Arc<CompilationOptions> {
         Arc::clone(&self.config)
@@ -259,7 +268,6 @@ pub(crate) fn compile_validators<'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::JSONSchema;
     use crate::{
         error::{self, no_error, ValidationError},
         keywords::custom::Keyword,
@@ -287,38 +295,38 @@ mod tests {
     fn only_keyword() {
         // When only one keyword is specified
         let schema = json!({"type": "string"});
-        let compiled = JSONSchema::compile(&schema).unwrap();
+        let validator = crate::validator_for(&schema).unwrap();
         let value1 = json!("AB");
         let value2 = json!(1);
         // And only this validator
-        assert_eq!(compiled.node.validators().len(), 1);
-        assert!(compiled.validate(&value1).is_ok());
-        assert!(compiled.validate(&value2).is_err());
+        assert_eq!(validator.node.validators().len(), 1);
+        assert!(validator.validate(&value1).is_ok());
+        assert!(validator.validate(&value2).is_err());
     }
 
     #[test]
     fn validate_ref() {
         let schema = load("tests/suite/tests/draft7/ref.json", 1);
         let value = json!({"bar": 3});
-        let compiled = JSONSchema::compile(&schema).unwrap();
-        assert!(compiled.validate(&value).is_ok());
+        let validator = crate::validator_for(&schema).unwrap();
+        assert!(validator.validate(&value).is_ok());
         let value = json!({"bar": true});
-        assert!(compiled.validate(&value).is_err());
+        assert!(validator.validate(&value).is_err());
     }
 
     #[test]
     fn wrong_schema_type() {
         let schema = json!([1]);
-        let compiled = JSONSchema::compile(&schema);
-        assert!(compiled.is_err());
+        let validator = crate::validator_for(&schema);
+        assert!(validator.is_err());
     }
 
     #[test]
     fn multiple_errors() {
         let schema = json!({"minProperties": 2, "propertyNames": {"minLength": 3}});
         let value = json!({"a": 3});
-        let compiled = JSONSchema::compile(&schema).unwrap();
-        let result = compiled.validate(&value);
+        let validator = crate::validator_for(&schema).unwrap();
+        let result = validator.validate(&value);
         let errors: Vec<ValidationError> = result.unwrap_err().collect();
         assert_eq!(errors.len(), 2);
         assert_eq!(
@@ -387,30 +395,30 @@ mod tests {
         // Define a JSON schema that enforces the top level object has ASCII keys and has at least 1 property
         let schema =
             json!({ "custom-object-type": "ascii-keys", "type": "object", "minProperties": 1 });
-        let compiled = JSONSchema::options()
+        let validator = crate::options()
             .with_keyword("custom-object-type", custom_object_type_factory)
             .compile(&schema)
             .unwrap();
 
         // Verify schema validation detects object with too few properties
         let instance = json!({});
-        assert!(compiled.validate(&instance).is_err());
-        assert!(!compiled.is_valid(&instance));
+        assert!(validator.validate(&instance).is_err());
+        assert!(!validator.is_valid(&instance));
 
         // Verify validator succeeds on a valid custom-object-type
         let instance = json!({ "a" : 1 });
-        assert!(compiled.validate(&instance).is_ok());
-        assert!(compiled.is_valid(&instance));
+        assert!(validator.validate(&instance).is_ok());
+        assert!(validator.is_valid(&instance));
 
         // Verify validator detects invalid custom-object-type
         let instance = json!({ "å" : 1 });
-        let error = compiled
+        let error = validator
             .validate(&instance)
             .expect_err("Should fail")
             .next()
             .expect("Not empty");
         assert_eq!(error.to_string(), "Key is not ASCII");
-        assert!(!compiled.is_valid(&instance));
+        assert!(!validator.is_valid(&instance));
     }
 
     #[test]
@@ -510,7 +518,7 @@ mod tests {
 
         // Schema includes both the custom format and the overridden keyword
         let schema = json!({ "minimum": 2, "type": "string", "format": "currency" });
-        let compiled = JSONSchema::options()
+        let validator = crate::options()
             .with_format("currency", currency_format_checker)
             .with_keyword("minimum", custom_minimum_factory)
             .with_keyword("minimum-2", |_, _, _| todo!())
@@ -519,27 +527,27 @@ mod tests {
 
         // Control: verify schema validation rejects non-string types
         let instance = json!(15);
-        assert!(compiled.validate(&instance).is_err());
-        assert!(!compiled.is_valid(&instance));
+        assert!(validator.validate(&instance).is_err());
+        assert!(!validator.is_valid(&instance));
 
         // Control: verify validator rejects ill-formatted strings
         let instance = json!("not a currency");
-        assert!(compiled.validate(&instance).is_err());
-        assert!(!compiled.is_valid(&instance));
+        assert!(validator.validate(&instance).is_err());
+        assert!(!validator.is_valid(&instance));
 
         // Verify validator allows properly formatted strings that conform to custom keyword
         let instance = json!("3.00");
-        assert!(compiled.validate(&instance).is_ok());
-        assert!(compiled.is_valid(&instance));
+        assert!(validator.validate(&instance).is_ok());
+        assert!(validator.is_valid(&instance));
 
         // Verify validator rejects properly formatted strings that do not conform to custom keyword
         let instance = json!("1.99");
-        assert!(compiled.validate(&instance).is_err());
-        assert!(!compiled.is_valid(&instance));
+        assert!(validator.validate(&instance).is_err());
+        assert!(!validator.is_valid(&instance));
 
         // Define another schema that applies "minimum" to an integer to ensure original behavior
         let schema = json!({ "minimum": 2, "type": "integer" });
-        let compiled = JSONSchema::options()
+        let validator = crate::options()
             .with_format("currency", currency_format_checker)
             .with_keyword("minimum", custom_minimum_factory)
             .compile(&schema)
@@ -547,17 +555,17 @@ mod tests {
 
         // Verify schema allows integers greater than 2
         let instance = json!(3);
-        assert!(compiled.validate(&instance).is_ok());
-        assert!(compiled.is_valid(&instance));
+        assert!(validator.validate(&instance).is_ok());
+        assert!(validator.is_valid(&instance));
 
         // Verify schema rejects integers less than 2
         let instance = json!(1);
-        assert!(compiled.validate(&instance).is_err());
-        assert!(!compiled.is_valid(&instance));
+        assert!(validator.validate(&instance).is_err());
+        assert!(!validator.is_valid(&instance));
 
         // Invalid `minimum` value
         let schema = json!({ "minimum": "foo" });
-        let error = JSONSchema::options()
+        let error = crate::options()
             .with_keyword("minimum", custom_minimum_factory)
             .compile(&schema)
             .expect_err("Should fail");

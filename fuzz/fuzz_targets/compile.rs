@@ -5,5 +5,5 @@ fuzz_target!(|data: &[u8]| {
     let Ok(schema) = serde_json::from_slice(data) else {
         return;
     };
-    let _ = jsonschema::compile(&schema);
+    let _ = jsonschema::validator_for(&schema);
 });

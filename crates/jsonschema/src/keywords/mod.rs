@@ -44,7 +44,6 @@ pub(crate) type BoxedValidator = Box<dyn Validate + Send + Sync>;
 
 #[cfg(test)]
 mod tests {
-    use crate::compilation::JSONSchema;
     use serde_json::{json, Value};
     use test_case::test_case;
 
@@ -82,8 +81,8 @@ mod tests {
     #[test_case(&json!({"type": ["integer", "string"]}), &json!(null), r#"null is not of types "integer", "string""#)]
     #[test_case(&json!({"uniqueItems": true}), &json!([1, 1]), r#"[1,1] has non-unique elements"#)]
     fn error_message(schema: &Value, instance: &Value, expected: &str) {
-        let compiled = JSONSchema::compile(schema).unwrap();
-        let errors: Vec<_> = compiled
+        let validator = crate::validator_for(schema).unwrap();
+        let errors: Vec<_> = validator
             .validate(instance)
             .expect_err(&format!(
                 "Validation error is expected. Schema=`{:?}` Instance=`{:?}`",
@@ -124,22 +123,19 @@ mod tests {
     #[test_case(&json!({"propertyNames": {"maxLength": 3}}))]
     fn is_valid_another_type(schema: &Value) {
         let instance = json!(null);
-        let compiled = JSONSchema::compile(schema).unwrap();
-        assert!(compiled.is_valid(&instance))
+        assert!(crate::is_valid(schema, &instance));
     }
     #[test_case(&json!({"additionalProperties": false}), &json!({}))]
     #[test_case(&json!({"additionalItems": false, "items": true}), &json!([]))]
     fn is_valid(schema: &Value, instance: &Value) {
-        let compiled = JSONSchema::compile(schema).unwrap();
-        assert!(compiled.is_valid(instance))
+        assert!(crate::is_valid(schema, instance));
     }
 
     #[test_case(&json!({"type": "number"}), &json!(42))]
     #[test_case(&json!({"type": ["number", "null"]}), &json!(42))]
     fn integer_is_valid_number_multi_type(schema: &Value, instance: &Value) {
         // See: GH-147
-        let compiled = JSONSchema::compile(schema).unwrap();
-        assert!(compiled.is_valid(instance))
+        assert!(crate::is_valid(schema, instance));
     }
     // enum: Number
     #[test_case(&json!({"enum": [0.0]}), &json!(0))]
@@ -163,8 +159,7 @@ mod tests {
     #[test_case(&json!({"const": {"c": [1.0]}}), &json!({"c": [1]}))]
     fn numeric_equivalence(schema: &Value, instance: &Value) {
         // See: GH-149
-        let compiled = JSONSchema::compile(schema).unwrap();
-        assert!(compiled.is_valid(instance))
+        assert!(crate::is_valid(schema, instance));
     }
 
     #[test]
@@ -172,8 +167,8 @@ mod tests {
         // See: GH-190
         let schema = json!({"required": ["foo", "bar"]});
         let instance = json!({});
-        let compiled = JSONSchema::compile(&schema).unwrap();
-        let errors: Vec<_> = compiled
+        let validator = crate::validator_for(&schema).unwrap();
+        let errors: Vec<_> = validator
             .validate(&instance)
             .expect_err("Validation errors")
             .collect();

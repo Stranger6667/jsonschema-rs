@@ -162,26 +162,26 @@ static META_SCHEMA_VALIDATORS: Lazy<AHashMap<schemas::Draft, JSONSchema>> = Lazy
     let mut store = AHashMap::with_capacity(3);
     store.insert(
         schemas::Draft::Draft4,
-        JSONSchema::options()
+        crate::options()
             .without_schema_validation()
             .compile(&DRAFT4)
             .expect(EXPECT_MESSAGE),
     );
     store.insert(
         schemas::Draft::Draft6,
-        JSONSchema::options()
+        crate::options()
             .without_schema_validation()
             .compile(&DRAFT6)
             .expect(EXPECT_MESSAGE),
     );
     store.insert(
         schemas::Draft::Draft7,
-        JSONSchema::options()
+        crate::options()
             .without_schema_validation()
             .compile(&DRAFT7)
             .expect(EXPECT_MESSAGE),
     );
-    let mut options = JSONSchema::options();
+    let mut options = crate::options();
     options.store.insert(
         "https://json-schema.org/draft/2019-09/meta/applicator".into(),
         Arc::clone(&DRAFT201909_APPLICATOR),
@@ -213,7 +213,7 @@ static META_SCHEMA_VALIDATORS: Lazy<AHashMap<schemas::Draft, JSONSchema>> = Lazy
             .compile(&DRAFT201909)
             .expect(EXPECT_MESSAGE),
     );
-    let mut options = JSONSchema::options();
+    let mut options = crate::options();
     options.store.insert(
         "https://json-schema.org/draft/2020-12/meta/applicator".into(),
         Arc::clone(&DRAFT202012_APPLICATOR),
@@ -256,10 +256,7 @@ static META_SCHEMA_VALIDATORS: Lazy<AHashMap<schemas::Draft, JSONSchema>> = Lazy
     store
 });
 
-/// Full configuration to guide the `JSONSchema` compilation.
-///
-/// Using a `CompilationOptions` instance you can configure the supported draft,
-/// content media types and more (check the exposed methods)
+/// Configuration options for JSON Schema validation.
 #[derive(Clone)]
 pub struct CompilationOptions {
     external_resolver: Arc<dyn SchemaResolver>,
@@ -293,11 +290,25 @@ impl Default for CompilationOptions {
 }
 
 impl CompilationOptions {
+    /// Return the draft version, or the default if not set.
     pub(crate) fn draft(&self) -> schemas::Draft {
         self.draft.unwrap_or_default()
     }
-
-    /// Compile `schema` into `JSONSchema` using the currently defined options.
+    /// Build a JSON Schema validator using the current options.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use serde_json::json;
+    ///
+    /// let schema = json!({"type": "string"});
+    /// let validator = jsonschema::options()
+    ///     .compile(&schema)
+    ///     .expect("A valid schema");
+    ///
+    /// assert!(validator.is_valid(&json!("Hello")));
+    /// assert!(!validator.is_valid(&json!(42)));
+    /// ```
     pub fn compile<'a>(
         &self,
         schema: &'a serde_json::Value,
@@ -353,12 +364,13 @@ impl CompilationOptions {
         Ok(JSONSchema { node, config })
     }
 
-    /// Ensure that the schema is going to be compiled using the defined Draft.
+    /// Sets the JSON Schema draft version.
     ///
     /// ```rust
-    /// # use jsonschema::{Draft, CompilationOptions};
-    /// # let mut options = CompilationOptions::default();
-    /// options.with_draft(Draft::Draft4);
+    /// use jsonschema::Draft;
+    ///
+    /// let options = jsonschema::options()
+    ///     .with_draft(Draft::Draft4);
     /// ```
     #[inline]
     pub fn with_draft(&mut self, draft: schemas::Draft) -> &mut Self {
@@ -377,24 +389,17 @@ impl CompilationOptions {
         }
     }
 
-    /// Ensure that compiled schema is going to support the provided content media type.
+    /// Add support for a custom content media type validation.
     ///
-    /// Arguments:
-    /// * `media_type`: Name of the content media type to support (ie. "application/json")
-    /// * `media_type_check`: Method checking the validity of the input string according to
-    ///     the media type.
-    ///     The method should return `true` if the input is valid, `false` otherwise.
+    /// # Example
     ///
-    /// Example:
     /// ```rust
-    /// # use jsonschema::CompilationOptions;
-    /// # let mut options = CompilationOptions::default();
     /// fn check_custom_media_type(instance_string: &str) -> bool {
-    ///     // In reality the check might be a bit more different ;)
-    ///     instance_string != "not good"
+    ///     instance_string.starts_with("custom:")
     /// }
-    /// // Add support for application/jsonschema-test
-    /// options.with_content_media_type("application/jsonschema-test", check_custom_media_type);
+    ///
+    /// let options = jsonschema::options()
+    ///     .with_content_media_type("application/custom", check_custom_media_type);
     /// ```
     pub fn with_content_media_type(
         &mut self,
@@ -406,20 +411,13 @@ impl CompilationOptions {
         self
     }
 
-    /// Use a custom resolver for resolving external schema references.
+    /// Set a custom resolver for external references.
     pub fn with_resolver(&mut self, resolver: impl SchemaResolver + 'static) -> &mut Self {
         self.external_resolver = Arc::new(resolver);
         self
     }
 
-    /// Ensure that compiled schema is not supporting the provided content media type.
-    ///
-    /// ```rust
-    /// # use jsonschema::CompilationOptions;
-    /// # let mut options = CompilationOptions::default();
-    /// // Disable support for application/json (which is supported by jsonschema crate)
-    /// options.without_content_media_type_support("application/json");
-    /// ```
+    /// Remove support for a specific content media type validation.
     pub fn without_content_media_type_support(&mut self, media_type: &'static str) -> &mut Self {
         self.content_media_type_checks.insert(media_type, None);
         self
@@ -463,71 +461,54 @@ impl CompilationOptions {
             None
         }
     }
-
-    /// Ensure that compiled schema is going to support the provided content encoding.
+    /// Add support for a custom content encoding.
     ///
-    /// Arguments:
-    /// * `content_encoding`: Name of the content encoding to support (ie. "base64")
-    /// * `content_encoding_check`: Method checking the validity of the input string
-    ///     according to content encoding.
-    ///     The method should return `true` if the input is valid, `false` otherwise.
-    /// * `content_encoding_converter`: Method converting the input string into a string
-    ///     representation (generally output of the decoding of the content encoding).
-    ///     The method should return:
-    ///     * `Err(ValidationError instance)`: in case of a `jsonschema` crate supported error (obtained via `?` or `From::from` APIs)
-    ///     * `Ok(None)`: if the input string is not valid according to the content encoding
-    ///     * `Ok(Some(content))`: if the input string is valid according to the content encoding, `content` will contain
-    ///         the string representation of the decoded input
+    /// # Arguments
     ///
-    /// Example:
+    /// * `encoding`: Name of the content encoding (e.g., "base64")
+    /// * `check`: Validates the input string (return `true` if valid)
+    /// * `converter`: Converts the input string, returning:
+    ///   - `Err(ValidationError)`: For supported errors
+    ///   - `Ok(None)`: If input is invalid
+    ///   - `Ok(Some(content))`: If valid, with decoded content
+    ///
+    /// # Example
+    ///
     /// ```rust
-    /// # use jsonschema::{CompilationOptions, ValidationError};
-    /// # let mut options = CompilationOptions::default();
-    /// // The instance_string contains a number (representing the length of the string)
-    /// // a space and then the string (whose length should match the expectation).
-    /// // Example: "3 The" or "4  123"
-    /// fn check_custom_encoding(instance_string: &str) -> bool {
-    ///     if let Some(first_space_index) = instance_string.find(' ') {
-    ///         if let Ok(value) = instance_string[..first_space_index].parse::<u64>() {
-    ///             return instance_string[first_space_index + 1..].chars().count() == value as usize;
-    ///         }
-    ///     }
-    ///     false
+    /// use jsonschema::ValidationError;
+    ///
+    /// fn check(s: &str) -> bool {
+    ///     s.starts_with("valid:")
     /// }
-    /// fn converter_custom_encoding(instance_string: &str) -> Result<Option<String>, ValidationError<'static>> {
-    ///     if let Some(first_space_index) = instance_string.find(' ') {
-    ///         if let Ok(value) = instance_string[..first_space_index].parse::<u64>() {
-    ///             if instance_string[first_space_index + 1..].chars().count() == value as usize {
-    ///                 return Ok(Some(instance_string[first_space_index + 1..].to_string()));
-    ///             }
-    ///         }
+    ///
+    /// fn convert(s: &str) -> Result<Option<String>, ValidationError<'static>> {
+    ///     if s.starts_with("valid:") {
+    ///         Ok(Some(s[6..].to_string()))
+    ///     } else {
+    ///         Ok(None)
     ///     }
-    ///     Ok(None)
     /// }
-    /// // Add support for prefix-length-string
-    /// options.with_content_encoding("prefix-length-string", check_custom_encoding, converter_custom_encoding);
+    ///
+    /// let options = jsonschema::options()
+    ///     .with_content_encoding("custom", check, convert);
     /// ```
     pub fn with_content_encoding(
         &mut self,
-        content_encoding: &'static str,
-        content_encoding_check: ContentEncodingCheckType,
-        content_encoding_converter: ContentEncodingConverterType,
+        encoding: &'static str,
+        check: ContentEncodingCheckType,
+        converter: ContentEncodingConverterType,
     ) -> &mut Self {
-        self.content_encoding_checks_and_converters.insert(
-            content_encoding,
-            Some((content_encoding_check, content_encoding_converter)),
-        );
+        self.content_encoding_checks_and_converters
+            .insert(encoding, Some((check, converter)));
         self
     }
-
-    /// Ensure that compiled schema is not supporting the provided content encoding.
+    /// Remove support for a specific content encoding.
+    ///
+    /// # Example
     ///
     /// ```rust
-    /// # use jsonschema::CompilationOptions;
-    /// # use serde_json::Value;
-    /// # let mut options = CompilationOptions::default();
-    /// // Disable support for base64 (which is supported by jsonschema crate)
-    /// options.without_content_encoding_support("base64");
+    /// let options = jsonschema::options()
+    ///     .without_content_encoding_support("base64");
     /// ```
     pub fn without_content_encoding_support(
         &mut self,
@@ -537,7 +518,6 @@ impl CompilationOptions {
             .insert(content_encoding, None);
         self
     }
-
     /// Add meta schemas for supported JSON Schema drafts.
     /// It is helpful if your schema has references to JSON Schema meta-schemas:
     ///
@@ -560,20 +540,19 @@ impl CompilationOptions {
     pub fn with_meta_schemas(&mut self) -> &mut Self {
         self
     }
-
-    /// Add a new document to the store. It works as a cache to avoid making additional network
-    /// calls to remote schemas via the `$ref` keyword.
+    /// Add a document to the store.
+    ///
+    /// Acts as a cache to avoid network calls for remote schemas referenced by `$ref`.
     #[inline]
     pub fn with_document(&mut self, id: String, document: serde_json::Value) -> &mut Self {
         self.store.insert(id.into(), Arc::new(document));
         self
     }
-    /// Register a custom "format" validator.
+    /// Register a custom format validator.
     ///
-    /// ## Example
+    /// # Example
     ///
     /// ```rust
-    /// # use jsonschema::JSONSchema;
     /// # use serde_json::json;
     /// fn my_format(s: &str) -> bool {
     ///    // Your awesome format check!
@@ -581,18 +560,15 @@ impl CompilationOptions {
     /// }
     /// # fn foo() {
     /// let schema = json!({"type": "string", "format": "custom"});
-    /// let compiled = JSONSchema::options()
+    /// let validator = jsonschema::options()
     ///     .with_format("custom", my_format)
     ///     .compile(&schema)
     ///     .expect("Valid schema");
-    /// // Invalid string
-    /// assert!(!compiled.is_valid(&json!("foo")));
-    /// // Valid string
-    /// assert!(compiled.is_valid(&json!("foo42!")));
+    ///
+    /// assert!(!validator.is_valid(&json!("foo")));
+    /// assert!(validator.is_valid(&json!("foo42!")));
     /// # }
     /// ```
-    ///
-    /// The format check function should receive `&str` and return `bool`.
     pub fn with_format<N, F>(&mut self, name: N, format: F) -> &mut Self
     where
         N: Into<String>,
@@ -604,51 +580,48 @@ impl CompilationOptions {
     pub(crate) fn get_format(&self, format: &str) -> Option<(&String, &Arc<dyn Format>)> {
         self.formats.get_key_value(format)
     }
-    /// Do not perform schema validation during compilation.
-    /// This method is only used to disable meta-schema validation for meta-schemas itself to avoid
-    /// infinite recursion.
-    /// The end-user will still receive `ValidationError` that are crafted manually during
-    /// compilation.
+    /// Disable schema validation during compilation.
+    ///
+    /// Used internally to prevent infinite recursion when validating meta-schemas.
+    /// **Note**: Manually-crafted `ValidationError`s may still occur during compilation.
     #[inline]
     pub(crate) fn without_schema_validation(&mut self) -> &mut Self {
         self.validate_schema = false;
         self
     }
+    /// Set whether to validate formats.
+    ///
+    /// Default behavior depends on the draft version. This method overrides
+    /// the default, enabling or disabling format validation regardless of draft.
     #[inline]
-    /// Force enable or disable format validation.
-    /// The default behavior is dependent on draft version, but the default behavior can be
-    /// overridden to validate or not regardless of draft.
-    pub fn should_validate_formats(&mut self, validate_formats: bool) -> &mut Self {
-        self.validate_formats = Some(validate_formats);
+    pub fn should_validate_formats(&mut self, yes: bool) -> &mut Self {
+        self.validate_formats = Some(yes);
         self
     }
     pub(crate) fn validate_formats(&self) -> bool {
         self.validate_formats
             .unwrap_or_else(|| self.draft().validate_formats_by_default())
     }
-
-    /// Set the `false` if unrecognized formats should be reported as a validation error.
-    /// By default unknown formats are silently ignored.
-    pub fn should_ignore_unknown_formats(
-        &mut self,
-        should_ignore_unknown_formats: bool,
-    ) -> &mut Self {
-        self.ignore_unknown_formats = should_ignore_unknown_formats;
+    /// Set whether to ignore unknown formats.
+    ///
+    /// By default, unknown formats are silently ignored. Set to `false` to report
+    /// unrecognized formats as validation errors.
+    pub fn should_ignore_unknown_formats(&mut self, yes: bool) -> &mut Self {
+        self.ignore_unknown_formats = yes;
         self
     }
 
     pub(crate) const fn are_unknown_formats_ignored(&self) -> bool {
         self.ignore_unknown_formats
     }
-
-    /// Register a custom keyword definition.
+    /// Register a custom keyword validator.
     ///
     /// ## Example
     ///
     /// ```rust
     /// # use jsonschema::{
     /// #    paths::{JSONPointer, JsonPointerNode},
-    /// #    ErrorIterator, JSONSchema, Keyword, ValidationError,
+    /// #    ErrorIterator, Keyword, ValidationError,
     /// # };
     /// # use serde_json::{json, Map, Value};
     /// # use std::iter::once;
@@ -689,12 +662,13 @@ impl CompilationOptions {
     ///     Ok(Box::new(MyCustomValidator))
     /// }
     ///
-    /// assert!(JSONSchema::options()
+    /// let validator = jsonschema::options()
     ///     .with_keyword("my-type", custom_validator_factory)
     ///     .with_keyword("my-type-with-closure", |_, _, _| Ok(Box::new(MyCustomValidator)))
     ///     .compile(&json!({ "my-type": "my-schema"}))
-    ///     .expect("A valid schema")
-    ///     .is_valid(&json!({ "a": "b"})));
+    ///     .expect("A valid schema");
+    ///
+    /// assert!(validator.is_valid(&json!({ "a": "b"})));
     /// ```
     pub fn with_keyword<N, F>(&mut self, name: N, factory: F) -> &mut Self
     where
@@ -733,7 +707,7 @@ impl fmt::Debug for CompilationOptions {
 #[cfg(test)]
 mod tests {
     use super::CompilationOptions;
-    use crate::{schemas::Draft, JSONSchema};
+    use crate::schemas::Draft;
     use serde_json::{json, Value};
     use test_case::test_case;
 
@@ -748,22 +722,22 @@ mod tests {
         if let Some(draft_version) = draft_version_in_options {
             options.with_draft(draft_version);
         }
-        let compiled = options.compile(schema).unwrap();
-        compiled.draft()
+        let validator = options.compile(schema).unwrap();
+        validator.draft()
     }
 
     #[test]
     fn test_with_document() {
         let schema = json!({"$ref": "http://example.json/schema.json#/rule"});
-        let compiled = JSONSchema::options()
+        let validator = crate::options()
             .with_document(
                 "http://example.json/schema.json".to_string(),
                 json!({"rule": {"minLength": 5}}),
             )
             .compile(&schema)
             .expect("Valid schema");
-        assert!(!compiled.is_valid(&json!("foo")));
-        assert!(compiled.is_valid(&json!("foobar")));
+        assert!(!validator.is_valid(&json!("foo")));
+        assert!(validator.is_valid(&json!("foobar")));
     }
 
     fn custom(s: &str) -> bool {
@@ -773,11 +747,11 @@ mod tests {
     #[test]
     fn custom_format() {
         let schema = json!({"type": "string", "format": "custom"});
-        let compiled = JSONSchema::options()
+        let validator = crate::options()
             .with_format("custom", custom)
             .compile(&schema)
             .expect("Valid schema");
-        assert!(!compiled.is_valid(&json!("foo")));
-        assert!(compiled.is_valid(&json!("foo42!")));
+        assert!(!validator.is_valid(&json!("foo")));
+        assert!(validator.is_valid(&json!("foo42!")));
     }
 }

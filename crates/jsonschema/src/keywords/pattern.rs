@@ -169,7 +169,7 @@ mod tests {
     use crate::{
         compilation::{context::BaseUri, DEFAULT_SCOPE},
         resolver::{DefaultResolver, Resolver},
-        tests_util, JSONSchema,
+        tests_util,
     };
     use serde_json::{json, Value};
     use std::sync::Arc;
@@ -180,9 +180,9 @@ mod tests {
     #[test_case(r"^\W+$", "1_0", false)]
     #[test_case(r"\\w", r"\w", true)]
     fn regex_matches(pattern: &str, text: &str, is_matching: bool) {
-        let compiled = convert_regex(pattern).expect("A valid regex");
+        let validator = convert_regex(pattern).expect("A valid regex");
         assert_eq!(
-            compiled.is_match(text).expect("A valid pattern"),
+            validator.is_match(text).expect("A valid pattern"),
             is_matching
         );
     }
@@ -199,7 +199,7 @@ mod tests {
         let pattern = Value::String(pattern.into());
         let text = Value::String(text.into());
         let schema_json = Arc::new(json!({}));
-        let schema = JSONSchema::compile(&schema_json).unwrap();
+        let validator = crate::validator_for(&schema_json).unwrap();
         let resolver = Arc::new(
             Resolver::new(
                 Arc::new(DefaultResolver),
@@ -210,9 +210,9 @@ mod tests {
             )
             .unwrap(),
         );
-        let context = CompilationContext::new(BaseUri::Unknown, schema.config(), resolver);
-        let compiled = PatternValidator::compile(&pattern, &context).unwrap();
-        assert_eq!(compiled.is_valid(&text), is_matching)
+        let context = CompilationContext::new(BaseUri::Unknown, validator.config(), resolver);
+        let validator = PatternValidator::compile(&pattern, &context).unwrap();
+        assert_eq!(validator.is_valid(&text), is_matching)
     }
 
     #[test]

@@ -145,7 +145,7 @@ pub(crate) const fn supports_adjacent_validation(draft: Draft) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::{tests_util, JSONSchema};
+    use crate::tests_util;
     use serde_json::{json, Value};
     use test_case::test_case;
 
@@ -193,8 +193,8 @@ mod tests {
                 "required": ["things"],
                 "$defs": { "codes": { "enum": ["AA", "BB"] } }
         });
-        let compiled = JSONSchema::options().compile(&schema).unwrap();
-        let mut iter = compiled.validate(&instance).expect_err("Should fail");
+        let validator = crate::validator_for(&schema).unwrap();
+        let mut iter = validator.validate(&instance).expect_err("Should fail");
         let expected = "/properties/things/items/properties/code/enum";
         assert_eq!(
             iter.next()
