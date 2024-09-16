@@ -24,3 +24,10 @@ path = "fuzz_targets/compile.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "validation"
+path = "fuzz_targets/validation.rs"
+test = false
+doc = false
+bench = false

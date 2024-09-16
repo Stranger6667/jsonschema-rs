@@ -2,7 +2,8 @@ default:
   @just --list
 
 fuzz TARGET:
-  cargo +nightly fuzz run --release {{TARGET}} fuzz/corpus/{{TARGET}} fuzz/seeds/{{TARGET}} -- -dict=fuzz/dict
+  mkdir -p fuzz/corpus/{{TARGET}}
+  cargo +nightly fuzz run --release {{TARGET}} fuzz/corpus/{{TARGET}} fuzz/seeds -- -dict=fuzz/dict
 
 lint-rs:
   cargo +nightly fmt --all

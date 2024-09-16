@@ -193,7 +193,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: ["compile"]
+        target: ["compile", "validation"]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -206,4 +206,4 @@ jobs:
 
       - run: cargo install cargo-fuzz
 
-      - run: cargo +nightly fuzz run --release ${{ matrix.target }} fuzz/seeds/${{ matrix.target }} -- -dict=fuzz/dict -max_total_time=60
+      - run: cargo +nightly fuzz run --release ${{ matrix.target }} fuzz/seeds -- -dict=fuzz/dict -max_total_time=60
