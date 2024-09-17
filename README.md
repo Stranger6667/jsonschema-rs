@@ -85,6 +85,10 @@ For detailed benchmarks, see our [full performance comparison](crates/benchmark-
 
 This crate requires Rust 1.70 or later.
 
+## Acknowledgements
+
+This library draws API design inspiration from the Python [`jsonschema`](https://github.com/python-jsonschema/jsonschema) package. We're grateful to the Python `jsonschema` maintainers and contributors for their pioneering work in JSON Schema validation.
+
 ## Support
 
 If you have questions, need help, or want to suggest improvements, please use [GitHub Discussions](https://github.com/Stranger6667/jsonschema-rs/discussions).
