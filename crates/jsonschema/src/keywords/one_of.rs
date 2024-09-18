@@ -3,7 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     output::BasicOutput,
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     schema_node::SchemaNode,
     validator::{PartialApplication, Validate},
@@ -12,7 +12,7 @@ use serde_json::{Map, Value};
 
 pub(crate) struct OneOfValidator {
     schemas: Vec<SchemaNode>,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl OneOfValidator {
@@ -35,7 +35,7 @@ impl OneOfValidator {
             }))
         } else {
             Err(ValidationError::single_type_error(
-                JSONPointer::default(),
+                JsonPointer::default(),
                 context.clone().into_pointer(),
                 schema,
                 PrimitiveType::Array,

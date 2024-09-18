@@ -1,9 +1,7 @@
 //! Implementation of json schema output formats specified in <https://json-schema.org/draft/2020-12/json-schema-core.html#rfc.section.12.2>
 //!
-//! Currently the "flag" and "basic" formats are supported. The "flag" format is
-//! identical to the [`JSONSchema::is_valid`] method and so is uninteresting. The
-//! main contribution of this module is [`Output::basic`]. See the documentation
-//! of that method for more information.
+//! Currently the "basic" formats is supported. The main contribution of this module is [`Output::basic`].
+//! See the documentation of that method for more information.
 
 use std::{
     borrow::Cow,
@@ -18,9 +16,9 @@ use ahash::AHashMap;
 use serde::ser::SerializeMap;
 
 use crate::{
-    paths::{AbsolutePath, JSONPointer, JsonPointerNode},
+    paths::{AbsolutePath, JsonPointer, JsonPointerNode},
     schema_node::SchemaNode,
-    JSONSchema,
+    Validator,
 };
 
 /// The output format resulting from the application of a schema. This can be
@@ -30,14 +28,14 @@ use crate::{
 /// Currently only the "flag" and "basic" output formats are supported
 #[derive(Debug, Clone)]
 pub struct Output<'a, 'b> {
-    schema: &'a JSONSchema,
+    schema: &'a Validator,
     root_node: &'a SchemaNode,
     instance: &'b serde_json::Value,
 }
 
 impl<'a, 'b> Output<'a, 'b> {
     pub(crate) const fn new<'c, 'd>(
-        schema: &'c JSONSchema,
+        schema: &'c Validator,
         root_node: &'c SchemaNode,
         instance: &'d serde_json::Value,
     ) -> Output<'c, 'd> {
@@ -202,16 +200,16 @@ impl<'a> FromIterator<BasicOutput<'a>> for PartialApplication<'a> {
 /// detailed example.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OutputUnit<T> {
-    keyword_location: JSONPointer,
-    instance_location: JSONPointer,
+    keyword_location: JsonPointer,
+    instance_location: JsonPointer,
     absolute_keyword_location: Option<AbsolutePath>,
     value: T,
 }
 
 impl<T> OutputUnit<T> {
     pub(crate) const fn annotations(
-        keyword_location: JSONPointer,
-        instance_location: JSONPointer,
+        keyword_location: JsonPointer,
+        instance_location: JsonPointer,
         absolute_keyword_location: Option<AbsolutePath>,
         annotations: Annotations<'_>,
     ) -> OutputUnit<Annotations<'_>> {
@@ -224,8 +222,8 @@ impl<T> OutputUnit<T> {
     }
 
     pub(crate) const fn error(
-        keyword_location: JSONPointer,
-        instance_location: JSONPointer,
+        keyword_location: JsonPointer,
+        instance_location: JsonPointer,
         absolute_keyword_location: Option<AbsolutePath>,
         error: ErrorDescription,
     ) -> OutputUnit<ErrorDescription> {
@@ -238,7 +236,7 @@ impl<T> OutputUnit<T> {
     }
 
     ///  The location in the schema of the keyword
-    pub const fn keyword_location(&self) -> &JSONPointer {
+    pub const fn keyword_location(&self) -> &JsonPointer {
         &self.keyword_location
     }
 
@@ -249,7 +247,7 @@ impl<T> OutputUnit<T> {
     }
 
     ///  The location in the instance
-    pub const fn instance_location(&self) -> &JSONPointer {
+    pub const fn instance_location(&self) -> &JsonPointer {
         &self.instance_location
     }
 }

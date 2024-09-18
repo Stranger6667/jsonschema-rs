@@ -1,4 +1,4 @@
-use crate::paths::{JSONPointer, JsonPointerNode};
+use crate::paths::{JsonPointer, JsonPointerNode};
 
 use crate::{
     error::{error, ErrorIterator, ValidationError},
@@ -8,11 +8,11 @@ use crate::{
 use serde_json::Value;
 
 pub(crate) struct FalseValidator {
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 impl FalseValidator {
     #[inline]
-    pub(crate) fn compile<'a>(schema_path: JSONPointer) -> CompilationResult<'a> {
+    pub(crate) fn compile<'a>(schema_path: JsonPointer) -> CompilationResult<'a> {
         Ok(Box::new(FalseValidator { schema_path }))
     }
 }

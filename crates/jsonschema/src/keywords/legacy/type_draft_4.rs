@@ -2,7 +2,7 @@ use crate::{
     compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{type_, CompilationResult},
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
 };
@@ -11,12 +11,12 @@ use std::convert::TryFrom;
 
 pub(crate) struct MultipleTypesValidator {
     types: PrimitiveTypesBitMap,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl MultipleTypesValidator {
     #[inline]
-    pub(crate) fn compile(items: &[Value], schema_path: JSONPointer) -> CompilationResult {
+    pub(crate) fn compile(items: &[Value], schema_path: JsonPointer) -> CompilationResult {
         let mut types = PrimitiveTypesBitMap::new();
         for item in items {
             match item {
@@ -25,7 +25,7 @@ impl MultipleTypesValidator {
                         types |= primitive_type;
                     } else {
                         return Err(ValidationError::enumeration(
-                            JSONPointer::default(),
+                            JsonPointer::default(),
                             schema_path,
                             item,
                             &json!([
@@ -36,7 +36,7 @@ impl MultipleTypesValidator {
                 }
                 _ => {
                     return Err(ValidationError::single_type_error(
-                        JSONPointer::default(),
+                        JsonPointer::default(),
                         schema_path,
                         item,
                         PrimitiveType::String,
@@ -81,12 +81,12 @@ impl Validate for MultipleTypesValidator {
 }
 
 pub(crate) struct IntegerTypeValidator {
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl IntegerTypeValidator {
     #[inline]
-    pub(crate) fn compile<'a>(schema_path: JSONPointer) -> CompilationResult<'a> {
+    pub(crate) fn compile<'a>(schema_path: JsonPointer) -> CompilationResult<'a> {
         Ok(Box::new(IntegerTypeValidator { schema_path }))
     }
 }
@@ -138,7 +138,7 @@ pub(crate) fn compile<'a>(
                     compile_single_type(item.as_str(), schema_path)
                 } else {
                     Some(Err(ValidationError::single_type_error(
-                        JSONPointer::default(),
+                        JsonPointer::default(),
                         schema_path,
                         item,
                         PrimitiveType::String,
@@ -149,7 +149,7 @@ pub(crate) fn compile<'a>(
             }
         }
         _ => Some(Err(ValidationError::multiple_type_error(
-            JSONPointer::default(),
+            JsonPointer::default(),
             context.clone().into_pointer(),
             schema,
             PrimitiveTypesBitMap::new()
@@ -159,7 +159,7 @@ pub(crate) fn compile<'a>(
     }
 }
 
-fn compile_single_type<'a>(item: &str, schema_path: JSONPointer) -> Option<CompilationResult<'a>> {
+fn compile_single_type<'a>(item: &str, schema_path: JsonPointer) -> Option<CompilationResult<'a>> {
     match PrimitiveType::try_from(item) {
         Ok(PrimitiveType::Array) => Some(type_::ArrayTypeValidator::compile(schema_path)),
         Ok(PrimitiveType::Boolean) => Some(type_::BooleanTypeValidator::compile(schema_path)),

@@ -3,7 +3,7 @@ use crate::{
     error::{no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     output::BasicOutput,
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     schema_node::SchemaNode,
     validator::{PartialApplication, Validate},
@@ -30,7 +30,7 @@ impl PatternPropertiesValidator {
                     Ok(r) => r,
                     Err(_) => {
                         return Err(ValidationError::format(
-                            JSONPointer::default(),
+                            JsonPointer::default(),
                             keyword_context.clone().into_pointer(),
                             subschema,
                             "regex",
@@ -127,7 +127,7 @@ impl SingleValuePatternPropertiesValidator {
                 Ok(r) => r,
                 Err(_) => {
                     return Err(ValidationError::format(
-                        JSONPointer::default(),
+                        JsonPointer::default(),
                         keyword_context.clone().into_pointer(),
                         schema,
                         "regex",
@@ -216,7 +216,7 @@ pub(crate) fn compile<'a>(
                 }
             } else {
                 Some(Err(ValidationError::single_type_error(
-                    JSONPointer::default(),
+                    JsonPointer::default(),
                     context.clone().into_pointer(),
                     schema,
                     PrimitiveType::Object,

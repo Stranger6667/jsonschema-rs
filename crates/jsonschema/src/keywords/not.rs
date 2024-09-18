@@ -2,7 +2,7 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     schema_node::SchemaNode,
     validator::Validate,
 };
@@ -12,7 +12,7 @@ pub(crate) struct NotValidator {
     // needed only for error representation
     original: Value,
     node: SchemaNode,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl NotValidator {

@@ -19,8 +19,8 @@ members = ["."]
 debug = true
 
 [[bin]]
-name = "compile"
-path = "fuzz_targets/compile.rs"
+name = "builder"
+path = "fuzz_targets/builder.rs"
 test = false
 doc = false
 bench = false

@@ -9,7 +9,7 @@ use crate::{
 use once_cell::sync::Lazy;
 use serde_json::{Map, Value};
 
-use crate::paths::JSONPointer;
+use crate::paths::JsonPointer;
 use std::ops::Index;
 
 // Use regex::Regex here to take advantage of replace_all method not available in fancy_regex::Regex
@@ -19,7 +19,7 @@ static CONTROL_GROUPS_RE: Lazy<regex::Regex> =
 pub(crate) struct PatternValidator {
     original: String,
     pattern: fancy_regex::Regex,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl PatternValidator {
@@ -34,7 +34,7 @@ impl PatternValidator {
                     Ok(r) => r,
                     Err(_) => {
                         return Err(ValidationError::format(
-                            JSONPointer::default(),
+                            JsonPointer::default(),
                             context.clone().into_pointer(),
                             pattern,
                             "regex",
@@ -48,7 +48,7 @@ impl PatternValidator {
                 }))
             }
             _ => Err(ValidationError::single_type_error(
-                JSONPointer::default(),
+                JsonPointer::default(),
                 context.clone().into_pointer(),
                 pattern,
                 PrimitiveType::String,

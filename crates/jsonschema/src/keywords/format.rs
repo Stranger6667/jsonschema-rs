@@ -15,7 +15,7 @@ use crate::{
     compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{pattern, CompilationResult},
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     validator::Validate,
     Draft,
@@ -47,7 +47,7 @@ static URI_TEMPLATE_RE: Lazy<Regex> = Lazy::new(|| {
 macro_rules! format_validator {
     ($validator:ident, $format_name:tt) => {
         struct $validator {
-            schema_path: JSONPointer,
+            schema_path: JsonPointer,
         }
         impl $validator {
             pub(crate) fn compile<'a>(context: &CompilationContext) -> CompilationResult<'a> {
@@ -257,8 +257,8 @@ impl Validate for IRIReferenceValidator {
         }
     }
 }
-format_validator!(JSONPointerValidator, "json-pointer");
-impl Validate for JSONPointerValidator {
+format_validator!(JsonPointerValidator, "json-pointer");
+impl Validate for JsonPointerValidator {
     validate!("json-pointer");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
@@ -281,8 +281,8 @@ impl Validate for RegexValidator {
         }
     }
 }
-format_validator!(RelativeJSONPointerValidator, "relative-json-pointer");
-impl Validate for RelativeJSONPointerValidator {
+format_validator!(RelativeJsonPointerValidator, "relative-json-pointer");
+impl Validate for RelativeJsonPointerValidator {
     validate!("relative-json-pointer");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
@@ -358,7 +358,7 @@ impl Validate for DurationValidator {
 }
 
 struct CustomFormatValidator {
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
     format_name: String,
     check: Arc<dyn Format>,
 }
@@ -459,17 +459,17 @@ pub(crate) fn compile<'a>(
             "iri" if draft == Draft::Draft7 => Some(IRIValidator::compile(context)),
             "iri" if draft == Draft::Draft201909 => Some(IRIValidator::compile(context)),
             "json-pointer" if draft == Draft::Draft6 || draft == Draft::Draft7 => {
-                Some(JSONPointerValidator::compile(context))
+                Some(JsonPointerValidator::compile(context))
             }
             "json-pointer" if draft == Draft::Draft201909 => {
-                Some(JSONPointerValidator::compile(context))
+                Some(JsonPointerValidator::compile(context))
             }
             "regex" => Some(RegexValidator::compile(context)),
             "relative-json-pointer" if draft == Draft::Draft7 => {
-                Some(RelativeJSONPointerValidator::compile(context))
+                Some(RelativeJsonPointerValidator::compile(context))
             }
             "relative-json-pointer" if draft == Draft::Draft201909 => {
-                Some(RelativeJSONPointerValidator::compile(context))
+                Some(RelativeJsonPointerValidator::compile(context))
             }
             "time" => Some(TimeValidator::compile(context)),
             "uri-reference" if draft == Draft::Draft6 || draft == Draft::Draft7 => {
@@ -494,7 +494,7 @@ pub(crate) fn compile<'a>(
                     None
                 } else {
                     return Some(Err(ValidationError::format(
-                        JSONPointer::default(),
+                        JsonPointer::default(),
                         context.clone().schema_path.into(),
                         schema,
                         "unknown format",
@@ -504,7 +504,7 @@ pub(crate) fn compile<'a>(
         }
     } else {
         Some(Err(ValidationError::single_type_error(
-            JSONPointer::default(),
+            JsonPointer::default(),
             context.clone().into_pointer(),
             schema,
             PrimitiveType::String,
@@ -535,11 +535,11 @@ mod tests {
 
         let with_validation = crate::options()
             .should_validate_formats(true)
-            .compile(&schema)
+            .build(&schema)
             .unwrap();
         let without_validation = crate::options()
             .should_validate_formats(false)
-            .compile(&schema)
+            .build(&schema)
             .unwrap();
 
         assert!(with_validation.is_valid(&email_instance));
@@ -572,7 +572,7 @@ mod tests {
         let validator = crate::options()
             .with_draft(Draft201909)
             .should_validate_formats(true)
-            .compile(&schema)
+            .build(&schema)
             .unwrap();
 
         assert!(validator.is_valid(&passing_instance));
@@ -600,7 +600,7 @@ mod tests {
         let validator = crate::options()
             .with_draft(Draft201909)
             .should_validate_formats(true)
-            .compile(&schema)
+            .build(&schema)
             .unwrap();
 
         for passing_instance in passing_instances {
@@ -616,7 +616,7 @@ mod tests {
         let schema = json!({ "format": "custom", "type": "string"});
         let validation_error = crate::options()
             .should_ignore_unknown_formats(false)
-            .compile(&schema)
+            .build(&schema)
             .expect_err("the validation error should be returned");
 
         assert!(
@@ -642,7 +642,7 @@ mod tests {
     fn ip_v4(input: &str, expected: bool) {
         let validator = crate::options()
             .should_validate_formats(true)
-            .compile(&json!({"format": "ipv4", "type": "string"}))
+            .build(&json!({"format": "ipv4", "type": "string"}))
             .expect("Invalid schema");
         assert_eq!(validator.is_valid(&json!(input)), expected);
     }

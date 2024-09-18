@@ -3,7 +3,7 @@ use crate::{
     error::ErrorIterator,
     keywords::BoxedValidator,
     output::{Annotations, BasicOutput, ErrorDescription, OutputUnit},
-    paths::{AbsolutePath, JSONPointer, JsonPointerNode},
+    paths::{AbsolutePath, JsonPointer, JsonPointerNode},
     validator::{PartialApplication, Validate},
 };
 use ahash::AHashMap;
@@ -13,7 +13,7 @@ use std::{collections::VecDeque, fmt};
 #[derive(Debug)]
 pub(crate) struct SchemaNode {
     validators: NodeValidators,
-    relative_path: JSONPointer,
+    relative_path: JsonPointer,
     absolute_path: Option<AbsolutePath>,
 }
 

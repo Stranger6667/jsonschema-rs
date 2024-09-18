@@ -11,7 +11,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     output::{Annotations, BasicOutput, OutputUnit},
-    paths::{AbsolutePath, JSONPointer, JsonPointerNode},
+    paths::{AbsolutePath, JsonPointer, JsonPointerNode},
     properties::*,
     schema_node::SchemaNode,
     validator::{PartialApplication, Validate},
@@ -152,11 +152,11 @@ impl Validate for AdditionalPropertiesValidator {
 /// {}
 /// ```
 pub(crate) struct AdditionalPropertiesFalseValidator {
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 impl AdditionalPropertiesFalseValidator {
     #[inline]
-    pub(crate) fn compile<'a>(schema_path: JSONPointer) -> CompilationResult<'a> {
+    pub(crate) fn compile<'a>(schema_path: JsonPointer) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalPropertiesFalseValidator { schema_path }))
     }
 }
@@ -207,7 +207,7 @@ impl Validate for AdditionalPropertiesFalseValidator {
 /// ```
 pub(crate) struct AdditionalPropertiesNotEmptyFalseValidator<M: PropertiesValidatorsMap> {
     properties: M,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 impl AdditionalPropertiesNotEmptyFalseValidator<SmallValidatorsMap> {
     #[inline]
@@ -458,7 +458,7 @@ pub(crate) struct AdditionalPropertiesWithPatternsValidator {
     /// this validator. That means that the schema node which contains this validator has
     /// "additionalProperties" as it's path. However, we need to produce annotations which have the
     /// patternProperties keyword as their path so we store the paths here.
-    pattern_keyword_path: JSONPointer,
+    pattern_keyword_path: JsonPointer,
     pattern_keyword_absolute_path: Option<AbsolutePath>,
 }
 impl AdditionalPropertiesWithPatternsValidator {
@@ -593,8 +593,8 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
 /// ```
 pub(crate) struct AdditionalPropertiesWithPatternsFalseValidator {
     patterns: PatternedValidators,
-    schema_path: JSONPointer,
-    pattern_keyword_path: JSONPointer,
+    schema_path: JsonPointer,
+    pattern_keyword_path: JsonPointer,
     pattern_keyword_absolute_path: Option<AbsolutePath>,
 }
 impl AdditionalPropertiesWithPatternsFalseValidator {
@@ -924,7 +924,7 @@ pub(crate) struct AdditionalPropertiesWithPatternsNotEmptyFalseValidator<M: Prop
 {
     properties: M,
     patterns: PatternedValidators,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator<SmallValidatorsMap> {
     #[inline]

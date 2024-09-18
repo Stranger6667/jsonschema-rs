@@ -3,8 +3,8 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use jsonschema_valid::{schemas, Config};
 use serde_json::Value;
 
-fn bench_compile(c: &mut Criterion, name: &str, schema: &Value) {
-    c.bench_function(&format!("jsonschema_valid/{}/compile", name), |b| {
+fn bench_build(c: &mut Criterion, name: &str, schema: &Value) {
+    c.bench_function(&format!("jsonschema_valid/{}/build", name), |b| {
         b.iter(|| Config::from_schema(schema, Some(schemas::Draft::Draft7)).expect("Valid schema"))
     });
 }
@@ -28,7 +28,7 @@ fn run_benchmarks(c: &mut Criterion) {
     for benchmark in Benchmark::iter() {
         benchmark.run(&mut |name, schema, instances| {
             if !UNSUPPORTED_BENCHMARKS.contains(&name) {
-                bench_compile(c, name, schema);
+                bench_build(c, name, schema);
                 for instance in instances {
                     let name = format!("jsonschema_valid/{}/{}", name, instance.name);
                     bench_validate(c, &name, schema, &instance.data);

@@ -5,7 +5,7 @@ use crate::{
     content_media_type::ContentMediaTypeCheckType,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
@@ -15,7 +15,7 @@ use serde_json::{Map, Value};
 pub(crate) struct ContentMediaTypeValidator {
     media_type: String,
     func: ContentMediaTypeCheckType,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl ContentMediaTypeValidator {
@@ -23,7 +23,7 @@ impl ContentMediaTypeValidator {
     pub(crate) fn compile(
         media_type: &str,
         func: ContentMediaTypeCheckType,
-        schema_path: JSONPointer,
+        schema_path: JsonPointer,
     ) -> CompilationResult {
         Ok(Box::new(ContentMediaTypeValidator {
             media_type: media_type.to_string(),
@@ -69,7 +69,7 @@ impl Validate for ContentMediaTypeValidator {
 pub(crate) struct ContentEncodingValidator {
     encoding: String,
     func: ContentEncodingCheckType,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl ContentEncodingValidator {
@@ -77,7 +77,7 @@ impl ContentEncodingValidator {
     pub(crate) fn compile(
         encoding: &str,
         func: ContentEncodingCheckType,
-        schema_path: JSONPointer,
+        schema_path: JsonPointer,
     ) -> CompilationResult {
         Ok(Box::new(ContentEncodingValidator {
             encoding: encoding.to_string(),
@@ -124,7 +124,7 @@ pub(crate) struct ContentMediaTypeAndEncodingValidator {
     encoding: String,
     func: ContentMediaTypeCheckType,
     converter: ContentEncodingConverterType,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl ContentMediaTypeAndEncodingValidator {
@@ -134,7 +134,7 @@ impl ContentMediaTypeAndEncodingValidator {
         encoding: &'a str,
         func: ContentMediaTypeCheckType,
         converter: ContentEncodingConverterType,
-        schema_path: JSONPointer,
+        schema_path: JsonPointer,
     ) -> CompilationResult<'a> {
         Ok(Box::new(ContentMediaTypeAndEncodingValidator {
             media_type: media_type.to_string(),
@@ -223,7 +223,7 @@ pub(crate) fn compile_media_type<'a>(
                         ))
                     }
                     _ => Some(Err(ValidationError::single_type_error(
-                        JSONPointer::default(),
+                        JsonPointer::default(),
                         context.clone().into_pointer(),
                         content_encoding,
                         PrimitiveType::String,
@@ -238,7 +238,7 @@ pub(crate) fn compile_media_type<'a>(
             }
         }
         _ => Some(Err(ValidationError::single_type_error(
-            JSONPointer::default(),
+            JsonPointer::default(),
             context.clone().into_pointer(),
             subschema,
             PrimitiveType::String,
@@ -273,7 +273,7 @@ pub(crate) fn compile_content_encoding<'a>(
             ))
         }
         _ => Some(Err(ValidationError::single_type_error(
-            JSONPointer::default(),
+            JsonPointer::default(),
             context.clone().into_pointer(),
             subschema,
             PrimitiveType::String,

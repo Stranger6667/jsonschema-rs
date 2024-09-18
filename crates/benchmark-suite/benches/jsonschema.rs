@@ -2,8 +2,8 @@ use benchmark::Benchmark;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use serde_json::Value;
 
-fn bench_compile(c: &mut Criterion, name: &str, schema: &Value) {
-    c.bench_function(&format!("jsonschema/{}/compile", name), |b| {
+fn bench_build(c: &mut Criterion, name: &str, schema: &Value) {
+    c.bench_function(&format!("jsonschema/{}/build", name), |b| {
         b.iter(|| jsonschema::validator_for(schema).expect("Valid schema"))
     });
 }
@@ -37,7 +37,7 @@ fn bench_validate(c: &mut Criterion, name: &str, schema: &Value, instance: &Valu
 fn run_benchmarks(c: &mut Criterion) {
     for benchmark in Benchmark::iter() {
         benchmark.run(&mut |name, schema, instances| {
-            bench_compile(c, name, schema);
+            bench_build(c, name, schema);
             for instance in instances {
                 let name = format!("jsonschema/{}/{}", name, instance.name);
                 bench_is_valid(c, &name, schema, &instance.data);

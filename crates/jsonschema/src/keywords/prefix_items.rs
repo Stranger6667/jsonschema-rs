@@ -1,7 +1,7 @@
 use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{no_error, ErrorIterator, ValidationError},
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     schema_node::SchemaNode,
     validator::{PartialApplication, Validate},
@@ -107,7 +107,7 @@ pub(crate) fn compile<'a>(
         Some(PrefixItemsValidator::compile(items, context))
     } else {
         Some(Err(ValidationError::single_type_error(
-            JSONPointer::default(),
+            JsonPointer::default(),
             context.clone().into_pointer(),
             schema,
             PrimitiveType::Array,
@@ -232,9 +232,9 @@ mod tests {
             ]
         }); "valid prefixItems with mixed items"
     }]
-    fn test_basic_output(schema_json: &Value, instance: &Value, expected_output: &Value) {
-        let schema = crate::options().compile(schema_json).unwrap();
-        let output = serde_json::to_value(schema.apply(instance).basic()).unwrap();
+    fn test_basic_output(schema: &Value, instance: &Value, expected_output: &Value) {
+        let validator = crate::validator_for(schema).unwrap();
+        let output = serde_json::to_value(validator.apply(instance).basic()).unwrap();
         assert_eq!(&output, expected_output);
     }
 }

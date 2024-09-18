@@ -2,7 +2,7 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{boolean::FalseValidator, CompilationResult},
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     schema_node::SchemaNode,
     validator::Validate,
@@ -61,13 +61,13 @@ impl Validate for AdditionalItemsObjectValidator {
 
 pub(crate) struct AdditionalItemsBooleanValidator {
     items_count: usize,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 impl AdditionalItemsBooleanValidator {
     #[inline]
     pub(crate) fn compile<'a>(
         items_count: usize,
-        schema_path: JSONPointer,
+        schema_path: JsonPointer,
     ) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalItemsBooleanValidator {
             items_count,
@@ -138,7 +138,7 @@ pub(crate) fn compile<'a>(
                 }
             }
             _ => Some(Err(ValidationError::multiple_type_error(
-                JSONPointer::default(),
+                JsonPointer::default(),
                 context.clone().into_pointer(),
                 schema,
                 PrimitiveTypesBitMap::new()

@@ -3,16 +3,16 @@ use boon::{Compiler, Schemas};
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use serde_json::Value;
 
-fn bench_compile(c: &mut Criterion, name: &str, schema: &Value) {
+fn bench_build(c: &mut Criterion, name: &str, schema: &Value) {
     let mut compiler = Compiler::new();
     compiler
         .add_resource("schema.json", schema.clone())
         .expect("Failed to add resource");
-    c.bench_function(&format!("boon/{}/compile", name), |b| {
+    c.bench_function(&format!("boon/{}/build", name), |b| {
         b.iter(|| {
             compiler
                 .compile("schema.json", &mut Schemas::new())
-                .expect("Failed to compile");
+                .expect("Failed to build");
         })
     });
 }
@@ -25,7 +25,7 @@ fn bench_validate(c: &mut Criterion, name: &str, schema: &Value, instance: &Valu
         .expect("Failed to add resource");
     let id = compiler
         .compile("schema.json", &mut schemas)
-        .expect("Failed to compile");
+        .expect("Failed to build");
 
     c.bench_with_input(
         BenchmarkId::new(name, "validate"),
@@ -37,7 +37,7 @@ fn bench_validate(c: &mut Criterion, name: &str, schema: &Value, instance: &Valu
 fn run_benchmarks(c: &mut Criterion) {
     for benchmark in Benchmark::iter() {
         benchmark.run(&mut |name, schema, instances| {
-            bench_compile(c, name, schema);
+            bench_build(c, name, schema);
             for instance in instances {
                 let name = format!("boon/{}/{}", name, instance.name);
                 bench_validate(c, &name, schema, &instance.data);
