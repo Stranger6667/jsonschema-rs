@@ -31,7 +31,6 @@ classifiers = [
     "Topic :: File Formats :: JSON :: JSON Schema",
 ]
 requires-python = ">=3.8"
-dependencies = []
 
 [project.optional-dependencies]
 tests = [

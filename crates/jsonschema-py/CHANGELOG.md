@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Added
+
+- New draft-specific validator classes: `Draft4Validator`, `Draft6Validator`, `Draft7Validator`, `Draft201909Validator`, and `Draft202012Validator`.
+- `validator_for` function for automatic draft detection.
+
+### Changed
+
+- The `JSONSchema` class has been renamed to `Validator`. The old name is retained for backward compatibility but will be removed in a future release.
+
+### Deprecated
+
+- The `JSONSchema` class is deprecated. Use the `validator_for` function or draft-specific validators instead.
+  You can use `validator_for` instead of `JSONSchema.from_str`.
+- Constants `jsonschema_rs.DRAFT4`, `jsonschema_rs.DRAFT6`, `jsonschema_rs.DRAFT7`, `jsonschema_rs.DRAFT201909`, and `jsonschema_rs.DRAFT202012` are deprecated in favor of draft-specific validator classes.
+
 ### Fixed
 
 - Location-independent references in remote schemas on drafts 4, 6, and 7.

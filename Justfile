@@ -22,6 +22,9 @@ test-rs *FLAGS:
   cargo llvm-cov --html test {{FLAGS}}
 
 test-py *FLAGS:
+  uvx --with="crates/jsonschema-py[tests]" --refresh pytest crates/jsonschema-py/tests-py -rs {{FLAGS}}
+
+test-py-no-rebuild *FLAGS:
   uvx --with="crates/jsonschema-py[tests]" pytest crates/jsonschema-py/tests-py -rs {{FLAGS}}
 
 bench-py *FLAGS:

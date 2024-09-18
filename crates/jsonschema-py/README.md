@@ -11,24 +11,33 @@ A high-performance JSON Schema validator for Python.
 ```python
 import jsonschema_rs
 
-validator = jsonschema_rs.JSONSchema({"minimum": 42})
+schema = {"maxLength": 5}
+instance = "foo"
+
+# One-off validation
+try:
+    jsonschema_rs.validate(schema, "incorrect")
+except jsonschema_rs.ValidationError as exc:
+    assert str(exc) == '''"incorrect" is longer than 5 characters
+
+Failed validating "maxLength" in schema
+
+On instance:
+    "incorrect"'''
+
+# Build & reuse (faster)
+validator = jsonschema_rs.validator_for(schema)
+
+# Iterate over errors
+for error in validator.iter_errors(instance):
+    print(f"Error: {error}")
+    print(f"Location: {error.instance_path}")
 
 # Boolean result
-validator.is_valid(45)
-
-# Raise a ValidationError
-validator.validate(41)
-# ValidationError: 41 is less than the minimum of 42
-#
-# Failed validating "minimum" in schema
-#
-# On instance:
-#    41
-
-# Iterate over all validation errors
-for error in validator.iter_errors(40):
-    print(f"Error: {error}")
+assert validator.is_valid(instance)
 ```
+
+> ⚠️ **Upgrading from pre-0.20.0?** Check our [Migration Guide](MIGRATION.md) for key changes.
 
 ## Highlights
 
@@ -62,20 +71,34 @@ pip install jsonschema-rs
 
 ## Usage
 
-If you have a schema as a JSON string, then you could use
-`jsonschema_rs.JSONSchema.from_str` to avoid parsing on the
-Python side:
+If you have a schema as a JSON string, then you could pass it to `validator_for`
+to avoid parsing on the Python side:
 
 ```python
-validator = jsonschema_rs.JSONSchema.from_str('{"minimum": 42}')
+validator = jsonschema_rs.validator_for('{"minimum": 42}')
 ...
 ```
 
-You can specify a custom JSON Schema draft using the `draft` argument:
+You can use draft-specific validators for different JSON Schema versions:
 
 ```python
 import jsonschema_rs
 
+# Automatic draft detection
+validator = jsonschema_rs.validator_for({"minimum": 42})
+
+# Draft-specific validators
+validator = jsonschema_rs.Draft7Validator({"minimum": 42})
+validator = jsonschema_rs.Draft201909Validator({"minimum": 42})
+validator = jsonschema_rs.Draft202012Validator({"minimum": 42})
+```
+
+For backwards compatibility, you can still use the `JSONSchema` class with the `draft` argument, but this is deprecated:
+
+```python
+import jsonschema_rs
+
+# Deprecated: Use draft-specific validators instead
 validator = jsonschema_rs.JSONSchema(
     {"minimum": 42}, 
     draft=jsonschema_rs.Draft7
@@ -99,7 +122,7 @@ def is_currency(value):
     return len(value) == 3 and value.isascii()
 
 
-validator = jsonschema_rs.JSONSchema(
+validator = jsonschema_rs.validator_for(
     {"type": "string", "format": "currency"}, 
     formats={"currency": is_currency}
 )
@@ -120,6 +143,10 @@ For detailed benchmarks, see our [full performance comparison](BENCHMARKS.md).
 ## Python support
 
 `jsonschema-rs` supports CPython 3.8, 3.9, 3.10, 3.11, and 3.12.
+
+## Acknowledgements
+
+This library draws API design inspiration from the Python [`jsonschema`](https://github.com/python-jsonschema/jsonschema) package. We're grateful to the Python `jsonschema` maintainers and contributors for their pioneering work in JSON Schema validation.
 
 ## Support
 

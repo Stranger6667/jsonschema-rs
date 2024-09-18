@@ -182,7 +182,7 @@ impl Resolver {
                 let draft = draft_from_schema(&resolved).unwrap_or(self.draft);
                 // traverse the schema and store all named ones under their canonical ids
                 let mut schemas = self.schemas.write();
-                find_schemas(draft, &resolved, &url, &mut |id, schema| {
+                find_schemas(draft, &resolved, url, &mut |id, schema| {
                     schemas.insert(id, Arc::new(schema.clone()));
                     None
                 })?;

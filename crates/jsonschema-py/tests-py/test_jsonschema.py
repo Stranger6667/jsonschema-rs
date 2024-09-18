@@ -9,7 +9,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from jsonschema_rs import JSONSchema, ValidationError, is_valid, iter_errors, validate
+from jsonschema_rs import ValidationError, is_valid, iter_errors, validate, validator_for
 
 json = st.recursive(
     st.none()
@@ -49,19 +49,15 @@ def test_invalid_type(func):
         func(set(), True)
 
 
-def test_module():
-    assert JSONSchema.__module__ == "jsonschema_rs"
-
-
 def test_repr():
-    assert repr(JSONSchema({"minimum": 5})) == '<JSONSchema: {"minimum":5}>'
+    assert repr(validator_for({"minimum": 5})) == '<Draft7Validator: {"minimum":5}>'
 
 
 @pytest.mark.parametrize(
     "func",
     (
-        JSONSchema({"minimum": 5}).validate,
-        JSONSchema.from_str('{"minimum": 5}').validate,
+        validator_for({"minimum": 5}).validate,
+        validator_for('{"minimum": 5}').validate,
         partial(validate, {"minimum": 5}),
     ),
 )
@@ -71,8 +67,8 @@ def test_validate(func):
 
 
 def test_from_str_error():
-    with pytest.raises(ValueError, match="Expected string, got int"):
-        JSONSchema.from_str(42)  # type: ignore
+    with pytest.raises(ValidationError, match='42 is not of types "boolean", "object"'):
+        validator_for(42)  # type: ignore
 
 
 @pytest.mark.parametrize(
@@ -127,18 +123,6 @@ def test_paths():
     assert exc.value.message == '1 is not of type "string"'
 
 
-@pytest.mark.parametrize(
-    "schema, draft, error",
-    (
-        ([], None, r'\[\] is not of types "boolean", "object"'),
-        ({}, 5, "Unknown draft: 5"),
-    ),
-)
-def test_initialization_errors(schema, draft, error):
-    with pytest.raises(ValueError, match=error):
-        JSONSchema(schema, draft)
-
-
 @given(minimum=st.integers().map(abs))
 def test_minimum(minimum):
     with suppress(SystemError, ValueError):
@@ -155,7 +139,7 @@ def test_maximum(maximum):
 
 @pytest.mark.parametrize("method", ("is_valid", "validate"))
 def test_invalid_value(method):
-    schema = JSONSchema({"minimum": 42})
+    schema = validator_for({"minimum": 42})
     with pytest.raises(ValueError, match="Unsupported type: 'object'"):
         getattr(schema, method)(object())
 
@@ -184,7 +168,7 @@ SCHEMA = {"properties": {"foo": {"type": "integer"}, "bar": {"type": "string"}}}
 @pytest.mark.parametrize(
     "func",
     (
-        JSONSchema(SCHEMA).iter_errors,
+        validator_for(SCHEMA).iter_errors,
         partial(iter_errors, SCHEMA),
     ),
 )
@@ -205,7 +189,7 @@ def test_iter_err_message(func):
 @pytest.mark.parametrize(
     "func",
     (
-        JSONSchema({"properties": {"foo": {"type": "integer"}}}).iter_errors,
+        validator_for({"properties": {"foo": {"type": "integer"}}}).iter_errors,
         partial(iter_errors, {"properties": {"foo": {"type": "integer"}}}),
     ),
 )
@@ -281,7 +265,7 @@ def test_custom_format():
     def is_currency(value):
         return len(value) == 3 and value.isascii()
 
-    validator = JSONSchema({"type": "string", "format": "currency"}, formats={"currency": is_currency})
+    validator = validator_for({"type": "string", "format": "currency"}, formats={"currency": is_currency})
     assert validator.is_valid("USD")
     assert not validator.is_valid(42)
     assert not validator.is_valid("invalid")
@@ -289,7 +273,7 @@ def test_custom_format():
 
 def test_custom_format_invalid_callback():
     with pytest.raises(ValueError, match="Format checker for 'currency' must be a callable"):
-        JSONSchema({"type": "string", "format": "currency"}, formats={"currency": 42})
+        validator_for({"type": "string", "format": "currency"}, formats={"currency": 42})
 
 
 def test_custom_format_with_exception():
@@ -298,7 +282,7 @@ def test_custom_format_with_exception():
 
     schema = {"type": "string", "format": "currency"}
     formats = {"currency": is_currency}
-    validator = JSONSchema(schema, formats=formats)
+    validator = validator_for(schema, formats=formats)
     with pytest.raises(ValueError, match="Invalid currency"):
         validator.is_valid("USD")
     with pytest.raises(ValueError, match="Invalid currency"):
