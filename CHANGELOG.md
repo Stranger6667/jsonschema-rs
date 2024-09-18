@@ -2,7 +2,10 @@
 
 ## [Unreleased]
 
+**Important:** This release includes several deprecations and renames. While backward compatibility is maintained for now, users are encouraged to update their code. See the [Migration Guide](MIGRATION.md) for details on transitioning to the new API.
+
 ### Added
+
 - New draft-specific modules for easier version-targeted validation:
   - `jsonschema::draft4`
   - `jsonschema::draft6`
