@@ -148,8 +148,10 @@ pub(crate) fn compile<'a>(
 
 #[cfg(test)]
 mod tests {
+    use super::{is_unique, ITEMS_SIZE_THRESHOLD};
     use crate::tests_util;
-    use serde_json::json;
+    use serde_json::{json, Value};
+    use test_case::test_case;
 
     #[test]
     fn schema_path() {
@@ -158,5 +160,33 @@ mod tests {
             &json!([1, 1]),
             "/uniqueItems",
         )
+    }
+
+    #[test_case(&[] => true; "empty array")]
+    #[test_case(&[json!(1)] => true; "one element array")]
+    #[test_case(&[json!(1), json!(2)] => true; "two unique elements")]
+    #[test_case(&[json!(1), json!(1)] => false; "two non-unique elements")]
+    #[test_case(&[json!(1), json!(2), json!(3)] => true; "three unique elements")]
+    #[test_case(&[json!(1), json!(2), json!(1)] => false; "three non-unique elements")]
+    #[test_case(&[json!(1), json!("string"), json!(true), json!(null), json!({"key": "value"}), json!([1, 2, 3])] => true; "mixed types")]
+    #[test_case(&[json!({"a": 1, "b": 1}), json!({"a": 1, "b": 2}), json!({"a": 1, "b": 3})] => true; "complex objects unique")]
+    #[test_case(&[json!({"a": 1, "b": 2}), json!({"b": 2, "a": 1}), json!({"a": 1, "b": 2})] => false; "complex objects non-unique")]
+    fn test_is_unique(items: &[Value]) -> bool {
+        is_unique(items)
+    }
+
+    #[test_case(ITEMS_SIZE_THRESHOLD => true; "small array unique")]
+    #[test_case(ITEMS_SIZE_THRESHOLD + 1 => true; "large array unique")]
+    fn test_unique_arrays(size: usize) -> bool {
+        let arr = (1..=size).map(|i| json!(i)).collect::<Vec<_>>();
+        is_unique(&arr)
+    }
+
+    #[test_case(ITEMS_SIZE_THRESHOLD => false; "small array non-unique")]
+    #[test_case(ITEMS_SIZE_THRESHOLD + 1 => false; "large array non-unique")]
+    fn test_non_unique_arrays(size: usize) -> bool {
+        let mut arr = (1..=size).map(|i| json!(i)).collect::<Vec<_>>();
+        arr[size - 1] = json!(1);
+        is_unique(&arr)
     }
 }
