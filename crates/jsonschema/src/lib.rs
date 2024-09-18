@@ -180,9 +180,9 @@
 //! impl SchemaResolver for StaticSchemaResolver {
 //!     fn resolve(
 //!         &self,
-//!         _root_schema: &serde_json::Value,
+//!         schema: &Value,
 //!         url: &Url,
-//!         _original_reference: &str
+//!         reference: &str
 //!     ) -> Result<Arc<Value>, SchemaResolverError> {
 //!         self.schemas
 //!             .get(url.as_str())
