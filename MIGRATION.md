@@ -2,9 +2,7 @@
 
 ## Upgrading from 0.19.x to 0.20.0
 
-### New Features
-
-1. Draft-specific modules are now available:
+Draft-specific modules are now available:
 
    ```rust
    // Old (0.19.x)
@@ -20,7 +18,7 @@
 
    Available modules: `draft4`, `draft6`, `draft7`, `draft201909`, `draft202012`
 
-2. Use the new `options()` function for easier customization:
+Use the new `options()` function for easier customization:
 
    ```rust
    // Old (0.19.x)
@@ -29,8 +27,6 @@
    // New (0.20.0)
    let options = jsonschema::options();
    ```
-
-### Deprecations and Renames
 
 The following items have been renamed. While the old names are still supported in 0.20.0 for backward compatibility, it's recommended to update to the new names:
 
