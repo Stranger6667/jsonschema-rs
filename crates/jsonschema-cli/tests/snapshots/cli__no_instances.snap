@@ -1,0 +1,5 @@
+---
+source: crates/jsonschema-cli/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+

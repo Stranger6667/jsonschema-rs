@@ -18,6 +18,9 @@ lint-py:
 
 lint: lint-rs lint-py
 
+test-rs *FLAGS:
+  cargo llvm-cov --html test {{FLAGS}}
+
 test-py *FLAGS:
   uvx --with="crates/jsonschema-py[tests]" pytest crates/jsonschema-py/tests-py -rs {{FLAGS}}
 
