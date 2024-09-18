@@ -3,7 +3,7 @@
 use crate::{
     compilation::DEFAULT_ROOT_URL,
     error::ValidationError,
-    schemas::{id_of, Draft},
+    schemas::{draft_from_schema, id_of, Draft},
 };
 use ahash::AHashMap;
 use parking_lot::RwLock;
@@ -116,10 +116,11 @@ impl SchemaResolver for DefaultResolver {
 pub(crate) struct Resolver {
     external_resolver: Arc<dyn SchemaResolver>,
     root_schema: Arc<Value>,
+    draft: Draft,
     // canonical_id: sub-schema mapping to resolve documents by their ID
     // canonical_id is composed with the root document id
     // (if not specified, then `DEFAULT_ROOT_URL` is used for this purpose)
-    schemas: AHashMap<String, Arc<Value>>,
+    schemas: RwLock<AHashMap<String, Arc<Value>>>,
     store: RwLock<AHashMap<Cow<'static, str>, Arc<Value>>>,
 }
 
@@ -149,8 +150,9 @@ impl Resolver {
         })?;
         Ok(Resolver {
             external_resolver,
+            draft,
             root_schema: schema,
-            schemas,
+            schemas: RwLock::new(schemas),
             store: RwLock::new(store),
         })
     }
@@ -163,22 +165,29 @@ impl Resolver {
     fn resolve_url(&self, url: &Url, orig_ref: &str) -> Result<Arc<Value>, ValidationError<'_>> {
         match url.as_str() {
             DEFAULT_ROOT_URL => Ok(self.root_schema.clone()),
-            url_str => match self.schemas.get(url_str) {
-                Some(value) => Ok(value.clone()),
-                None => {
-                    if let Some(cached) = self.store.read().get(url_str) {
-                        return Ok(cached.clone());
-                    }
-                    let resolved = self
-                        .external_resolver
-                        .resolve(&self.root_schema, url, orig_ref)
-                        .map_err(|error| ValidationError::resolver(url.clone(), error))?;
-                    self.store
-                        .write()
-                        .insert(url.to_string().into(), resolved.clone());
-                    Ok(resolved)
+            url_str => {
+                if let Some(value) = self.schemas.read().get(url_str) {
+                    return Ok(value.clone());
                 }
-            },
+                if let Some(cached) = self.store.read().get(url_str) {
+                    return Ok(cached.clone());
+                }
+                let resolved = self
+                    .external_resolver
+                    .resolve(&self.root_schema, url, orig_ref)
+                    .map_err(|error| ValidationError::resolver(url.clone(), error))?;
+                self.store
+                    .write()
+                    .insert(url.to_string().into(), resolved.clone());
+                let draft = draft_from_schema(&resolved).unwrap_or(self.draft);
+                // traverse the schema and store all named ones under their canonical ids
+                let mut schemas = self.schemas.write();
+                find_schemas(draft, &resolved, &url, &mut |id, schema| {
+                    schemas.insert(id, Arc::new(schema.clone()));
+                    None
+                })?;
+                Ok(resolved)
+            }
         }
     }
 
@@ -200,7 +209,7 @@ impl Resolver {
 
         // Location-independent identifiers are searched before trying to resolve by
         // fragment-less url
-        if let Some(document) = self.schemas.get(url.as_str()) {
+        if let Some(document) = self.schemas.read().get(url.as_str()) {
             return Ok((resource, Arc::clone(document)));
         }
 
@@ -378,7 +387,7 @@ mod tests {
         let schema = json!({"type": "string"});
         let resolver = make_resolver(&schema);
         // Then in the resolver schema there should be no schemas
-        assert_eq!(resolver.schemas.len(), 0);
+        assert_eq!(resolver.schemas.read().len(), 0);
     }
 
     #[test]
@@ -392,10 +401,11 @@ mod tests {
         });
         let resolver = make_resolver(&schema);
         // Then in the resolver schema there should be only this schema
-        assert_eq!(resolver.schemas.len(), 1);
+        assert_eq!(resolver.schemas.read().len(), 1);
         assert_eq!(
             resolver
                 .schemas
+                .read()
                 .get("json-schema:///#foo")
                 .map(AsRef::as_ref),
             schema.pointer("/definitions/A")
@@ -415,10 +425,11 @@ mod tests {
         });
         let resolver = make_resolver(&schema);
         // Then in the resolver schema there should be only these schemas
-        assert_eq!(resolver.schemas.len(), 2);
+        assert_eq!(resolver.schemas.read().len(), 2);
         assert_eq!(
             resolver
                 .schemas
+                .read()
                 .get("json-schema:///#foo")
                 .map(AsRef::as_ref),
             schema.pointer("/definitions/A/0")
@@ -426,6 +437,7 @@ mod tests {
         assert_eq!(
             resolver
                 .schemas
+                .read()
                 .get("json-schema:///#bar")
                 .map(AsRef::as_ref),
             schema.pointer("/definitions/A/1")
@@ -462,10 +474,11 @@ mod tests {
         });
         let resolver = make_resolver(&schema);
         // Then in the resolver schema there should be root & sub-schema
-        assert_eq!(resolver.schemas.len(), 2);
+        assert_eq!(resolver.schemas.read().len(), 2);
         assert_eq!(
             resolver
                 .schemas
+                .read()
                 .get("http://localhost:1234/tree")
                 .map(AsRef::as_ref),
             schema.pointer("")
@@ -473,6 +486,7 @@ mod tests {
         assert_eq!(
             resolver
                 .schemas
+                .read()
                 .get("http://localhost:1234/node")
                 .map(AsRef::as_ref),
             schema.pointer("/definitions/node")
@@ -488,10 +502,11 @@ mod tests {
             }
         });
         let resolver = make_resolver(&schema);
-        assert_eq!(resolver.schemas.len(), 1);
+        assert_eq!(resolver.schemas.read().len(), 1);
         assert_eq!(
             resolver
                 .schemas
+                .read()
                 .get("http://localhost:1234/bar#foo")
                 .map(AsRef::as_ref),
             schema.pointer("/definitions/A")
@@ -516,10 +531,11 @@ mod tests {
             }
         });
         let resolver = make_resolver(&schema);
-        assert_eq!(resolver.schemas.len(), 3);
+        assert_eq!(resolver.schemas.read().len(), 3);
         assert_eq!(
             resolver
                 .schemas
+                .read()
                 .get("http://localhost:1234/root")
                 .map(AsRef::as_ref),
             schema.pointer("")
@@ -527,6 +543,7 @@ mod tests {
         assert_eq!(
             resolver
                 .schemas
+                .read()
                 .get("http://localhost:1234/nested.json")
                 .map(AsRef::as_ref),
             schema.pointer("/definitions/A")
@@ -534,6 +551,7 @@ mod tests {
         assert_eq!(
             resolver
                 .schemas
+                .read()
                 .get("http://localhost:1234/nested.json#foo")
                 .map(AsRef::as_ref),
             schema.pointer("/definitions/A/definitions/B")
@@ -550,10 +568,11 @@ mod tests {
             }
         });
         let resolver = make_resolver(&schema);
-        assert_eq!(resolver.schemas.len(), 2);
+        assert_eq!(resolver.schemas.read().len(), 2);
         assert_eq!(
             resolver
                 .schemas
+                .read()
                 .get("http://localhost:1234/")
                 .map(AsRef::as_ref),
             schema.pointer("")
@@ -561,6 +580,7 @@ mod tests {
         assert_eq!(
             resolver
                 .schemas
+                .read()
                 .get("http://localhost:1234/folder/")
                 .map(AsRef::as_ref),
             schema.pointer("/items")
@@ -584,10 +604,11 @@ mod tests {
             "type": "object"
         });
         let resolver = make_resolver(&schema);
-        assert_eq!(resolver.schemas.len(), 2);
+        assert_eq!(resolver.schemas.read().len(), 2);
         assert_eq!(
             resolver
                 .schemas
+                .read()
                 .get("http://localhost:1234/scope_change_defs1.json")
                 .map(AsRef::as_ref),
             schema.pointer("")
@@ -595,6 +616,7 @@ mod tests {
         assert_eq!(
             resolver
                 .schemas
+                .read()
                 .get("http://localhost:1234/folder/")
                 .map(AsRef::as_ref),
             schema.pointer("/definitions/baz")

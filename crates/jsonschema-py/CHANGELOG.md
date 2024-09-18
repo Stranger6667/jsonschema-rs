@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Location-independent references in remote schemas on drafts 4, 6, and 7.
+
 ## [0.19.1] - 2024-09-15
 
 ### Fixed

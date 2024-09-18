@@ -76,7 +76,7 @@ fn test_invalid_instance() {
 fn test_invalid_schema() {
     let dir = tempdir().unwrap();
     let schema = create_temp_file(&dir, "schema.json", r#"{"type": "invalid"}"#);
-    let instance = create_temp_file(&dir, "instance.json", r#"{}"#);
+    let instance = create_temp_file(&dir, "instance.json", "{}");
 
     let mut cmd = cli();
     cmd.arg(&schema).arg("--instance").arg(&instance);

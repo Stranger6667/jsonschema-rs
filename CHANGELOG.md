@@ -29,6 +29,10 @@
 
 Old names are retained for backward compatibility but will be removed in a future release.
 
+### Fixed
+
+- Location-independent references in remote schemas on drafts 4, 6, and 7.
+
 ## [0.19.1] - 2024-09-15
 
 ### Fixed
