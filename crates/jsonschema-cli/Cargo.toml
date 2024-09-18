@@ -1,6 +1,6 @@
 [package]
 name = "jsonschema-cli"
-version = "0.19.1"
+version = "0.20.0"
 description = "A command line tool for JSON Schema validation."
 keywords = ["jsonschema", "validation"]
 categories = ["web-programming"]
@@ -13,7 +13,7 @@ license.workspace = true
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
-jsonschema = { version = "0.19.1", path = "../jsonschema/" }
+jsonschema = { version = "0.20.0", path = "../jsonschema/" }
 serde_json.workspace = true
 
 [[bin]]

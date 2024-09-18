@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.20.0] - 2024-09-18
+
 **Important:** This release includes several deprecations and renames. While backward compatibility is maintained for now, users are encouraged to update their code. See the [Migration Guide](MIGRATION.md) for details on transitioning to the new API.
 
 ### Added
@@ -538,7 +540,8 @@ Old names are retained for backward compatibility but will be removed in a futur
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.19.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.20.0...HEAD
+[0.20.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.19.0...rust-v0.20.0
 [0.19.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.19.0...rust-v0.19.1
 [0.19.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.18.3...rust-v0.19.0
 [0.18.3]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.18.2...rust-v0.18.3
