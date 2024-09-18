@@ -70,3 +70,94 @@ Draft6: int
 Draft7: int
 Draft201909: int
 Draft202012: int
+
+class Draft4Validator:
+    def __init__(
+        self,
+        schema: _SchemaT | str,
+        formats: dict[str, _FormatFunc] | None = None,
+    ) -> None:
+        pass
+
+    def is_valid(self, instance: Any) -> bool:
+        pass
+
+    def validate(self, instance: Any) -> None:
+        pass
+
+    def iter_errors(self, instance: Any) -> Iterator[ValidationError]:
+        pass
+
+class Draft6Validator:
+    def __init__(
+        self,
+        schema: _SchemaT | str,
+        formats: dict[str, _FormatFunc] | None = None,
+    ) -> None:
+        pass
+
+    def is_valid(self, instance: Any) -> bool:
+        pass
+
+    def validate(self, instance: Any) -> None:
+        pass
+
+    def iter_errors(self, instance: Any) -> Iterator[ValidationError]:
+        pass
+
+class Draft7Validator:
+    def __init__(
+        self,
+        schema: _SchemaT | str,
+        formats: dict[str, _FormatFunc] | None = None,
+    ) -> None:
+        pass
+
+    def is_valid(self, instance: Any) -> bool:
+        pass
+
+    def validate(self, instance: Any) -> None:
+        pass
+
+    def iter_errors(self, instance: Any) -> Iterator[ValidationError]:
+        pass
+
+class Draft201909Validator:
+    def __init__(
+        self,
+        schema: _SchemaT | str,
+        formats: dict[str, _FormatFunc] | None = None,
+    ) -> None:
+        pass
+
+    def is_valid(self, instance: Any) -> bool:
+        pass
+
+    def validate(self, instance: Any) -> None:
+        pass
+
+    def iter_errors(self, instance: Any) -> Iterator[ValidationError]:
+        pass
+
+class Draft202012Validator:
+    def __init__(
+        self,
+        schema: _SchemaT | str,
+        formats: dict[str, _FormatFunc] | None = None,
+    ) -> None:
+        pass
+
+    def is_valid(self, instance: Any) -> bool:
+        pass
+
+    def validate(self, instance: Any) -> None:
+        pass
+
+    def iter_errors(self, instance: Any) -> Iterator[ValidationError]:
+        pass
+
+def validator_for(
+    schema: _SchemaT,
+    formats: dict[str, _FormatFunc] | None = None,
+) -> Draft4Validator | Draft6Validator | Draft7Validator | Draft201909Validator | Draft202012Validator:
+    pass

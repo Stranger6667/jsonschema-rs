@@ -52,16 +52,14 @@ def mock_server():
 
 SUPPORTED_DRAFTS = (4, 6, 7)
 NOT_SUPPORTED_CASES = {
-    4: ("bignum.json", "email.json", "ecmascript-regex.json", "refRemote.json"),
-    6: ("bignum.json", "email.json", "ecmascript-regex.json", "refRemote.json"),
+    4: ("bignum.json", "email.json", "ecmascript-regex.json"),
+    6: ("bignum.json", "email.json", "ecmascript-regex.json"),
     7: (
         "bignum.json",
         "email.json",
         "idn-hostname.json",
         "time.json",
         "ecmascript-regex.json",
-        "refRemote.json",
-        "cross-draft.json",
     ),
 }
 

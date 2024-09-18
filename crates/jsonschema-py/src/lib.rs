@@ -106,11 +106,11 @@ fn into_path(py: Python<'_>, pointer: JsonPointer) -> PyResult<Py<PyList>> {
 
 fn get_draft(draft: u8) -> PyResult<Draft> {
     match draft {
-        DRAFT4 => Ok(jsonschema::Draft::Draft4),
-        DRAFT6 => Ok(jsonschema::Draft::Draft6),
-        DRAFT7 => Ok(jsonschema::Draft::Draft7),
-        DRAFT201909 => Ok(jsonschema::Draft::Draft201909),
-        DRAFT202012 => Ok(jsonschema::Draft::Draft202012),
+        DRAFT4 => Ok(Draft::Draft4),
+        DRAFT6 => Ok(Draft::Draft6),
+        DRAFT7 => Ok(Draft::Draft7),
+        DRAFT201909 => Ok(Draft::Draft201909),
+        DRAFT202012 => Ok(Draft::Draft202012),
         _ => Err(exceptions::PyValueError::new_err(format!(
             "Unknown draft: {}",
             draft
@@ -261,7 +261,7 @@ fn to_error_message(error: &jsonschema::ValidationError<'_>) -> String {
 ///     >>> is_valid({"minimum": 5}, 3)
 ///     False
 ///
-/// If your workflow implies validating against the same schema, consider using `JSONSchema.is_valid`
+/// If your workflow implies validating against the same schema, consider using `validator_for(...).is_valid`
 /// instead.
 #[pyfunction]
 #[allow(unused_variables)]
@@ -295,7 +295,7 @@ fn is_valid(
 ///     ValidationError: 3 is less than the minimum of 5
 ///
 /// If the input instance is invalid, only the first occurred error is raised.
-/// If your workflow implies validating against the same schema, consider using `JSONSchema.validate`
+/// If your workflow implies validating against the same schema, consider using `validator_for(...).validate`
 /// instead.
 #[pyfunction]
 #[allow(unused_variables)]
@@ -324,7 +324,7 @@ fn validate(
 ///     ...
 ///     ValidationError: 3 is less than the minimum of 5
 ///
-/// If your workflow implies validating against the same schema, consider using `JSONSchema.iter_errors`
+/// If your workflow implies validating against the same schema, consider using `validator_for().iter_errors`
 /// instead.
 #[pyfunction]
 #[allow(unused_variables)]
@@ -381,6 +381,126 @@ fn handle_format_checked_panic(err: Box<dyn Any + Send>) -> PyErr {
             exceptions::PyRuntimeError::new_err(format!("Validation panicked: {:?}", err))
         }
     })
+}
+
+#[pyclass(module = "jsonschema_rs", subclass)]
+struct Validator {
+    validator: jsonschema::Validator,
+    repr: String,
+}
+
+/// validator_for(schema, formats=None)
+///
+/// Create a validator for the input schema with automatic draft detection and default options.
+///
+///     >>> validator = validator_for({"minimum": 5})
+///     >>> validator.is_valid(3)
+///     False
+///
+#[pyfunction]
+#[pyo3(signature = (schema, formats=None))]
+fn validator_for(
+    py: Python<'_>,
+    schema: &Bound<'_, PyAny>,
+    formats: Option<&Bound<'_, PyDict>>,
+) -> PyResult<Validator> {
+    validator_for_impl(py, schema, None, formats)
+}
+
+fn validator_for_impl(
+    py: Python<'_>,
+    schema: &Bound<'_, PyAny>,
+    draft: Option<u8>,
+    formats: Option<&Bound<'_, PyDict>>,
+) -> PyResult<Validator> {
+    let obj_ptr = schema.as_ptr();
+    let object_type = unsafe { pyo3::ffi::Py_TYPE(obj_ptr) };
+    let schema = if unsafe { object_type == types::STR_TYPE } {
+        let mut str_size: pyo3::ffi::Py_ssize_t = 0;
+        let ptr = unsafe { PyUnicode_AsUTF8AndSize(obj_ptr, &mut str_size) };
+        let slice = unsafe { std::slice::from_raw_parts(ptr.cast::<u8>(), str_size as usize) };
+        serde_json::from_slice(slice)
+            .map_err(|error| PyValueError::new_err(format!("Invalid string: {}", error)))?
+    } else {
+        ser::to_value(schema)?
+    };
+    let options = make_options(draft, formats)?;
+    match options.build(&schema) {
+        Ok(validator) => Ok(Validator {
+            validator,
+            repr: get_schema_repr(&schema),
+        }),
+        Err(error) => Err(into_py_err(py, error)?),
+    }
+}
+
+#[pymethods]
+impl Validator {
+    #[new]
+    #[pyo3(signature = (schema, formats=None))]
+    fn new(
+        py: Python<'_>,
+        schema: &Bound<'_, PyAny>,
+        formats: Option<&Bound<'_, PyDict>>,
+    ) -> PyResult<Self> {
+        validator_for(py, schema, formats)
+    }
+    /// is_valid(instance)
+    ///
+    /// Perform fast validation against the schema.
+    ///
+    ///     >>> validator = validator_for({"minimum": 5})
+    ///     >>> validator.is_valid(3)
+    ///     False
+    ///
+    /// The output is a boolean value, that indicates whether the instance is valid or not.
+    #[pyo3(text_signature = "(instance)")]
+    fn is_valid(&self, instance: &Bound<'_, PyAny>) -> PyResult<bool> {
+        let instance = ser::to_value(instance)?;
+        panic::catch_unwind(AssertUnwindSafe(|| Ok(self.validator.is_valid(&instance))))
+            .map_err(handle_format_checked_panic)?
+    }
+    /// validate(instance)
+    ///
+    /// Validate the input instance and raise `ValidationError` in the error case
+    ///
+    ///     >>> validator = validator_for({"minimum": 5})
+    ///     >>> validator.validate(3)
+    ///     ...
+    ///     ValidationError: 3 is less than the minimum of 5
+    ///
+    /// If the input instance is invalid, only the first occurred error is raised.
+    #[pyo3(text_signature = "(instance)")]
+    fn validate(&self, py: Python<'_>, instance: &Bound<'_, PyAny>) -> PyResult<()> {
+        raise_on_error(py, &self.validator, instance)
+    }
+    /// iter_errors(instance)
+    ///
+    /// Iterate the validation errors of the input instance
+    ///
+    ///     >>> validator = validator_for({"minimum": 5})
+    ///     >>> next(validator.iter_errors(3))
+    ///     ...
+    ///     ValidationError: 3 is less than the minimum of 5
+    #[pyo3(text_signature = "(instance)")]
+    fn iter_errors(
+        &self,
+        py: Python<'_>,
+        instance: &Bound<'_, PyAny>,
+    ) -> PyResult<ValidationErrorIter> {
+        iter_on_error(py, &self.validator, instance)
+    }
+    fn __repr__(&self) -> String {
+        let draft = match self.validator.draft() {
+            Draft::Draft4 => "Draft4",
+            Draft::Draft6 => "Draft6",
+            Draft::Draft7 => "Draft7",
+            Draft::Draft201909 => "Draft201909",
+            Draft::Draft202012 => "Draft202012",
+            _ => "Unknown",
+        };
+        format!("<{draft}Validator: {}>", self.repr)
+    }
 }
 
 #[pymethods]
@@ -501,6 +621,141 @@ impl JSONSchema {
     }
 }
 
+/// Draft4Validator(schema, formats=None)
+///
+/// A JSON Schema Draft 4 validator.
+///
+///     >>> validator = Draft4Validator({"minimum": 5})
+///     >>> validator.is_valid(3)
+///     False
+///
+#[pyclass(module = "jsonschema_rs", extends=Validator, subclass)]
+struct Draft4Validator {}
+
+#[pymethods]
+impl Draft4Validator {
+    #[new]
+    #[pyo3(signature = (schema, formats=None))]
+    fn new(
+        py: Python<'_>,
+        schema: &Bound<'_, PyAny>,
+        formats: Option<&Bound<'_, PyDict>>,
+    ) -> PyResult<(Self, Validator)> {
+        Ok((
+            Draft4Validator {},
+            validator_for_impl(py, schema, Some(DRAFT4), formats)?,
+        ))
+    }
+}
+
+/// Draft6Validator(schema, formats=None)
+///
+/// A JSON Schema Draft 6 validator.
+///
+///     >>> validator = Draft6Validator({"minimum": 5})
+///     >>> validator.is_valid(3)
+///     False
+///
+#[pyclass(module = "jsonschema_rs", extends=Validator, subclass)]
+struct Draft6Validator {}
+
+#[pymethods]
+impl Draft6Validator {
+    #[new]
+    #[pyo3(signature = (schema, formats=None))]
+    fn new(
+        py: Python<'_>,
+        schema: &Bound<'_, PyAny>,
+        formats: Option<&Bound<'_, PyDict>>,
+    ) -> PyResult<(Self, Validator)> {
+        Ok((
+            Draft6Validator {},
+            validator_for_impl(py, schema, Some(DRAFT6), formats)?,
+        ))
+    }
+}
+
+/// Draft7Validator(schema, formats=None)
+///
+/// A JSON Schema Draft 7 validator.
+///
+///     >>> validator = Draft7Validator({"minimum": 5})
+///     >>> validator.is_valid(3)
+///     False
+///
+#[pyclass(module = "jsonschema_rs", extends=Validator, subclass)]
+struct Draft7Validator {}
+
+#[pymethods]
+impl Draft7Validator {
+    #[new]
+    #[pyo3(signature = (schema, formats=None))]
+    fn new(
+        py: Python<'_>,
+        schema: &Bound<'_, PyAny>,
+        formats: Option<&Bound<'_, PyDict>>,
+    ) -> PyResult<(Self, Validator)> {
+        Ok((
+            Draft7Validator {},
+            validator_for_impl(py, schema, Some(DRAFT7), formats)?,
+        ))
+    }
+}
+
+/// Draft201909Validator(schema, formats=None)
+///
+/// A JSON Schema Draft 2019-09 validator.
+///
+///     >>> validator = Draft201909Validator({"minimum": 5})
+///     >>> validator.is_valid(3)
+///     False
+///
+#[pyclass(module = "jsonschema_rs", extends=Validator, subclass)]
+struct Draft201909Validator {}
+
+#[pymethods]
+impl Draft201909Validator {
+    #[new]
+    #[pyo3(signature = (schema, formats=None))]
+    fn new(
+        py: Python<'_>,
+        schema: &Bound<'_, PyAny>,
+        formats: Option<&Bound<'_, PyDict>>,
+    ) -> PyResult<(Self, Validator)> {
+        Ok((
+            Draft201909Validator {},
+            validator_for_impl(py, schema, Some(DRAFT201909), formats)?,
+        ))
+    }
+}
+
+/// Draft202012Validator(schema, formats=None)
+///
+/// A JSON Schema Draft 2020-12 validator.
+///
+///     >>> validator = Draft202012Validator({"minimum": 5})
+///     >>> validator.is_valid(3)
+///     False
+///
+#[pyclass(module = "jsonschema_rs", extends=Validator, subclass)]
+struct Draft202012Validator {}
+
+#[pymethods]
+impl Draft202012Validator {
+    #[new]
+    #[pyo3(signature = (schema, formats=None))]
+    fn new(
+        py: Python<'_>,
+        schema: &Bound<'_, PyAny>,
+        formats: Option<&Bound<'_, PyDict>>,
+    ) -> PyResult<(Self, Validator)> {
+        Ok((
+            Draft202012Validator {},
+            validator_for_impl(py, schema, Some(DRAFT202012), formats)?,
+        ))
+    }
+}
+
 #[allow(dead_code)]
 mod build {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
@@ -515,7 +770,13 @@ fn jsonschema_rs(py: Python<'_>, module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_wrapped(wrap_pyfunction!(is_valid))?;
     module.add_wrapped(wrap_pyfunction!(validate))?;
     module.add_wrapped(wrap_pyfunction!(iter_errors))?;
+    module.add_wrapped(wrap_pyfunction!(validator_for))?;
     module.add_class::<JSONSchema>()?;
+    module.add_class::<Draft4Validator>()?;
+    module.add_class::<Draft6Validator>()?;
+    module.add_class::<Draft7Validator>()?;
+    module.add_class::<Draft201909Validator>()?;
+    module.add_class::<Draft202012Validator>()?;
     module.add("ValidationError", py.get_type_bound::<ValidationError>())?;
     module.add("Draft4", DRAFT4)?;
     module.add("Draft6", DRAFT6)?;

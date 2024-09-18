@@ -152,8 +152,12 @@ wheels = [
 
 [[package]]
 name = "jsonschema-rs"
-version = "0.18.3"
+version = "0.19.1"
 source = { editable = "." }
+dependencies = [
+    { name = "maturin" },
+    { name = "pip" },
+]
 
 [package.optional-dependencies]
 bench = [
@@ -173,6 +177,8 @@ requires-dist = [
     { name = "flask", marker = "extra == 'tests'", specifier = ">=2.2.5" },
     { name = "hypothesis", marker = "extra == 'tests'", specifier = ">=6.79.4" },
     { name = "jsonschema", marker = "extra == 'bench'", specifier = ">=4.23.0" },
+    { name = "maturin", specifier = ">=1.7.1" },
+    { name = "pip", specifier = ">=24.2" },
     { name = "pytest", marker = "extra == 'tests'", specifier = ">=7.4.4" },
     { name = "pytest-benchmark", marker = "extra == 'bench'", specifier = ">=4.0.0" },
 ]
@@ -249,12 +255,44 @@ wheels = [
 ]
 
 [[package]]
+name = "maturin"
+version = "1.7.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tomli", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1d/ec/1f688d6ad82a568fd7c239f1c7a130d3fc2634977df4ef662ee0ac58a153/maturin-1.7.1.tar.gz", hash = "sha256:147754cb3d81177ee12d9baf575d93549e76121dacd3544ad6a50ab718de2b9c", size = 190286 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d5/71/2da6a923a8c65749c614f95046ea0190ff00d6923edc20b0c5ecff2119f1/maturin-1.7.1-py3-none-linux_armv6l.whl", hash = "sha256:372a141b31ae7396728d2dedc6061fe4522c1803ae1c05700d37008e1d1a2cc9", size = 8198799 },
+    { url = "https://files.pythonhosted.org/packages/21/7c/70e4f4e634777652101277eb1449777310f960f831c831bf7956ea81ef82/maturin-1.7.1-py3-none-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:49939608095d9bcdf19d081dfd6ac1e8f915c645115090514c7b86e1e382f241", size = 15603724 },
+    { url = "https://files.pythonhosted.org/packages/0d/2c/06702f20e9f8f019bc036084292c9fe3ae04b4f6a163929ee10627dd0258/maturin-1.7.1-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:973126a36cfb9861b3207df579678c1bcd7c348578a41ccfbe80d811a84f1740", size = 7982580 },
+    { url = "https://files.pythonhosted.org/packages/6c/a3/a4841dddb81e1855b57acf393ba72c405f097a3c6d7d5078e4d7105a4735/maturin-1.7.1-py3-none-manylinux_2_12_i686.manylinux2010_i686.musllinux_1_1_i686.whl", hash = "sha256:6eec984d26f707b18765478f4892e58ac72e777287cd2ba721d6e2ef6da1f66e", size = 8548076 },
+    { url = "https://files.pythonhosted.org/packages/ad/1c/1d0fd54bb2d068d0f9d513b0fdfb089a0fe8d20f020e673de0a0cda4f485/maturin-1.7.1-py3-none-manylinux_2_12_x86_64.manylinux2010_x86_64.musllinux_1_1_x86_64.whl", hash = "sha256:0df0a6aaf7e9ab92cce2490b03d80b8f5ecbfa0689747a2ea4dfb9e63877b79c", size = 8705393 },
+    { url = "https://files.pythonhosted.org/packages/61/f4/6f4023c9653256fbcf2ef1ab6926f9fd4260390d25c258108ddfd45978d3/maturin-1.7.1-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.musllinux_1_1_aarch64.whl", hash = "sha256:09cca3491c756d1bce6ffff13f004e8a10e67c72a1cba9579058f58220505881", size = 8422778 },
+    { url = "https://files.pythonhosted.org/packages/15/d9/d927f225959e95c89fc6999130426d90d3f8285815dc2503a473049cb232/maturin-1.7.1-py3-none-manylinux_2_17_armv7l.manylinux2014_armv7l.musllinux_1_1_armv7l.whl", hash = "sha256:00f0f8f5051f4c0d0f69bdd0c6297ea87e979f70fb78a377eb4277c932804e2d", size = 8090248 },
+    { url = "https://files.pythonhosted.org/packages/e3/d7/577d081996b901e02c2f3f9881fa1c1b4097bf3a0a46b7f7d8481a37ce1e/maturin-1.7.1-py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.musllinux_1_1_ppc64le.whl", hash = "sha256:7bb184cfbac4e3c55ca21d322e4801e0f75e7932287e156c280c279eae60b69e", size = 8731356 },
+    { url = "https://files.pythonhosted.org/packages/53/3e/725176fac7ce884bc577603f58026fd56b4faed067e81fe6a0839f5a4464/maturin-1.7.1-py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:e5e8e61468d7d79790f0b54f2ed24f2fefbce3518548bc4e1a1f0c7be5bad710", size = 9901905 },
+    { url = "https://files.pythonhosted.org/packages/61/69/3960d152d0a3e527212b4fe991ada3618fd2f5ec64edffdd38875adb1b9c/maturin-1.7.1-py3-none-win32.whl", hash = "sha256:07c8800603e551a45e16fe7ad1742977097ea43c18b28e491df74d4ca15c5857", size = 6479042 },
+    { url = "https://files.pythonhosted.org/packages/a1/5b/512efa939f747f1a1277f981ca1de332f01bb187d193cb8d67f816c38735/maturin-1.7.1-py3-none-win_amd64.whl", hash = "sha256:c5e7e6d130072ca76956106daa276f24a66c3407cfe6cf64c196d4299fd4175c", size = 7268270 },
+    { url = "https://files.pythonhosted.org/packages/c6/ce/eda05e623102dfb75b60f8b222ab3d6bc98a6e7182cc44602b422bd0f07a/maturin-1.7.1-py3-none-win_arm64.whl", hash = "sha256:acf9f539f53a7ad64d406a40b27b768f67d75e6e4e93cb04b29025144a74ef45", size = 6277021 },
+]
+
+[[package]]
 name = "packaging"
 version = "24.0"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ee/b5/b43a27ac7472e1818c4bafd44430e69605baefe1f34440593e0332ec8b4d/packaging-24.0.tar.gz", hash = "sha256:eb82c5e3e56209074766e6885bb04b8c38a0c015d0a30036ebe7ece34c9989e9", size = 147882 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/49/df/1fceb2f8900f8639e278b056416d49134fb8d84c5942ffaa01ad34782422/packaging-24.0-py3-none-any.whl", hash = "sha256:2ddfb553fdf02fb784c234c7ba6ccc288296ceabec964ad2eae3777778130bc5", size = 53488 },
+]
+
+[[package]]
+name = "pip"
+version = "24.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/4d/87/fb90046e096a03aeab235e139436b3fe804cdd447ed2093b0d70eba3f7f8/pip-24.2.tar.gz", hash = "sha256:5b5e490b5e9cb275c879595064adce9ebd31b854e3e803740b72f9ccf34a45b8", size = 1922041 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d4/55/90db48d85f7689ec6f81c0db0622d704306c5284850383c090e6c7195a5c/pip-24.2-py3-none-any.whl", hash = "sha256:2cd581cf58ab7fcfca4ce8efa6dcacd0de5bf8d0a3eb9ec927e07405f4d9e2a2", size = 1815170 },
 ]
 
 [[package]]

@@ -81,9 +81,9 @@ def args(request, variant):
     if (schema is OPENAPI or schema is SWAGGER) and variant == "fastjsonschema":
         pytest.skip("fastjsonschema does not support the uri-reference format and errors")
     if variant == "jsonschema-rs-is-valid":
-        return jsonschema_rs.JSONSchema(schema).is_valid, instance
+        return jsonschema_rs.validator_for(schema).is_valid, instance
     if variant == "jsonschema-rs-validate":
-        return jsonschema_rs.JSONSchema(schema).validate, instance
+        return jsonschema_rs.validator_for(schema).validate, instance
     if variant == "jsonschema":
         return jsonschema.validators.validator_for(schema)(schema).is_valid, instance
     if variant == "fastjsonschema":
@@ -105,8 +105,8 @@ if jsonschema_rs is not None:
     @pytest.mark.parametrize(
         "func",
         (
-            lambda x: jsonschema_rs.JSONSchema(json.loads(x)),
-            jsonschema_rs.JSONSchema.from_str,
+            lambda x: jsonschema_rs.validator_for(json.loads(x)),
+            jsonschema_rs.validator_for,
         ),
         ids=["py-parse", "rs-parse"],
     )
