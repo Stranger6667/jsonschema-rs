@@ -463,17 +463,16 @@ pub use schemas::Draft;
 
 use serde_json::Value;
 
-/// A shortcut for validating `instance` against `schema`. Draft version is detected automatically.
+/// A shortcut for validating `instance` against `schema`. Draft is detected automatically.
 ///
 /// # Examples
 ///
 /// ```rust
-/// use jsonschema::is_valid;
 /// use serde_json::json;
 ///
 /// let schema = json!({"maxLength": 5});
 /// let instance = json!("foo");
-/// assert!(is_valid(&schema, &instance));
+/// assert!(jsonschema::is_valid(&schema, &instance));
 /// ```
 ///
 /// # Panics
@@ -487,22 +486,11 @@ pub fn is_valid(schema: &Value, instance: &Value) -> bool {
         .is_valid(instance)
 }
 
-/// Compile the input schema for faster validation.
+/// Create a validator for the input schema with automatic draft detection.
 ///
 /// # Deprecated
-/// This function is deprecated since version 0.20.0. Use `validator_for` instead.
 ///
-/// # Examples
-///
-/// ```rust
-/// use serde_json::json;
-///
-/// let schema = json!({"minimum": 5});
-/// let instance = json!(42);
-///
-/// let validator = jsonschema::validator_for(&schema).expect("Invalid schema");
-/// assert!(validator.is_valid(&instance));
-/// ```
+/// This function is deprecated since version 0.20.0. Use [`validator_for`] instead.
 #[deprecated(since = "0.20.0", note = "Use `validator_for` instead")]
 pub fn compile(schema: &Value) -> Result<JSONSchema, ValidationError> {
     JSONSchema::compile(schema)
@@ -525,11 +513,11 @@ pub fn validator_for(schema: &Value) -> Result<JSONSchema, ValidationError> {
     JSONSchema::compile(schema)
 }
 
-/// Creates a builder for configuring JSON Schema validation options.
+/// Create a builder for configuring JSON Schema validation options.
 ///
 /// This function returns a [`CompilationOptions`] struct, which allows you to set various
 /// options for JSON Schema validation. You can use this builder to specify
-/// the draft version, set custom formats, configure output, and more.
+/// the draft version, set custom formats, and more.
 ///
 /// # Examples
 ///
