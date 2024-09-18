@@ -65,14 +65,14 @@ impl Validator {
         ValidationOptions::default()
     }
     /// Create a validator using the default options.
-    pub fn new(schema: &Value) -> Result<Validator, ValidationError> {
+    pub fn new(schema: &Value) -> Result<Validator, ValidationError<'static>> {
         Self::options().build(schema)
     }
     /// Create a validator using the default options.
     ///
     /// **DEPRECATED**: Use [`Validator::new`] instead.
     #[deprecated(since = "0.20.0", note = "Use `Validator::new` instead")]
-    pub fn compile(schema: &Value) -> Result<Validator, ValidationError> {
+    pub fn compile(schema: &Value) -> Result<Validator, ValidationError<'static>> {
         Self::new(schema)
     }
     /// Run validation against `instance` and return an iterator over [`ValidationError`] in the error case.
