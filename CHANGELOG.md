@@ -18,6 +18,8 @@
 ### Changed
 
 - Make `Debug` implementation for `SchemaNode` opaque.
+- Make `jsonschema::validator_for` and related functions return `ValidationError<'static>` in their `Err` variant.
+  This change makes possible to use the `?` operator to return errors from functions where the input schema is defined.
 
 ### Deprecated
 

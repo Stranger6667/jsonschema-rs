@@ -309,10 +309,7 @@ impl ValidationOptions {
     /// assert!(validator.is_valid(&json!("Hello")));
     /// assert!(!validator.is_valid(&json!(42)));
     /// ```
-    pub fn build<'a>(
-        &self,
-        schema: &'a serde_json::Value,
-    ) -> Result<Validator, ValidationError<'a>> {
+    pub fn build(&self, schema: &serde_json::Value) -> Result<Validator, ValidationError<'static>> {
         // Draft is detected in the following precedence order:
         //   - Explicitly specified;
         //   - $schema field in the document;
@@ -348,11 +345,14 @@ impl ValidationOptions {
                 .validate(schema)
                 .err()
             {
-                return Err(errors.next().expect("Should have at least one element"));
+                return Err(errors
+                    .next()
+                    .expect("Should have at least one element")
+                    .into_owned());
             }
         }
 
-        let node = compile_validators(schema, &context)?;
+        let node = compile_validators(schema, &context).map_err(|err| err.into_owned())?;
 
         Ok(Validator { node, config })
     }
