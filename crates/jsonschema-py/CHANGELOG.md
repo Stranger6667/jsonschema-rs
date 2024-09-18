@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.20.0] - 2024-09-18
+
 ### Added
 
 - New draft-specific validator classes: `Draft4Validator`, `Draft6Validator`, `Draft7Validator`, `Draft201909Validator`, and `Draft202012Validator`.
@@ -397,8 +399,9 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.19.1...HEAD
-[0.19.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.19.0...python-v0.19.1
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.20.0...HEAD
+[0.20.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.19.1...python-v0.20.0
+[0.19.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.19.0...python-v0.19.1
 [0.19.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.18.3...python-v0.19.0
 [0.18.3]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.18.2...python-v0.18.3
 [0.18.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.18.1...python-v0.18.2
