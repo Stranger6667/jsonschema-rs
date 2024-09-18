@@ -2,7 +2,7 @@ use crate::{
     compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers::fail_on_non_positive_integer, CompilationResult},
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     validator::Validate,
     Draft,
 };
@@ -10,14 +10,14 @@ use serde_json::{Map, Value};
 
 pub(crate) struct MinItemsValidator {
     limit: u64,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl MinItemsValidator {
     #[inline]
     pub(crate) fn compile(
         schema: &Value,
-        schema_path: JSONPointer,
+        schema_path: JsonPointer,
         draft: Draft,
     ) -> CompilationResult {
         if let Some(limit) = schema.as_u64() {

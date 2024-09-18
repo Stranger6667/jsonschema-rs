@@ -4,7 +4,7 @@ use serde_json::{Map, Value};
 
 use crate::{
     compilation::{compile_validators, context::CompilationContext},
-    paths::JSONPointer,
+    paths::JsonPointer,
     schema_node::SchemaNode,
     validator::Validate,
     ValidationError,
@@ -149,7 +149,7 @@ pub(crate) fn compile_patterns<'a>(
             compiled_patterns.push((compiled_pattern, node));
         } else {
             return Err(ValidationError::format(
-                JSONPointer::default(),
+                JsonPointer::default(),
                 keyword_context.clone().into_pointer(),
                 subschema,
                 "regex",

@@ -3,7 +3,7 @@ use crate::{
     error::{no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     output::BasicOutput,
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     schema_node::SchemaNode,
     validator::{PartialApplication, Validate},
@@ -34,7 +34,7 @@ impl PropertiesValidator {
                 Ok(Box::new(PropertiesValidator { properties }))
             }
             _ => Err(ValidationError::single_type_error(
-                JSONPointer::default(),
+                JsonPointer::default(),
                 context.clone().into_pointer(),
                 schema,
                 PrimitiveType::Object,

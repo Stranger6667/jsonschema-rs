@@ -2,7 +2,7 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     schema_node::SchemaNode,
     validator::{PartialApplication, Validate},
     Draft,
@@ -13,7 +13,7 @@ use super::helpers::map_get_u64;
 
 pub(crate) struct ContainsValidator {
     node: SchemaNode,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl ContainsValidator {
@@ -102,7 +102,7 @@ impl Validate for ContainsValidator {
 pub(crate) struct MinContainsValidator {
     node: SchemaNode,
     min_contains: u64,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl MinContainsValidator {
@@ -189,7 +189,7 @@ impl Validate for MinContainsValidator {
 pub(crate) struct MaxContainsValidator {
     node: SchemaNode,
     max_contains: u64,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl MaxContainsValidator {
@@ -285,7 +285,7 @@ pub(crate) struct MinMaxContainsValidator {
     node: SchemaNode,
     min_contains: u64,
     max_contains: u64,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl MinMaxContainsValidator {

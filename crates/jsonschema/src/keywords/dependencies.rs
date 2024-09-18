@@ -2,7 +2,7 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{no_error, ErrorIterator, ValidationError},
     keywords::{required, unique_items, CompilationResult},
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     schema_node::SchemaNode,
     validator::Validate,
@@ -40,7 +40,7 @@ impl DependenciesValidator {
             Ok(Box::new(DependenciesValidator { dependencies }))
         } else {
             Err(ValidationError::single_type_error(
-                JSONPointer::default(),
+                JsonPointer::default(),
                 context.clone().into_pointer(),
                 schema,
                 PrimitiveType::Object,
@@ -100,7 +100,7 @@ impl DependentRequiredValidator {
                 if let Value::Array(dependency_array) = subschema {
                     if !unique_items::is_unique(dependency_array) {
                         return Err(ValidationError::unique_items(
-                            JSONPointer::default(),
+                            JsonPointer::default(),
                             item_context.clone().into_pointer(),
                             subschema,
                         ));
@@ -116,7 +116,7 @@ impl DependentRequiredValidator {
                     ));
                 } else {
                     return Err(ValidationError::single_type_error(
-                        JSONPointer::default(),
+                        JsonPointer::default(),
                         item_context.clone().into_pointer(),
                         subschema,
                         PrimitiveType::Array,
@@ -126,7 +126,7 @@ impl DependentRequiredValidator {
             Ok(Box::new(DependentRequiredValidator { dependencies }))
         } else {
             Err(ValidationError::single_type_error(
-                JSONPointer::default(),
+                JsonPointer::default(),
                 context.clone().into_pointer(),
                 schema,
                 PrimitiveType::Object,
@@ -184,7 +184,7 @@ impl DependentSchemasValidator {
             Ok(Box::new(DependentSchemasValidator { dependencies }))
         } else {
             Err(ValidationError::single_type_error(
-                JSONPointer::default(),
+                JsonPointer::default(),
                 context.clone().into_pointer(),
                 schema,
                 PrimitiveType::Object,

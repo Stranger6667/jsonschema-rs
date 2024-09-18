@@ -2,7 +2,7 @@ use num_cmp::NumCmp;
 use serde_json::{Map, Value};
 
 use crate::{
-    compilation::context::CompilationContext, paths::JSONPointer, primitive_type::PrimitiveType,
+    compilation::context::CompilationContext, paths::JsonPointer, primitive_type::PrimitiveType,
     ValidationError,
 };
 
@@ -73,7 +73,7 @@ pub(crate) fn map_get_u64<'a>(
     match value.as_u64() {
         Some(n) => Some(Ok(n)),
         None if value.is_i64() => Some(Err(ValidationError::minimum(
-            JSONPointer::default(),
+            JsonPointer::default(),
             context.clone().into_pointer(),
             value,
             0.into(),
@@ -87,7 +87,7 @@ pub(crate) fn map_get_u64<'a>(
                 }
             }
             Some(Err(ValidationError::single_type_error(
-                JSONPointer::default(),
+                JsonPointer::default(),
                 context.clone().into_pointer(),
                 value,
                 PrimitiveType::Integer,
@@ -99,13 +99,13 @@ pub(crate) fn map_get_u64<'a>(
 /// Fail if the input value is not `u64`.
 pub(crate) fn fail_on_non_positive_integer(
     value: &Value,
-    instance_path: JSONPointer,
+    instance_path: JsonPointer,
 ) -> ValidationError<'_> {
     if value.is_i64() {
-        ValidationError::minimum(JSONPointer::default(), instance_path, value, 0.into())
+        ValidationError::minimum(JsonPointer::default(), instance_path, value, 0.into())
     } else {
         ValidationError::single_type_error(
-            JSONPointer::default(),
+            JsonPointer::default(),
             instance_path,
             value,
             PrimitiveType::Integer,

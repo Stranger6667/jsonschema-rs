@@ -99,8 +99,8 @@ fn test_suite(test: Test) {
         options.should_validate_formats(true);
     }
     let validator = options
-        .compile(&test.schema)
-        .expect("should not fail to compile schema");
+        .build(&test.schema)
+        .expect("Failed to build a schema");
     let result = validator.validate(&test.data);
 
     if test.valid {
@@ -188,7 +188,7 @@ fn test_instance_path() {
         for item in expected.as_array().expect("Is array") {
             let suite_id = item["suite_id"].as_u64().expect("Is integer") as usize;
             let schema = &data[suite_id]["schema"];
-            let validator = jsonschema::options().compile(schema).unwrap_or_else(|_| {
+            let validator = jsonschema::validator_for(schema).unwrap_or_else(|_| {
                 panic!(
                     "Valid schema. File: {}; Suite ID: {}; Schema: {}",
                     filename, suite_id, schema

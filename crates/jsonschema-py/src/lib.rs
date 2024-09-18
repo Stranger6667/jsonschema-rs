@@ -6,7 +6,7 @@ use std::{
     panic::{self, AssertUnwindSafe},
 };
 
-use jsonschema::{paths::JSONPointer, Draft};
+use jsonschema::{paths::JsonPointer, Draft};
 use pyo3::{
     exceptions::{self, PyValueError},
     ffi::PyUnicode_AsUTF8AndSize,
@@ -90,7 +90,7 @@ fn into_py_err(py: Python<'_>, error: jsonschema::ValidationError<'_>) -> PyResu
     ))
 }
 
-fn into_path(py: Python<'_>, pointer: JSONPointer) -> PyResult<Py<PyList>> {
+fn into_path(py: Python<'_>, pointer: JsonPointer) -> PyResult<Py<PyList>> {
     let path = PyList::empty_bound(py);
     for chunk in pointer {
         match chunk {
@@ -125,7 +125,7 @@ thread_local! {
 fn make_options(
     draft: Option<u8>,
     formats: Option<&Bound<'_, PyDict>>,
-) -> PyResult<jsonschema::CompilationOptions> {
+) -> PyResult<jsonschema::ValidationOptions> {
     let mut options = jsonschema::options();
     if let Some(raw_draft_version) = draft {
         options.with_draft(get_draft(raw_draft_version)?);
@@ -166,7 +166,7 @@ fn make_options(
 
 fn iter_on_error(
     py: Python<'_>,
-    validator: &jsonschema::JSONSchema,
+    validator: &jsonschema::Validator,
     instance: &Bound<'_, PyAny>,
 ) -> PyResult<ValidationErrorIter> {
     let instance = ser::to_value(instance)?;
@@ -188,7 +188,7 @@ fn iter_on_error(
 
 fn raise_on_error(
     py: Python<'_>,
-    validator: &jsonschema::JSONSchema,
+    validator: &jsonschema::Validator,
     instance: &Bound<'_, PyAny>,
 ) -> PyResult<()> {
     let instance = ser::to_value(instance)?;
@@ -276,7 +276,7 @@ fn is_valid(
 ) -> PyResult<bool> {
     let options = make_options(draft, formats)?;
     let schema = ser::to_value(schema)?;
-    match options.compile(&schema) {
+    match options.build(&schema) {
         Ok(validator) => {
             let instance = ser::to_value(instance)?;
             panic::catch_unwind(AssertUnwindSafe(|| Ok(validator.is_valid(&instance))))
@@ -310,7 +310,7 @@ fn validate(
 ) -> PyResult<()> {
     let options = make_options(draft, formats)?;
     let schema = ser::to_value(schema)?;
-    match options.compile(&schema) {
+    match options.build(&schema) {
         Ok(validator) => raise_on_error(py, &validator, instance),
         Err(error) => Err(into_py_err(py, error)?),
     }
@@ -339,7 +339,7 @@ fn iter_errors(
 ) -> PyResult<ValidationErrorIter> {
     let options = make_options(draft, formats)?;
     let schema = ser::to_value(schema)?;
-    match options.compile(&schema) {
+    match options.build(&schema) {
         Ok(validator) => iter_on_error(py, &validator, instance),
         Err(error) => Err(into_py_err(py, error)?),
     }
@@ -356,7 +356,7 @@ fn iter_errors(
 /// By default Draft 7 will be used for compilation.
 #[pyclass(module = "jsonschema_rs")]
 struct JSONSchema {
-    schema: jsonschema::JSONSchema,
+    validator: jsonschema::Validator,
     repr: String,
 }
 
@@ -397,9 +397,9 @@ impl JSONSchema {
     ) -> PyResult<Self> {
         let options = make_options(draft, formats)?;
         let raw_schema = ser::to_value(schema)?;
-        match options.compile(&raw_schema) {
-            Ok(schema) => Ok(JSONSchema {
-                schema,
+        match options.build(&raw_schema) {
+            Ok(validator) => Ok(JSONSchema {
+                validator,
                 repr: get_schema_repr(&raw_schema),
             }),
             Err(error) => Err(into_py_err(py, error)?),
@@ -439,9 +439,9 @@ impl JSONSchema {
             let raw_schema = serde_json::from_slice(slice)
                 .map_err(|error| PyValueError::new_err(format!("Invalid string: {}", error)))?;
             let options = make_options(draft, formats)?;
-            match options.compile(&raw_schema) {
-                Ok(schema) => Ok(JSONSchema {
-                    schema,
+            match options.build(&raw_schema) {
+                Ok(validator) => Ok(JSONSchema {
+                    validator,
                     repr: get_schema_repr(&raw_schema),
                 }),
                 Err(error) => Err(into_py_err(py, error)?),
@@ -461,7 +461,7 @@ impl JSONSchema {
     #[pyo3(text_signature = "(instance)")]
     fn is_valid(&self, instance: &Bound<'_, PyAny>) -> PyResult<bool> {
         let instance = ser::to_value(instance)?;
-        panic::catch_unwind(AssertUnwindSafe(|| Ok(self.schema.is_valid(&instance))))
+        panic::catch_unwind(AssertUnwindSafe(|| Ok(self.validator.is_valid(&instance))))
             .map_err(handle_format_checked_panic)?
     }
 
@@ -477,7 +477,7 @@ impl JSONSchema {
     /// If the input instance is invalid, only the first occurred error is raised.
     #[pyo3(text_signature = "(instance)")]
     fn validate(&self, py: Python<'_>, instance: &Bound<'_, PyAny>) -> PyResult<()> {
-        raise_on_error(py, &self.schema, instance)
+        raise_on_error(py, &self.validator, instance)
     }
 
     /// iter_errors(instance)
@@ -494,7 +494,7 @@ impl JSONSchema {
         py: Python<'_>,
         instance: &Bound<'_, PyAny>,
     ) -> PyResult<ValidationErrorIter> {
-        iter_on_error(py, &self.schema, instance)
+        iter_on_error(py, &self.validator, instance)
     }
     fn __repr__(&self) -> String {
         format!("<JSONSchema: {}>", self.repr)

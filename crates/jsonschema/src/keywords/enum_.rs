@@ -2,7 +2,7 @@ use crate::{
     compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers, CompilationResult},
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
 };
@@ -14,7 +14,7 @@ pub(crate) struct EnumValidator {
     // Types that occur in items
     types: PrimitiveTypesBitMap,
     items: Vec<Value>,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl EnumValidator {
@@ -22,7 +22,7 @@ impl EnumValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         items: &'a [Value],
-        schema_path: JSONPointer,
+        schema_path: JsonPointer,
     ) -> CompilationResult<'a> {
         let mut types = PrimitiveTypesBitMap::new();
         for item in items {
@@ -71,7 +71,7 @@ impl Validate for EnumValidator {
 pub(crate) struct SingleValueEnumValidator {
     value: Value,
     options: Value,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl SingleValueEnumValidator {
@@ -79,7 +79,7 @@ impl SingleValueEnumValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         value: &'a Value,
-        schema_path: JSONPointer,
+        schema_path: JsonPointer,
     ) -> CompilationResult<'a> {
         Ok(Box::new(SingleValueEnumValidator {
             options: schema.clone(),
@@ -132,7 +132,7 @@ pub(crate) fn compile<'a>(
         }
     } else {
         Some(Err(ValidationError::single_type_error(
-            JSONPointer::default(),
+            JsonPointer::default(),
             context.clone().into_pointer(),
             schema,
             PrimitiveType::Array,

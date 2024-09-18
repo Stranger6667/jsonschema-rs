@@ -1,12 +1,12 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext, JSONSchema, DEFAULT_SCOPE},
+    compilation::{compile_validators, context::CompilationContext, Validator, DEFAULT_SCOPE},
     content_encoding::{
         ContentEncodingCheckType, ContentEncodingConverterType,
         DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS,
     },
     content_media_type::{ContentMediaTypeCheckType, DEFAULT_CONTENT_MEDIA_TYPE_CHECKS},
     keywords::{custom::KeywordFactory, format::Format},
-    paths::JSONPointer,
+    paths::JsonPointer,
     resolver::{DefaultResolver, Resolver, SchemaResolver},
     schemas, Keyword, ValidationError,
 };
@@ -158,27 +158,27 @@ static META_SCHEMAS: Lazy<AHashMap<Cow<'static, str>, Arc<serde_json::Value>>> =
 });
 
 const EXPECT_MESSAGE: &str = "Invalid meta-schema";
-static META_SCHEMA_VALIDATORS: Lazy<AHashMap<schemas::Draft, JSONSchema>> = Lazy::new(|| {
+static META_SCHEMA_VALIDATORS: Lazy<AHashMap<schemas::Draft, Validator>> = Lazy::new(|| {
     let mut store = AHashMap::with_capacity(3);
     store.insert(
         schemas::Draft::Draft4,
         crate::options()
             .without_schema_validation()
-            .compile(&DRAFT4)
+            .build(&DRAFT4)
             .expect(EXPECT_MESSAGE),
     );
     store.insert(
         schemas::Draft::Draft6,
         crate::options()
             .without_schema_validation()
-            .compile(&DRAFT6)
+            .build(&DRAFT6)
             .expect(EXPECT_MESSAGE),
     );
     store.insert(
         schemas::Draft::Draft7,
         crate::options()
             .without_schema_validation()
-            .compile(&DRAFT7)
+            .build(&DRAFT7)
             .expect(EXPECT_MESSAGE),
     );
     let mut options = crate::options();
@@ -210,7 +210,7 @@ static META_SCHEMA_VALIDATORS: Lazy<AHashMap<schemas::Draft, JSONSchema>> = Lazy
         schemas::Draft::Draft201909,
         options
             .without_schema_validation()
-            .compile(&DRAFT201909)
+            .build(&DRAFT201909)
             .expect(EXPECT_MESSAGE),
     );
     let mut options = crate::options();
@@ -250,7 +250,7 @@ static META_SCHEMA_VALIDATORS: Lazy<AHashMap<schemas::Draft, JSONSchema>> = Lazy
         schemas::Draft::Draft202012,
         options
             .without_schema_validation()
-            .compile(&DRAFT202012)
+            .build(&DRAFT202012)
             .expect(EXPECT_MESSAGE),
     );
     store
@@ -258,7 +258,7 @@ static META_SCHEMA_VALIDATORS: Lazy<AHashMap<schemas::Draft, JSONSchema>> = Lazy
 
 /// Configuration options for JSON Schema validation.
 #[derive(Clone)]
-pub struct CompilationOptions {
+pub struct ValidationOptions {
     external_resolver: Arc<dyn SchemaResolver>,
     draft: Option<schemas::Draft>,
     content_media_type_checks: AHashMap<&'static str, Option<ContentMediaTypeCheckType>>,
@@ -272,9 +272,9 @@ pub struct CompilationOptions {
     keywords: AHashMap<String, Arc<dyn KeywordFactory>>,
 }
 
-impl Default for CompilationOptions {
+impl Default for ValidationOptions {
     fn default() -> Self {
-        CompilationOptions {
+        ValidationOptions {
             external_resolver: Arc::new(DefaultResolver),
             validate_schema: true,
             draft: Option::default(),
@@ -289,7 +289,7 @@ impl Default for CompilationOptions {
     }
 }
 
-impl CompilationOptions {
+impl ValidationOptions {
     /// Return the draft version, or the default if not set.
     pub(crate) fn draft(&self) -> schemas::Draft {
         self.draft.unwrap_or_default()
@@ -303,27 +303,20 @@ impl CompilationOptions {
     ///
     /// let schema = json!({"type": "string"});
     /// let validator = jsonschema::options()
-    ///     .compile(&schema)
+    ///     .build(&schema)
     ///     .expect("A valid schema");
     ///
     /// assert!(validator.is_valid(&json!("Hello")));
     /// assert!(!validator.is_valid(&json!(42)));
     /// ```
-    pub fn compile<'a>(
+    pub fn build<'a>(
         &self,
         schema: &'a serde_json::Value,
-    ) -> Result<JSONSchema, ValidationError<'a>> {
+    ) -> Result<Validator, ValidationError<'a>> {
         // Draft is detected in the following precedence order:
         //   - Explicitly specified;
         //   - $schema field in the document;
         //   - Draft::default()
-
-        // Clone needed because we are going to store a Copy-on-Write (Cow) instance
-        // into the final JSONSchema as well as passing `self` (the instance and not
-        // the reference) would require Copy trait implementation from
-        // `CompilationOptions` which is something that we would like to avoid as
-        // options might contain heap-related objects (ie. an HashMap) and we want the
-        // memory-related operations to be explicit
         let mut config = self.clone();
         if self.draft.is_none() {
             if let Some(draft) = schemas::draft_from_schema(schema) {
@@ -361,9 +354,18 @@ impl CompilationOptions {
 
         let node = compile_validators(schema, &context)?;
 
-        Ok(JSONSchema { node, config })
+        Ok(Validator { node, config })
     }
-
+    /// Build a JSON Schema validator using the current options.
+    ///
+    /// **DEPRECATED**: Use [`ValidationOptions::build`] instead.
+    #[deprecated(since = "0.20.0", note = "Use `ValidationOptions::build` instead")]
+    pub fn compile<'a>(
+        &self,
+        schema: &'a serde_json::Value,
+    ) -> Result<Validator, ValidationError<'a>> {
+        self.build(schema)
+    }
     /// Sets the JSON Schema draft version.
     ///
     /// ```rust
@@ -562,7 +564,7 @@ impl CompilationOptions {
     /// let schema = json!({"type": "string", "format": "custom"});
     /// let validator = jsonschema::options()
     ///     .with_format("custom", my_format)
-    ///     .compile(&schema)
+    ///     .build(&schema)
     ///     .expect("Valid schema");
     ///
     /// assert!(!validator.is_valid(&json!("foo")));
@@ -620,7 +622,7 @@ impl CompilationOptions {
     ///
     /// ```rust
     /// # use jsonschema::{
-    /// #    paths::{JSONPointer, JsonPointerNode},
+    /// #    paths::{JsonPointer, JsonPointerNode},
     /// #    ErrorIterator, Keyword, ValidationError,
     /// # };
     /// # use serde_json::{json, Map, Value};
@@ -637,7 +639,7 @@ impl CompilationOptions {
     ///         // ... validate instance ...
     ///         if !instance.is_object() {
     ///             let error = ValidationError::custom(
-    ///                 JSONPointer::default(),
+    ///                 JsonPointer::default(),
     ///                 instance_path.into(),
     ///                 instance,
     ///                 "Boom!",
@@ -657,7 +659,7 @@ impl CompilationOptions {
     /// fn custom_validator_factory<'a>(
     ///     parent: &'a Map<String, Value>,
     ///     value: &'a Value,
-    ///     path: JSONPointer,
+    ///     path: JsonPointer,
     /// ) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
     ///     Ok(Box::new(MyCustomValidator))
     /// }
@@ -665,7 +667,7 @@ impl CompilationOptions {
     /// let validator = jsonschema::options()
     ///     .with_keyword("my-type", custom_validator_factory)
     ///     .with_keyword("my-type-with-closure", |_, _, _| Ok(Box::new(MyCustomValidator)))
-    ///     .compile(&json!({ "my-type": "my-schema"}))
+    ///     .build(&json!({ "my-type": "my-schema"}))
     ///     .expect("A valid schema");
     ///
     /// assert!(validator.is_valid(&json!({ "a": "b"})));
@@ -676,7 +678,7 @@ impl CompilationOptions {
         F: for<'a> Fn(
                 &'a serde_json::Map<String, serde_json::Value>,
                 &'a serde_json::Value,
-                JSONPointer,
+                JsonPointer,
             ) -> Result<Box<dyn Keyword>, ValidationError<'a>>
             + Send
             + Sync
@@ -691,7 +693,7 @@ impl CompilationOptions {
     }
 }
 
-impl fmt::Debug for CompilationOptions {
+impl fmt::Debug for ValidationOptions {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_struct("CompilationConfig")
             .field("draft", &self.draft)
@@ -706,7 +708,7 @@ impl fmt::Debug for CompilationOptions {
 
 #[cfg(test)]
 mod tests {
-    use super::CompilationOptions;
+    use super::ValidationOptions;
     use crate::schemas::Draft;
     use serde_json::{json, Value};
     use test_case::test_case;
@@ -718,11 +720,11 @@ mod tests {
         draft_version_in_options: Option<Draft>,
         schema: &Value,
     ) -> Draft {
-        let mut options = CompilationOptions::default();
+        let mut options = ValidationOptions::default();
         if let Some(draft_version) = draft_version_in_options {
             options.with_draft(draft_version);
         }
-        let validator = options.compile(schema).unwrap();
+        let validator = options.build(schema).unwrap();
         validator.draft()
     }
 
@@ -734,7 +736,7 @@ mod tests {
                 "http://example.json/schema.json".to_string(),
                 json!({"rule": {"minLength": 5}}),
             )
-            .compile(&schema)
+            .build(&schema)
             .expect("Valid schema");
         assert!(!validator.is_valid(&json!("foo")));
         assert!(validator.is_valid(&json!("foobar")));
@@ -749,7 +751,7 @@ mod tests {
         let schema = json!({"type": "string", "format": "custom"});
         let validator = crate::options()
             .with_format("custom", custom)
-            .compile(&schema)
+            .build(&schema)
             .expect("Valid schema");
         assert!(!validator.is_valid(&json!("foo")));
         assert!(validator.is_valid(&json!("foo42!")));

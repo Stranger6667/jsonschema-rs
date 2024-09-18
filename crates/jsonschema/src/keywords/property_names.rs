@@ -2,7 +2,7 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     schema_node::SchemaNode,
     validator::{PartialApplication, Validate},
 };
@@ -88,7 +88,7 @@ impl Validate for PropertyNamesObjectValidator {
 }
 
 pub(crate) struct PropertyNamesBooleanValidator {
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl PropertyNamesBooleanValidator {

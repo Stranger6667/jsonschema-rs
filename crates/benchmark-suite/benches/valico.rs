@@ -3,8 +3,8 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use serde_json::Value;
 use valico::json_schema;
 
-fn bench_compile(c: &mut Criterion, name: &str, schema: &Value) {
-    c.bench_function(&format!("valico/{}/compile", name), |b| {
+fn bench_build(c: &mut Criterion, name: &str, schema: &Value) {
+    c.bench_function(&format!("valico/{}/build", name), |b| {
         b.iter(|| {
             let mut scope = json_schema::Scope::new();
             scope
@@ -36,7 +36,7 @@ fn run_benchmarks(c: &mut Criterion) {
     for benchmark in Benchmark::iter() {
         benchmark.run(&mut |name, schema, instances| {
             if !UNSUPPORTED_BENCHMARKS.contains(&name) {
-                bench_compile(c, name, schema);
+                bench_build(c, name, schema);
                 for instance in instances {
                     let name = format!("valico/{}/{}", name, instance.name);
                     bench_validate(c, &name, schema, &instance.data);

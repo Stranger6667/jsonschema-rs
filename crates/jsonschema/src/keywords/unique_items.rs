@@ -7,7 +7,7 @@ use crate::{
 use ahash::{AHashSet, AHasher};
 use serde_json::{Map, Value};
 
-use crate::paths::{JSONPointer, JsonPointerNode};
+use crate::paths::{JsonPointer, JsonPointerNode};
 use std::hash::{Hash, Hasher};
 
 // Based on implementation proposed by Sven Marnach:
@@ -91,12 +91,12 @@ pub(crate) fn is_unique(items: &[Value]) -> bool {
 }
 
 pub(crate) struct UniqueItemsValidator {
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl UniqueItemsValidator {
     #[inline]
-    pub(crate) fn compile<'a>(schema_path: JSONPointer) -> CompilationResult<'a> {
+    pub(crate) fn compile<'a>(schema_path: JsonPointer) -> CompilationResult<'a> {
         Ok(Box::new(UniqueItemsValidator { schema_path }))
     }
 }

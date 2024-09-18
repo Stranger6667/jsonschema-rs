@@ -1,6 +1,6 @@
 //! Error types
 use crate::{
-    paths::JSONPointer,
+    paths::JsonPointer,
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     resolver::SchemaResolverError,
 };
@@ -24,9 +24,9 @@ pub struct ValidationError<'a> {
     /// Type of validation error.
     pub kind: ValidationErrorKind,
     /// Path to the value that failed validation.
-    pub instance_path: JSONPointer,
+    pub instance_path: JsonPointer,
     /// Path to the JSON Schema keyword that failed validation.
-    pub schema_path: JSONPointer,
+    pub schema_path: JsonPointer,
 }
 
 /// An iterator over instances of `ValidationError` that represent validation error for the
@@ -173,8 +173,8 @@ impl<'a> ValidationError<'a> {
     }
 
     pub(crate) const fn additional_items(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         limit: usize,
     ) -> ValidationError<'a> {
@@ -186,8 +186,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn additional_properties(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         unexpected: Vec<String>,
     ) -> ValidationError<'a> {
@@ -199,8 +199,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn any_of(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
         ValidationError {
@@ -211,8 +211,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn backtrack_limit(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         error: fancy_regex::Error,
     ) -> ValidationError<'a> {
@@ -224,8 +224,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) fn constant_array(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         expected_value: &[Value],
     ) -> ValidationError<'a> {
@@ -239,8 +239,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn constant_boolean(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         expected_value: bool,
     ) -> ValidationError<'a> {
@@ -254,8 +254,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn constant_null(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
         ValidationError {
@@ -268,8 +268,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) fn constant_number(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         expected_value: &Number,
     ) -> ValidationError<'a> {
@@ -283,8 +283,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) fn constant_object(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         expected_value: &Map<String, Value>,
     ) -> ValidationError<'a> {
@@ -298,8 +298,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) fn constant_string(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         expected_value: &str,
     ) -> ValidationError<'a> {
@@ -313,8 +313,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn contains(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
         ValidationError {
@@ -325,8 +325,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) fn content_encoding(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         encoding: &str,
     ) -> ValidationError<'a> {
@@ -340,8 +340,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) fn content_media_type(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         media_type: &str,
     ) -> ValidationError<'a> {
@@ -355,8 +355,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) fn enumeration(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         options: &Value,
     ) -> ValidationError<'a> {
@@ -370,8 +370,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn exclusive_maximum(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         limit: Value,
     ) -> ValidationError<'a> {
@@ -383,8 +383,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn exclusive_minimum(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         limit: Value,
     ) -> ValidationError<'a> {
@@ -396,8 +396,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn false_schema(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
         ValidationError {
@@ -409,15 +409,15 @@ impl<'a> ValidationError<'a> {
     }
     pub(crate) fn file_not_found(error: io::Error) -> ValidationError<'a> {
         ValidationError {
-            instance_path: JSONPointer::default(),
+            instance_path: JsonPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::FileNotFound { error },
-            schema_path: JSONPointer::default(),
+            schema_path: JsonPointer::default(),
         }
     }
     pub(crate) fn format(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         format: impl Into<String>,
     ) -> ValidationError<'a> {
@@ -432,39 +432,39 @@ impl<'a> ValidationError<'a> {
     }
     pub(crate) fn from_utf8(error: FromUtf8Error) -> ValidationError<'a> {
         ValidationError {
-            instance_path: JSONPointer::default(),
+            instance_path: JsonPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::FromUtf8 { error },
-            schema_path: JSONPointer::default(),
+            schema_path: JsonPointer::default(),
         }
     }
     pub(crate) fn json_parse(error: serde_json::Error) -> ValidationError<'a> {
         ValidationError {
-            instance_path: JSONPointer::default(),
+            instance_path: JsonPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::JSONParse { error },
-            schema_path: JSONPointer::default(),
+            schema_path: JsonPointer::default(),
         }
     }
     pub(crate) fn invalid_reference(reference: String) -> ValidationError<'a> {
         ValidationError {
-            instance_path: JSONPointer::default(),
+            instance_path: JsonPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::InvalidReference { reference },
-            schema_path: JSONPointer::default(),
+            schema_path: JsonPointer::default(),
         }
     }
     pub(crate) fn invalid_url(error: url::ParseError) -> ValidationError<'a> {
         ValidationError {
-            instance_path: JSONPointer::default(),
+            instance_path: JsonPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::InvalidURL { error },
-            schema_path: JSONPointer::default(),
+            schema_path: JsonPointer::default(),
         }
     }
     pub(crate) const fn max_items(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         limit: u64,
     ) -> ValidationError<'a> {
@@ -476,8 +476,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn maximum(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         limit: Value,
     ) -> ValidationError<'a> {
@@ -489,8 +489,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn max_length(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         limit: u64,
     ) -> ValidationError<'a> {
@@ -502,8 +502,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn max_properties(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         limit: u64,
     ) -> ValidationError<'a> {
@@ -515,8 +515,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn min_items(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         limit: u64,
     ) -> ValidationError<'a> {
@@ -528,8 +528,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn minimum(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         limit: Value,
     ) -> ValidationError<'a> {
@@ -541,8 +541,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn min_length(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         limit: u64,
     ) -> ValidationError<'a> {
@@ -554,8 +554,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn min_properties(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         limit: u64,
     ) -> ValidationError<'a> {
@@ -567,8 +567,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn multiple_of(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         multiple_of: f64,
     ) -> ValidationError<'a> {
@@ -580,8 +580,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn not(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         schema: Value,
     ) -> ValidationError<'a> {
@@ -593,8 +593,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn one_of_multiple_valid(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
         ValidationError {
@@ -605,8 +605,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn one_of_not_valid(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
         ValidationError {
@@ -617,8 +617,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn pattern(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         pattern: String,
     ) -> ValidationError<'a> {
@@ -630,8 +630,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) fn property_names(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         error: ValidationError<'a>,
     ) -> ValidationError<'a> {
@@ -645,8 +645,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn required(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         property: Value,
     ) -> ValidationError<'a> {
@@ -660,16 +660,16 @@ impl<'a> ValidationError<'a> {
 
     pub(crate) fn null_schema() -> ValidationError<'a> {
         ValidationError {
-            instance_path: JSONPointer::default(),
+            instance_path: JsonPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::Schema,
-            schema_path: JSONPointer::default(),
+            schema_path: JsonPointer::default(),
         }
     }
 
     pub(crate) const fn single_type_error(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         type_name: PrimitiveType,
     ) -> ValidationError<'a> {
@@ -683,8 +683,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn multiple_type_error(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         types: PrimitiveTypesBitMap,
     ) -> ValidationError<'a> {
@@ -698,8 +698,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn unevaluated_properties(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         unexpected: Vec<String>,
     ) -> ValidationError<'a> {
@@ -711,8 +711,8 @@ impl<'a> ValidationError<'a> {
         }
     }
     pub(crate) const fn unique_items(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
     ) -> ValidationError<'a> {
         ValidationError {
@@ -724,24 +724,24 @@ impl<'a> ValidationError<'a> {
     }
     pub(crate) fn utf8(error: Utf8Error) -> ValidationError<'a> {
         ValidationError {
-            instance_path: JSONPointer::default(),
+            instance_path: JsonPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::Utf8 { error },
-            schema_path: JSONPointer::default(),
+            schema_path: JsonPointer::default(),
         }
     }
     pub(crate) fn resolver(url: Url, error: SchemaResolverError) -> ValidationError<'a> {
         ValidationError {
-            instance_path: JSONPointer::default(),
+            instance_path: JsonPointer::default(),
             instance: Cow::Owned(Value::Null),
             kind: ValidationErrorKind::Resolver { url, error },
-            schema_path: JSONPointer::default(),
+            schema_path: JsonPointer::default(),
         }
     }
     /// Create a new custom validation error.
     pub fn custom(
-        schema_path: JSONPointer,
-        instance_path: JSONPointer,
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
         instance: &'a Value,
         message: impl Into<String>,
     ) -> ValidationError<'a> {
@@ -1029,8 +1029,8 @@ mod tests {
     fn single_type_error() {
         let instance = json!(42);
         let err = ValidationError::single_type_error(
-            JSONPointer::default(),
-            JSONPointer::default(),
+            JsonPointer::default(),
+            JsonPointer::default(),
             &instance,
             PrimitiveType::String,
         );
@@ -1041,8 +1041,8 @@ mod tests {
     fn multiple_types_error() {
         let instance = json!(42);
         let err = ValidationError::multiple_type_error(
-            JSONPointer::default(),
-            JSONPointer::default(),
+            JsonPointer::default(),
+            JsonPointer::default(),
             &instance,
             vec![PrimitiveType::String, PrimitiveType::Number].into(),
         );
@@ -1075,7 +1075,7 @@ mod tests {
         let error = result.next().expect("validation error");
 
         assert!(result.next().is_none());
-        assert_eq!(error.instance_path, JSONPointer::from(expected));
+        assert_eq!(error.instance_path, JsonPointer::from(expected));
     }
 
     #[test_case(true, &json!([1, {"foo": ["42"]}]), &[PathChunk::Index(0)])]
@@ -1116,7 +1116,7 @@ mod tests {
         let error = result.next().expect("validation error");
 
         assert!(result.next().is_none());
-        assert_eq!(error.instance_path, JSONPointer::from(expected));
+        assert_eq!(error.instance_path, JsonPointer::from(expected));
     }
 
     #[test_case(true, &json!([[1, 2, 3], [4, "5", 6], [7, 8, 9]]), &[PathChunk::Index(1), PathChunk::Index(1)])]
@@ -1145,7 +1145,7 @@ mod tests {
         let error = result.next().expect("validation error");
 
         assert!(result.next().is_none());
-        assert_eq!(error.instance_path, JSONPointer::from(expected));
+        assert_eq!(error.instance_path, JsonPointer::from(expected));
     }
 
     #[test_case(true, &json!([1, "a"]), &[PathChunk::Index(1)])]
@@ -1167,6 +1167,6 @@ mod tests {
         let error = result.next().expect("validation error");
 
         assert!(result.next().is_none());
-        assert_eq!(error.instance_path, JSONPointer::from(expected));
+        assert_eq!(error.instance_path, JsonPointer::from(expected));
     }
 }

@@ -2,7 +2,7 @@ use crate::{
     compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
@@ -10,19 +10,19 @@ use serde_json::{Map, Value};
 
 pub(crate) struct RequiredValidator {
     required: Vec<String>,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl RequiredValidator {
     #[inline]
-    pub(crate) fn compile(items: &[Value], schema_path: JSONPointer) -> CompilationResult {
+    pub(crate) fn compile(items: &[Value], schema_path: JsonPointer) -> CompilationResult {
         let mut required = Vec::with_capacity(items.len());
         for item in items {
             match item {
                 Value::String(string) => required.push(string.clone()),
                 _ => {
                     return Err(ValidationError::single_type_error(
-                        JSONPointer::default(),
+                        JsonPointer::default(),
                         schema_path,
                         item,
                         PrimitiveType::String,
@@ -76,12 +76,12 @@ impl Validate for RequiredValidator {
 
 pub(crate) struct SingleItemRequiredValidator {
     value: String,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl SingleItemRequiredValidator {
     #[inline]
-    pub(crate) fn compile(value: &str, schema_path: JSONPointer) -> CompilationResult {
+    pub(crate) fn compile(value: &str, schema_path: JsonPointer) -> CompilationResult {
         Ok(Box::new(SingleItemRequiredValidator {
             value: value.to_string(),
             schema_path,
@@ -129,7 +129,7 @@ pub(crate) fn compile<'a>(
 #[inline]
 pub(crate) fn compile_with_path(
     schema: &Value,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 ) -> Option<CompilationResult> {
     // IMPORTANT: If this function will ever return `None`, adjust `dependencies.rs` accordingly
     match schema {
@@ -140,7 +140,7 @@ pub(crate) fn compile_with_path(
                     Some(SingleItemRequiredValidator::compile(item, schema_path))
                 } else {
                     Some(Err(ValidationError::single_type_error(
-                        JSONPointer::default(),
+                        JsonPointer::default(),
                         schema_path,
                         item,
                         PrimitiveType::String,
@@ -151,7 +151,7 @@ pub(crate) fn compile_with_path(
             }
         }
         _ => Some(Err(ValidationError::single_type_error(
-            JSONPointer::default(),
+            JsonPointer::default(),
             schema_path,
             schema,
             PrimitiveType::Array,

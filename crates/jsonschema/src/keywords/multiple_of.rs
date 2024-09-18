@@ -2,7 +2,7 @@ use crate::{
     compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
@@ -11,12 +11,12 @@ use serde_json::{Map, Value};
 
 pub(crate) struct MultipleOfFloatValidator {
     multiple_of: f64,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl MultipleOfFloatValidator {
     #[inline]
-    pub(crate) fn compile<'a>(multiple_of: f64, schema_path: JSONPointer) -> CompilationResult<'a> {
+    pub(crate) fn compile<'a>(multiple_of: f64, schema_path: JsonPointer) -> CompilationResult<'a> {
         Ok(Box::new(MultipleOfFloatValidator {
             multiple_of,
             schema_path,
@@ -64,12 +64,12 @@ impl Validate for MultipleOfFloatValidator {
 
 pub(crate) struct MultipleOfIntegerValidator {
     multiple_of: f64,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl MultipleOfIntegerValidator {
     #[inline]
-    pub(crate) fn compile<'a>(multiple_of: f64, schema_path: JSONPointer) -> CompilationResult<'a> {
+    pub(crate) fn compile<'a>(multiple_of: f64, schema_path: JsonPointer) -> CompilationResult<'a> {
         Ok(Box::new(MultipleOfIntegerValidator {
             multiple_of,
             schema_path,
@@ -125,7 +125,7 @@ pub(crate) fn compile<'a>(
         }
     } else {
         Some(Err(ValidationError::single_type_error(
-            JSONPointer::default(),
+            JsonPointer::default(),
             context.clone().into_pointer(),
             schema,
             PrimitiveType::Number,

@@ -5,7 +5,7 @@ use crate::{
     error::{no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     output::BasicOutput,
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     properties::*,
     schema_node::SchemaNode,
@@ -24,7 +24,7 @@ use serde_json::{Map, Value};
 /// keywords.
 #[derive(Debug)]
 struct UnevaluatedPropertiesValidator {
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
     unevaluated: UnevaluatedSubvalidator,
     additional: Option<UnevaluatedSubvalidator>,
     properties: Option<PropertySubvalidator>,
@@ -127,7 +127,7 @@ impl UnevaluatedPropertiesValidator {
         };
 
         Ok(Self {
-            schema_path: JSONPointer::from(&context.schema_path),
+            schema_path: JsonPointer::from(&context.schema_path),
             unevaluated,
             additional,
             properties,
@@ -1334,7 +1334,7 @@ fn unexpected_type<'a>(
     expected_type: PrimitiveType,
 ) -> ValidationError<'a> {
     ValidationError::single_type_error(
-        JSONPointer::default(),
+        JsonPointer::default(),
         context.clone().into_pointer(),
         instance,
         expected_type,

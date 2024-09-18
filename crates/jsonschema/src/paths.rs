@@ -3,10 +3,17 @@ use std::{fmt, fmt::Write, slice::Iter, str::FromStr};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 /// JSON Pointer as a wrapper around individual path components.
-pub struct JSONPointer(Vec<PathChunk>);
+pub struct JsonPointer(Vec<PathChunk>);
 
-impl JSONPointer {
-    /// JSON pointer as a vector of strings. Each component is casted to `String`. Consumes `JSONPointer`.
+#[deprecated(
+    since = "0.20.0",
+    note = "Use `JsonPointer` instead. This type will be removed in a future release."
+)]
+/// Use [`JsonPointer`] instead. This type will be removed in a future release.
+pub type JSONPointer = JsonPointer;
+
+impl JsonPointer {
+    /// JSON pointer as a vector of strings. Each component is casted to `String`.
     #[must_use]
     pub fn into_vec(self) -> Vec<String> {
         self.0
@@ -47,7 +54,7 @@ impl JSONPointer {
     }
 }
 
-impl serde::Serialize for JSONPointer {
+impl serde::Serialize for JsonPointer {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -56,7 +63,7 @@ impl serde::Serialize for JSONPointer {
     }
 }
 
-impl fmt::Display for JSONPointer {
+impl fmt::Display for JsonPointer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if !self.0.is_empty() {
             for chunk in &self.0 {
@@ -180,7 +187,7 @@ impl<'a, 'b> JsonPointerNode<'a, 'b> {
     }
 }
 
-impl IntoIterator for JSONPointer {
+impl IntoIterator for JsonPointer {
     type Item = PathChunk;
     type IntoIter = <Vec<PathChunk> as IntoIterator>::IntoIter;
 
@@ -189,7 +196,7 @@ impl IntoIterator for JSONPointer {
     }
 }
 
-impl<'a> IntoIterator for &'a JSONPointer {
+impl<'a> IntoIterator for &'a JsonPointer {
     type Item = &'a PathChunk;
     type IntoIter = Iter<'a, PathChunk>;
 
@@ -243,40 +250,40 @@ impl<'a> From<PathChunkRef<'a>> for PathChunk {
     }
 }
 
-impl<'a, 'b> From<&'a JsonPointerNode<'a, 'b>> for JSONPointer {
+impl<'a, 'b> From<&'a JsonPointerNode<'a, 'b>> for JsonPointer {
     #[inline]
     fn from(path: &'a JsonPointerNode<'a, 'b>) -> Self {
-        JSONPointer(path.to_vec())
+        JsonPointer(path.to_vec())
     }
 }
 
-impl From<JsonPointerNode<'_, '_>> for JSONPointer {
+impl From<JsonPointerNode<'_, '_>> for JsonPointer {
     #[inline]
     fn from(path: JsonPointerNode<'_, '_>) -> Self {
-        JSONPointer(path.to_vec())
+        JsonPointer(path.to_vec())
     }
 }
 
-impl From<&[&str]> for JSONPointer {
+impl From<&[&str]> for JsonPointer {
     #[inline]
     fn from(path: &[&str]) -> Self {
-        JSONPointer(
+        JsonPointer(
             path.iter()
                 .map(|item| PathChunk::Property((*item).into()))
                 .collect(),
         )
     }
 }
-impl From<&[PathChunk]> for JSONPointer {
+impl From<&[PathChunk]> for JsonPointer {
     #[inline]
     fn from(path: &[PathChunk]) -> Self {
-        JSONPointer(path.to_vec())
+        JsonPointer(path.to_vec())
     }
 }
 
-impl From<&str> for JSONPointer {
+impl From<&str> for JsonPointer {
     fn from(value: &str) -> Self {
-        JSONPointer(vec![value.to_string().into()])
+        JsonPointer(vec![value.to_string().into()])
     }
 }
 
@@ -329,13 +336,13 @@ impl From<url::Url> for AbsolutePath {
 
 #[cfg(test)]
 mod tests {
-    use super::JSONPointer;
+    use super::JsonPointer;
     use serde_json::json;
 
     #[test]
     fn json_pointer_to_string() {
         let chunks = ["/", "~"];
-        let pointer = JSONPointer::from(&chunks[..]).to_string();
+        let pointer = JsonPointer::from(&chunks[..]).to_string();
         assert_eq!(pointer, "/~1/~0");
         let data = json!({"/": {"~": 42}});
         assert_eq!(data.pointer(&pointer), Some(&json!(42)))

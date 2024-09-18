@@ -104,7 +104,7 @@
 //! let validator = jsonschema::draft202012::options()
 //!     .with_format("ends-with-42", |s| s.ends_with("42"))
 //!     .should_validate_formats(true)
-//!     .compile(&schema)
+//!     .build(&schema)
 //!     .expect("Invalid schema");
 //!
 //! assert!(validator.is_valid(&json!("Hello 42")));
@@ -119,18 +119,17 @@
 //!
 //! ```rust
 //! use serde_json::json;
-//! use jsonschema::{Draft, JSONSchema};
 //!
 //! let schema = json!({"type": "string"});
 //! let validator = jsonschema::options()
 //!     // Add configuration options here
-//!     .compile(&schema)
+//!     .build(&schema)
 //!     .expect("Invalid schema");
 //!
 //! assert!(validator.is_valid(&json!("Hello")));
 //! ```
 //!
-//! For a complete list of configuration options and their usage, please refer to the [`CompilationOptions`] struct.
+//! For a complete list of configuration options and their usage, please refer to the [`ValidationOptions`] struct.
 //!
 //! ## Automatic Draft Detection
 //!
@@ -212,7 +211,7 @@
 //!
 //! let validator = jsonschema::options()
 //!     .with_resolver(resolver)
-//!     .compile(&schema)
+//!     .build(&schema)
 //!     .expect("Invalid schema");
 //!
 //! assert!(validator.is_valid(&json!({
@@ -270,15 +269,15 @@
 //! This feature is particularly useful when you need to validate against domain-specific rules that aren't covered by the standard JSON Schema keywords.
 //!
 //! To implement a custom keyword, you need to:
-//! 1. Create a struct that implements the `Keyword` trait
+//! 1. Create a struct that implements the [`Keyword`] trait
 //! 2. Create a factory function or closure that produces instances of your custom keyword
-//! 3. Register the custom keyword with the `JSONSchema` instance using the `with_keyword` method
+//! 3. Register the custom keyword with the [`Validator`] instance using the [`ValidationOptions::with_keyword`] method
 //!
 //! Here's a complete example:
 //!
 //! ```rust
 //! use jsonschema::{
-//!     paths::{JSONPointer, JsonPointerNode},
+//!     paths::{JsonPointer, JsonPointerNode},
 //!     ErrorIterator, Keyword, ValidationError,
 //! };
 //! use serde_json::{json, Map, Value};
@@ -298,7 +297,7 @@
 //!                 Box::new(None.into_iter())
 //!             } else {
 //!                 let error = ValidationError::custom(
-//!                     JSONPointer::default(),
+//!                     JsonPointer::default(),
 //!                     instance_path.into(),
 //!                     instance,
 //!                     "Number must be even",
@@ -307,7 +306,7 @@
 //!             }
 //!         } else {
 //!             let error = ValidationError::custom(
-//!                 JSONPointer::default(),
+//!                 JsonPointer::default(),
 //!                 instance_path.into(),
 //!                 instance,
 //!                 "Value must be a number",
@@ -325,15 +324,15 @@
 //! fn even_number_validator_factory<'a>(
 //!     _parent: &'a Map<String, Value>,
 //!     value: &'a Value,
-//!     _path: JSONPointer,
+//!     _path: JsonPointer,
 //! ) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
 //!     // You can use the `value` parameter to configure your validator if needed
 //!     if value.as_bool() == Some(true) {
 //!         Ok(Box::new(EvenNumberValidator))
 //!     } else {
 //!         Err(ValidationError::custom(
-//!             JSONPointer::default(),
-//!             JSONPointer::default(),
+//!             JsonPointer::default(),
+//!             JsonPointer::default(),
 //!             value,
 //!             "The 'even-number' keyword must be set to true",
 //!         ))
@@ -345,7 +344,7 @@
 //!     let schema = json!({"even-number": true, "type": "integer"});
 //!     let validator = jsonschema::options()
 //!         .with_keyword("even-number", even_number_validator_factory)
-//!         .compile(&schema)
+//!         .build(&schema)
 //!         .expect("Invalid schema");
 //!
 //!     assert!(validator.is_valid(&json!(2)));
@@ -364,7 +363,7 @@
 //!
 //! ```rust
 //! # use jsonschema::{
-//! #     paths::{JSONPointer, JsonPointerNode},
+//! #     paths::{JsonPointer, JsonPointerNode},
 //! #     ErrorIterator, Keyword, ValidationError,
 //! # };
 //! # use serde_json::{json, Map, Value};
@@ -390,7 +389,7 @@
 //!     .with_keyword("even-number", |_, _, _| {
 //!         Ok(Box::new(EvenNumberValidator))
 //!     })
-//!     .compile(&schema)
+//!     .build(&schema)
 //!     .expect("Invalid schema");
 //! ```
 //!
@@ -420,11 +419,11 @@
 //!     "format": "ends-with-42"
 //! });
 //!
-//! // Step 3: Compile the schema with the custom format
+//! // Step 3: Build the validator with the custom format
 //! let validator = jsonschema::options()
 //!     .with_format("ends-with-42", ends_with_42)
 //!     .with_format("ends-with-43", |s| s.ends_with("43!"))
-//!     .compile(&schema)
+//!     .build(&schema)
 //!     .expect("Invalid schema");
 //!
 //! // Step 4: Validate instances
@@ -438,7 +437,7 @@
 //! ### Notes on Custom Format Validators
 //!
 //! - Custom format validators are only called for string instances.
-//! - Format validation can be disabled globally or per-draft using `CompilationOptions`.
+//! - Format validation can be disabled globally or per-draft using `ValidationOptions`.
 //!   Ensure format validation is enabled if you're using custom formats.
 mod compilation;
 mod content_encoding;
@@ -454,7 +453,7 @@ mod schema_node;
 mod schemas;
 mod validator;
 
-pub use compilation::{options::CompilationOptions, JSONSchema};
+pub use compilation::{options::ValidationOptions, Validator};
 pub use error::{ErrorIterator, ValidationError};
 pub use keywords::custom::Keyword;
 pub use output::BasicOutput;
@@ -462,6 +461,20 @@ pub use resolver::{SchemaResolver, SchemaResolverError};
 pub use schemas::Draft;
 
 use serde_json::Value;
+
+// Backward-compatibility
+#[deprecated(
+    since = "0.20.0",
+    note = "Use `ValidationOptions` instead. This type will be removed in a future release."
+)]
+/// Use [`ValidationOptions`] instead. This type will be removed in a future release.
+pub type CompilationOptions = ValidationOptions;
+#[deprecated(
+    since = "0.20.0",
+    note = "Use `Validator` instead. This type will be removed in a future release."
+)]
+/// Use [`Validator`] instead. This type will be removed in a future release.
+pub type JSONSchema = Validator;
 
 /// A shortcut for validating `instance` against `schema`. Draft is detected automatically.
 ///
@@ -492,11 +505,11 @@ pub fn is_valid(schema: &Value, instance: &Value) -> bool {
 ///
 /// This function is deprecated since version 0.20.0. Use [`validator_for`] instead.
 #[deprecated(since = "0.20.0", note = "Use `validator_for` instead")]
-pub fn compile(schema: &Value) -> Result<JSONSchema, ValidationError> {
-    JSONSchema::compile(schema)
+pub fn compile(schema: &Value) -> Result<Validator, ValidationError> {
+    Validator::new(schema)
 }
 
-/// Create a validator for the input schema with automatic draft detection.
+/// Create a validator for the input schema with automatic draft detection and default options.
 ///
 /// # Examples
 ///
@@ -509,13 +522,13 @@ pub fn compile(schema: &Value) -> Result<JSONSchema, ValidationError> {
 /// let validator = jsonschema::validator_for(&schema).expect("Invalid schema");
 /// assert!(validator.is_valid(&instance));
 /// ```
-pub fn validator_for(schema: &Value) -> Result<JSONSchema, ValidationError> {
-    JSONSchema::compile(schema)
+pub fn validator_for(schema: &Value) -> Result<Validator, ValidationError> {
+    Validator::new(schema)
 }
 
 /// Create a builder for configuring JSON Schema validation options.
 ///
-/// This function returns a [`CompilationOptions`] struct, which allows you to set various
+/// This function returns a [`ValidationOptions`] struct, which allows you to set various
 /// options for JSON Schema validation. You can use this builder to specify
 /// the draft version, set custom formats, and more.
 ///
@@ -530,7 +543,7 @@ pub fn validator_for(schema: &Value) -> Result<JSONSchema, ValidationError> {
 /// let schema = json!({"type": "string"});
 /// let validator = jsonschema::options()
 ///     .with_draft(Draft::Draft7)
-///     .compile(&schema)
+///     .build(&schema)
 ///     .expect("Invalid schema");
 ///
 /// assert!(validator.is_valid(&json!("Hello")));
@@ -544,16 +557,16 @@ pub fn validator_for(schema: &Value) -> Result<JSONSchema, ValidationError> {
 /// let schema = json!({"type": "string", "format": "custom"});
 /// let validator = jsonschema::options()
 ///     .with_format("custom", |value| value.len() == 3)
-///     .compile(&schema)
+///     .build(&schema)
 ///     .expect("Invalid schema");
 ///
 /// assert!(validator.is_valid(&json!("abc")));
 /// assert!(!validator.is_valid(&json!("abcd")));
 /// ```
 ///
-/// See [`CompilationOptions`] for all available configuration options.
-pub fn options() -> CompilationOptions {
-    JSONSchema::options()
+/// See [`ValidationOptions`] for all available configuration options.
+pub fn options() -> ValidationOptions {
+    Validator::options()
 }
 
 /// Functionality specific to JSON Schema Draft 4.
@@ -589,8 +602,8 @@ pub mod draft4 {
     /// let validator = jsonschema::draft4::new(&schema).expect("Invalid schema");
     /// assert!(validator.is_valid(&instance));
     /// ```
-    pub fn new(schema: &Value) -> Result<JSONSchema, ValidationError> {
-        options().compile(schema)
+    pub fn new(schema: &Value) -> Result<Validator, ValidationError> {
+        options().build(schema)
     }
     /// Validate an instance against a schema using Draft 4 specifications without creating a validator.
     ///
@@ -610,7 +623,7 @@ pub mod draft4 {
     pub fn is_valid(schema: &Value, instance: &Value) -> bool {
         new(schema).expect("Invalid schema").is_valid(instance)
     }
-    /// Creates a [`CompilationOptions`] builder pre-configured for JSON Schema Draft 4.
+    /// Creates a [`ValidationOptions`] builder pre-configured for JSON Schema Draft 4.
     ///
     /// This function provides a shorthand for `jsonschema::options().with_draft(Draft::Draft4)`.
     ///
@@ -623,16 +636,16 @@ pub mod draft4 {
     /// let validator = jsonschema::draft4::options()
     ///     .with_format("ends-with-42", |s| s.ends_with("42"))
     ///     .should_validate_formats(true)
-    ///     .compile(&schema)
+    ///     .build(&schema)
     ///     .expect("Invalid schema");
     ///
     /// assert!(validator.is_valid(&json!("Hello 42")));
     /// assert!(!validator.is_valid(&json!("No!")));
     /// ```
     ///
-    /// See [`CompilationOptions`] for all available configuration options.
+    /// See [`ValidationOptions`] for all available configuration options.
     #[must_use]
-    pub fn options() -> CompilationOptions {
+    pub fn options() -> ValidationOptions {
         let mut options = crate::options();
         options.with_draft(Draft::Draft4);
         options
@@ -672,8 +685,8 @@ pub mod draft6 {
     /// let validator = jsonschema::draft6::new(&schema).expect("Invalid schema");
     /// assert!(validator.is_valid(&instance));
     /// ```
-    pub fn new(schema: &Value) -> Result<JSONSchema, ValidationError> {
-        options().compile(schema)
+    pub fn new(schema: &Value) -> Result<Validator, ValidationError> {
+        options().build(schema)
     }
     /// Validate an instance against a schema using Draft 6 specifications without creating a validator.
     ///
@@ -693,7 +706,7 @@ pub mod draft6 {
     pub fn is_valid(schema: &Value, instance: &Value) -> bool {
         new(schema).expect("Invalid schema").is_valid(instance)
     }
-    /// Creates a [`CompilationOptions`] builder pre-configured for JSON Schema Draft 6.
+    /// Creates a [`ValidationOptions`] builder pre-configured for JSON Schema Draft 6.
     ///
     /// This function provides a shorthand for `jsonschema::options().with_draft(Draft::Draft6)`.
     ///
@@ -706,16 +719,16 @@ pub mod draft6 {
     /// let validator = jsonschema::draft6::options()
     ///     .with_format("ends-with-42", |s| s.ends_with("42"))
     ///     .should_validate_formats(true)
-    ///     .compile(&schema)
+    ///     .build(&schema)
     ///     .expect("Invalid schema");
     ///
     /// assert!(validator.is_valid(&json!("Hello 42")));
     /// assert!(!validator.is_valid(&json!("No!")));
     /// ```
     ///
-    /// See [`CompilationOptions`] for all available configuration options.
+    /// See [`ValidationOptions`] for all available configuration options.
     #[must_use]
-    pub fn options() -> CompilationOptions {
+    pub fn options() -> ValidationOptions {
         let mut options = crate::options();
         options.with_draft(Draft::Draft6);
         options
@@ -755,8 +768,8 @@ pub mod draft7 {
     /// let validator = jsonschema::draft7::new(&schema).expect("Invalid schema");
     /// assert!(validator.is_valid(&instance));
     /// ```
-    pub fn new(schema: &Value) -> Result<JSONSchema, ValidationError> {
-        options().compile(schema)
+    pub fn new(schema: &Value) -> Result<Validator, ValidationError> {
+        options().build(schema)
     }
     /// Validate an instance against a schema using Draft 7 specifications without creating a validator.
     ///
@@ -776,7 +789,7 @@ pub mod draft7 {
     pub fn is_valid(schema: &Value, instance: &Value) -> bool {
         new(schema).expect("Invalid schema").is_valid(instance)
     }
-    /// Creates a [`CompilationOptions`] builder pre-configured for JSON Schema Draft 7.
+    /// Creates a [`ValidationOptions`] builder pre-configured for JSON Schema Draft 7.
     ///
     /// This function provides a shorthand for `jsonschema::options().with_draft(Draft::Draft7)`.
     ///
@@ -789,16 +802,16 @@ pub mod draft7 {
     /// let validator = jsonschema::draft7::options()
     ///     .with_format("ends-with-42", |s| s.ends_with("42"))
     ///     .should_validate_formats(true)
-    ///     .compile(&schema)
+    ///     .build(&schema)
     ///     .expect("Invalid schema");
     ///
     /// assert!(validator.is_valid(&json!("Hello 42")));
     /// assert!(!validator.is_valid(&json!("No!")));
     /// ```
     ///
-    /// See [`CompilationOptions`] for all available configuration options.
+    /// See [`ValidationOptions`] for all available configuration options.
     #[must_use]
-    pub fn options() -> CompilationOptions {
+    pub fn options() -> ValidationOptions {
         let mut options = crate::options();
         options.with_draft(Draft::Draft7);
         options
@@ -838,8 +851,8 @@ pub mod draft201909 {
     /// let validator = jsonschema::draft201909::new(&schema).expect("Invalid schema");
     /// assert!(validator.is_valid(&instance));
     /// ```
-    pub fn new(schema: &Value) -> Result<JSONSchema, ValidationError> {
-        options().compile(schema)
+    pub fn new(schema: &Value) -> Result<Validator, ValidationError> {
+        options().build(schema)
     }
     /// Validate an instance against a schema using Draft 2019-09 specifications without creating a validator.
     ///
@@ -859,7 +872,7 @@ pub mod draft201909 {
     pub fn is_valid(schema: &Value, instance: &Value) -> bool {
         new(schema).expect("Invalid schema").is_valid(instance)
     }
-    /// Creates a [`CompilationOptions`] builder pre-configured for JSON Schema Draft 2019-09.
+    /// Creates a [`ValidationOptions`] builder pre-configured for JSON Schema Draft 2019-09.
     ///
     /// This function provides a shorthand for `jsonschema::options().with_draft(Draft::Draft201909)`.
     ///
@@ -872,16 +885,16 @@ pub mod draft201909 {
     /// let validator = jsonschema::draft201909::options()
     ///     .with_format("ends-with-42", |s| s.ends_with("42"))
     ///     .should_validate_formats(true)
-    ///     .compile(&schema)
+    ///     .build(&schema)
     ///     .expect("Invalid schema");
     ///
     /// assert!(validator.is_valid(&json!("Hello 42")));
     /// assert!(!validator.is_valid(&json!("No!")));
     /// ```
     ///
-    /// See [`CompilationOptions`] for all available configuration options.
+    /// See [`ValidationOptions`] for all available configuration options.
     #[must_use]
-    pub fn options() -> CompilationOptions {
+    pub fn options() -> ValidationOptions {
         let mut options = crate::options();
         options.with_draft(Draft::Draft201909);
         options
@@ -921,8 +934,8 @@ pub mod draft202012 {
     /// let validator = jsonschema::draft202012::new(&schema).expect("Invalid schema");
     /// assert!(validator.is_valid(&instance));
     /// ```
-    pub fn new(schema: &Value) -> Result<JSONSchema, ValidationError> {
-        options().compile(schema)
+    pub fn new(schema: &Value) -> Result<Validator, ValidationError> {
+        options().build(schema)
     }
     /// Validate an instance against a schema using Draft 2020-12 specifications without creating a validator.
     ///
@@ -942,7 +955,7 @@ pub mod draft202012 {
     pub fn is_valid(schema: &Value, instance: &Value) -> bool {
         new(schema).expect("Invalid schema").is_valid(instance)
     }
-    /// Creates a [`CompilationOptions`] builder pre-configured for JSON Schema Draft 2020-12.
+    /// Creates a [`ValidationOptions`] builder pre-configured for JSON Schema Draft 2020-12.
     ///
     /// This function provides a shorthand for `jsonschema::options().with_draft(Draft::Draft202012)`.
     ///
@@ -955,16 +968,16 @@ pub mod draft202012 {
     /// let validator = jsonschema::draft202012::options()
     ///     .with_format("ends-with-42", |s| s.ends_with("42"))
     ///     .should_validate_formats(true)
-    ///     .compile(&schema)
+    ///     .build(&schema)
     ///     .expect("Invalid schema");
     ///
     /// assert!(validator.is_valid(&json!("Hello 42")));
     /// assert!(!validator.is_valid(&json!("No!")));
     /// ```
     ///
-    /// See [`CompilationOptions`] for all available configuration options.
+    /// See [`ValidationOptions`] for all available configuration options.
     #[must_use]
-    pub fn options() -> CompilationOptions {
+    pub fn options() -> ValidationOptions {
         let mut options = crate::options();
         options.with_draft(Draft::Draft202012);
         options
@@ -973,11 +986,11 @@ pub mod draft202012 {
 
 #[cfg(test)]
 pub(crate) mod tests_util {
-    use super::JSONSchema;
+    use super::Validator;
     use crate::ValidationError;
     use serde_json::Value;
 
-    pub(crate) fn is_not_valid_with(validator: &JSONSchema, instance: &Value) {
+    pub(crate) fn is_not_valid_with(validator: &Validator, instance: &Value) {
         assert!(
             !validator.is_valid(instance),
             "{} should not be valid (via is_valid)",
@@ -1001,7 +1014,7 @@ pub(crate) mod tests_util {
     }
 
     pub(crate) fn is_not_valid_with_draft(draft: crate::Draft, schema: &Value, instance: &Value) {
-        let validator = crate::options().with_draft(draft).compile(schema).unwrap();
+        let validator = crate::options().with_draft(draft).build(schema).unwrap();
         is_not_valid_with(&validator, instance)
     }
 
@@ -1017,7 +1030,7 @@ pub(crate) mod tests_util {
         )
     }
 
-    pub(crate) fn is_valid_with(validator: &JSONSchema, instance: &Value) {
+    pub(crate) fn is_valid_with(validator: &Validator, instance: &Value) {
         if let Err(mut errors) = validator.validate(instance) {
             let first = errors.next().expect("Errors iterator is empty");
             panic!(
@@ -1043,7 +1056,7 @@ pub(crate) mod tests_util {
     }
 
     pub(crate) fn is_valid_with_draft(draft: crate::Draft, schema: &Value, instance: &Value) {
-        let validator = crate::options().with_draft(draft).compile(schema).unwrap();
+        let validator = crate::options().with_draft(draft).build(schema).unwrap();
         is_valid_with(&validator, instance)
     }
 
@@ -1115,7 +1128,7 @@ mod tests {
     fn meta_schemas(draft: Draft) {
         // See GH-258
         for schema in [json!({"enum": [0, 0.0]}), json!({"enum": []})] {
-            assert!(crate::options().with_draft(draft).compile(&schema).is_ok())
+            assert!(crate::options().with_draft(draft).build(&schema).is_ok())
         }
     }
 

@@ -9,11 +9,11 @@ use crate::{
 use serde_json::{Map, Value};
 
 use super::CompilationResult;
-use crate::paths::JSONPointer;
+use crate::paths::JsonPointer;
 
 pub(crate) struct AnyOfValidator {
     schemas: Vec<SchemaNode>,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 impl AnyOfValidator {
@@ -36,7 +36,7 @@ impl AnyOfValidator {
             }))
         } else {
             Err(ValidationError::single_type_error(
-                JSONPointer::default(),
+                JsonPointer::default(),
                 context.clone().into_pointer(),
                 schema,
                 PrimitiveType::Array,

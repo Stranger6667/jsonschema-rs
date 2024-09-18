@@ -2,9 +2,29 @@
 
 ## [Unreleased]
 
+### Added
+- New draft-specific modules for easier version-targeted validation:
+  - `jsonschema::draft4`
+  - `jsonschema::draft6`
+  - `jsonschema::draft7`
+  - `jsonschema::draft201909`
+  - `jsonschema::draft202012`
+  Each module provides `new()`, `is_valid()`, and `options()` functions.
+- `jsonschema::options()` function as a shortcut for `jsonschema::Validator::options()`, that allows for customization of the validation process.
+
 ### Changed
 
 - Make `Debug` implementation for `SchemaNode` opaque.
+
+### Deprecated
+
+- Rename `CompilationOptions` to `ValidationOptions` for clarity.
+- Rename `JSONSchema` to `Validator` for clarity. [#424](https://github.com/Stranger6667/jsonschema-rs/issues/424)
+- Rename `JSONPointer` to `JsonPointer` for consistency with naming conventions. [#424](https://github.com/Stranger6667/jsonschema-rs/issues/424)
+- Rename `jsonschema::compile` to `jsonschema::validator_for`.
+- Rename `CompilationOptions::compile` to `ValidationOptions::build`.
+
+Old names are retained for backward compatibility but will be removed in a future release.
 
 ## [0.19.1] - 2024-09-15
 

@@ -2,7 +2,7 @@ use crate::{
     compilation::context::CompilationContext,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
@@ -12,17 +12,17 @@ use serde_json::{Map, Value};
 pub(crate) struct MaximumU64Validator {
     limit: u64,
     limit_val: Value,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 pub(crate) struct MaximumI64Validator {
     limit: i64,
     limit_val: Value,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 pub(crate) struct MaximumF64Validator {
     limit: f64,
     limit_val: Value,
-    schema_path: JSONPointer,
+    schema_path: JsonPointer,
 }
 
 macro_rules! validate {
@@ -128,7 +128,7 @@ pub(crate) fn compile<'a>(
         }
     } else {
         Some(Err(ValidationError::single_type_error(
-            JSONPointer::default(),
+            JsonPointer::default(),
             context.clone().into_pointer(),
             schema,
             PrimitiveType::Number,

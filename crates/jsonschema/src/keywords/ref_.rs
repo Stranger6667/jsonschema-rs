@@ -2,13 +2,13 @@ use crate::{
     compilation::{compile_validators, context::CompilationContext},
     error::{error, ErrorIterator},
     keywords::CompilationResult,
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     resolver::Resolver,
     schema_node::SchemaNode,
     schemas::draft_from_schema,
     validator::Validate,
-    CompilationOptions, Draft, ValidationError,
+    Draft, ValidationError, ValidationOptions,
 };
 use parking_lot::RwLock;
 use serde_json::{Map, Value};
@@ -19,8 +19,8 @@ pub(crate) struct RefValidator {
     original_reference: String,
     reference: Url,
     sub_nodes: RwLock<Option<SchemaNode>>,
-    schema_path: JSONPointer,
-    config: Arc<CompilationOptions>,
+    schema_path: JsonPointer,
+    config: Arc<ValidationOptions>,
     pub(crate) resolver: Arc<Resolver>,
 }
 
@@ -40,7 +40,7 @@ impl RefValidator {
         }))
     }
 
-    fn get_config_for_resolved_schema(&self, resolved: &Value) -> Arc<CompilationOptions> {
+    fn get_config_for_resolved_schema(&self, resolved: &Value) -> Arc<ValidationOptions> {
         if let Some(draft) = draft_from_schema(resolved) {
             let mut config = (*self.config).clone();
             config.with_draft(draft);
@@ -129,7 +129,7 @@ pub(crate) fn compile<'a>(
             .as_str()
             .ok_or_else(|| {
                 ValidationError::single_type_error(
-                    JSONPointer::default(),
+                    JsonPointer::default(),
                     context.clone().into_pointer(),
                     schema,
                     PrimitiveType::String,

@@ -1,5 +1,5 @@
-//! Schema compilation.
-//! The main idea is to compile the input JSON Schema to a validators tree that will contain
+//! Building a JSON Schema validator.
+//! The main idea is to create a tree from the input JSON Schema. This tree will contain
 //! everything needed to perform such validation in runtime.
 pub(crate) mod context;
 pub(crate) mod options;
@@ -8,7 +8,7 @@ use crate::{
     error::ErrorIterator,
     keywords::{self, custom::CustomKeyword, BoxedValidator},
     output::Output,
-    paths::{JSONPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     schema_node::SchemaNode,
     validator::Validate,
@@ -17,7 +17,7 @@ use crate::{
 use ahash::AHashMap;
 use context::CompilationContext;
 use once_cell::sync::Lazy;
-use options::CompilationOptions;
+use options::ValidationOptions;
 use serde_json::Value;
 use std::sync::Arc;
 use url::Url;
@@ -26,9 +26,9 @@ pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
 
 /// The structure that holds a JSON Schema nodes.
 #[derive(Debug)]
-pub struct JSONSchema {
+pub struct Validator {
     pub(crate) node: SchemaNode,
-    config: Arc<CompilationOptions>,
+    config: Arc<ValidationOptions>,
 }
 
 pub(crate) static DEFAULT_SCOPE: Lazy<Url> =
@@ -44,34 +44,38 @@ pub(crate) static DEFAULT_SCOPE: Lazy<Url> =
 #[cfg(any(feature = "draft201909", feature = "draft202012", feature = "cli"))]
 fn deprecated_features_used() {}
 
-impl JSONSchema {
-    /// Return a default `CompilationOptions` that can configure
-    /// `JSONSchema` compilation flow.
+impl Validator {
+    /// Create a default `ValidationOptions` for configuring JSON Schema validation.
     ///
-    /// Using options you will be able to configure the draft version
-    /// to use during `JSONSchema` compilation
+    /// Use this to set the draft version and other validation parameters.
     ///
-    /// Example of usage:
+    /// # Example
+    ///
     /// ```rust
-    /// # use crate::jsonschema::{Draft, JSONSchema};
+    /// # use jsonschema::Draft;
     /// # let schema = serde_json::json!({});
     /// let validator = jsonschema::options()
     ///     .with_draft(Draft::Draft7)
-    ///     .compile(&schema);
+    ///     .build(&schema);
     /// ```
     #[must_use]
-    pub fn options() -> CompilationOptions {
+    pub fn options() -> ValidationOptions {
         #[cfg(any(feature = "draft201909", feature = "draft202012", feature = "cli"))]
         deprecated_features_used();
-        CompilationOptions::default()
+        ValidationOptions::default()
     }
-
-    /// Compile the input schema for faster validation.
-    pub fn compile(schema: &Value) -> Result<JSONSchema, ValidationError> {
-        Self::options().compile(schema)
+    /// Create a validator using the default options.
+    pub fn new(schema: &Value) -> Result<Validator, ValidationError> {
+        Self::options().build(schema)
     }
-
-    /// Run validation against `instance` and return an iterator over `ValidationError` in the error case.
+    /// Create a validator using the default options.
+    ///
+    /// **DEPRECATED**: Use [`Validator::new`] instead.
+    #[deprecated(since = "0.20.0", note = "Use `Validator::new` instead")]
+    pub fn compile(schema: &Value) -> Result<Validator, ValidationError> {
+        Self::new(schema)
+    }
+    /// Run validation against `instance` and return an iterator over [`ValidationError`] in the error case.
     #[inline]
     pub fn validate<'instance>(
         &'instance self,
@@ -85,7 +89,6 @@ impl JSONSchema {
             Err(Box::new(errors))
         }
     }
-
     /// Run validation against `instance` but return a boolean result instead of an iterator.
     /// It is useful for cases, where it is important to only know the fact if the data is valid or not.
     /// This approach is much faster, than `validate`.
@@ -146,14 +149,14 @@ impl JSONSchema {
         self.config.draft()
     }
 
-    /// The [`CompilationOptions`] that were used to build this validator.
+    /// The [`ValidationOptions`] that were used to build this validator.
     #[must_use]
-    pub fn config(&self) -> Arc<CompilationOptions> {
+    pub fn config(&self) -> Arc<ValidationOptions> {
         Arc::clone(&self.config)
     }
 }
 
-/// Compile JSON schema into a tree of validators.
+/// Build a tree of validators.
 #[inline]
 pub(crate) fn compile_validators<'a>(
     schema: &'a Value,
@@ -256,7 +259,7 @@ pub(crate) fn compile_validators<'a>(
             }
         }
         _ => Err(ValidationError::multiple_type_error(
-            JSONPointer::default(),
+            JsonPointer::default(),
             relative_path,
             schema,
             PrimitiveTypesBitMap::new()
@@ -271,7 +274,7 @@ mod tests {
     use crate::{
         error::{self, no_error, ValidationError},
         keywords::custom::Keyword,
-        paths::{JSONPointer, JsonPointerNode},
+        paths::{JsonPointer, JsonPointerNode},
         primitive_type::PrimitiveType,
         ErrorIterator,
     };
@@ -353,7 +356,7 @@ mod tests {
                 for key in instance.as_object().unwrap().keys() {
                     if !key.is_ascii() {
                         let error = ValidationError::custom(
-                            JSONPointer::default(),
+                            JsonPointer::default(),
                             instance_path.into(),
                             instance,
                             "Key is not ASCII",
@@ -377,12 +380,12 @@ mod tests {
         fn custom_object_type_factory<'a>(
             _: &'a Map<String, Value>,
             schema: &'a Value,
-            path: JSONPointer,
+            path: JsonPointer,
         ) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
             const EXPECTED: &str = "ascii-keys";
             if schema.as_str().map_or(true, |key| key != EXPECTED) {
                 Err(ValidationError::constant_string(
-                    JSONPointer::default(),
+                    JsonPointer::default(),
                     path,
                     schema,
                     EXPECTED,
@@ -397,7 +400,7 @@ mod tests {
             json!({ "custom-object-type": "ascii-keys", "type": "object", "minProperties": 1 });
         let validator = crate::options()
             .with_keyword("custom-object-type", custom_object_type_factory)
-            .compile(&schema)
+            .build(&schema)
             .unwrap();
 
         // Verify schema validation detects object with too few properties
@@ -436,7 +439,7 @@ mod tests {
             limit: f64,
             limit_val: Value,
             with_currency_format: bool,
-            schema_path: JSONPointer,
+            schema_path: JsonPointer,
         }
 
         impl Keyword for CustomMinimumValidator {
@@ -492,14 +495,14 @@ mod tests {
         fn custom_minimum_factory<'a>(
             parent: &'a Map<String, Value>,
             schema: &'a Value,
-            schema_path: JSONPointer,
+            schema_path: JsonPointer,
         ) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
             let limit = if let Value::Number(limit) = schema {
                 limit.as_f64().expect("Always valid")
             } else {
                 return Err(ValidationError::single_type_error(
                     // There is no metaschema definition for a custom keyword, hence empty `schema` pointer
-                    JSONPointer::default(),
+                    JsonPointer::default(),
                     schema_path,
                     schema,
                     PrimitiveType::Number,
@@ -522,7 +525,7 @@ mod tests {
             .with_format("currency", currency_format_checker)
             .with_keyword("minimum", custom_minimum_factory)
             .with_keyword("minimum-2", |_, _, _| todo!())
-            .compile(&schema)
+            .build(&schema)
             .expect("Invalid schema");
 
         // Control: verify schema validation rejects non-string types
@@ -550,7 +553,7 @@ mod tests {
         let validator = crate::options()
             .with_format("currency", currency_format_checker)
             .with_keyword("minimum", custom_minimum_factory)
-            .compile(&schema)
+            .build(&schema)
             .expect("Invalid schema");
 
         // Verify schema allows integers greater than 2
@@ -567,7 +570,7 @@ mod tests {
         let schema = json!({ "minimum": "foo" });
         let error = crate::options()
             .with_keyword("minimum", custom_minimum_factory)
-            .compile(&schema)
+            .build(&schema)
             .expect_err("Should fail");
         assert_eq!(error.to_string(), "\"foo\" is not of type \"number\"");
     }
