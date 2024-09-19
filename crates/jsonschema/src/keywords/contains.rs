@@ -1,9 +1,9 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext},
+    compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
+    node::SchemaNode,
     paths::{JsonPointer, JsonPointerNode},
-    schema_node::SchemaNode,
     validator::{PartialApplication, Validate},
     Draft,
 };
@@ -18,14 +18,11 @@ pub(crate) struct ContainsValidator {
 
 impl ContainsValidator {
     #[inline]
-    pub(crate) fn compile<'a>(
-        schema: &'a Value,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
-        let keyword_context = context.with_path("contains");
+    pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
+        let ctx = ctx.with_path("contains");
         Ok(Box::new(ContainsValidator {
-            node: compile_validators(schema, &keyword_context)?,
-            schema_path: keyword_context.into_pointer(),
+            node: compiler::compile(&ctx, ctx.as_resource_ref(schema))?,
+            schema_path: ctx.into_pointer(),
         }))
     }
 }
@@ -108,15 +105,15 @@ pub(crate) struct MinContainsValidator {
 impl MinContainsValidator {
     #[inline]
     pub(crate) fn compile<'a>(
+        ctx: &compiler::Context,
         schema: &'a Value,
-        context: &CompilationContext,
         min_contains: u64,
     ) -> CompilationResult<'a> {
-        let keyword_context = context.with_path("minContains");
+        let ctx = ctx.with_path("minContains");
         Ok(Box::new(MinContainsValidator {
-            node: compile_validators(schema, context)?,
+            node: compiler::compile(&ctx, ctx.as_resource_ref(schema))?,
             min_contains,
-            schema_path: keyword_context.into_pointer(),
+            schema_path: ctx.into_pointer(),
         }))
     }
 }
@@ -195,15 +192,15 @@ pub(crate) struct MaxContainsValidator {
 impl MaxContainsValidator {
     #[inline]
     pub(crate) fn compile<'a>(
+        ctx: &compiler::Context,
         schema: &'a Value,
-        context: &CompilationContext,
         max_contains: u64,
     ) -> CompilationResult<'a> {
-        let keyword_context = context.with_path("maxContains");
+        let ctx = ctx.with_path("maxContains");
         Ok(Box::new(MaxContainsValidator {
-            node: compile_validators(schema, context)?,
+            node: compiler::compile(&ctx, ctx.as_resource_ref(schema))?,
             max_contains,
-            schema_path: keyword_context.into_pointer(),
+            schema_path: ctx.into_pointer(),
         }))
     }
 }
@@ -291,16 +288,16 @@ pub(crate) struct MinMaxContainsValidator {
 impl MinMaxContainsValidator {
     #[inline]
     pub(crate) fn compile<'a>(
+        ctx: &compiler::Context,
         schema: &'a Value,
-        context: &CompilationContext,
         min_contains: u64,
         max_contains: u64,
     ) -> CompilationResult<'a> {
         Ok(Box::new(MinMaxContainsValidator {
-            node: compile_validators(schema, context)?,
+            node: compiler::compile(ctx, ctx.as_resource_ref(schema))?,
             min_contains,
             max_contains,
-            schema_path: context.schema_path.clone().into(),
+            schema_path: ctx.path.clone().into(),
         }))
     }
 }
@@ -369,38 +366,39 @@ impl Validate for MinMaxContainsValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     parent: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
-    match context.config.draft() {
+    match ctx.draft() {
         Draft::Draft4 | Draft::Draft6 | Draft::Draft7 => {
-            Some(ContainsValidator::compile(schema, context))
+            Some(ContainsValidator::compile(ctx, schema))
         }
-        Draft::Draft201909 | Draft::Draft202012 => compile_contains(parent, schema, context),
+        Draft::Draft201909 | Draft::Draft202012 => compile_contains(ctx, parent, schema),
+        _ => None,
     }
 }
 
 #[inline]
 fn compile_contains<'a>(
+    ctx: &compiler::Context,
     parent: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
-    let min_contains = match map_get_u64(parent, context, "minContains").transpose() {
+    let min_contains = match map_get_u64(parent, ctx, "minContains").transpose() {
         Ok(n) => n,
         Err(err) => return Some(Err(err)),
     };
-    let max_contains = match map_get_u64(parent, context, "maxContains").transpose() {
+    let max_contains = match map_get_u64(parent, ctx, "maxContains").transpose() {
         Ok(n) => n,
         Err(err) => return Some(Err(err)),
     };
 
     match (min_contains, max_contains) {
-        (Some(min), Some(max)) => Some(MinMaxContainsValidator::compile(schema, context, min, max)),
-        (Some(min), None) => Some(MinContainsValidator::compile(schema, context, min)),
-        (None, Some(max)) => Some(MaxContainsValidator::compile(schema, context, max)),
-        (None, None) => Some(ContainsValidator::compile(schema, context)),
+        (Some(min), Some(max)) => Some(MinMaxContainsValidator::compile(ctx, schema, min, max)),
+        (Some(min), None) => Some(MinContainsValidator::compile(ctx, schema, min)),
+        (None, Some(max)) => Some(MaxContainsValidator::compile(ctx, schema, max)),
+        (None, None) => Some(ContainsValidator::compile(ctx, schema)),
     }
 }
 

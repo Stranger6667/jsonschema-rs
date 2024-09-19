@@ -1,5 +1,5 @@
 use crate::{
-    compilation::context::CompilationContext,
+    compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
@@ -324,11 +324,11 @@ fn is_integer(num: &Number) -> bool {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
-    let schema_path = context.as_pointer_with("type");
+    let schema_path = ctx.as_pointer_with("type");
     match schema {
         Value::String(item) => compile_single_type(item.as_str(), schema_path),
         Value::Array(items) => {
@@ -350,7 +350,7 @@ pub(crate) fn compile<'a>(
         }
         _ => Some(Err(ValidationError::multiple_type_error(
             JsonPointer::default(),
-            context.clone().into_pointer(),
+            ctx.clone().into_pointer(),
             schema,
             PrimitiveTypesBitMap::new()
                 .add_type(PrimitiveType::String)

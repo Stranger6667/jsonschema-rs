@@ -2,11 +2,11 @@ use serde_json::Value;
 use std::sync::LazyLock;
 use strum::{EnumIter, IntoEnumIterator};
 
-static OPEN_API: &[u8] = include_bytes!("../data/openapi.json");
-static SWAGGER: &[u8] = include_bytes!("../data/swagger.json");
-static GEOJSON: &[u8] = include_bytes!("../data/geojson.json");
-static CITM_SCHEMA: &[u8] = include_bytes!("../data/citm_catalog_schema.json");
-static FAST_SCHEMA: &[u8] = include_bytes!("../data/fast_schema.json");
+pub static OPEN_API: &[u8] = include_bytes!("../data/openapi.json");
+pub static SWAGGER: &[u8] = include_bytes!("../data/swagger.json");
+pub static GEOJSON: &[u8] = include_bytes!("../data/geojson.json");
+pub static CITM_SCHEMA: &[u8] = include_bytes!("../data/citm_catalog_schema.json");
+pub static FAST_SCHEMA: &[u8] = include_bytes!("../data/fast_schema.json");
 
 static ZUORA: &[u8] = include_bytes!("../data/zuora.json");
 static KUBERNETES: &[u8] = include_bytes!("../data/kubernetes.json");

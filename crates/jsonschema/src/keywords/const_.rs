@@ -1,5 +1,5 @@
 use crate::{
-    compilation::context::CompilationContext,
+    compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers, CompilationResult},
     validator::Validate,
@@ -258,11 +258,11 @@ impl Validate for ConstStringValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
-    let schema_path = context.as_pointer_with("const");
+    let schema_path = ctx.as_pointer_with("const");
     match schema {
         Value::Array(items) => Some(ConstArrayValidator::compile(items, schema_path)),
         Value::Bool(item) => Some(ConstBooleanValidator::compile(*item, schema_path)),

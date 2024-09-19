@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Added
+
+- `$anchor` support.
+
+### Changed
+
+- **BREAKING**: Treat `$ref` as URI, not URL and additionally normalize them. [#454](https://github.com/Stranger6667/jsonschema-rs/issues/454)
+- **BREAKING**: Resolve all non-recursive references eagerly.
+- **BREAKING**: Disallow use of fragments in `$id`. [#264](https://github.com/Stranger6667/jsonschema-rs/issues/264)
+
+### Fixed
+
+- Infinite recursion in `unevaluatedProperties`. [#420](https://github.com/Stranger6667/jsonschema-rs/issues/420)
+- Cross-draft validation from newer to older ones.
+- Changing base URI in folder.
+- Location-independent identifier in remote resource.
+
 ## [0.20.0] - 2024-09-18
 
 ### Added

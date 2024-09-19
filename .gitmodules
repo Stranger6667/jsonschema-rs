@@ -1,3 +1,6 @@
 [submodule "testsuite"]
 	path = crates/jsonschema/tests/suite
 	url = https://github.com/json-schema-org/JSON-Schema-Test-Suite.git
+[submodule "testsuite-referencing"]
+	path = crates/jsonschema-referencing/tests/suite
+	url = https://github.com/python-jsonschema/referencing-suite.git

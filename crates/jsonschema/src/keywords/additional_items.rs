@@ -1,10 +1,10 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext},
+    compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{boolean::FalseValidator, CompilationResult},
+    node::SchemaNode,
     paths::{JsonPointer, JsonPointerNode},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
-    schema_node::SchemaNode,
     validator::Validate,
 };
 use serde_json::{Map, Value};
@@ -16,11 +16,11 @@ pub(crate) struct AdditionalItemsObjectValidator {
 impl AdditionalItemsObjectValidator {
     #[inline]
     pub(crate) fn compile<'a>(
+        ctx: &compiler::Context,
         schema: &'a Value,
         items_count: usize,
-        context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        let node = compile_validators(schema, context)?;
+        let node = compiler::compile(ctx, ctx.as_resource_ref(schema))?;
         Ok(Box::new(AdditionalItemsObjectValidator {
             node,
             items_count,
@@ -106,21 +106,21 @@ impl Validate for AdditionalItemsBooleanValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     parent: &Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     if let Some(items) = parent.get("items") {
         match items {
             Value::Object(_) => None,
             Value::Array(items) => {
-                let keyword_context = context.with_path("additionalItems");
+                let keyword_context = ctx.with_path("additionalItems");
                 let items_count = items.len();
                 match schema {
                     Value::Object(_) => Some(AdditionalItemsObjectValidator::compile(
+                        &keyword_context,
                         schema,
                         items_count,
-                        &keyword_context,
                     )),
                     Value::Bool(false) => Some(AdditionalItemsBooleanValidator::compile(
                         items_count,
@@ -133,13 +133,13 @@ pub(crate) fn compile<'a>(
                 if *value {
                     None
                 } else {
-                    let schema_path = context.as_pointer_with("additionalItems");
+                    let schema_path = ctx.as_pointer_with("additionalItems");
                     Some(FalseValidator::compile(schema_path))
                 }
             }
             _ => Some(Err(ValidationError::multiple_type_error(
                 JsonPointer::default(),
-                context.clone().into_pointer(),
+                ctx.clone().into_pointer(),
                 schema,
                 PrimitiveTypesBitMap::new()
                     .add_type(PrimitiveType::Object)

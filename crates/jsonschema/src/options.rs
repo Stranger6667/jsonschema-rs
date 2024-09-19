@@ -1,5 +1,6 @@
+#![allow(deprecated)]
 use crate::{
-    compilation::{compile_validators, context::CompilationContext, Validator, DEFAULT_SCOPE},
+    compiler,
     content_encoding::{
         ContentEncodingCheckType, ContentEncodingConverterType,
         DEFAULT_CONTENT_ENCODING_CHECKS_AND_CONVERTERS,
@@ -7,267 +8,30 @@ use crate::{
     content_media_type::{ContentMediaTypeCheckType, DEFAULT_CONTENT_MEDIA_TYPE_CHECKS},
     keywords::{custom::KeywordFactory, format::Format},
     paths::JsonPointer,
-    resolver::{DefaultResolver, Resolver, SchemaResolver},
-    schemas, Keyword, ValidationError,
+    retriever::DefaultRetriever,
+    Keyword, SchemaResolver, ValidationError, Validator,
 };
 use ahash::AHashMap;
-use once_cell::sync::Lazy;
+use referencing::{Draft, Resource, Retrieve};
+use serde_json::Value;
 use std::{borrow::Cow, fmt, sync::Arc};
-
-macro_rules! schema {
-    ($name:ident, $path:expr) => {
-        static $name: Lazy<Arc<serde_json::Value>> = Lazy::new(|| {
-            Arc::new(serde_json::from_slice(include_bytes!($path)).expect("Invalid schema"))
-        });
-    };
-}
-
-schema!(DRAFT4, "../../meta_schemas/draft4.json");
-schema!(DRAFT6, "../../meta_schemas/draft6.json");
-schema!(DRAFT7, "../../meta_schemas/draft7.json");
-schema!(DRAFT201909, "../../meta_schemas/draft2019-09/schema.json");
-schema!(
-    DRAFT201909_APPLICATOR,
-    "../../meta_schemas/draft2019-09/meta/applicator.json"
-);
-schema!(
-    DRAFT201909_CONTENT,
-    "../../meta_schemas/draft2019-09/meta/content.json"
-);
-schema!(
-    DRAFT201909_CORE,
-    "../../meta_schemas/draft2019-09/meta/core.json"
-);
-schema!(
-    DRAFT201909_FORMAT,
-    "../../meta_schemas/draft2019-09/meta/format.json"
-);
-schema!(
-    DRAFT201909_META_DATA,
-    "../../meta_schemas/draft2019-09/meta/meta-data.json"
-);
-schema!(
-    DRAFT201909_VALIDATION,
-    "../../meta_schemas/draft2019-09/meta/validation.json"
-);
-schema!(DRAFT202012, "../../meta_schemas/draft2020-12/schema.json");
-schema!(
-    DRAFT202012_CORE,
-    "../../meta_schemas/draft2020-12/meta/core.json"
-);
-schema!(
-    DRAFT202012_APPLICATOR,
-    "../../meta_schemas/draft2020-12/meta/applicator.json"
-);
-schema!(
-    DRAFT202012_UNEVALUATED,
-    "../../meta_schemas/draft2020-12/meta/unevaluated.json"
-);
-schema!(
-    DRAFT202012_VALIDATION,
-    "../../meta_schemas/draft2020-12/meta/validation.json"
-);
-schema!(
-    DRAFT202012_META_DATA,
-    "../../meta_schemas/draft2020-12/meta/meta-data.json"
-);
-schema!(
-    DRAFT202012_FORMAT_ANNOTATION,
-    "../../meta_schemas/draft2020-12/meta/format-annotation.json"
-);
-schema!(
-    DRAFT202012_CONTENT,
-    "../../meta_schemas/draft2020-12/meta/content.json"
-);
-
-static META_SCHEMAS: Lazy<AHashMap<Cow<'static, str>, Arc<serde_json::Value>>> = Lazy::new(|| {
-    let mut store = AHashMap::with_capacity(3);
-    store.insert(
-        "http://json-schema.org/draft-04/schema".into(),
-        Arc::clone(&DRAFT4),
-    );
-    store.insert(
-        "http://json-schema.org/draft-06/schema".into(),
-        Arc::clone(&DRAFT6),
-    );
-    store.insert(
-        "http://json-schema.org/draft-07/schema".into(),
-        Arc::clone(&DRAFT7),
-    );
-    store.insert(
-        "https://json-schema.org/draft/2019-09/schema".into(),
-        Arc::clone(&DRAFT201909),
-    );
-    store.insert(
-        "https://json-schema.org/draft/2019-09/meta/applicator".into(),
-        Arc::clone(&DRAFT201909_APPLICATOR),
-    );
-    store.insert(
-        "https://json-schema.org/draft/2019-09/meta/content".into(),
-        Arc::clone(&DRAFT201909_CONTENT),
-    );
-    store.insert(
-        "https://json-schema.org/draft/2019-09/meta/core".into(),
-        Arc::clone(&DRAFT201909_CORE),
-    );
-    store.insert(
-        "https://json-schema.org/draft/2019-09/meta/format".into(),
-        Arc::clone(&DRAFT201909_FORMAT),
-    );
-    store.insert(
-        "https://json-schema.org/draft/2019-09/meta/meta-data".into(),
-        Arc::clone(&DRAFT201909_META_DATA),
-    );
-    store.insert(
-        "https://json-schema.org/draft/2019-09/meta/validation".into(),
-        Arc::clone(&DRAFT201909_VALIDATION),
-    );
-    store.insert(
-        "https://json-schema.org/draft/2020-12/schema".into(),
-        Arc::clone(&DRAFT202012),
-    );
-    store.insert(
-        "https://json-schema.org/draft/2020-12/meta/core".into(),
-        Arc::clone(&DRAFT202012_CORE),
-    );
-    store.insert(
-        "https://json-schema.org/draft/2020-12/meta/applicator".into(),
-        Arc::clone(&DRAFT202012_APPLICATOR),
-    );
-    store.insert(
-        "https://json-schema.org/draft/2020-12/meta/unevaluated".into(),
-        Arc::clone(&DRAFT202012_UNEVALUATED),
-    );
-    store.insert(
-        "https://json-schema.org/draft/2020-12/meta/validation".into(),
-        Arc::clone(&DRAFT202012_VALIDATION),
-    );
-    store.insert(
-        "https://json-schema.org/draft/2020-12/meta/meta-data".into(),
-        Arc::clone(&DRAFT202012_META_DATA),
-    );
-    store.insert(
-        "https://json-schema.org/draft/2020-12/meta/format-annotation".into(),
-        Arc::clone(&DRAFT202012_FORMAT_ANNOTATION),
-    );
-    store.insert(
-        "https://json-schema.org/draft/2020-12/meta/content".into(),
-        Arc::clone(&DRAFT202012_CONTENT),
-    );
-    store
-});
-
-const EXPECT_MESSAGE: &str = "Invalid meta-schema";
-static META_SCHEMA_VALIDATORS: Lazy<AHashMap<schemas::Draft, Validator>> = Lazy::new(|| {
-    let mut store = AHashMap::with_capacity(3);
-    store.insert(
-        schemas::Draft::Draft4,
-        crate::options()
-            .without_schema_validation()
-            .build(&DRAFT4)
-            .expect(EXPECT_MESSAGE),
-    );
-    store.insert(
-        schemas::Draft::Draft6,
-        crate::options()
-            .without_schema_validation()
-            .build(&DRAFT6)
-            .expect(EXPECT_MESSAGE),
-    );
-    store.insert(
-        schemas::Draft::Draft7,
-        crate::options()
-            .without_schema_validation()
-            .build(&DRAFT7)
-            .expect(EXPECT_MESSAGE),
-    );
-    let mut options = crate::options();
-    options.store.insert(
-        "https://json-schema.org/draft/2019-09/meta/applicator".into(),
-        Arc::clone(&DRAFT201909_APPLICATOR),
-    );
-    options.store.insert(
-        "https://json-schema.org/draft/2019-09/meta/content".into(),
-        Arc::clone(&DRAFT201909_CONTENT),
-    );
-    options.store.insert(
-        "https://json-schema.org/draft/2019-09/meta/core".into(),
-        Arc::clone(&DRAFT201909_CORE),
-    );
-    options.store.insert(
-        "https://json-schema.org/draft/2019-09/meta/format".into(),
-        Arc::clone(&DRAFT201909_FORMAT),
-    );
-    options.store.insert(
-        "https://json-schema.org/draft/2019-09/meta/meta-data".into(),
-        Arc::clone(&DRAFT201909_META_DATA),
-    );
-    options.store.insert(
-        "https://json-schema.org/draft/2019-09/meta/validation".into(),
-        Arc::clone(&DRAFT201909_VALIDATION),
-    );
-    store.insert(
-        schemas::Draft::Draft201909,
-        options
-            .without_schema_validation()
-            .build(&DRAFT201909)
-            .expect(EXPECT_MESSAGE),
-    );
-    let mut options = crate::options();
-    options.store.insert(
-        "https://json-schema.org/draft/2020-12/meta/applicator".into(),
-        Arc::clone(&DRAFT202012_APPLICATOR),
-    );
-    options.store.insert(
-        "https://json-schema.org/draft/2020-12/meta/core".into(),
-        Arc::clone(&DRAFT202012_CORE),
-    );
-    options.store.insert(
-        "https://json-schema.org/draft/2020-12/meta/applicator".into(),
-        Arc::clone(&DRAFT202012_APPLICATOR),
-    );
-    options.store.insert(
-        "https://json-schema.org/draft/2020-12/meta/unevaluated".into(),
-        Arc::clone(&DRAFT202012_UNEVALUATED),
-    );
-    options.store.insert(
-        "https://json-schema.org/draft/2020-12/meta/validation".into(),
-        Arc::clone(&DRAFT202012_VALIDATION),
-    );
-    options.store.insert(
-        "https://json-schema.org/draft/2020-12/meta/meta-data".into(),
-        Arc::clone(&DRAFT202012_META_DATA),
-    );
-    options.store.insert(
-        "https://json-schema.org/draft/2020-12/meta/format-annotation".into(),
-        Arc::clone(&DRAFT202012_FORMAT_ANNOTATION),
-    );
-    options.store.insert(
-        "https://json-schema.org/draft/2020-12/meta/content".into(),
-        Arc::clone(&DRAFT202012_CONTENT),
-    );
-    store.insert(
-        schemas::Draft::Draft202012,
-        options
-            .without_schema_validation()
-            .build(&DRAFT202012)
-            .expect(EXPECT_MESSAGE),
-    );
-    store
-});
 
 /// Configuration options for JSON Schema validation.
 #[derive(Clone)]
 pub struct ValidationOptions {
-    external_resolver: Arc<dyn SchemaResolver>,
-    draft: Option<schemas::Draft>,
+    pub(crate) draft: Option<Draft>,
     content_media_type_checks: AHashMap<&'static str, Option<ContentMediaTypeCheckType>>,
     content_encoding_checks_and_converters:
         AHashMap<&'static str, Option<(ContentEncodingCheckType, ContentEncodingConverterType)>>,
-    store: AHashMap<Cow<'static, str>, Arc<serde_json::Value>>,
+    /// Retriever for external resources
+    pub(crate) retriever: Arc<dyn Retrieve>,
+    pub(crate) external_resolver: Option<Arc<dyn SchemaResolver>>, // DEPRECATED
+    /// Additional resources that should be addressable during validation.
+    pub(crate) resources: AHashMap<String, Resource>,
+    pub(crate) store: AHashMap<Cow<'static, str>, Arc<Value>>, // DEPRECATED
     formats: AHashMap<String, Arc<dyn Format>>,
     validate_formats: Option<bool>,
-    validate_schema: bool,
+    pub(crate) validate_schema: bool,
     ignore_unknown_formats: bool,
     keywords: AHashMap<String, Arc<dyn KeywordFactory>>,
 }
@@ -275,14 +39,16 @@ pub struct ValidationOptions {
 impl Default for ValidationOptions {
     fn default() -> Self {
         ValidationOptions {
-            external_resolver: Arc::new(DefaultResolver),
-            validate_schema: true,
-            draft: Option::default(),
+            draft: None,
             content_media_type_checks: AHashMap::default(),
             content_encoding_checks_and_converters: AHashMap::default(),
-            store: META_SCHEMAS.clone(),
+            retriever: Arc::new(DefaultRetriever),
+            external_resolver: None,
+            resources: AHashMap::default(),
+            store: AHashMap::default(),
             formats: AHashMap::default(),
             validate_formats: None,
+            validate_schema: true,
             ignore_unknown_formats: true,
             keywords: AHashMap::default(),
         }
@@ -291,8 +57,19 @@ impl Default for ValidationOptions {
 
 impl ValidationOptions {
     /// Return the draft version, or the default if not set.
-    pub(crate) fn draft(&self) -> schemas::Draft {
+    pub(crate) fn draft(&self) -> Draft {
         self.draft.unwrap_or_default()
+    }
+    pub(crate) fn draft_for(&self, contents: &Value) -> Draft {
+        // Preference:
+        //  - Explicitly set
+        //  - Autodetected
+        //  - Default for enum
+        if let Some(draft) = self.draft {
+            draft
+        } else {
+            Draft::default().detect(contents).unwrap_or_default()
+        }
     }
     /// Build a JSON Schema validator using the current options.
     ///
@@ -309,61 +86,14 @@ impl ValidationOptions {
     /// assert!(validator.is_valid(&json!("Hello")));
     /// assert!(!validator.is_valid(&json!(42)));
     /// ```
-    pub fn build(&self, schema: &serde_json::Value) -> Result<Validator, ValidationError<'static>> {
-        // Draft is detected in the following precedence order:
-        //   - Explicitly specified;
-        //   - $schema field in the document;
-        //   - Draft::default()
-        let mut config = self.clone();
-        if self.draft.is_none() {
-            if let Some(draft) = schemas::draft_from_schema(schema) {
-                config.with_draft(draft);
-            }
-        }
-        let config = Arc::new(config);
-
-        let draft = config.draft();
-
-        let scope = match schemas::id_of(draft, schema) {
-            Some(url) => url::Url::parse(url)?,
-            None => DEFAULT_SCOPE.clone(),
-        };
-        let schema_json = Arc::new(schema.clone());
-        let resolver = Arc::new(Resolver::new(
-            self.external_resolver.clone(),
-            draft,
-            &scope,
-            schema_json,
-            self.store.clone(),
-        )?);
-        let context = CompilationContext::new(scope.into(), Arc::clone(&config), resolver);
-
-        if self.validate_schema {
-            if let Some(mut errors) = META_SCHEMA_VALIDATORS
-                .get(&draft)
-                .expect("Existing draft")
-                .validate(schema)
-                .err()
-            {
-                return Err(errors
-                    .next()
-                    .expect("Should have at least one element")
-                    .into_owned());
-            }
-        }
-
-        let node = compile_validators(schema, &context).map_err(|err| err.into_owned())?;
-
-        Ok(Validator { node, config })
+    pub fn build(&self, schema: &Value) -> Result<Validator, ValidationError<'static>> {
+        compiler::build_validator(self.clone(), schema)
     }
     /// Build a JSON Schema validator using the current options.
     ///
     /// **DEPRECATED**: Use [`ValidationOptions::build`] instead.
     #[deprecated(since = "0.20.0", note = "Use `ValidationOptions::build` instead")]
-    pub fn compile<'a>(
-        &self,
-        schema: &'a serde_json::Value,
-    ) -> Result<Validator, ValidationError<'a>> {
+    pub fn compile<'a>(&self, schema: &'a Value) -> Result<Validator, ValidationError<'a>> {
         self.build(schema)
     }
     /// Sets the JSON Schema draft version.
@@ -375,12 +105,12 @@ impl ValidationOptions {
     ///     .with_draft(Draft::Draft4);
     /// ```
     #[inline]
-    pub fn with_draft(&mut self, draft: schemas::Draft) -> &mut Self {
+    pub fn with_draft(&mut self, draft: Draft) -> &mut Self {
         self.draft = Some(draft);
         self
     }
 
-    pub(crate) fn content_media_type_check(
+    pub(crate) fn get_content_media_type_check(
         &self,
         media_type: &str,
     ) -> Option<ContentMediaTypeCheckType> {
@@ -390,7 +120,6 @@ impl ValidationOptions {
             DEFAULT_CONTENT_MEDIA_TYPE_CHECKS.get(media_type).copied()
         }
     }
-
     /// Add support for a custom content media type validation.
     ///
     /// # Example
@@ -412,13 +141,20 @@ impl ValidationOptions {
             .insert(media_type, Some(media_type_check));
         self
     }
-
     /// Set a custom resolver for external references.
+    #[deprecated(
+        since = "0.21.0",
+        note = "Use `ValidationOptions::with_retriever` instead"
+    )]
     pub fn with_resolver(&mut self, resolver: impl SchemaResolver + 'static) -> &mut Self {
-        self.external_resolver = Arc::new(resolver);
+        self.external_resolver = Some(Arc::new(resolver));
         self
     }
-
+    /// Set a retriever to fetch external resources.
+    pub fn with_retriever(&mut self, retriever: impl Retrieve + 'static) -> &mut Self {
+        self.retriever = Arc::new(retriever);
+        self
+    }
     /// Remove support for a specific content media type validation.
     pub fn without_content_media_type_support(&mut self, media_type: &'static str) -> &mut Self {
         self.content_media_type_checks.insert(media_type, None);
@@ -453,7 +189,7 @@ impl ValidationOptions {
         }
     }
 
-    pub(crate) fn content_encoding_convert(
+    pub(crate) fn get_content_encoding_convert(
         &self,
         content_encoding: &str,
     ) -> Option<ContentEncodingConverterType> {
@@ -546,8 +282,74 @@ impl ValidationOptions {
     ///
     /// Acts as a cache to avoid network calls for remote schemas referenced by `$ref`.
     #[inline]
-    pub fn with_document(&mut self, id: String, document: serde_json::Value) -> &mut Self {
+    #[deprecated(
+        since = "0.21.0",
+        note = "Use `ValidationOptions::with_resource` instead"
+    )]
+    pub fn with_document(&mut self, id: String, document: Value) -> &mut Self {
         self.store.insert(id.into(), Arc::new(document));
+        self
+    }
+    /// Add a custom schema, allowing it to be referenced by the specified URI during validation.
+    ///
+    /// This enables the use of additional in-memory schemas alongside the main schema being validated.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use serde_json::json;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use jsonschema::Resource;
+    ///
+    /// let extra = Resource::from_contents(json!({"minimum": 5}))?;
+    ///
+    /// let validator = jsonschema::options()
+    ///     .with_resource("urn:minimum-schema", extra)
+    ///     .build(&json!({"$ref": "urn:minimum-schema"}))?;
+    /// assert!(validator.is_valid(&json!(5)));
+    /// assert!(!validator.is_valid(&json!(4)));
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn with_resource(&mut self, uri: impl Into<String>, resource: Resource) -> &mut Self {
+        self.resources.insert(uri.into(), resource);
+        self
+    }
+    /// Add custom schemas, allowing them to be referenced by the specified URI during validation.
+    ///
+    /// This enables the use of additional in-memory schemas alongside the main schema being validated.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use serde_json::json;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use jsonschema::Resource;
+    ///
+    /// let validator = jsonschema::options()
+    ///     .with_resources([
+    ///         (
+    ///             "urn:minimum-schema",
+    ///             Resource::from_contents(json!({"minimum": 5}))?,
+    ///         ),
+    ///         (
+    ///             "urn:maximum-schema",
+    ///             Resource::from_contents(json!({"maximum": 10}))?,
+    ///         ),
+    ///       ].into_iter())
+    ///     .build(&json!({"$ref": "urn:minimum-schema"}))?;
+    /// assert!(validator.is_valid(&json!(5)));
+    /// assert!(!validator.is_valid(&json!(4)));
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn with_resources(
+        &mut self,
+        pairs: impl Iterator<Item = (impl Into<String>, Resource)>,
+    ) -> &mut Self {
+        for (uri, resource) in pairs {
+            self.resources.insert(uri.into(), resource);
+        }
         self
     }
     /// Register a custom format validator.
@@ -600,9 +402,8 @@ impl ValidationOptions {
         self.validate_formats = Some(yes);
         self
     }
-    pub(crate) fn validate_formats(&self) -> bool {
+    pub(crate) fn validate_formats(&self) -> Option<bool> {
         self.validate_formats
-            .unwrap_or_else(|| self.draft().validate_formats_by_default())
     }
     /// Set whether to ignore unknown formats.
     ///
@@ -676,8 +477,8 @@ impl ValidationOptions {
     where
         N: Into<String>,
         F: for<'a> Fn(
-                &'a serde_json::Map<String, serde_json::Value>,
-                &'a serde_json::Value,
+                &'a serde_json::Map<String, Value>,
+                &'a Value,
                 JsonPointer,
             ) -> Result<Box<dyn Keyword>, ValidationError<'a>>
             + Send
@@ -708,25 +509,7 @@ impl fmt::Debug for ValidationOptions {
 
 #[cfg(test)]
 mod tests {
-    use super::ValidationOptions;
-    use crate::schemas::Draft;
-    use serde_json::{json, Value};
-    use test_case::test_case;
-
-    #[test_case(Some(Draft::Draft4), &json!({}) => Draft::Draft4)]
-    #[test_case(None, &json!({"$schema": "http://json-schema.org/draft-06/schema#"}) => Draft::Draft6)]
-    #[test_case(None, &json!({}) => Draft::default())]
-    fn test_ensure_that_draft_detection_is_honored(
-        draft_version_in_options: Option<Draft>,
-        schema: &Value,
-    ) -> Draft {
-        let mut options = ValidationOptions::default();
-        if let Some(draft_version) = draft_version_in_options {
-            options.with_draft(draft_version);
-        }
-        let validator = options.build(schema).unwrap();
-        validator.draft()
-    }
+    use serde_json::json;
 
     #[test]
     fn test_with_document() {

@@ -37,10 +37,103 @@ pub(crate) mod required;
 pub(crate) mod type_;
 pub(crate) mod unevaluated_properties;
 pub(crate) mod unique_items;
-use crate::{error, validator::Validate};
+use referencing::Draft;
+use serde_json::{Map, Value};
+
+use crate::{compiler, error, validator::Validate};
 
 pub(crate) type CompilationResult<'a> = Result<BoxedValidator, error::ValidationError<'a>>;
 pub(crate) type BoxedValidator = Box<dyn Validate + Send + Sync>;
+
+type CompileFunc<'a> =
+    fn(&compiler::Context, &'a Map<String, Value>, &'a Value) -> Option<CompilationResult<'a>>;
+
+pub(crate) fn get_for_draft(draft: Draft, keyword: &str) -> Option<CompileFunc> {
+    match (draft, keyword) {
+        // Keywords common to all drafts
+        (_, "$ref") => Some(ref_::compile),
+        (_, "additionalItems") => Some(additional_items::compile),
+        (_, "additionalProperties") => Some(additional_properties::compile),
+        (_, "allOf") => Some(all_of::compile),
+        (_, "anyOf") => Some(any_of::compile),
+        (_, "dependencies") => Some(dependencies::compile),
+        (_, "enum") => Some(enum_::compile),
+        (_, "format") => Some(format::compile),
+        (_, "items") => Some(items::compile),
+        (_, "maxItems") => Some(max_items::compile),
+        (_, "maxLength") => Some(max_length::compile),
+        (_, "maxProperties") => Some(max_properties::compile),
+        (_, "minItems") => Some(min_items::compile),
+        (_, "minLength") => Some(min_length::compile),
+        (_, "minProperties") => Some(min_properties::compile),
+        (_, "multipleOf") => Some(multiple_of::compile),
+        (_, "not") => Some(not::compile),
+        (_, "oneOf") => Some(one_of::compile),
+        (_, "pattern") => Some(pattern::compile),
+        (_, "patternProperties") => Some(pattern_properties::compile),
+        (_, "properties") => Some(properties::compile),
+        (_, "required") => Some(required::compile),
+        (_, "uniqueItems") => Some(unique_items::compile),
+
+        // Draft 4 specific
+        (Draft::Draft4, "maximum") => Some(legacy::maximum_draft_4::compile),
+        (Draft::Draft4, "minimum") => Some(legacy::minimum_draft_4::compile),
+        (Draft::Draft4, "type") => Some(legacy::type_draft_4::compile),
+
+        // Draft 6 and later
+        (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "const") => {
+            Some(const_::compile)
+        }
+        (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "contains") => {
+            Some(contains::compile)
+        }
+        (
+            Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012,
+            "exclusiveMaximum",
+        ) => Some(exclusive_maximum::compile),
+        (
+            Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012,
+            "exclusiveMinimum",
+        ) => Some(exclusive_minimum::compile),
+        (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "maximum") => {
+            Some(maximum::compile)
+        }
+        (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "minimum") => {
+            Some(minimum::compile)
+        }
+        (
+            Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012,
+            "propertyNames",
+        ) => Some(property_names::compile),
+        (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "type") => {
+            Some(type_::compile)
+        }
+
+        // Draft 6 and 7 specific
+        (Draft::Draft6 | Draft::Draft7, "contentMediaType") => Some(content::compile_media_type),
+        (Draft::Draft6 | Draft::Draft7, "contentEncoding") => {
+            Some(content::compile_content_encoding)
+        }
+
+        // Draft 7 and later
+        (Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "if") => Some(if_::compile),
+
+        // Draft 2019-09 and 2020-12 specific
+        (Draft::Draft201909 | Draft::Draft202012, "dependentRequired") => {
+            Some(dependencies::compile_dependent_required)
+        }
+        (Draft::Draft201909 | Draft::Draft202012, "dependentSchemas") => {
+            Some(dependencies::compile_dependent_schemas)
+        }
+        (Draft::Draft201909 | Draft::Draft202012, "prefixItems") => Some(prefix_items::compile),
+        (Draft::Draft201909 | Draft::Draft202012, "unevaluatedProperties") => {
+            Some(unevaluated_properties::compile)
+        }
+
+        // Default case
+        _ => None,
+    }
+}
 
 #[cfg(test)]
 mod tests {

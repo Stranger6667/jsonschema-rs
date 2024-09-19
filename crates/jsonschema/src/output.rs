@@ -13,11 +13,12 @@ use std::{
 
 use crate::{validator::PartialApplication, ValidationError};
 use ahash::AHashMap;
+use referencing::{Uri, UriRef};
 use serde::ser::SerializeMap;
 
 use crate::{
-    paths::{AbsolutePath, JsonPointer, JsonPointerNode},
-    schema_node::SchemaNode,
+    node::SchemaNode,
+    paths::{JsonPointer, JsonPointerNode},
     Validator,
 };
 
@@ -202,7 +203,7 @@ impl<'a> FromIterator<BasicOutput<'a>> for PartialApplication<'a> {
 pub struct OutputUnit<T> {
     keyword_location: JsonPointer,
     instance_location: JsonPointer,
-    absolute_keyword_location: Option<AbsolutePath>,
+    absolute_keyword_location: Option<Uri>,
     value: T,
 }
 
@@ -210,7 +211,7 @@ impl<T> OutputUnit<T> {
     pub(crate) const fn annotations(
         keyword_location: JsonPointer,
         instance_location: JsonPointer,
-        absolute_keyword_location: Option<AbsolutePath>,
+        absolute_keyword_location: Option<Uri>,
         annotations: Annotations<'_>,
     ) -> OutputUnit<Annotations<'_>> {
         OutputUnit {
@@ -224,7 +225,7 @@ impl<T> OutputUnit<T> {
     pub(crate) const fn error(
         keyword_location: JsonPointer,
         instance_location: JsonPointer,
-        absolute_keyword_location: Option<AbsolutePath>,
+        absolute_keyword_location: Option<Uri>,
         error: ErrorDescription,
     ) -> OutputUnit<ErrorDescription> {
         OutputUnit {
@@ -240,10 +241,12 @@ impl<T> OutputUnit<T> {
         &self.keyword_location
     }
 
-    ///  The absolute location in the schema of the keyword. This will be
-    ///  different to `keyword_location` if the schema is a resolved reference.
-    pub const fn absolute_keyword_location(&self) -> &Option<AbsolutePath> {
-        &self.absolute_keyword_location
+    /// The absolute location in the schema of the keyword. This will be
+    /// different to `keyword_location` if the schema is a resolved reference.
+    pub fn absolute_keyword_location(&self) -> Option<UriRef> {
+        self.absolute_keyword_location
+            .as_ref()
+            .map(|uri| uri.borrow())
     }
 
     ///  The location in the instance

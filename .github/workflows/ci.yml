@@ -141,7 +141,7 @@ jobs:
 
       - run: uv python install ${{ matrix.python-version }}
 
-      - run: uvx --with="tox" --with="tox-gh-actions" --with="tox-uv" tox -e py
+      - run: uvx --with=".[tests]" pytest tests-py
         working-directory: crates/jsonschema-py
 
   fmt:
@@ -193,7 +193,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: ["builder", "validation"]
+        target: ["builder", "validation", "referencing"]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4

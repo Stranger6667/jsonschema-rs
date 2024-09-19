@@ -1,9 +1,9 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext},
+    compiler,
     error::{no_error, ErrorIterator},
     keywords::CompilationResult,
+    node::SchemaNode,
     paths::JsonPointerNode,
-    schema_node::SchemaNode,
     validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
@@ -16,18 +16,18 @@ pub(crate) struct IfThenValidator {
 impl IfThenValidator {
     #[inline]
     pub(crate) fn compile<'a>(
+        ctx: &compiler::Context,
         schema: &'a Value,
         then_schema: &'a Value,
-        context: &CompilationContext,
     ) -> CompilationResult<'a> {
         Ok(Box::new(IfThenValidator {
             schema: {
-                let if_context = context.with_path("if");
-                compile_validators(schema, &if_context)?
+                let ctx = ctx.with_path("if");
+                compiler::compile(&ctx, ctx.as_resource_ref(schema))?
             },
             then_schema: {
-                let then_context = context.with_path("then");
-                compile_validators(then_schema, &then_context)?
+                let ctx = ctx.with_path("then");
+                compiler::compile(&ctx, ctx.as_resource_ref(then_schema))?
             },
         }))
     }
@@ -80,18 +80,18 @@ pub(crate) struct IfElseValidator {
 impl IfElseValidator {
     #[inline]
     pub(crate) fn compile<'a>(
+        ctx: &compiler::Context,
         schema: &'a Value,
         else_schema: &'a Value,
-        context: &CompilationContext,
     ) -> CompilationResult<'a> {
         Ok(Box::new(IfElseValidator {
             schema: {
-                let if_context = context.with_path("if");
-                compile_validators(schema, &if_context)?
+                let ctx = ctx.with_path("if");
+                compiler::compile(&ctx, ctx.as_resource_ref(schema))?
             },
             else_schema: {
-                let else_context = context.with_path("else");
-                compile_validators(else_schema, &else_context)?
+                let ctx = ctx.with_path("else");
+                compiler::compile(&ctx, ctx.as_resource_ref(else_schema))?
             },
         }))
     }
@@ -145,23 +145,23 @@ pub(crate) struct IfThenElseValidator {
 impl IfThenElseValidator {
     #[inline]
     pub(crate) fn compile<'a>(
+        ctx: &compiler::Context,
         schema: &'a Value,
         then_schema: &'a Value,
         else_schema: &'a Value,
-        context: &CompilationContext,
     ) -> CompilationResult<'a> {
         Ok(Box::new(IfThenElseValidator {
             schema: {
-                let if_context = context.with_path("if");
-                compile_validators(schema, &if_context)?
+                let ctx = ctx.with_path("if");
+                compiler::compile(&ctx, ctx.as_resource_ref(schema))?
             },
             then_schema: {
-                let then_context = context.with_path("then");
-                compile_validators(then_schema, &then_context)?
+                let ctx = ctx.with_path("then");
+                compiler::compile(&ctx, ctx.as_resource_ref(then_schema))?
             },
             else_schema: {
-                let else_context = context.with_path("else");
-                compile_validators(else_schema, &else_context)?
+                let ctx = ctx.with_path("else");
+                compiler::compile(&ctx, ctx.as_resource_ref(else_schema))?
             },
         }))
     }
@@ -210,21 +210,21 @@ impl Validate for IfThenElseValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     parent: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     let then = parent.get("then");
     let else_ = parent.get("else");
     match (then, else_) {
         (Some(then_schema), Some(else_schema)) => Some(IfThenElseValidator::compile(
+            ctx,
             schema,
             then_schema,
             else_schema,
-            context,
         )),
-        (None, Some(else_schema)) => Some(IfElseValidator::compile(schema, else_schema, context)),
-        (Some(then_schema), None) => Some(IfThenValidator::compile(schema, then_schema, context)),
+        (None, Some(else_schema)) => Some(IfElseValidator::compile(ctx, schema, else_schema)),
+        (Some(then_schema), None) => Some(IfThenValidator::compile(ctx, schema, then_schema)),
         (None, None) => None,
     }
 }

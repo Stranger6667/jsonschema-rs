@@ -1,75 +1,98 @@
+use std::{rc::Rc, sync::Arc};
+
 use crate::{
-    compilation::{compile_validators, context::CompilationContext},
-    error::{error, ErrorIterator},
+    compiler,
+    error::ErrorIterator,
     keywords::CompilationResult,
+    node::SchemaNode,
     paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
-    resolver::Resolver,
-    schema_node::SchemaNode,
-    schemas::draft_from_schema,
     validator::Validate,
-    Draft, ValidationError, ValidationOptions,
+    ValidationError, ValidationOptions,
 };
-use parking_lot::RwLock;
+use once_cell::sync::OnceCell;
+use referencing::{Draft, Registry, Resource, Uri};
 use serde_json::{Map, Value};
-use std::sync::Arc;
-use url::Url;
 
-pub(crate) struct RefValidator {
-    original_reference: String,
-    reference: Url,
-    sub_nodes: RwLock<Option<SchemaNode>>,
-    schema_path: JsonPointer,
-    config: Arc<ValidationOptions>,
-    pub(crate) resolver: Arc<Resolver>,
+pub(crate) enum RefValidator {
+    Default { inner: SchemaNode },
+    Lazy(LazyRefValidator),
 }
 
 impl RefValidator {
     #[inline]
-    pub(crate) fn compile<'a>(
-        reference: &str,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
-        Ok(Box::new(RefValidator {
-            original_reference: reference.to_string(),
-            reference: context.build_url(reference)?,
-            sub_nodes: RwLock::new(None),
-            schema_path: context.schema_path.clone().into(),
-            config: Arc::clone(&context.config),
-            resolver: Arc::clone(&context.resolver),
-        }))
-    }
-
-    fn get_config_for_resolved_schema(&self, resolved: &Value) -> Arc<ValidationOptions> {
-        if let Some(draft) = draft_from_schema(resolved) {
-            let mut config = (*self.config).clone();
-            config.with_draft(draft);
-            Arc::new(config)
+    pub(crate) fn compile<'a>(reference: &str, ctx: &compiler::Context) -> CompilationResult<'a> {
+        if let Some((base_uri, resource)) = ctx.lookup_recursive_reference(reference)? {
+            Ok(Box::new(RefValidator::Lazy(LazyRefValidator {
+                resource,
+                config: Arc::clone(ctx.config()),
+                registry: Arc::clone(&ctx.registry),
+                base_uri,
+                draft: ctx.draft(),
+                inner: OnceCell::default(),
+            })))
         } else {
-            Arc::clone(&self.config)
+            let (contents, resolver) = ctx.lookup(reference)?.into_inner();
+            let resource_ref = ctx.as_resource_ref(contents);
+            let ctx = ctx.with_resolver_and_draft(resolver, resource_ref.draft());
+            // TODO: Should ctx include `$ref`?
+            Ok(Box::new(RefValidator::Default {
+                inner: compiler::compile_with(&ctx, resource_ref)
+                    .map_err(|err| err.into_owned())?,
+            }))
         }
+    }
+}
+
+/// Lazily evaluated validator used for recursive references.
+///
+/// The validator tree nodes can't be arbitrary looked up in the current
+/// implementation to build a cycle, therefore recursive references are validated
+/// by building and caching the next subtree lazily. Though, other memory
+/// representation for the validation tree may allow building cycles easier and
+/// lazy evaluation won't be needed.
+pub(crate) struct LazyRefValidator {
+    resource: Resource,
+    config: Arc<ValidationOptions>,
+    registry: Arc<Registry>,
+    base_uri: Uri,
+    draft: Draft,
+    inner: OnceCell<SchemaNode>,
+}
+
+impl LazyRefValidator {
+    fn compile(&self) -> &SchemaNode {
+        self.inner.get_or_init(|| {
+            let resolver = self.registry.resolver(self.base_uri.clone());
+            let ctx = compiler::Context::new(
+                Arc::clone(&self.config),
+                Arc::clone(&self.registry),
+                Rc::new(resolver),
+                self.draft,
+            );
+            // INVARIANT: This schema was already used during compilation before detecting a
+            // reference cycle that lead to building this validator.
+            compiler::compile(&ctx, self.resource.as_ref()).expect("Invalid schema")
+        })
+    }
+    fn is_valid(&self, instance: &Value) -> bool {
+        self.compile().is_valid(instance)
+    }
+    fn validate<'instance>(
+        &self,
+        instance: &'instance Value,
+        instance_path: &JsonPointerNode,
+    ) -> ErrorIterator<'instance> {
+        self.compile().validate(instance, instance_path)
     }
 }
 
 impl Validate for RefValidator {
     fn is_valid(&self, instance: &Value) -> bool {
-        if let Some(sub_nodes) = self.sub_nodes.read().as_ref() {
-            return sub_nodes.is_valid(instance);
+        match self {
+            RefValidator::Default { inner } => inner.is_valid(instance),
+            RefValidator::Lazy(lazy) => lazy.is_valid(instance),
         }
-        if let Ok((scope, resolved)) = self.resolver.resolve_fragment(
-            self.config.draft(),
-            &self.reference,
-            &self.original_reference,
-        ) {
-            let config = self.get_config_for_resolved_schema(&resolved);
-            let context = CompilationContext::new(scope.into(), config, Arc::clone(&self.resolver));
-            if let Ok(node) = compile_validators(&resolved, &context) {
-                let result = node.is_valid(instance);
-                *self.sub_nodes.write() = Some(node);
-                return result;
-            }
-        };
-        false
     }
 
     fn validate<'instance>(
@@ -77,52 +100,18 @@ impl Validate for RefValidator {
         instance: &'instance Value,
         instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
-        let extend_error_schema_path = move |mut error: ValidationError<'instance>| {
-            let schema_path = self.schema_path.clone();
-            error.schema_path = schema_path.extend_with(error.schema_path.as_slice());
-            error
-        };
-        if let Some(node) = self.sub_nodes.read().as_ref() {
-            return Box::new(
-                node.err_iter(instance, instance_path)
-                    .map(extend_error_schema_path)
-                    .collect::<Vec<_>>()
-                    .into_iter(),
-            );
-        }
-        match self.resolver.resolve_fragment(
-            self.config.draft(),
-            &self.reference,
-            &self.original_reference,
-        ) {
-            Ok((scope, resolved)) => {
-                let config = self.get_config_for_resolved_schema(&resolved);
-                let context =
-                    CompilationContext::new(scope.into(), config, Arc::clone(&self.resolver));
-                match compile_validators(&resolved, &context) {
-                    Ok(node) => {
-                        let result = Box::new(
-                            node.err_iter(instance, instance_path)
-                                .map(extend_error_schema_path)
-                                .collect::<Vec<_>>()
-                                .into_iter(),
-                        );
-                        *self.sub_nodes.write() = Some(node);
-                        result
-                    }
-                    Err(err) => error(err.into_owned()),
-                }
-            }
-            Err(err) => error(err.into_owned()),
+        match self {
+            RefValidator::Default { inner } => inner.validate(instance, instance_path),
+            RefValidator::Lazy(lazy) => lazy.validate(instance, instance_path),
         }
     }
 }
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     Some(
         schema
@@ -130,17 +119,13 @@ pub(crate) fn compile<'a>(
             .ok_or_else(|| {
                 ValidationError::single_type_error(
                     JsonPointer::default(),
-                    context.clone().into_pointer(),
+                    ctx.clone().into_pointer(),
                     schema,
                     PrimitiveType::String,
                 )
             })
-            .and_then(|reference| RefValidator::compile(reference, context)),
+            .and_then(|reference| RefValidator::compile(reference, ctx)),
     )
-}
-
-pub(crate) const fn supports_adjacent_validation(draft: Draft) -> bool {
-    matches!(draft, Draft::Draft201909 | Draft::Draft202012)
 }
 
 #[cfg(test)]

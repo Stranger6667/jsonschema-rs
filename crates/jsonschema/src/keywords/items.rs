@@ -1,9 +1,9 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext},
+    compiler,
     error::{no_error, ErrorIterator},
     keywords::CompilationResult,
+    node::SchemaNode,
     paths::JsonPointerNode,
-    schema_node::SchemaNode,
     validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
@@ -14,14 +14,14 @@ pub(crate) struct ItemsArrayValidator {
 impl ItemsArrayValidator {
     #[inline]
     pub(crate) fn compile<'a>(
+        ctx: &compiler::Context,
         schemas: &'a [Value],
-        context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        let keyword_context = context.with_path("items");
+        let kctx = ctx.with_path("items");
         let mut items = Vec::with_capacity(schemas.len());
         for (idx, item) in schemas.iter().enumerate() {
-            let item_context = keyword_context.with_path(idx);
-            let validators = compile_validators(item, &item_context)?;
+            let ictx = kctx.with_path(idx);
+            let validators = compiler::compile(&ictx, ictx.as_resource_ref(item))?;
             items.push(validators)
         }
         Ok(Box::new(ItemsArrayValidator { items }))
@@ -65,12 +65,9 @@ pub(crate) struct ItemsObjectValidator {
 
 impl ItemsObjectValidator {
     #[inline]
-    pub(crate) fn compile<'a>(
-        schema: &'a Value,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
-        let keyword_context = context.with_path("items");
-        let node = compile_validators(schema, &keyword_context)?;
+    pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
+        let ctx = ctx.with_path("items");
+        let node = compiler::compile(&ctx, ctx.as_resource_ref(schema))?;
         Ok(Box::new(ItemsObjectValidator { node }))
     }
 }
@@ -137,10 +134,10 @@ impl ItemsObjectSkipPrefixValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         skip_prefix: usize,
-        context: &CompilationContext,
+        ctx: &compiler::Context,
     ) -> CompilationResult<'a> {
-        let keyword_context = context.with_path("items");
-        let node = compile_validators(schema, &keyword_context)?;
+        let ctx = ctx.with_path("items");
+        let node = compiler::compile(&ctx, ctx.as_resource_ref(schema))?;
         Ok(Box::new(ItemsObjectSkipPrefixValidator {
             node,
             skip_prefix,
@@ -189,8 +186,8 @@ impl Validate for ItemsObjectSkipPrefixValidator {
     ) -> PartialApplication<'a> {
         if let Value::Array(items) = instance {
             let mut results = Vec::with_capacity(items.len().saturating_sub(self.skip_prefix));
-            for (idx, item) in items.iter().skip(self.skip_prefix).enumerate() {
-                let path = instance_path.push(idx + self.skip_prefix);
+            for (idx, item) in items.iter().enumerate().skip(self.skip_prefix) {
+                let path = instance_path.push(idx);
                 results.push(self.node.apply_rooted(item, &path));
             }
             let mut output: PartialApplication = results.into_iter().collect();
@@ -208,21 +205,21 @@ impl Validate for ItemsObjectSkipPrefixValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     parent: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     match schema {
-        Value::Array(items) => Some(ItemsArrayValidator::compile(items, context)),
+        Value::Array(items) => Some(ItemsArrayValidator::compile(ctx, items)),
         Value::Object(_) | Value::Bool(false) => {
             if let Some(Value::Array(prefix_items)) = parent.get("prefixItems") {
                 return Some(ItemsObjectSkipPrefixValidator::compile(
                     schema,
                     prefix_items.len(),
-                    context,
+                    ctx,
                 ));
             }
-            Some(ItemsObjectValidator::compile(schema, context))
+            Some(ItemsObjectValidator::compile(ctx, schema))
         }
         _ => None,
     }

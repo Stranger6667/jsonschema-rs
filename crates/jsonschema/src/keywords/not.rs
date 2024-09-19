@@ -1,9 +1,9 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext},
+    compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
+    node::SchemaNode,
     paths::{JsonPointer, JsonPointerNode},
-    schema_node::SchemaNode,
     validator::Validate,
 };
 use serde_json::{Map, Value};
@@ -17,15 +17,12 @@ pub(crate) struct NotValidator {
 
 impl NotValidator {
     #[inline]
-    pub(crate) fn compile<'a>(
-        schema: &'a Value,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
-        let keyword_context = context.with_path("not");
+    pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
+        let ctx = ctx.with_path("not");
         Ok(Box::new(NotValidator {
             original: schema.clone(),
-            node: compile_validators(schema, &keyword_context)?,
-            schema_path: keyword_context.into_pointer(),
+            node: compiler::compile(&ctx, ctx.as_resource_ref(schema))?,
+            schema_path: ctx.into_pointer(),
         }))
     }
 }
@@ -55,11 +52,11 @@ impl Validate for NotValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
-    Some(NotValidator::compile(schema, context))
+    Some(NotValidator::compile(ctx, schema))
 }
 
 #[cfg(test)]

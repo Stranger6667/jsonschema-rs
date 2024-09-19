@@ -1,22 +1,17 @@
+use crate::{compiler, node::SchemaNode, validator::Validate as _};
 use ahash::AHashMap;
 use fancy_regex::Regex;
 use serde_json::{Map, Value};
 
-use crate::{
-    compilation::{compile_validators, context::CompilationContext},
-    paths::JsonPointer,
-    schema_node::SchemaNode,
-    validator::Validate,
-    ValidationError,
-};
+use crate::{paths::JsonPointer, ValidationError};
 
 pub(crate) type PatternedValidators = Vec<(Regex, SchemaNode)>;
 
 /// A value that can look up property validators by name.
 pub(crate) trait PropertiesValidatorsMap: Send + Sync {
     fn from_map<'a>(
+        ctx: &compiler::Context,
         map: &'a Map<String, Value>,
-        context: &CompilationContext,
     ) -> Result<Self, ValidationError<'a>>
     where
         Self: Sized;
@@ -37,13 +32,13 @@ pub(crate) type BigValidatorsMap = AHashMap<String, SchemaNode>;
 
 impl PropertiesValidatorsMap for SmallValidatorsMap {
     fn from_map<'a>(
+        ctx: &compiler::Context,
         map: &'a Map<String, Value>,
-        context: &CompilationContext,
     ) -> Result<Self, ValidationError<'a>>
     where
         Self: Sized,
     {
-        compile_small_map(map, context)
+        compile_small_map(ctx, map)
     }
 
     #[inline]
@@ -68,13 +63,13 @@ impl PropertiesValidatorsMap for SmallValidatorsMap {
 
 impl PropertiesValidatorsMap for BigValidatorsMap {
     fn from_map<'a>(
+        ctx: &compiler::Context,
         map: &'a Map<String, Value>,
-        context: &CompilationContext,
     ) -> Result<Self, ValidationError<'a>>
     where
         Self: Sized,
     {
-        compile_big_map(map, context)
+        compile_big_map(ctx, map)
     }
 
     #[inline]
@@ -89,32 +84,32 @@ impl PropertiesValidatorsMap for BigValidatorsMap {
 }
 
 pub(crate) fn compile_small_map<'a>(
+    ctx: &compiler::Context,
     map: &'a Map<String, Value>,
-    context: &CompilationContext,
 ) -> Result<SmallValidatorsMap, ValidationError<'a>> {
     let mut properties = Vec::with_capacity(map.len());
-    let keyword_context = context.with_path("properties");
+    let kctx = ctx.with_path("properties");
     for (key, subschema) in map {
-        let property_context = keyword_context.with_path(key.as_str());
+        let pctx = kctx.with_path(key.as_str());
         properties.push((
             key.clone(),
-            compile_validators(subschema, &property_context)?,
+            compiler::compile(&pctx, pctx.as_resource_ref(subschema))?,
         ));
     }
     Ok(properties)
 }
 
 pub(crate) fn compile_big_map<'a>(
+    ctx: &compiler::Context,
     map: &'a Map<String, Value>,
-    context: &CompilationContext,
 ) -> Result<BigValidatorsMap, ValidationError<'a>> {
     let mut properties = AHashMap::with_capacity(map.len());
-    let keyword_context = context.with_path("properties");
+    let kctx = ctx.with_path("properties");
     for (key, subschema) in map {
-        let property_context = keyword_context.with_path(key.as_str());
+        let pctx = kctx.with_path(key.as_str());
         properties.insert(
             key.clone(),
-            compile_validators(subschema, &property_context)?,
+            compiler::compile(&pctx, pctx.as_resource_ref(subschema))?,
         );
     }
     Ok(properties)
@@ -137,15 +132,15 @@ where
 /// Create a vector of pattern-validators pairs.
 #[inline]
 pub(crate) fn compile_patterns<'a>(
+    ctx: &compiler::Context,
     obj: &'a Map<String, Value>,
-    context: &CompilationContext,
 ) -> Result<PatternedValidators, ValidationError<'a>> {
-    let keyword_context = context.with_path("patternProperties");
+    let keyword_context = ctx.with_path("patternProperties");
     let mut compiled_patterns = Vec::with_capacity(obj.len());
     for (pattern, subschema) in obj {
-        let pattern_context = keyword_context.with_path(pattern.as_str());
+        let pctx = keyword_context.with_path(pattern.as_str());
         if let Ok(compiled_pattern) = Regex::new(pattern) {
-            let node = compile_validators(subschema, &pattern_context)?;
+            let node = compiler::compile(&pctx, pctx.as_resource_ref(subschema))?;
             compiled_patterns.push((compiled_pattern, node));
         } else {
             return Err(ValidationError::format(

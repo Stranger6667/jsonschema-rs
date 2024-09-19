@@ -11,10 +11,3 @@ pub(crate) fn get_unique(base: &str, used: &mut HashSet<String>) -> String {
 
     name
 }
-
-pub(crate) fn sanitize(s: String) -> String {
-    match s.as_str() {
-        "const" | "enum" | "ref" | "type" => format!("r#{s}"),
-        _ => s,
-    }
-}

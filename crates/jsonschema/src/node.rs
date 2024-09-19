@@ -1,20 +1,25 @@
 use crate::{
-    compilation::context::CompilationContext,
+    compiler::Context,
     error::ErrorIterator,
     keywords::BoxedValidator,
     output::{Annotations, BasicOutput, ErrorDescription, OutputUnit},
-    paths::{AbsolutePath, JsonPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode, PathChunk},
     validator::{PartialApplication, Validate},
+    ValidationError,
 };
 use ahash::AHashMap;
+use referencing::{
+    uri::{self, EncodedString, Path},
+    Uri,
+};
 use std::{collections::VecDeque, fmt};
 
-/// A node in the schema tree, returned by [`compile_validators`]
+/// A node in the schema tree, returned by [`compiler::compile`]
 #[derive(Debug)]
 pub(crate) struct SchemaNode {
     validators: NodeValidators,
     relative_path: JsonPointer,
-    absolute_path: Option<AbsolutePath>,
+    absolute_path: Option<Uri>,
 }
 
 enum NodeValidators {
@@ -26,7 +31,7 @@ enum NodeValidators {
     /// }
     /// ```
     ///
-    /// Here the result of `compile_validators` called with the `false` value will return a
+    /// Here the result of `compiler::compile` called with the `false` value will return a
     /// `SchemaNode` with a single `BooleanValidator` as it's `validators`.
     Boolean { validator: Option<BoxedValidator> },
     /// The result of compiling a schema which is composed of keywords (almost all schemas)
@@ -56,26 +61,23 @@ struct KeywordValidators {
 }
 
 impl SchemaNode {
-    pub(crate) fn new_from_boolean(
-        context: &CompilationContext<'_>,
-        validator: Option<BoxedValidator>,
-    ) -> SchemaNode {
+    pub(crate) fn from_boolean(ctx: &Context<'_>, validator: Option<BoxedValidator>) -> SchemaNode {
         SchemaNode {
-            relative_path: context.clone().into_pointer(),
-            absolute_path: context.base_uri().map(AbsolutePath::from),
+            relative_path: ctx.clone().into_pointer(),
+            absolute_path: ctx.base_uri(),
             validators: NodeValidators::Boolean { validator },
         }
     }
 
-    pub(crate) fn new_from_keywords(
-        context: &CompilationContext<'_>,
+    pub(crate) fn from_keywords(
+        ctx: &Context<'_>,
         mut validators: Vec<(String, BoxedValidator)>,
         unmatched_keywords: Option<AHashMap<String, serde_json::Value>>,
     ) -> SchemaNode {
         validators.shrink_to_fit();
         SchemaNode {
-            relative_path: context.clone().into_pointer(),
-            absolute_path: context.base_uri().map(AbsolutePath::from),
+            relative_path: ctx.clone().into_pointer(),
+            absolute_path: ctx.base_uri(),
             validators: NodeValidators::Keyword(Box::new(KeywordValidators {
                 unmatched_keywords,
                 validators,
@@ -83,14 +85,11 @@ impl SchemaNode {
         }
     }
 
-    pub(crate) fn new_from_array(
-        context: &CompilationContext<'_>,
-        mut validators: Vec<BoxedValidator>,
-    ) -> SchemaNode {
+    pub(crate) fn from_array(ctx: &Context<'_>, mut validators: Vec<BoxedValidator>) -> SchemaNode {
         validators.shrink_to_fit();
         SchemaNode {
-            relative_path: context.clone().into_pointer(),
-            absolute_path: context.base_uri().map(AbsolutePath::from),
+            relative_path: ctx.clone().into_pointer(),
+            absolute_path: ctx.base_uri(),
             validators: NodeValidators::Array { validators },
         }
     }
@@ -220,16 +219,27 @@ impl SchemaNode {
     ) -> PartialApplication<'a>
     where
         I: Iterator<Item = (P, &'a Box<dyn Validate + Send + Sync + 'a>)> + 'a,
-        P: Into<crate::paths::PathChunk> + fmt::Display,
+        P: Into<PathChunk> + fmt::Display,
     {
         let mut success_results: VecDeque<OutputUnit<Annotations>> = VecDeque::new();
         let mut error_results = VecDeque::new();
         for (path, validator) in path_and_validators {
             let path = self.relative_path.extend_with(&[path.into()]);
-            let absolute_path = self
-                .absolute_path
-                .clone()
-                .map(|p| p.with_path(path.to_string().as_str()));
+            let absolute_keyword_location = self.absolute_path.as_ref().map(|absolute_path| {
+                let mut buffer = EncodedString::new();
+                for chunk in path.iter() {
+                    buffer.push_byte(b'/');
+                    match chunk {
+                        PathChunk::Property(p) => buffer.encode::<Path>(p.as_bytes()),
+                        PathChunk::Index(i) => {
+                            buffer.encode::<Path>(itoa::Buffer::new().format(*i).as_bytes())
+                        }
+                        PathChunk::Keyword(k) => buffer.encode::<Path>(k.as_bytes()),
+                    }
+                }
+                uri::resolve_against(&absolute_path.borrow(), &format!("#{}", buffer.as_str()))
+                    .expect("Invalid reference")
+            });
             match validator.apply(instance, instance_path) {
                 PartialApplication::Valid {
                     annotations,
@@ -239,7 +249,7 @@ impl SchemaNode {
                         success_results.push_front(OutputUnit::<Annotations<'a>>::annotations(
                             path,
                             instance_path.into(),
-                            absolute_path,
+                            absolute_keyword_location,
                             annotations,
                         ));
                     }
@@ -254,7 +264,7 @@ impl SchemaNode {
                         OutputUnit::<ErrorDescription>::error(
                             path.clone(),
                             instance_path.into(),
-                            absolute_path.clone(),
+                            absolute_keyword_location.clone(),
                             error,
                         )
                     }));
@@ -386,11 +396,11 @@ impl<'a> ExactSizeIterator for NodeValidatorsIter<'a> {
 pub(crate) enum NodeValidatorsErrIter<'a> {
     NoErrs,
     Single(ErrorIterator<'a>),
-    Multiple(std::vec::IntoIter<crate::error::ValidationError<'a>>),
+    Multiple(std::vec::IntoIter<ValidationError<'a>>),
 }
 
 impl<'a> Iterator for NodeValidatorsErrIter<'a> {
-    type Item = crate::error::ValidationError<'a>;
+    type Item = ValidationError<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {

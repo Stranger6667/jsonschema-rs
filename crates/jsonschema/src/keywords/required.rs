@@ -1,5 +1,5 @@
 use crate::{
-    compilation::context::CompilationContext,
+    compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{JsonPointer, JsonPointerNode},
@@ -118,11 +118,11 @@ impl Validate for SingleItemRequiredValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
-    let schema_path = context.as_pointer_with("required");
+    let schema_path = ctx.as_pointer_with("required");
     compile_with_path(schema, schema_path)
 }
 

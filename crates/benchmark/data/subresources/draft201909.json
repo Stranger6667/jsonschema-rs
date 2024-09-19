@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "type": "object",
+  "properties": {
+    "foo": {
+      "type": "string"
+    },
+    "bar": {
+      "type": "integer"
+    }
+  },
+  "additionalProperties": {
+    "type": "number"
+  },
+  "propertyNames": {
+    "pattern": "^[a-zA-Z]+$"
+  },
+  "if": {
+    "properties": {
+      "foo": {
+        "const": "special"
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "bar"
+    ]
+  },
+  "else": {
+    "required": [
+      "baz"
+    ]
+  },
+  "not": {
+    "type": "null"
+  },
+  "contains": {
+    "type": "string"
+  },
+  "allOf": [
+    {
+      "type": "object"
+    },
+    {
+      "minProperties": 1
+    }
+  ],
+  "anyOf": [
+    {
+      "type": "object"
+    },
+    {
+      "type": "array"
+    }
+  ],
+  "oneOf": [
+    {
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "properties": {
+        "bar": {
+          "type": "integer"
+        }
+      }
+    }
+  ],
+  "unevaluatedProperties": false,
+  "unevaluatedItems": false,
+  "$defs": {
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "negativeInteger": {
+      "type": "integer",
+      "maximum": 0
+    }
+  },
+  "patternProperties": {
+    "^S_": {
+      "type": "string"
+    },
+    "^I_": {
+      "type": "integer"
+    }
+  },
+  "dependentSchemas": {
+    "foo": {
+      "properties": {
+        "bar": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

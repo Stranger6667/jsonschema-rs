@@ -1,9 +1,9 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext},
+    compiler,
     error::{no_error, ErrorIterator, ValidationError},
+    node::SchemaNode,
     paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
-    schema_node::SchemaNode,
     validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
@@ -17,14 +17,14 @@ pub(crate) struct PrefixItemsValidator {
 impl PrefixItemsValidator {
     #[inline]
     pub(crate) fn compile<'a>(
+        ctx: &compiler::Context,
         items: &'a [Value],
-        context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        let keyword_context = context.with_path("prefixItems");
+        let ctx = ctx.with_path("prefixItems");
         let mut schemas = Vec::with_capacity(items.len());
         for (idx, item) in items.iter().enumerate() {
-            let item_context = keyword_context.with_path(idx);
-            let validators = compile_validators(item, &item_context)?;
+            let ctx = ctx.with_path(idx);
+            let validators = compiler::compile(&ctx, ctx.as_resource_ref(item))?;
             schemas.push(validators)
         }
         Ok(Box::new(PrefixItemsValidator { schemas }))
@@ -99,16 +99,16 @@ impl Validate for PrefixItemsValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     if let Value::Array(items) = schema {
-        Some(PrefixItemsValidator::compile(items, context))
+        Some(PrefixItemsValidator::compile(ctx, items))
     } else {
         Some(Err(ValidationError::single_type_error(
             JsonPointer::default(),
-            context.clone().into_pointer(),
+            ctx.clone().into_pointer(),
             schema,
             PrimitiveType::Array,
         )))
@@ -121,16 +121,17 @@ mod tests {
     use serde_json::{json, Value};
     use test_case::test_case;
 
-    #[test_case(&json!({"prefixItems": [{"type": "integer"}, {"maximum": 5}]}), &json!(["string"]), "/prefixItems/0/type")]
-    #[test_case(&json!({"prefixItems": [{"type": "integer"}, {"maximum": 5}]}), &json!([42, 42]), "/prefixItems/1/maximum")]
-    #[test_case(&json!({"prefixItems": [{"type": "integer"}, {"maximum": 5}], "items": {"type": "boolean"}}), &json!([42, 1, 42]), "/items/type")]
-    #[test_case(&json!({"prefixItems": [{"type": "integer"}, {"maximum": 5}], "items": {"type": "boolean"}}), &json!([42, 42, true]), "/prefixItems/1/maximum")]
+    #[test_case(&json!({"$schema": "https://json-schema.org/draft/2020-12/schema", "prefixItems": [{"type": "integer"}, {"maximum": 5}]}), &json!(["string"]), "/prefixItems/0/type")]
+    #[test_case(&json!({"$schema": "https://json-schema.org/draft/2020-12/schema", "prefixItems": [{"type": "integer"}, {"maximum": 5}]}), &json!([42, 42]), "/prefixItems/1/maximum")]
+    #[test_case(&json!({"$schema": "https://json-schema.org/draft/2020-12/schema", "prefixItems": [{"type": "integer"}, {"maximum": 5}], "items": {"type": "boolean"}}), &json!([42, 1, 42]), "/items/type")]
+    #[test_case(&json!({"$schema": "https://json-schema.org/draft/2020-12/schema", "prefixItems": [{"type": "integer"}, {"maximum": 5}], "items": {"type": "boolean"}}), &json!([42, 42, true]), "/prefixItems/1/maximum")]
     fn schema_path(schema: &Value, instance: &Value, expected: &str) {
         tests_util::assert_schema_path(schema, instance, expected)
     }
 
     #[test_case{
         &json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema", 
             "type": "array",
             "prefixItems": [
                 {
@@ -146,6 +147,7 @@ mod tests {
     }]
     #[test_case{
         &json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema", 
             "type": "array",
             "prefixItems": [
                 {
@@ -170,6 +172,7 @@ mod tests {
     }]
     #[test_case{
         &json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema", 
             "type": "array",
             "prefixItems": [
                 {
@@ -191,6 +194,7 @@ mod tests {
     }]
     #[test_case{
         &json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema", 
             "type": "array",
             "items": {
                 "type": "number",

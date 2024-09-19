@@ -1,9 +1,9 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext},
+    compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
+    node::SchemaNode,
     paths::{JsonPointer, JsonPointerNode},
-    schema_node::SchemaNode,
     validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
@@ -14,13 +14,10 @@ pub(crate) struct PropertyNamesObjectValidator {
 
 impl PropertyNamesObjectValidator {
     #[inline]
-    pub(crate) fn compile<'a>(
-        schema: &'a Value,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
-        let keyword_context = context.with_path("propertyNames");
+    pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
+        let ctx = ctx.with_path("propertyNames");
         Ok(Box::new(PropertyNamesObjectValidator {
-            node: compile_validators(schema, &keyword_context)?,
+            node: compiler::compile(&ctx, ctx.as_resource_ref(schema))?,
         }))
     }
 }
@@ -93,8 +90,8 @@ pub(crate) struct PropertyNamesBooleanValidator {
 
 impl PropertyNamesBooleanValidator {
     #[inline]
-    pub(crate) fn compile<'a>(context: &CompilationContext) -> CompilationResult<'a> {
-        let schema_path = context.as_pointer_with("propertyNames");
+    pub(crate) fn compile<'a>(ctx: &compiler::Context) -> CompilationResult<'a> {
+        let schema_path = ctx.as_pointer_with("propertyNames");
         Ok(Box::new(PropertyNamesBooleanValidator { schema_path }))
     }
 }
@@ -128,13 +125,13 @@ impl Validate for PropertyNamesBooleanValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     match schema {
-        Value::Object(_) => Some(PropertyNamesObjectValidator::compile(schema, context)),
-        Value::Bool(false) => Some(PropertyNamesBooleanValidator::compile(context)),
+        Value::Object(_) => Some(PropertyNamesObjectValidator::compile(ctx, schema)),
+        Value::Bool(false) => Some(PropertyNamesBooleanValidator::compile(ctx)),
         _ => None,
     }
 }

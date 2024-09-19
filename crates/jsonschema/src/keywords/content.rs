@@ -1,6 +1,6 @@
 //! Validators for `contentMediaType` and `contentEncoding` keywords.
 use crate::{
-    compilation::context::CompilationContext,
+    compiler,
     content_encoding::{ContentEncodingCheckType, ContentEncodingConverterType},
     content_media_type::ContentMediaTypeCheckType,
     error::{error, no_error, ErrorIterator, ValidationError},
@@ -194,23 +194,20 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
 
 #[inline]
 pub(crate) fn compile_media_type<'a>(
+    ctx: &compiler::Context,
     schema: &'a Map<String, Value>,
     subschema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     match subschema {
         Value::String(media_type) => {
-            let func = match context.config.content_media_type_check(media_type.as_str()) {
+            let func = match ctx.get_content_media_type_check(media_type.as_str()) {
                 Some(f) => f,
                 None => return None,
             };
             if let Some(content_encoding) = schema.get("contentEncoding") {
                 match content_encoding {
                     Value::String(content_encoding) => {
-                        let converter = match context
-                            .config
-                            .content_encoding_convert(content_encoding.as_str())
-                        {
+                        let converter = match ctx.get_content_encoding_convert(content_encoding) {
                             Some(f) => f,
                             None => return None,
                         };
@@ -219,12 +216,12 @@ pub(crate) fn compile_media_type<'a>(
                             content_encoding,
                             func,
                             converter,
-                            context.schema_path.clone().into(),
+                            ctx.path.clone().into(),
                         ))
                     }
                     _ => Some(Err(ValidationError::single_type_error(
                         JsonPointer::default(),
-                        context.clone().into_pointer(),
+                        ctx.clone().into_pointer(),
                         content_encoding,
                         PrimitiveType::String,
                     ))),
@@ -233,13 +230,13 @@ pub(crate) fn compile_media_type<'a>(
                 Some(ContentMediaTypeValidator::compile(
                     media_type,
                     func,
-                    context.as_pointer_with("contentMediaType"),
+                    ctx.as_pointer_with("contentMediaType"),
                 ))
             }
         }
         _ => Some(Err(ValidationError::single_type_error(
             JsonPointer::default(),
-            context.clone().into_pointer(),
+            ctx.clone().into_pointer(),
             subschema,
             PrimitiveType::String,
         ))),
@@ -248,9 +245,9 @@ pub(crate) fn compile_media_type<'a>(
 
 #[inline]
 pub(crate) fn compile_content_encoding<'a>(
+    ctx: &compiler::Context,
     schema: &'a Map<String, Value>,
     subschema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     // Performed during media type validation
     if schema.get("contentMediaType").is_some() {
@@ -259,22 +256,19 @@ pub(crate) fn compile_content_encoding<'a>(
     }
     match subschema {
         Value::String(content_encoding) => {
-            let func = match context
-                .config
-                .content_encoding_check(content_encoding.as_str())
-            {
+            let func = match ctx.get_content_encoding_check(content_encoding) {
                 Some(f) => f,
                 None => return None,
             };
             Some(ContentEncodingValidator::compile(
                 content_encoding,
                 func,
-                context.as_pointer_with("contentEncoding"),
+                ctx.as_pointer_with("contentEncoding"),
             ))
         }
         _ => Some(Err(ValidationError::single_type_error(
             JsonPointer::default(),
-            context.clone().into_pointer(),
+            ctx.clone().into_pointer(),
             subschema,
             PrimitiveType::String,
         ))),

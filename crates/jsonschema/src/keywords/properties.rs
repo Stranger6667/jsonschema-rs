@@ -1,11 +1,11 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext},
+    compiler,
     error::{no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
+    node::SchemaNode,
     output::BasicOutput,
     paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
-    schema_node::SchemaNode,
     validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
@@ -16,26 +16,23 @@ pub(crate) struct PropertiesValidator {
 
 impl PropertiesValidator {
     #[inline]
-    pub(crate) fn compile<'a>(
-        schema: &'a Value,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+    pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
         match schema {
             Value::Object(map) => {
-                let context = context.with_path("properties");
+                let ctx = ctx.with_path("properties");
                 let mut properties = Vec::with_capacity(map.len());
                 for (key, subschema) in map {
-                    let property_context = context.with_path(key.as_str());
+                    let ctx = ctx.with_path(key.as_str());
                     properties.push((
                         key.clone(),
-                        compile_validators(subschema, &property_context)?,
+                        compiler::compile(&ctx, ctx.as_resource_ref(subschema))?,
                     ));
                 }
                 Ok(Box::new(PropertiesValidator { properties }))
             }
             _ => Err(ValidationError::single_type_error(
                 JsonPointer::default(),
-                context.clone().into_pointer(),
+                ctx.clone().into_pointer(),
                 schema,
                 PrimitiveType::Object,
             )),
@@ -105,14 +102,14 @@ impl Validate for PropertiesValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     parent: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     match parent.get("additionalProperties") {
         // This type of `additionalProperties` validator handles `properties` logic
         Some(Value::Bool(false)) | Some(Value::Object(_)) => None,
-        _ => Some(PropertiesValidator::compile(schema, context)),
+        _ => Some(PropertiesValidator::compile(ctx, schema)),
     }
 }
 

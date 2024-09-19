@@ -14,7 +14,10 @@ lto = "fat"
 codegen-units = 1
 
 [workspace.dependencies]
+ahash = { version = "0.8", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
+url = "2.5"
 
 [workspace.lints.rust]
 unsafe_code = "warn"
