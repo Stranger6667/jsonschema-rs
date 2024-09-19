@@ -93,18 +93,6 @@ validator = jsonschema_rs.Draft201909Validator({"minimum": 42})
 validator = jsonschema_rs.Draft202012Validator({"minimum": 42})
 ```
 
-For backwards compatibility, you can still use the `JSONSchema` class with the `draft` argument, but this is deprecated:
-
-```python
-import jsonschema_rs
-
-# Deprecated: Use draft-specific validators instead
-validator = jsonschema_rs.JSONSchema(
-    {"minimum": 42}, 
-    draft=jsonschema_rs.Draft7
-)
-```
-
 JSON Schema allows for format validation through the `format` keyword. While `jsonschema-rs`
 provides built-in validators for standard formats, you can also define custom format validators
 for domain-specific string formats.
