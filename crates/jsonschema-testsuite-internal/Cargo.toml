@@ -9,5 +9,5 @@ license.workspace = true
 publish = false
 
 [dependencies]
+serde.workspace = true
 serde_json.workspace = true
-serde = { version = "1", features = ["derive"] }

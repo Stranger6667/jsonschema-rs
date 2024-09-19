@@ -1,9 +1,9 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext},
+    compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
+    node::SchemaNode,
     paths::JsonPointerNode,
     primitive_type::PrimitiveType,
-    schema_node::SchemaNode,
     validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
@@ -18,26 +18,23 @@ pub(crate) struct AnyOfValidator {
 
 impl AnyOfValidator {
     #[inline]
-    pub(crate) fn compile<'a>(
-        schema: &'a Value,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+    pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
         if let Value::Array(items) = schema {
-            let keyword_context = context.with_path("anyOf");
+            let ctx = ctx.with_path("anyOf");
             let mut schemas = Vec::with_capacity(items.len());
             for (idx, item) in items.iter().enumerate() {
-                let item_context = keyword_context.with_path(idx);
-                let node = compile_validators(item, &item_context)?;
+                let ctx = ctx.with_path(idx);
+                let node = compiler::compile(&ctx, ctx.as_resource_ref(item))?;
                 schemas.push(node)
             }
             Ok(Box::new(AnyOfValidator {
                 schemas,
-                schema_path: keyword_context.into_pointer(),
+                schema_path: ctx.into_pointer(),
             }))
         } else {
             Err(ValidationError::single_type_error(
                 JsonPointer::default(),
-                context.clone().into_pointer(),
+                ctx.clone().into_pointer(),
                 schema,
                 PrimitiveType::Array,
             ))
@@ -91,11 +88,11 @@ impl Validate for AnyOfValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
-    Some(AnyOfValidator::compile(schema, context))
+    Some(AnyOfValidator::compile(ctx, schema))
 }
 
 #[cfg(test)]

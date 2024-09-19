@@ -4,7 +4,6 @@ use proc_macro::TokenStream;
 
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, ItemFn};
-mod config;
 mod generator;
 mod idents;
 mod loader;
@@ -14,7 +13,7 @@ mod mocks;
 /// [JSON-Schema-Test-Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
 #[proc_macro_attribute]
 pub fn suite(args: TokenStream, input: TokenStream) -> TokenStream {
-    let config = parse_macro_input!(args as config::SuiteConfig);
+    let config = parse_macro_input!(args as testsuite::SuiteConfig);
     let test_func = parse_macro_input!(input as ItemFn);
     let test_func_ident = &test_func.sig.ident;
 

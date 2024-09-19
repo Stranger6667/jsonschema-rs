@@ -1,11 +1,11 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext},
+    compiler,
     error::{no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
+    node::SchemaNode,
     output::BasicOutput,
     paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
-    schema_node::SchemaNode,
     validator::{PartialApplication, Validate},
 };
 use fancy_regex::Regex;
@@ -18,26 +18,26 @@ pub(crate) struct PatternPropertiesValidator {
 impl PatternPropertiesValidator {
     #[inline]
     pub(crate) fn compile<'a>(
+        ctx: &compiler::Context,
         map: &'a Map<String, Value>,
-        context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        let keyword_context = context.with_path("patternProperties");
+        let ctx = ctx.with_path("patternProperties");
         let mut patterns = Vec::with_capacity(map.len());
         for (pattern, subschema) in map {
-            let pattern_context = keyword_context.with_path(pattern.as_str());
+            let pctx = ctx.with_path(pattern.as_str());
             patterns.push((
                 match Regex::new(pattern) {
                     Ok(r) => r,
                     Err(_) => {
                         return Err(ValidationError::format(
                             JsonPointer::default(),
-                            keyword_context.clone().into_pointer(),
+                            ctx.clone().into_pointer(),
                             subschema,
                             "regex",
                         ))
                     }
                 },
-                compile_validators(subschema, &pattern_context)?,
+                compiler::compile(&pctx, pctx.as_resource_ref(subschema))?,
             ));
         }
         Ok(Box::new(PatternPropertiesValidator { patterns }))
@@ -116,25 +116,25 @@ pub(crate) struct SingleValuePatternPropertiesValidator {
 impl SingleValuePatternPropertiesValidator {
     #[inline]
     pub(crate) fn compile<'a>(
+        ctx: &compiler::Context,
         pattern: &'a str,
         schema: &'a Value,
-        context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        let keyword_context = context.with_path("patternProperties");
-        let pattern_context = keyword_context.with_path(pattern);
+        let kctx = ctx.with_path("patternProperties");
+        let pctx = kctx.with_path(pattern);
         Ok(Box::new(SingleValuePatternPropertiesValidator {
             pattern: match Regex::new(pattern) {
                 Ok(r) => r,
                 Err(_) => {
                     return Err(ValidationError::format(
                         JsonPointer::default(),
-                        keyword_context.clone().into_pointer(),
+                        kctx.clone().into_pointer(),
                         schema,
                         "regex",
                     ))
                 }
             },
-            node: compile_validators(schema, &pattern_context)?,
+            node: compiler::compile(&pctx, pctx.as_resource_ref(schema))?,
         }))
     }
 }
@@ -197,9 +197,9 @@ impl Validate for SingleValuePatternPropertiesValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     parent: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     match parent.get("additionalProperties") {
         // This type of `additionalProperties` validator handles `patternProperties` logic
@@ -209,15 +209,15 @@ pub(crate) fn compile<'a>(
                 if map.len() == 1 {
                     let (key, value) = map.iter().next().expect("Map is not empty");
                     Some(SingleValuePatternPropertiesValidator::compile(
-                        key, value, context,
+                        ctx, key, value,
                     ))
                 } else {
-                    Some(PatternPropertiesValidator::compile(map, context))
+                    Some(PatternPropertiesValidator::compile(ctx, map))
                 }
             } else {
                 Some(Err(ValidationError::single_type_error(
                     JsonPointer::default(),
-                    context.clone().into_pointer(),
+                    ctx.clone().into_pointer(),
                     schema,
                     PrimitiveType::Object,
                 )))

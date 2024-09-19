@@ -1,5 +1,5 @@
 use crate::{
-    compilation::context::CompilationContext,
+    compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers, CompilationResult},
     paths::{JsonPointer, JsonPointerNode},
@@ -114,12 +114,12 @@ impl Validate for SingleValueEnumValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     if let Value::Array(items) = schema {
-        let schema_path = context.as_pointer_with("enum");
+        let schema_path = ctx.as_pointer_with("enum");
         if items.len() == 1 {
             let value = items.iter().next().expect("Vec is not empty");
             Some(SingleValueEnumValidator::compile(
@@ -133,7 +133,7 @@ pub(crate) fn compile<'a>(
     } else {
         Some(Err(ValidationError::single_type_error(
             JsonPointer::default(),
-            context.clone().into_pointer(),
+            ctx.clone().into_pointer(),
             schema,
             PrimitiveType::Array,
         )))

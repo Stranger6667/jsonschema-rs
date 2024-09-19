@@ -2,7 +2,6 @@
 use crate::{
     paths::JsonPointer,
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
-    resolver::SchemaResolverError,
 };
 use serde_json::{Map, Number, Value};
 use std::{
@@ -14,7 +13,6 @@ use std::{
     str::Utf8Error,
     string::FromUtf8Error,
 };
-use url::Url;
 
 /// An error that can occur during validation.
 #[derive(Debug)]
@@ -143,15 +141,8 @@ pub enum ValidationErrorKind {
     UnevaluatedProperties { unexpected: Vec<String> },
     /// When the input array has non-unique elements.
     UniqueItems,
-    /// Reference contains unknown scheme.
-    UnknownReferenceScheme { scheme: String },
     /// Error during schema ref resolution.
-    Resolver {
-        /// The url that was tried to be resolved.
-        url: Url,
-        /// The resolution error.
-        error: SchemaResolverError,
-    },
+    Referencing(referencing::Error),
 }
 
 #[derive(Debug)]
@@ -446,14 +437,6 @@ impl<'a> ValidationError<'a> {
             schema_path: JsonPointer::default(),
         }
     }
-    pub(crate) fn invalid_reference(reference: String) -> ValidationError<'a> {
-        ValidationError {
-            instance_path: JsonPointer::default(),
-            instance: Cow::Owned(Value::Null),
-            kind: ValidationErrorKind::InvalidReference { reference },
-            schema_path: JsonPointer::default(),
-        }
-    }
     pub(crate) fn invalid_url(error: url::ParseError) -> ValidationError<'a> {
         ValidationError {
             instance_path: JsonPointer::default(),
@@ -730,14 +713,6 @@ impl<'a> ValidationError<'a> {
             schema_path: JsonPointer::default(),
         }
     }
-    pub(crate) fn resolver(url: Url, error: SchemaResolverError) -> ValidationError<'a> {
-        ValidationError {
-            instance_path: JsonPointer::default(),
-            instance: Cow::Owned(Value::Null),
-            kind: ValidationErrorKind::Resolver { url, error },
-            schema_path: JsonPointer::default(),
-        }
-    }
     /// Create a new custom validation error.
     pub fn custom(
         schema_path: JsonPointer,
@@ -761,6 +736,17 @@ impl From<serde_json::Error> for ValidationError<'_> {
     #[inline]
     fn from(err: serde_json::Error) -> Self {
         ValidationError::json_parse(err)
+    }
+}
+impl From<referencing::Error> for ValidationError<'_> {
+    #[inline]
+    fn from(err: referencing::Error) -> Self {
+        ValidationError {
+            instance_path: JsonPointer::default(),
+            instance: Cow::Owned(Value::Null),
+            kind: ValidationErrorKind::Referencing(err),
+            schema_path: JsonPointer::default(),
+        }
     }
 }
 impl From<io::Error> for ValidationError<'_> {
@@ -796,15 +782,10 @@ impl fmt::Display for ValidationError<'_> {
         match &self.kind {
             ValidationErrorKind::Schema => f.write_str("Schema error"),
             ValidationErrorKind::JSONParse { error } => error.fmt(f),
-            ValidationErrorKind::Resolver { url, error } => {
-                write!(f, "failed to resolve {}: {}", url, error)
-            }
+            ValidationErrorKind::Referencing(error) => error.fmt(f),
             ValidationErrorKind::FileNotFound { error } => error.fmt(f),
             ValidationErrorKind::InvalidURL { error } => error.fmt(f),
             ValidationErrorKind::BacktrackLimitExceeded { error } => error.fmt(f),
-            ValidationErrorKind::UnknownReferenceScheme { scheme } => {
-                write!(f, "Unknown scheme: {}", scheme)
-            }
             ValidationErrorKind::Format { format } => {
                 write!(f, r#"{} is not a "{}""#, self.instance, format)
             }

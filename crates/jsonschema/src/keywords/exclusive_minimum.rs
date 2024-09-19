@@ -1,5 +1,5 @@
 use crate::{
-    compilation::context::CompilationContext,
+    compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::{JsonPointer, JsonPointerNode},
@@ -100,12 +100,12 @@ impl Validate for ExclusiveMinimumF64Validator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     if let Value::Number(limit) = schema {
-        let schema_path = context.as_pointer_with("exclusiveMinimum");
+        let schema_path = ctx.as_pointer_with("exclusiveMinimum");
         if let Some(limit) = limit.as_u64() {
             Some(Ok(Box::new(ExclusiveMinimumU64Validator {
                 limit,
@@ -129,7 +129,7 @@ pub(crate) fn compile<'a>(
     } else {
         Some(Err(ValidationError::single_type_error(
             JsonPointer::default(),
-            context.clone().into_pointer(),
+            ctx.clone().into_pointer(),
             schema,
             PrimitiveType::Number,
         )))

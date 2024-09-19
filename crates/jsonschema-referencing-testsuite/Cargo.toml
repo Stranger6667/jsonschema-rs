@@ -1,0 +1,15 @@
+[package]
+name = "jsonschema-referencing-testsuite"
+version = "0.1.0"
+rust-version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[dependencies]
+codegen = { package = "jsonschema-referencing-testsuite-codegen", path = "../jsonschema-referencing-testsuite-codegen/" }
+internal = { package = "jsonschema-referencing-testsuite-internal", path = "../jsonschema-referencing-testsuite-internal/" }
+
+[lints]
+workspace = true

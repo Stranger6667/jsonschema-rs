@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-06/schema#",
+  "type": "object",
+  "properties": {
+    "foo": {
+      "type": "string"
+    },
+    "bar": {
+      "type": "integer"
+    }
+  },
+  "additionalProperties": {
+    "type": "number"
+  },
+  "additionalItems": {
+    "type": "string"
+  },
+  "propertyNames": {
+    "pattern": "^[a-zA-Z]+$"
+  },
+  "not": {
+    "type": "null"
+  },
+  "contains": {
+    "type": "string"
+  },
+  "allOf": [
+    {
+      "type": "object"
+    },
+    {
+      "minProperties": 1
+    }
+  ],
+  "anyOf": [
+    {
+      "type": "object"
+    },
+    {
+      "type": "array"
+    }
+  ],
+  "oneOf": [
+    {
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "properties": {
+        "bar": {
+          "type": "integer"
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "negativeInteger": {
+      "type": "integer",
+      "maximum": 0
+    }
+  },
+  "patternProperties": {
+    "^S_": {
+      "type": "string"
+    },
+    "^I_": {
+      "type": "integer"
+    }
+  },
+  "dependencies": {
+    "foo": {
+      "required": [
+        "bar"
+      ]
+    },
+    "bar": {
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

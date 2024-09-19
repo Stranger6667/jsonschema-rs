@@ -12,7 +12,7 @@ use url::Url;
 use uuid_simd::{parse_hyphenated, Out};
 
 use crate::{
-    compilation::context::CompilationContext,
+    compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{pattern, CompilationResult},
     paths::{JsonPointer, JsonPointerNode},
@@ -50,8 +50,8 @@ macro_rules! format_validator {
             schema_path: JsonPointer,
         }
         impl $validator {
-            pub(crate) fn compile<'a>(context: &CompilationContext) -> CompilationResult<'a> {
-                let schema_path = context.as_pointer_with("format");
+            pub(crate) fn compile<'a>(ctx: &compiler::Context) -> CompilationResult<'a> {
+                let schema_path = ctx.as_pointer_with("format");
                 Ok(Box::new($validator { schema_path }))
             }
         }
@@ -364,11 +364,11 @@ struct CustomFormatValidator {
 }
 impl CustomFormatValidator {
     pub(crate) fn compile<'a>(
-        context: &CompilationContext,
+        ctx: &compiler::Context,
         format_name: String,
         check: Arc<dyn Format>,
     ) -> CompilationResult<'a> {
-        let schema_path = context.as_pointer_with("format");
+        let schema_path = ctx.as_pointer_with("format");
         Ok(Box::new(CustomFormatValidator {
             schema_path,
             format_name,
@@ -419,83 +419,79 @@ where
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
-    if !context.config.validate_formats() {
+    if !ctx.validates_formats_by_default() {
         return None;
     }
 
     if let Value::String(format) = schema {
-        if let Some((name, func)) = context.config.get_format(format) {
+        if let Some((name, func)) = ctx.get_format(format) {
             return Some(CustomFormatValidator::compile(
-                context,
+                ctx,
                 name.clone(),
                 func.clone(),
             ));
         }
-        let draft = context.config.draft();
+        let draft = ctx.draft();
         match format.as_str() {
-            "date-time" => Some(DateTimeValidator::compile(context)),
-            "date" => Some(DateValidator::compile(context)),
-            "email" => Some(EmailValidator::compile(context)),
-            "hostname" => Some(HostnameValidator::compile(context)),
-            "idn-email" => Some(IDNEmailValidator::compile(context)),
-            "idn-hostname" if draft == Draft::Draft7 => {
-                Some(IDNHostnameValidator::compile(context))
-            }
+            "date-time" => Some(DateTimeValidator::compile(ctx)),
+            "date" => Some(DateValidator::compile(ctx)),
+            "email" => Some(EmailValidator::compile(ctx)),
+            "hostname" => Some(HostnameValidator::compile(ctx)),
+            "idn-email" => Some(IDNEmailValidator::compile(ctx)),
+            "idn-hostname" if draft == Draft::Draft7 => Some(IDNHostnameValidator::compile(ctx)),
             "idn-hostname" if draft == Draft::Draft201909 => {
-                Some(IDNHostnameValidator::compile(context))
+                Some(IDNHostnameValidator::compile(ctx))
             }
-            "ipv4" => Some(IpV4Validator::compile(context)),
-            "ipv6" => Some(IpV6Validator::compile(context)),
-            "iri-reference" if draft == Draft::Draft7 => {
-                Some(IRIReferenceValidator::compile(context))
-            }
+            "ipv4" => Some(IpV4Validator::compile(ctx)),
+            "ipv6" => Some(IpV6Validator::compile(ctx)),
+            "iri-reference" if draft == Draft::Draft7 => Some(IRIReferenceValidator::compile(ctx)),
             "iri-reference" if draft == Draft::Draft201909 => {
-                Some(IRIReferenceValidator::compile(context))
+                Some(IRIReferenceValidator::compile(ctx))
             }
-            "iri" if draft == Draft::Draft7 => Some(IRIValidator::compile(context)),
-            "iri" if draft == Draft::Draft201909 => Some(IRIValidator::compile(context)),
+            "iri" if draft == Draft::Draft7 => Some(IRIValidator::compile(ctx)),
+            "iri" if draft == Draft::Draft201909 => Some(IRIValidator::compile(ctx)),
             "json-pointer" if draft == Draft::Draft6 || draft == Draft::Draft7 => {
-                Some(JsonPointerValidator::compile(context))
+                Some(JsonPointerValidator::compile(ctx))
             }
             "json-pointer" if draft == Draft::Draft201909 => {
-                Some(JsonPointerValidator::compile(context))
+                Some(JsonPointerValidator::compile(ctx))
             }
-            "regex" => Some(RegexValidator::compile(context)),
+            "regex" => Some(RegexValidator::compile(ctx)),
             "relative-json-pointer" if draft == Draft::Draft7 => {
-                Some(RelativeJsonPointerValidator::compile(context))
+                Some(RelativeJsonPointerValidator::compile(ctx))
             }
             "relative-json-pointer" if draft == Draft::Draft201909 => {
-                Some(RelativeJsonPointerValidator::compile(context))
+                Some(RelativeJsonPointerValidator::compile(ctx))
             }
-            "time" => Some(TimeValidator::compile(context)),
+            "time" => Some(TimeValidator::compile(ctx)),
             "uri-reference" if draft == Draft::Draft6 || draft == Draft::Draft7 => {
-                Some(URIReferenceValidator::compile(context))
+                Some(URIReferenceValidator::compile(ctx))
             }
             "uri-reference" if draft == Draft::Draft201909 => {
-                Some(URIReferenceValidator::compile(context))
+                Some(URIReferenceValidator::compile(ctx))
             }
             "uri-template" if draft == Draft::Draft6 || draft == Draft::Draft7 => {
-                Some(URITemplateValidator::compile(context))
+                Some(URITemplateValidator::compile(ctx))
             }
             "uri-template" if draft == Draft::Draft201909 => {
-                Some(URITemplateValidator::compile(context))
+                Some(URITemplateValidator::compile(ctx))
             }
             "uuid" if matches!(draft, Draft::Draft201909 | Draft::Draft202012) => {
-                Some(UUIDValidator::compile(context))
+                Some(UUIDValidator::compile(ctx))
             }
-            "uri" => Some(URIValidator::compile(context)),
-            "duration" if draft == Draft::Draft201909 => Some(DurationValidator::compile(context)),
+            "uri" => Some(URIValidator::compile(ctx)),
+            "duration" if draft == Draft::Draft201909 => Some(DurationValidator::compile(ctx)),
             _ => {
-                if context.config.are_unknown_formats_ignored() {
+                if ctx.are_unknown_formats_ignored() {
                     None
                 } else {
                     return Some(Err(ValidationError::format(
                         JsonPointer::default(),
-                        context.clone().schema_path.into(),
+                        ctx.clone().path.into(),
                         schema,
                         "unknown format",
                     )));
@@ -505,7 +501,7 @@ pub(crate) fn compile<'a>(
     } else {
         Some(Err(ValidationError::single_type_error(
             JsonPointer::default(),
-            context.clone().into_pointer(),
+            ctx.clone().into_pointer(),
             schema,
             PrimitiveType::String,
         )))
@@ -514,10 +510,11 @@ pub(crate) fn compile<'a>(
 
 #[cfg(test)]
 mod tests {
+    use referencing::Draft;
     use serde_json::json;
     use test_case::test_case;
 
-    use crate::{error::ValidationErrorKind, schemas::Draft::Draft201909, tests_util};
+    use crate::{error::ValidationErrorKind, tests_util};
 
     #[test]
     fn ignored_format() {
@@ -570,7 +567,7 @@ mod tests {
         let failing_instance = json!("1");
 
         let validator = crate::options()
-            .with_draft(Draft201909)
+            .with_draft(Draft::Draft201909)
             .should_validate_formats(true)
             .build(&schema)
             .unwrap();
@@ -598,7 +595,7 @@ mod tests {
         let failing_instances = vec![json!("15DT1H22M1.5S"), json!("unknown")];
 
         let validator = crate::options()
-            .with_draft(Draft201909)
+            .with_draft(Draft::Draft201909)
             .should_validate_formats(true)
             .build(&schema)
             .unwrap();

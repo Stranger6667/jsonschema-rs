@@ -1,10 +1,9 @@
 use crate::{
-    compilation::context::CompilationContext,
+    compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers::fail_on_non_positive_integer, CompilationResult},
     paths::{JsonPointer, JsonPointerNode},
     validator::Validate,
-    Draft,
 };
 use serde_json::{Map, Value};
 
@@ -15,15 +14,15 @@ pub(crate) struct MaxPropertiesValidator {
 
 impl MaxPropertiesValidator {
     #[inline]
-    pub(crate) fn compile(
-        schema: &Value,
+    pub(crate) fn compile<'a>(
+        ctx: &compiler::Context,
+        schema: &'a Value,
         schema_path: JsonPointer,
-        draft: Draft,
-    ) -> CompilationResult {
+    ) -> CompilationResult<'a> {
         if let Some(limit) = schema.as_u64() {
             return Ok(Box::new(MaxPropertiesValidator { limit, schema_path }));
         }
-        if !matches!(draft, Draft::Draft4) {
+        if ctx.supports_integer_valued_numbers() {
             if let Some(limit) = schema.as_f64() {
                 if limit.trunc() == limit {
                     #[allow(clippy::cast_possible_truncation)]
@@ -70,16 +69,12 @@ impl Validate for MaxPropertiesValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
-    let schema_path = context.as_pointer_with("maxProperties");
-    Some(MaxPropertiesValidator::compile(
-        schema,
-        schema_path,
-        context.config.draft(),
-    ))
+    let schema_path = ctx.as_pointer_with("maxProperties");
+    Some(MaxPropertiesValidator::compile(ctx, schema, schema_path))
 }
 
 #[cfg(test)]

@@ -4,11 +4,18 @@ use syn::{
     Expr, ExprArray, ExprLit, Lit, Meta, Token,
 };
 
+#[must_use]
+pub fn sanitize_name(s: String) -> String {
+    match s.as_str() {
+        "const" | "enum" | "ref" | "type" => format!("r#{s}"),
+        _ => s,
+    }
+}
 /// Configuration for the `suite` attribute.
-pub(crate) struct SuiteConfig {
-    pub(crate) path: String,
-    pub(crate) drafts: Vec<String>,
-    pub(crate) xfail: Vec<String>,
+pub struct SuiteConfig {
+    pub path: String,
+    pub drafts: Vec<String>,
+    pub xfail: Vec<String>,
 }
 
 impl Parse for SuiteConfig {

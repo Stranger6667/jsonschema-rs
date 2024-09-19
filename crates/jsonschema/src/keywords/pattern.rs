@@ -1,5 +1,5 @@
 use crate::{
-    compilation::context::CompilationContext,
+    compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     paths::JsonPointerNode,
@@ -25,8 +25,8 @@ pub(crate) struct PatternValidator {
 impl PatternValidator {
     #[inline]
     pub(crate) fn compile<'a>(
+        ctx: &compiler::Context,
         pattern: &'a Value,
-        context: &CompilationContext,
     ) -> CompilationResult<'a> {
         match pattern {
             Value::String(item) => {
@@ -35,7 +35,7 @@ impl PatternValidator {
                     Err(_) => {
                         return Err(ValidationError::format(
                             JsonPointer::default(),
-                            context.clone().into_pointer(),
+                            ctx.clone().into_pointer(),
                             pattern,
                             "regex",
                         ))
@@ -44,12 +44,12 @@ impl PatternValidator {
                 Ok(Box::new(PatternValidator {
                     original: item.clone(),
                     pattern,
-                    schema_path: context.as_pointer_with("pattern"),
+                    schema_path: ctx.as_pointer_with("pattern"),
                 }))
             }
             _ => Err(ValidationError::single_type_error(
                 JsonPointer::default(),
-                context.clone().into_pointer(),
+                ctx.clone().into_pointer(),
                 pattern,
                 PrimitiveType::String,
             )),
@@ -156,23 +156,18 @@ fn replace_control_group(captures: &regex::Captures) -> String {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
-    Some(PatternValidator::compile(schema, context))
+    Some(PatternValidator::compile(ctx, schema))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        compilation::{context::BaseUri, DEFAULT_SCOPE},
-        resolver::{DefaultResolver, Resolver},
-        tests_util,
-    };
-    use serde_json::{json, Value};
-    use std::sync::Arc;
+    use crate::tests_util;
+    use serde_json::json;
     use test_case::test_case;
 
     #[test_case(r"^[\w\-\.\+]+$", "CC-BY-4.0", true)]
@@ -196,22 +191,9 @@ mod tests {
     #[test_case("^(?!eo:)", "eo:bands", false)]
     #[test_case("^(?!eo:)", "proj:epsg", true)]
     fn negative_lookbehind_match(pattern: &str, text: &str, is_matching: bool) {
-        let pattern = Value::String(pattern.into());
-        let text = Value::String(text.into());
-        let schema_json = Arc::new(json!({}));
-        let validator = crate::validator_for(&schema_json).unwrap();
-        let resolver = Arc::new(
-            Resolver::new(
-                Arc::new(DefaultResolver),
-                Default::default(),
-                &DEFAULT_SCOPE,
-                schema_json,
-                Default::default(),
-            )
-            .unwrap(),
-        );
-        let context = CompilationContext::new(BaseUri::Unknown, validator.config(), resolver);
-        let validator = PatternValidator::compile(&pattern, &context).unwrap();
+        let text = json!(text);
+        let schema = json!({"pattern": pattern});
+        let validator = crate::validator_for(&schema).unwrap();
         assert_eq!(validator.is_valid(&text), is_matching)
     }
 

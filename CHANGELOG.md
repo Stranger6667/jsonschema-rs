@@ -2,6 +2,32 @@
 
 ## [Unreleased]
 
+**Important:** This release brings a complete rework of reference resolving which deprecates some older APIs.
+While backward compatibility is maintained for now, users are encouraged to update their code. See the [Migration Guide](MIGRATION.md) for details on transitioning to the new API.
+
+### Added
+
+- `$anchor` support.
+
+### Changed
+
+- **BREAKING**: Treat `$ref` as URI, not URL and additionally normalize them. [#454](https://github.com/Stranger6667/jsonschema-rs/issues/454)
+- **BREAKING**: Resolve all non-recursive references eagerly.
+- **BREAKING**: Disallow use of fragments in `$id`. [#264](https://github.com/Stranger6667/jsonschema-rs/issues/264)
+
+### Deprecated
+
+- `SchemaResolver` trait and `SchemaResolverError` in favor of a simpler `Retrieve` that works with `Box<dyn std::error::Error>`. 
+  In turn, it also deprecates `ValidationOptions::with_resolver` in favor of `ValidationOptions::with_retriever`
+- `ValidationOptions::with_document` in favor of `ValidationOptions::with_resource`.
+
+### Fixed
+
+- Infinite recursion in `unevaluatedProperties`. [#420](https://github.com/Stranger6667/jsonschema-rs/issues/420)
+- Cross-draft validation from newer to older ones.
+- Changing base URI in folder.
+- Location-independent identifier in remote resource.
+
 ## [0.20.0] - 2024-09-18
 
 **Important:** This release includes several deprecations and renames. While backward compatibility is maintained for now, users are encouraged to update their code. See the [Migration Guide](MIGRATION.md) for details on transitioning to the new API.

@@ -10,6 +10,7 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 jsonschema = { path = "../crates/jsonschema/" }
+referencing = { path = "../crates/jsonschema-referencing" }
 serde_json = "1"
 
 [workspace]
@@ -28,6 +29,13 @@ bench = false
 [[bin]]
 name = "validation"
 path = "fuzz_targets/validation.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "referencing"
+path = "fuzz_targets/referencing.rs"
 test = false
 doc = false
 bench = false

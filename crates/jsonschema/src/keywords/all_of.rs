@@ -1,10 +1,10 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext},
+    compiler,
     error::{ErrorIterator, ValidationError},
+    node::SchemaNode,
     output::BasicOutput,
     paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
-    schema_node::SchemaNode,
     validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
@@ -18,14 +18,14 @@ pub(crate) struct AllOfValidator {
 impl AllOfValidator {
     #[inline]
     pub(crate) fn compile<'a>(
+        ctx: &compiler::Context,
         items: &'a [Value],
-        context: &CompilationContext,
     ) -> CompilationResult<'a> {
-        let keyword_context = context.with_path("allOf");
+        let ctx = ctx.with_path("allOf");
         let mut schemas = Vec::with_capacity(items.len());
         for (idx, item) in items.iter().enumerate() {
-            let item_context = keyword_context.with_path(idx);
-            let validators = compile_validators(item, &item_context)?;
+            let ctx = ctx.with_path(idx);
+            let validators = compiler::compile(&ctx, ctx.as_resource_ref(item))?;
             schemas.push(validators)
         }
         Ok(Box::new(AllOfValidator { schemas }))
@@ -70,13 +70,10 @@ pub(crate) struct SingleValueAllOfValidator {
 
 impl SingleValueAllOfValidator {
     #[inline]
-    pub(crate) fn compile<'a>(
-        schema: &'a Value,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
-        let keyword_context = context.with_path("allOf");
-        let item_context = keyword_context.with_path(0);
-        let node = compile_validators(schema, &item_context)?;
+    pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
+        let ctx = ctx.with_path("allOf");
+        let ctx = ctx.with_path(0);
+        let node = compiler::compile(&ctx, ctx.as_resource_ref(schema))?;
         Ok(Box::new(SingleValueAllOfValidator { node }))
     }
 }
@@ -105,21 +102,21 @@ impl Validate for SingleValueAllOfValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     if let Value::Array(items) = schema {
         if items.len() == 1 {
             let value = items.iter().next().expect("Vec is not empty");
-            Some(SingleValueAllOfValidator::compile(value, context))
+            Some(SingleValueAllOfValidator::compile(ctx, value))
         } else {
-            Some(AllOfValidator::compile(items, context))
+            Some(AllOfValidator::compile(ctx, items))
         }
     } else {
         Some(Err(ValidationError::single_type_error(
             JsonPointer::default(),
-            context.clone().into_pointer(),
+            ctx.clone().into_pointer(),
             schema,
             PrimitiveType::Array,
         )))

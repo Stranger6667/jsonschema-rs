@@ -1,0 +1,24 @@
+[package]
+name = "jsonschema-referencing-testsuite-codegen"
+version = "0.1.0"
+rust-version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+internal = { package = "jsonschema-referencing-testsuite-internal", path = "../jsonschema-referencing-testsuite-internal/" }
+heck = "0.5"
+proc-macro2 = "1"
+quote = "1"
+serde_json.workspace = true
+syn = { version = "2", features = ["full"] }
+testsuite = { package = "testsuite-common", path = "../testsuite-common/" }
+walkdir = "2.5"
+
+[lints]
+workspace = true

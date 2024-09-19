@@ -447,26 +447,28 @@
 //! - Custom format validators are only called for string instances.
 //! - Format validation can be disabled globally or per-draft using [`ValidationOptions`].
 //!   Ensure format validation is enabled if you're using custom formats.
-mod compilation;
+pub(crate) mod compiler;
 mod content_encoding;
 mod content_media_type;
 pub mod error;
 mod keywords;
+mod node;
+mod options;
 pub mod output;
 pub mod paths;
 pub mod primitive_type;
 pub(crate) mod properties;
-mod resolver;
-mod schema_node;
-mod schemas;
+mod retriever;
 mod validator;
 
-pub use compilation::{options::ValidationOptions, Validator};
 pub use error::{ErrorIterator, ValidationError};
 pub use keywords::custom::Keyword;
+pub use options::ValidationOptions;
 pub use output::BasicOutput;
-pub use resolver::{SchemaResolver, SchemaResolverError};
-pub use schemas::Draft;
+pub use referencing::{Draft, Resource, Retrieve, Uri, UriRef};
+#[allow(deprecated)]
+pub use retriever::{SchemaResolver, SchemaResolverError};
+pub use validator::Validator;
 
 use serde_json::Value;
 

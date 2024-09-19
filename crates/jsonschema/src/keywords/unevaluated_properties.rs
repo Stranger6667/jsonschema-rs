@@ -1,14 +1,12 @@
-use std::sync::Arc;
-
 use crate::{
-    compilation::{compile_validators, context::CompilationContext},
+    compiler,
     error::{no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
+    node::SchemaNode,
     output::BasicOutput,
     paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     properties::*,
-    schema_node::SchemaNode,
     validator::{PartialApplication, Validate},
 };
 use ahash::AHashMap;
@@ -37,32 +35,30 @@ struct UnevaluatedPropertiesValidator {
 
 impl UnevaluatedPropertiesValidator {
     fn compile<'a>(
+        ctx: &compiler::Context,
         parent: &'a Map<String, Value>,
         schema: &'a Value,
-        context: &CompilationContext,
     ) -> Result<Self, ValidationError<'a>> {
-        let unevaluated = UnevaluatedSubvalidator::from_value(
-            schema,
-            &context.with_path("unevaluatedProperties"),
-        )?;
+        let unevaluated =
+            UnevaluatedSubvalidator::from_value(schema, &ctx.with_path("unevaluatedProperties"))?;
 
         let additional = parent
             .get("additionalProperties")
             .map(|additional_properties| {
                 UnevaluatedSubvalidator::from_value(
                     additional_properties,
-                    &context.with_path("additionalProperties"),
+                    &ctx.with_path("additionalProperties"),
                 )
             })
             .transpose()?;
 
         let properties = parent
             .get("properties")
-            .map(|properties| PropertySubvalidator::from_value(properties, context))
+            .map(|properties| PropertySubvalidator::from_value(ctx, properties))
             .transpose()?;
         let patterns = parent
             .get("patternProperties")
-            .map(|pattern_properties| PatternSubvalidator::from_value(pattern_properties, context))
+            .map(|pattern_properties| PatternSubvalidator::from_value(ctx, pattern_properties))
             .transpose()?;
 
         let conditional = parent
@@ -71,7 +67,7 @@ impl UnevaluatedPropertiesValidator {
                 let success = parent.get("then");
                 let failure = parent.get("else");
 
-                ConditionalSubvalidator::from_values(schema, condition, success, failure, context)
+                ConditionalSubvalidator::from_values(ctx, schema, condition, success, failure)
                     .map(Box::new)
             })
             .transpose()?;
@@ -79,13 +75,13 @@ impl UnevaluatedPropertiesValidator {
         let dependent = parent
             .get("dependentSchemas")
             .map(|dependent_schemas| {
-                DependentSchemaSubvalidator::from_value(schema, dependent_schemas, context)
+                DependentSchemaSubvalidator::from_value(ctx, schema, dependent_schemas)
             })
             .transpose()?;
 
         let reference = parent
             .get("$ref")
-            .map(|reference| ReferenceSubvalidator::from_value(schema, reference, context))
+            .map(|reference| ReferenceSubvalidator::from_value(ctx, schema, reference))
             .transpose()?
             .flatten();
 
@@ -95,7 +91,7 @@ impl UnevaluatedPropertiesValidator {
                 schema,
                 subschemas,
                 SubschemaBehavior::All,
-                context,
+                ctx,
             )?;
             subschema_validators.push(validator);
         }
@@ -105,7 +101,7 @@ impl UnevaluatedPropertiesValidator {
                 schema,
                 subschemas,
                 SubschemaBehavior::Any,
-                context,
+                ctx,
             )?;
             subschema_validators.push(validator);
         }
@@ -115,7 +111,7 @@ impl UnevaluatedPropertiesValidator {
                 schema,
                 subschemas,
                 SubschemaBehavior::One,
-                context,
+                ctx,
             )?;
             subschema_validators.push(validator);
         }
@@ -127,7 +123,7 @@ impl UnevaluatedPropertiesValidator {
         };
 
         Ok(Self {
-            schema_path: JsonPointer::from(&context.schema_path),
+            schema_path: JsonPointer::from(&ctx.path),
             unevaluated,
             additional,
             properties,
@@ -445,13 +441,13 @@ struct PropertySubvalidator {
 
 impl PropertySubvalidator {
     fn from_value<'a>(
+        ctx: &compiler::Context,
         properties: &'a Value,
-        context: &CompilationContext,
     ) -> Result<Self, ValidationError<'a>> {
         properties
             .as_object()
             .ok_or_else(ValidationError::null_schema)
-            .and_then(|props| SmallValidatorsMap::from_map(props, context))
+            .and_then(|props| SmallValidatorsMap::from_map(ctx, props))
             .map(|prop_map| Self { prop_map })
     }
 
@@ -492,13 +488,13 @@ struct PatternSubvalidator {
 
 impl PatternSubvalidator {
     fn from_value<'a>(
+        ctx: &compiler::Context,
         properties: &'a Value,
-        context: &CompilationContext,
     ) -> Result<Self, ValidationError<'a>> {
         properties
             .as_object()
             .ok_or_else(ValidationError::null_schema)
-            .and_then(|props| compile_patterns(props, context))
+            .and_then(|props| compile_patterns(ctx, props))
             .map(|patterns| Self { patterns })
     }
 
@@ -595,20 +591,20 @@ impl SubschemaSubvalidator {
         parent: &'a Value,
         values: &'a [Value],
         behavior: SubschemaBehavior,
-        context: &CompilationContext,
+        ctx: &compiler::Context,
     ) -> Result<Self, ValidationError<'a>> {
         let mut subvalidators = vec![];
-        let keyword_context = context.with_path(behavior.as_str());
+        let keyword_context = ctx.with_path(behavior.as_str());
 
         for (i, value) in values.iter().enumerate() {
             if let Value::Object(subschema) = value {
-                let subschema_context = keyword_context.with_path(i);
+                let ctx = keyword_context.with_path(i);
 
-                let node = compile_validators(value, &subschema_context)?;
+                let node = compiler::compile(&ctx, ctx.as_resource_ref(value))?;
                 let subvalidator = UnevaluatedPropertiesValidator::compile(
+                    &ctx,
                     subschema,
                     get_transitive_unevaluated_props_schema(subschema, parent),
-                    &subschema_context,
                 )?;
 
                 subvalidators.push((node, subvalidator));
@@ -866,12 +862,12 @@ struct UnevaluatedSubvalidator {
 impl UnevaluatedSubvalidator {
     fn from_value<'a>(
         value: &'a Value,
-        context: &CompilationContext,
+        ctx: &compiler::Context,
     ) -> Result<Self, ValidationError<'a>> {
         let behavior = match value {
             Value::Bool(false) => UnevaluatedBehavior::Deny,
             Value::Bool(true) => UnevaluatedBehavior::Allow,
-            _ => UnevaluatedBehavior::IfValid(compile_validators(value, context)?),
+            _ => UnevaluatedBehavior::IfValid(compiler::compile(ctx, ctx.as_resource_ref(value))?),
         };
 
         Ok(Self { behavior })
@@ -935,21 +931,21 @@ struct ConditionalSubvalidator {
 
 impl ConditionalSubvalidator {
     fn from_values<'a>(
+        ctx: &compiler::Context,
         parent: &'a Value,
         schema: &'a Value,
         success: Option<&'a Value>,
         failure: Option<&'a Value>,
-        context: &CompilationContext,
     ) -> Result<Self, ValidationError<'a>> {
-        let if_context = context.with_path("if");
-        compile_validators(schema, &if_context).and_then(|condition| {
+        let if_context = ctx.with_path("if");
+        compiler::compile(&if_context, if_context.as_resource_ref(schema)).and_then(|condition| {
             let node = schema
                 .as_object()
                 .map(|node_schema| {
                     UnevaluatedPropertiesValidator::compile(
+                        &if_context,
                         node_schema,
                         get_transitive_unevaluated_props_schema(node_schema, parent),
-                        &if_context,
                     )
                 })
                 .transpose()?;
@@ -957,9 +953,9 @@ impl ConditionalSubvalidator {
                 .and_then(|value| value.as_object())
                 .map(|success_schema| {
                     UnevaluatedPropertiesValidator::compile(
+                        &ctx.with_path("then"),
                         success_schema,
                         get_transitive_unevaluated_props_schema(success_schema, parent),
-                        &context.with_path("then"),
                     )
                 })
                 .transpose()?;
@@ -967,9 +963,9 @@ impl ConditionalSubvalidator {
                 .and_then(|value| value.as_object())
                 .map(|failure_schema| {
                     UnevaluatedPropertiesValidator::compile(
+                        &ctx.with_path("else"),
                         failure_schema,
                         get_transitive_unevaluated_props_schema(failure_schema, parent),
-                        &context.with_path("else"),
                     )
                 })
                 .transpose()?;
@@ -1103,14 +1099,14 @@ struct DependentSchemaSubvalidator {
 
 impl DependentSchemaSubvalidator {
     fn from_value<'a>(
+        ctx: &compiler::Context,
         parent: &'a Value,
         value: &'a Value,
-        context: &CompilationContext,
     ) -> Result<Self, ValidationError<'a>> {
-        let keyword_context = context.with_path("dependentSchemas");
+        let ctx = ctx.with_path("dependentSchemas");
         let schemas = value
             .as_object()
-            .ok_or_else(|| unexpected_type(&keyword_context, value, PrimitiveType::Object))?;
+            .ok_or_else(|| unexpected_type(&ctx, value, PrimitiveType::Object))?;
         let mut nodes = AHashMap::new();
 
         for (dependent_property_name, dependent_schema) in schemas {
@@ -1118,11 +1114,11 @@ impl DependentSchemaSubvalidator {
                 .as_object()
                 .ok_or_else(ValidationError::null_schema)?;
 
-            let schema_context = keyword_context.with_path(dependent_property_name.as_str());
+            let ctx = ctx.with_path(dependent_property_name.as_str());
             let node = UnevaluatedPropertiesValidator::compile(
+                &ctx,
                 dependent_schema,
                 get_transitive_unevaluated_props_schema(dependent_schema, parent),
-                &schema_context,
             )?;
             nodes.insert(dependent_property_name.to_string(), node);
         }
@@ -1205,36 +1201,18 @@ struct ReferenceSubvalidator {
 }
 
 impl ReferenceSubvalidator {
-    fn from_value<'a>(
+    fn from_value_impl<'a>(
+        ctx: &compiler::Context,
         parent: &'a Value,
-        value: &'a Value,
-        context: &CompilationContext,
+        contents: &Value,
     ) -> Result<Option<Self>, ValidationError<'a>> {
-        let keyword_context = context.with_path("$ref");
-        let reference = value
-            .as_str()
-            .ok_or_else(|| unexpected_type(&keyword_context, value, PrimitiveType::String))?;
-
-        let reference_url = context.build_url(reference)?;
-        let (scope, resolved) = keyword_context
-            .resolver
-            .resolve_fragment(keyword_context.config.draft(), &reference_url, reference)
-            .map_err(|e| e.into_owned())?;
-
-        let mut ref_context = CompilationContext::new(
-            scope.into(),
-            Arc::clone(&context.config),
-            Arc::clone(&context.resolver),
-        );
-        ref_context.schema_path = keyword_context.schema_path.clone();
-
-        resolved
+        contents
             .as_object()
-            .map(|ref_schema| {
+            .map(|schema| {
                 UnevaluatedPropertiesValidator::compile(
-                    ref_schema,
-                    get_transitive_unevaluated_props_schema(ref_schema, parent),
-                    &ref_context,
+                    ctx,
+                    schema,
+                    get_transitive_unevaluated_props_schema(schema, parent),
                 )
                 .map(|validator| ReferenceSubvalidator {
                     node: Box::new(validator),
@@ -1242,6 +1220,23 @@ impl ReferenceSubvalidator {
                 .map_err(|e| e.into_owned())
             })
             .transpose()
+    }
+    fn from_value<'a>(
+        ctx: &compiler::Context,
+        parent: &'a Value,
+        value: &'a Value,
+    ) -> Result<Option<Self>, ValidationError<'a>> {
+        let kctx = ctx.with_path("$ref");
+        let reference = value
+            .as_str()
+            .ok_or_else(|| unexpected_type(&kctx, value, PrimitiveType::String))?;
+
+        if let Some((_, resource)) = ctx.lookup_recursive_reference(reference)? {
+            Self::from_value_impl(ctx, parent, resource.contents())
+        } else {
+            let resolved = ctx.lookup(reference)?;
+            Self::from_value_impl(ctx, parent, resolved.contents())
+        }
     }
 
     fn is_valid_property(
@@ -1308,16 +1303,16 @@ fn get_transitive_unevaluated_props_schema<'a>(
 }
 
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     parent: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     // Nothing to validate if `unevaluatedProperties` is set to `true`, which is the default:
     if let Value::Bool(true) = schema {
         return None;
     }
 
-    match UnevaluatedPropertiesValidator::compile(parent, schema, context) {
+    match UnevaluatedPropertiesValidator::compile(ctx, parent, schema) {
         Ok(validator) => Some(Ok(Box::new(validator))),
         Err(e) => Some(Err(e)),
     }
@@ -1329,13 +1324,13 @@ fn boxed_errors<'a>(errors: Vec<ValidationError<'a>>) -> ErrorIterator<'a> {
 }
 
 fn unexpected_type<'a>(
-    context: &CompilationContext,
+    ctx: &compiler::Context,
     instance: &'a Value,
     expected_type: PrimitiveType,
 ) -> ValidationError<'a> {
     ValidationError::single_type_error(
         JsonPointer::default(),
-        context.clone().into_pointer(),
+        ctx.clone().into_pointer(),
         instance,
         expected_type,
     )
@@ -1462,5 +1457,58 @@ mod tests {
             validator.validate(&invalid).is_err(),
             "Validation should fail for instance with extra property"
         );
+    }
+
+    #[test]
+    fn test_unevaluated_properties_with_recursion() {
+        // See GH-420
+        let schema = json!({
+          "allOf": [
+            {
+              "$ref": "#/$defs/1_1"
+            }
+          ],
+          "unevaluatedProperties": false,
+          "$defs": {
+            "1_1": {
+              "type": "object",
+              "properties": {
+                "b": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/1_2"
+                    }
+                  ],
+                  "unevaluatedProperties": false
+                }
+              },
+              "required": [
+                "b"
+              ]
+            },
+            "1_2": {
+              "type": "object",
+              "properties": {
+                "f": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/1_1"
+                    }
+                  ],
+                  "unevaluatedProperties": false
+                }
+              },
+              "required": [
+                "f"
+              ]
+            }
+          }
+        });
+
+        let validator = crate::validator_for(&schema).expect("Schema should compile");
+
+        let instance = json!({"b": {"f": null}});
+        assert!(!validator.is_valid(&instance));
+        assert!(validator.validate(&instance).is_err());
     }
 }

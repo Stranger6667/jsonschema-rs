@@ -1,10 +1,10 @@
 use crate::{
-    compilation::{compile_validators, context::CompilationContext},
+    compiler,
     error::{no_error, ErrorIterator, ValidationError},
     keywords::{required, unique_items, CompilationResult},
+    node::SchemaNode,
     paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
-    schema_node::SchemaNode,
     validator::Validate,
 };
 use serde_json::{Map, Value};
@@ -15,25 +15,22 @@ pub(crate) struct DependenciesValidator {
 
 impl DependenciesValidator {
     #[inline]
-    pub(crate) fn compile<'a>(
-        schema: &'a Value,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+    pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
         if let Value::Object(map) = schema {
-            let keyword_context = context.with_path("dependencies");
+            let kctx = ctx.with_path("dependencies");
             let mut dependencies = Vec::with_capacity(map.len());
             for (key, subschema) in map {
-                let item_context = keyword_context.with_path(key.as_str());
+                let ctx = kctx.with_path(key.as_str());
                 let s = match subschema {
                     Value::Array(_) => {
-                        let validators = vec![required::compile_with_path(
-                            subschema,
-                            (&keyword_context.schema_path).into(),
-                        )
-                        .expect("The required validator compilation does not return None")?];
-                        SchemaNode::new_from_array(&keyword_context, validators)
+                        let validators =
+                            vec![required::compile_with_path(subschema, (&kctx.path).into())
+                                .expect(
+                                    "The required validator compilation does not return None",
+                                )?];
+                        SchemaNode::from_array(&kctx, validators)
                     }
-                    _ => compile_validators(subschema, &item_context)?,
+                    _ => compiler::compile(&ctx, ctx.as_resource_ref(subschema))?,
                 };
                 dependencies.push((key.clone(), s))
             }
@@ -41,7 +38,7 @@ impl DependenciesValidator {
         } else {
             Err(ValidationError::single_type_error(
                 JsonPointer::default(),
-                context.clone().into_pointer(),
+                ctx.clone().into_pointer(),
                 schema,
                 PrimitiveType::Object,
             ))
@@ -88,36 +85,28 @@ pub(crate) struct DependentRequiredValidator {
 
 impl DependentRequiredValidator {
     #[inline]
-    pub(crate) fn compile<'a>(
-        schema: &'a Value,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+    pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
         if let Value::Object(map) = schema {
-            let keyword_context = context.with_path("dependentRequired");
+            let kctx = ctx.with_path("dependentRequired");
             let mut dependencies = Vec::with_capacity(map.len());
             for (key, subschema) in map {
-                let item_context = keyword_context.with_path(key.as_str());
+                let ictx = kctx.with_path(key.as_str());
                 if let Value::Array(dependency_array) = subschema {
                     if !unique_items::is_unique(dependency_array) {
                         return Err(ValidationError::unique_items(
                             JsonPointer::default(),
-                            item_context.clone().into_pointer(),
+                            ictx.clone().into_pointer(),
                             subschema,
                         ));
                     }
-                    let validators = vec![required::compile_with_path(
-                        subschema,
-                        (&keyword_context.schema_path).into(),
-                    )
-                    .expect("The required validator compilation does not return None")?];
-                    dependencies.push((
-                        key.clone(),
-                        SchemaNode::new_from_array(&keyword_context, validators),
-                    ));
+                    let validators =
+                        vec![required::compile_with_path(subschema, (&kctx.path).into())
+                            .expect("The required validator compilation does not return None")?];
+                    dependencies.push((key.clone(), SchemaNode::from_array(&kctx, validators)));
                 } else {
                     return Err(ValidationError::single_type_error(
                         JsonPointer::default(),
-                        item_context.clone().into_pointer(),
+                        ictx.clone().into_pointer(),
                         subschema,
                         PrimitiveType::Array,
                     ));
@@ -127,7 +116,7 @@ impl DependentRequiredValidator {
         } else {
             Err(ValidationError::single_type_error(
                 JsonPointer::default(),
-                context.clone().into_pointer(),
+                ctx.clone().into_pointer(),
                 schema,
                 PrimitiveType::Object,
             ))
@@ -169,23 +158,20 @@ pub(crate) struct DependentSchemasValidator {
 }
 impl DependentSchemasValidator {
     #[inline]
-    pub(crate) fn compile<'a>(
-        schema: &'a Value,
-        context: &CompilationContext,
-    ) -> CompilationResult<'a> {
+    pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
         if let Value::Object(map) = schema {
-            let keyword_context = context.with_path("dependentSchemas");
+            let ctx = ctx.with_path("dependentSchemas");
             let mut dependencies = Vec::with_capacity(map.len());
             for (key, subschema) in map {
-                let item_context = keyword_context.with_path(key.as_str());
-                let schema_nodes = compile_validators(subschema, &item_context)?;
+                let ctx = ctx.with_path(key.as_str());
+                let schema_nodes = compiler::compile(&ctx, ctx.as_resource_ref(subschema))?;
                 dependencies.push((key.clone(), schema_nodes));
             }
             Ok(Box::new(DependentSchemasValidator { dependencies }))
         } else {
             Err(ValidationError::single_type_error(
                 JsonPointer::default(),
-                context.clone().into_pointer(),
+                ctx.clone().into_pointer(),
                 schema,
                 PrimitiveType::Object,
             ))
@@ -224,27 +210,27 @@ impl Validate for DependentSchemasValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
-    Some(DependenciesValidator::compile(schema, context))
+    Some(DependenciesValidator::compile(ctx, schema))
 }
 #[inline]
 pub(crate) fn compile_dependent_required<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
-    Some(DependentRequiredValidator::compile(schema, context))
+    Some(DependentRequiredValidator::compile(ctx, schema))
 }
 #[inline]
 pub(crate) fn compile_dependent_schemas<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
-    Some(DependentSchemasValidator::compile(schema, context))
+    Some(DependentSchemasValidator::compile(ctx, schema))
 }
 #[cfg(test)]
 mod tests {

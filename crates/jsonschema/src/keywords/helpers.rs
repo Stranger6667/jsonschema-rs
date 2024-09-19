@@ -1,10 +1,7 @@
 use num_cmp::NumCmp;
 use serde_json::{Map, Value};
 
-use crate::{
-    compilation::context::CompilationContext, paths::JsonPointer, primitive_type::PrimitiveType,
-    ValidationError,
-};
+use crate::{compiler, paths::JsonPointer, primitive_type::PrimitiveType, ValidationError};
 
 macro_rules! num_cmp {
     ($left:expr, $right:expr) => {
@@ -66,7 +63,7 @@ pub(crate) fn equal_objects(left: &Map<String, Value>, right: &Map<String, Value
 #[inline]
 pub(crate) fn map_get_u64<'a>(
     m: &'a Map<String, Value>,
-    context: &CompilationContext,
+    ctx: &compiler::Context,
     type_name: &str,
 ) -> Option<Result<u64, ValidationError<'a>>> {
     let value = m.get(type_name)?;
@@ -74,7 +71,7 @@ pub(crate) fn map_get_u64<'a>(
         Some(n) => Some(Ok(n)),
         None if value.is_i64() => Some(Err(ValidationError::minimum(
             JsonPointer::default(),
-            context.clone().into_pointer(),
+            ctx.clone().into_pointer(),
             value,
             0.into(),
         ))),
@@ -88,7 +85,7 @@ pub(crate) fn map_get_u64<'a>(
             }
             Some(Err(ValidationError::single_type_error(
                 JsonPointer::default(),
-                context.clone().into_pointer(),
+                ctx.clone().into_pointer(),
                 value,
                 PrimitiveType::Integer,
             )))

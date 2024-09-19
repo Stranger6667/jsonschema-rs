@@ -10,7 +10,7 @@ authors.workspace = true
 publish = false
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
+serde.workspace = true
 serde_json.workspace = true
 criterion = { version = "0.5.1", default-features = false }
 strum = { version = "0.26.3", features = ["derive"] }

@@ -1,5 +1,5 @@
 use crate::{
-    compilation::context::CompilationContext,
+    compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers::equal, CompilationResult},
     validator::Validate,
@@ -130,13 +130,13 @@ impl Validate for UniqueItemsValidator {
 
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
-    context: &CompilationContext,
 ) -> Option<CompilationResult<'a>> {
     if let Value::Bool(value) = schema {
         if *value {
-            let schema_path = context.as_pointer_with("uniqueItems");
+            let schema_path = ctx.as_pointer_with("uniqueItems");
             Some(UniqueItemsValidator::compile(schema_path))
         } else {
             None
