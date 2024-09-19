@@ -29,7 +29,7 @@ pub struct ValidationError<'a> {
     pub schema_path: JsonPointer,
 }
 
-/// An iterator over instances of `ValidationError` that represent validation error for the
+/// An iterator over instances of [`ValidationError`] that represent validation error for the
 /// input instance.
 ///
 /// # Examples

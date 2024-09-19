@@ -112,7 +112,7 @@ pub enum PathChunk {
     Keyword(&'static str),
 }
 
-/// A borrowed variant of `PathChunk`.
+/// A borrowed variant of [`PathChunk`].
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum PathChunkRef<'a> {
     /// Property name within a JSON object.
@@ -123,7 +123,7 @@ pub enum PathChunkRef<'a> {
 
 /// A node in a linked list representing a JSON pointer.
 ///
-/// `JsonPointerNode` is used to build a JSON pointer incrementally during the JSON Schema validation process.
+/// [`JsonPointerNode`] is used to build a JSON pointer incrementally during the JSON Schema validation process.
 /// Each node contains a segment of the JSON pointer and a reference to its parent node, forming
 /// a linked list.
 ///

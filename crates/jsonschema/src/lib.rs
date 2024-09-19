@@ -19,7 +19,7 @@
 //!
 //! The `jsonschema` crate offers two main approaches to validation: one-off validation and reusable validators.
 //!
-//! For simple use cases where you need to validate an instance against a schema once, use the `is_valid` function:
+//! For simple use cases where you need to validate an instance against a schema once, use the [`is_valid`] function:
 //!
 //! ```rust
 //! use serde_json::json;
@@ -88,7 +88,7 @@
 //! # }
 //! ```
 //!
-//! You can also use the convenience `is_valid` function for quick validation:
+//! You can also use the convenience [`is_valid`] function for quick validation:
 //!
 //! ```rust
 //! use serde_json::json;
@@ -445,7 +445,7 @@
 //! ### Notes on Custom Format Validators
 //!
 //! - Custom format validators are only called for string instances.
-//! - Format validation can be disabled globally or per-draft using `ValidationOptions`.
+//! - Format validation can be disabled globally or per-draft using [`ValidationOptions`].
 //!   Ensure format validation is enabled if you're using custom formats.
 mod compilation;
 mod content_encoding;

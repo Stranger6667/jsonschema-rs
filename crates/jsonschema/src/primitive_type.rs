@@ -87,7 +87,7 @@ fn bit_map_representation_primitive_type(bit_representation: u8) -> PrimitiveTyp
     }
 }
 
-/// Compact representation of multiple `PrimitiveType`
+/// Compact representation of multiple [`PrimitiveType`]
 #[derive(Clone, Copy, Debug)]
 pub struct PrimitiveTypesBitMap {
     inner: u8,
@@ -134,7 +134,7 @@ impl From<Vec<PrimitiveType>> for PrimitiveTypesBitMap {
     }
 }
 
-/// Iterator over all `PrimitiveType` present in a `PrimitiveTypesBitMap`
+/// Iterator over all [`PrimitiveType`] present in a [`PrimitiveTypesBitMap`]
 #[derive(Debug)]
 pub struct PrimitiveTypesBitMapIterator {
     idx: u8,

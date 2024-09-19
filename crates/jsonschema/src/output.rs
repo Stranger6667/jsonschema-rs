@@ -67,7 +67,7 @@ impl<'a, 'b> Output<'a, 'b> {
     /// and where in the instance). The difference between the
     /// `BasicOutput::Valid` and `BasicOutput::Invalid` cases is the value which
     /// is associated with each `OutputUnit`. For `Valid` outputs the value is
-    /// an annotation, whilst for `Invalid` outputs it's an `ErrorDescription`
+    /// an annotation, whilst for `Invalid` outputs it's an [`ErrorDescription`]
     /// (a `String` really).
     ///
     /// # Examples
@@ -313,7 +313,7 @@ impl<'a> From<serde_json::Value> for Annotations<'a> {
     }
 }
 
-/// An error associated with an `OutputUnit`
+/// An error associated with an [`OutputUnit`]
 #[derive(serde::Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ErrorDescription(String);
 

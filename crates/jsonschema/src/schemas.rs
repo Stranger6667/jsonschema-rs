@@ -133,7 +133,7 @@ impl Draft {
     }
 }
 
-/// Get the `Draft` from a JSON Schema URL.
+/// Get the [`Draft`] from a JSON Schema URL.
 #[inline]
 pub(crate) fn draft_from_url(url: &str) -> Option<Draft> {
     match url.trim_end_matches('#') {
@@ -146,7 +146,7 @@ pub(crate) fn draft_from_url(url: &str) -> Option<Draft> {
     }
 }
 
-/// Get the `Draft` from a JSON Schema.
+/// Get the [`Draft`] from a JSON Schema.
 #[inline]
 pub(crate) fn draft_from_schema(schema: &Value) -> Option<Draft> {
     schema

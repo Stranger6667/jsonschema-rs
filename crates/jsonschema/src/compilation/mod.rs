@@ -45,7 +45,7 @@ pub(crate) static DEFAULT_SCOPE: Lazy<Url> =
 fn deprecated_features_used() {}
 
 impl Validator {
-    /// Create a default `ValidationOptions` for configuring JSON Schema validation.
+    /// Create a default [`ValidationOptions`] for configuring JSON Schema validation.
     ///
     /// Use this to set the draft version and other validation parameters.
     ///
@@ -91,14 +91,14 @@ impl Validator {
     }
     /// Run validation against `instance` but return a boolean result instead of an iterator.
     /// It is useful for cases, where it is important to only know the fact if the data is valid or not.
-    /// This approach is much faster, than `validate`.
+    /// This approach is much faster, than [`Validator::validate`].
     #[must_use]
     #[inline]
     pub fn is_valid(&self, instance: &Value) -> bool {
         self.node.is_valid(instance)
     }
 
-    /// Apply the schema and return an `Output`. No actual work is done at this point, the
+    /// Apply the schema and return an [`Output`]. No actual work is done at this point, the
     /// evaluation of the schema is deferred until a method is called on the `Output`. This is
     /// because different output formats will have different performance characteristics.
     ///
