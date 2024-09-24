@@ -71,7 +71,7 @@ You can check the current status on the [Bowtie Report](https://bowtie.report/#/
 
 - Tauri: [Config validation](https://github.com/tauri-apps/tauri/blob/c901d9fdf932bf7c3c77e9d3097fabb1fe0712af/crates/tauri-cli/src/helpers/config.rs#L173)
 - Apollo Router: [Config file validation](https://github.com/apollographql/router/blob/855cf6cc0757ca6176970ddf3ae8c98c87c632d1/apollo-router/src/configuration/schema.rs#L120)
-- QSV: [CSV record validation with custom keyword & format validator](https://github.com/jqnatividad/qsv/blob/4774cb779c7a5939e10ce32f91ac8447158c276c/src/cmd/validate.rs#L506)
+- qsv: [CSV record validation with custom keyword & format validator](https://github.com/jqnatividad/qsv/blob/d901260d353bcd89c4d3d2a79e6ceee1d641b5ee/src/cmd/validate.rs#L606)
 
 ## Performance
 
