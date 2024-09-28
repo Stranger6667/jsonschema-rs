@@ -156,7 +156,7 @@
 //! # }
 //! ```
 //!
-//! # Reference Resolving
+//! # External References
 //!
 //! By default, `jsonschema` resolves HTTP references using `reqwest` and file references from the local file system.
 //!
@@ -172,55 +172,54 @@
 //! - Disable file resolving: `default-features = false, features = ["resolve-http"]`
 //! - Disable both: `default-features = false`
 //!
-//! You can implement a custom resolver to handle external references. Here's an example that uses a static map of schemas:
+//! You can implement a custom retriever to handle external references. Here's an example that uses a static map of schemas:
 //!
 //! ```rust
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! use std::{collections::HashMap, sync::Arc};
 //! use anyhow::anyhow;
-//! use jsonschema::{SchemaResolver, SchemaResolverError};
+//! use jsonschema::{Retrieve, UriRef};
 //! use serde_json::{json, Value};
 //! use url::Url;
 //!
-//! struct StaticSchemaResolver {
-//!     schemas: HashMap<String, Arc<Value>>,
+//! struct InMemoryRetriever {
+//!     schemas: HashMap<String, Value>,
 //! }
 //!
-//! impl SchemaResolver for StaticSchemaResolver {
-//!     fn resolve(
-//!         &self,
-//!         schema: &Value,
-//!         url: &Url,
-//!         reference: &str
-//!     ) -> Result<Arc<Value>, SchemaResolverError> {
+//! impl Retrieve for InMemoryRetriever {
+//!
+//!    fn retrieve(
+//!        &self,
+//!        uri: &UriRef<'_>,
+//!    ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
 //!         self.schemas
-//!             .get(url.as_str())
+//!             .get(uri.as_str())
 //!             .cloned()
-//!             .ok_or_else(|| anyhow!("Schema not found: {}", url))
+//!             .ok_or_else(|| format!("Schema not found: {uri}").into())
 //!     }
 //! }
 //!
 //! let mut schemas = HashMap::new();
 //! schemas.insert(
 //!     "https://example.com/person.json".to_string(),
-//!     Arc::new(json!({
+//!     json!({
 //!         "type": "object",
 //!         "properties": {
 //!             "name": { "type": "string" },
 //!             "age": { "type": "integer" }
 //!         },
 //!         "required": ["name", "age"]
-//!     })),
+//!     }),
 //! );
 //!
-//! let resolver = StaticSchemaResolver { schemas };
+//! let retriever = InMemoryRetriever { schemas };
 //!
 //! let schema = json!({
 //!     "$ref": "https://example.com/person.json"
 //! });
 //!
 //! let validator = jsonschema::options()
-//!     .with_resolver(resolver)
+//!     .with_retriever(retriever)
 //!     .build(&schema)?;
 //!
 //! assert!(validator.is_valid(&json!({
