@@ -189,6 +189,7 @@ mod tests {
             .lookup("#fooAnchor")
             .expect("Lookup failed");
         assert_eq!(fourth.contents(), root.contents());
+        assert_eq!(format!("{:?}", fourth.resolver()), "Resolver { base_uri: \"http://example.com\", parent: \"[http://example.com/foo/, http://example.com, http://example.com]\" }");
     }
 
     #[test]

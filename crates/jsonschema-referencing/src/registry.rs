@@ -218,6 +218,10 @@ impl Registry {
     pub fn resolver(&self, base_uri: Uri) -> Resolver {
         Resolver::new(self, base_uri)
     }
+    #[must_use]
+    pub fn resolver_from_raw_parts(&self, base_uri: Uri, scopes: VecDeque<Uri>) -> Resolver {
+        Resolver::from_parts(self, base_uri, scopes)
+    }
     pub(crate) fn get_or_retrieve<'r>(&'r self, uri: &Uri) -> Result<&'r Resource, Error> {
         if let Some(resource) = self.resources.get(uri) {
             Ok(resource)
@@ -765,6 +769,24 @@ mod tests {
         assert!(
             !properties.contains_key("foo"),
             "Registry should not contain the overwritten schema"
+        );
+    }
+
+    #[test]
+    fn test_resolver_debug() {
+        let registry = SPECIFICATIONS
+            .clone()
+            .try_with_resource(
+                "http://example.com",
+                Resource::from_contents(json!({})).expect("Invalid resource"),
+            )
+            .expect("Invalid resource");
+        let resolver = registry
+            .try_resolver("http://127.0.0.1/schema")
+            .expect("Invalid base URI");
+        assert_eq!(
+            format!("{resolver:?}"),
+            "Resolver { base_uri: \"http://127.0.0.1/schema\", parent: \"[]\" }"
         );
     }
 

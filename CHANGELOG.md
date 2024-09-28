@@ -8,6 +8,7 @@ While backward compatibility is maintained for now, users are encouraged to upda
 ### Added
 
 - `$anchor` support.
+- `$recursiveRef` & `$recursiveAnchor` support in Draft 2019-09.
 
 ### Changed
 

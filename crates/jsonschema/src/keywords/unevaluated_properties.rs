@@ -1231,7 +1231,11 @@ impl ReferenceSubvalidator {
             .as_str()
             .ok_or_else(|| unexpected_type(&kctx, value, PrimitiveType::String))?;
 
-        if let Some((_, resource)) = ctx.lookup_recursive_reference(reference)? {
+        let is_recursive = parent
+            .get("$recursiveAnchor")
+            .and_then(Value::as_bool)
+            .unwrap_or_default();
+        if let Some((_, resource)) = ctx.lookup_maybe_recursive(reference, is_recursive)? {
             Self::from_value_impl(ctx, parent, resource.contents())
         } else {
             let resolved = ctx.lookup(reference)?;

@@ -118,6 +118,9 @@ pub(crate) fn get_for_draft(draft: Draft, keyword: &str) -> Option<CompileFunc> 
         // Draft 7 and later
         (Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "if") => Some(if_::compile),
 
+        // Draft 2019-09 specific
+        (Draft::Draft201909, "$recursiveRef") => Some(ref_::compile_recursive_ref),
+
         // Draft 2019-09 and 2020-12 specific
         (Draft::Draft201909 | Draft::Draft202012, "dependentRequired") => {
             Some(dependencies::compile_dependent_required)

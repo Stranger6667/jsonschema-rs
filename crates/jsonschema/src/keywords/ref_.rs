@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::{collections::VecDeque, rc::Rc, sync::Arc};
 
 use crate::{
     compiler,
@@ -11,7 +11,7 @@ use crate::{
     ValidationError, ValidationOptions,
 };
 use once_cell::sync::OnceCell;
-use referencing::{Draft, Registry, Resource, Uri};
+use referencing::{uri, Draft, Registry, Resource, Uri};
 use serde_json::{Map, Value};
 
 pub(crate) enum RefValidator {
@@ -21,13 +21,19 @@ pub(crate) enum RefValidator {
 
 impl RefValidator {
     #[inline]
-    pub(crate) fn compile<'a>(reference: &str, ctx: &compiler::Context) -> CompilationResult<'a> {
-        if let Some((base_uri, resource)) = ctx.lookup_recursive_reference(reference)? {
+    pub(crate) fn compile<'a>(
+        ctx: &compiler::Context,
+        reference: &str,
+        is_recursive: bool,
+    ) -> CompilationResult<'a> {
+        let scopes = ctx.scopes();
+        if let Some((base_uri, resource)) = ctx.lookup_maybe_recursive(reference, is_recursive)? {
             Ok(Box::new(RefValidator::Lazy(LazyRefValidator {
                 resource,
                 config: Arc::clone(ctx.config()),
                 registry: Arc::clone(&ctx.registry),
                 base_uri,
+                scopes,
                 draft: ctx.draft(),
                 inner: OnceCell::default(),
             })))
@@ -35,11 +41,10 @@ impl RefValidator {
             let (contents, resolver) = ctx.lookup(reference)?.into_inner();
             let resource_ref = ctx.as_resource_ref(contents);
             let ctx = ctx.with_resolver_and_draft(resolver, resource_ref.draft());
+            let inner =
+                compiler::compile_with(&ctx, resource_ref).map_err(|err| err.into_owned())?;
             // TODO: Should ctx include `$ref`?
-            Ok(Box::new(RefValidator::Default {
-                inner: compiler::compile_with(&ctx, resource_ref)
-                    .map_err(|err| err.into_owned())?,
-            }))
+            Ok(Box::new(RefValidator::Default { inner }))
         }
     }
 }
@@ -55,15 +60,37 @@ pub(crate) struct LazyRefValidator {
     resource: Resource,
     config: Arc<ValidationOptions>,
     registry: Arc<Registry>,
+    scopes: VecDeque<Uri>,
     base_uri: Uri,
     draft: Draft,
     inner: OnceCell<SchemaNode>,
 }
 
 impl LazyRefValidator {
-    fn compile(&self) -> &SchemaNode {
+    #[inline]
+    pub(crate) fn compile<'a>(ctx: &compiler::Context) -> CompilationResult<'a> {
+        let scopes = ctx.scopes();
+        let resolved = ctx.lookup_recursive_reference()?;
+        let resource = ctx.draft().create_resource(resolved.contents().clone());
+        let mut base_uri = resolved.resolver().base_uri().to_owned();
+        if let Some(id) = resource.id() {
+            base_uri = uri::resolve_against(&base_uri.borrow(), id)?;
+        };
+        Ok(Box::new(LazyRefValidator {
+            resource,
+            config: Arc::clone(ctx.config()),
+            registry: Arc::clone(&ctx.registry),
+            base_uri,
+            scopes,
+            draft: ctx.draft(),
+            inner: OnceCell::default(),
+        }))
+    }
+    fn lazy_compile(&self) -> &SchemaNode {
         self.inner.get_or_init(|| {
-            let resolver = self.registry.resolver(self.base_uri.clone());
+            let resolver = self
+                .registry
+                .resolver_from_raw_parts(self.base_uri.clone(), self.scopes.clone());
             let ctx = compiler::Context::new(
                 Arc::clone(&self.config),
                 Arc::clone(&self.registry),
@@ -75,15 +102,18 @@ impl LazyRefValidator {
             compiler::compile(&ctx, self.resource.as_ref()).expect("Invalid schema")
         })
     }
+}
+
+impl Validate for LazyRefValidator {
     fn is_valid(&self, instance: &Value) -> bool {
-        self.compile().is_valid(instance)
+        self.lazy_compile().is_valid(instance)
     }
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
         instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
-        self.compile().validate(instance, instance_path)
+        self.lazy_compile().validate(instance, instance_path)
     }
 }
 
@@ -107,8 +137,35 @@ impl Validate for RefValidator {
     }
 }
 
+fn invalid_reference<'a>(ctx: &compiler::Context, schema: &'a Value) -> ValidationError<'a> {
+    ValidationError::single_type_error(
+        JsonPointer::default(),
+        ctx.clone().into_pointer(),
+        schema,
+        PrimitiveType::String,
+    )
+}
+
 #[inline]
 pub(crate) fn compile<'a>(
+    ctx: &compiler::Context,
+    parent: &'a Map<String, Value>,
+    schema: &'a Value,
+) -> Option<CompilationResult<'a>> {
+    let is_recursive = parent
+        .get("$recursiveAnchor")
+        .and_then(Value::as_bool)
+        .unwrap_or_default();
+    Some(
+        schema
+            .as_str()
+            .ok_or_else(|| invalid_reference(ctx, schema))
+            .and_then(|reference| RefValidator::compile(ctx, reference, is_recursive)),
+    )
+}
+
+#[inline]
+pub(crate) fn compile_recursive_ref<'a>(
     ctx: &compiler::Context,
     _: &'a Map<String, Value>,
     schema: &'a Value,
@@ -116,15 +173,8 @@ pub(crate) fn compile<'a>(
     Some(
         schema
             .as_str()
-            .ok_or_else(|| {
-                ValidationError::single_type_error(
-                    JsonPointer::default(),
-                    ctx.clone().into_pointer(),
-                    schema,
-                    PrimitiveType::String,
-                )
-            })
-            .and_then(|reference| RefValidator::compile(reference, ctx)),
+            .ok_or_else(|| invalid_reference(ctx, schema))
+            .and_then(|_| LazyRefValidator::compile(ctx)),
     )
 }
 
