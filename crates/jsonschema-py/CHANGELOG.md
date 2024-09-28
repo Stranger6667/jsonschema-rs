@@ -5,6 +5,7 @@
 ### Added
 
 - `$anchor` support.
+- `$recursiveRef` & `$recursiveAnchor` support in Draft 2019-09.
 
 ### Changed
 
@@ -18,6 +19,10 @@
 - Cross-draft validation from newer to older ones.
 - Changing base URI in folder.
 - Location-independent identifier in remote resource.
+
+### Performance
+
+- Faster `uri-reference` validation.
 
 ## [0.20.0] - 2024-09-18
 

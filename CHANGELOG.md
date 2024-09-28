@@ -29,6 +29,10 @@ While backward compatibility is maintained for now, users are encouraged to upda
 - Changing base URI in folder.
 - Location-independent identifier in remote resource.
 
+### Performance
+
+- Faster `uri-reference` validation.
+
 ## [0.20.0] - 2024-09-18
 
 **Important:** This release includes several deprecations and renames. While backward compatibility is maintained for now, users are encouraged to update their code. See the [Migration Guide](MIGRATION.md) for details on transitioning to the new API.

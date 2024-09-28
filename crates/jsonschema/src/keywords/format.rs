@@ -35,8 +35,6 @@ static TIME_RE: Lazy<Regex> = Lazy::new(|| {
         r"^([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])(\.[0-9]{6})?(([Zz])|([+|\-]([01][0-9]|2[0-3]):[0-5][0-9]))\z",
     ).expect("Is a valid regex")
 });
-static URI_REFERENCE_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^(\w+:(/?/?))?[^#\\\s]*(#[^\\\s]*)?\z").expect("Is a valid regex"));
 static URI_TEMPLATE_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
         r#"^(?:(?:[^\x00-\x20"'<>%\\^`{|}]|%[0-9a-f]{2})|\{[+#./;?&=,!@|]?(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?(?:,(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?)*})*\z"#
@@ -310,9 +308,7 @@ impl Validate for URIReferenceValidator {
     validate!("uri-reference");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            URI_REFERENCE_RE
-                .is_match(item)
-                .expect("Simple URI_REFERENCE_RE pattern")
+            referencing::UriRef::parse(item.as_str()).is_ok()
         } else {
             true
         }
