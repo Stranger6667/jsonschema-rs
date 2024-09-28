@@ -166,7 +166,11 @@ impl<'a> PartialApplication<'a> {
     }
 }
 
-/// The structure that holds a JSON Schema nodes.
+/// A compiled JSON Schema validator.
+///
+/// This structure represents a JSON Schema that has been parsed and compiled into
+/// an efficient internal representation for validation. It contains the root node
+/// of the schema tree and the configuration options used during compilation.
 #[derive(Debug)]
 pub struct Validator {
     pub(crate) root: SchemaNode,
