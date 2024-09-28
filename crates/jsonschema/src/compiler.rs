@@ -20,7 +20,7 @@ use referencing::{
     uri, Draft, Registry, Resolved, Resolver, Resource, ResourceRef, Retrieve, Uri, SPECIFICATIONS,
 };
 use serde_json::Value;
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{cell::RefCell, collections::VecDeque, rc::Rc, sync::Arc};
 
 const DEFAULT_SCHEME: &str = "json-schema";
 pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
@@ -98,6 +98,10 @@ impl<'a> Context<'a> {
 
     pub(crate) fn lookup(&self, reference: &str) -> Result<Resolved<'_>, referencing::Error> {
         self.resolver.lookup(reference)
+    }
+
+    pub(crate) fn scopes(&self) -> VecDeque<Uri> {
+        VecDeque::from_iter(self.resolver.dynamic_scope().cloned())
     }
 
     /// Create a JSON Pointer from the current `schema_path` & a new chunk.
@@ -188,11 +192,16 @@ impl<'a> Context<'a> {
         self.seen.borrow_mut().insert(uri);
         Ok(())
     }
+
+    pub(crate) fn lookup_recursive_reference(&self) -> Result<Resolved<'_>, referencing::Error> {
+        self.resolver.lookup_recursive_ref()
+    }
     /// Lookup a reference that is potentially recursive.
     /// Return base URI & resource for known recursive references.
-    pub(crate) fn lookup_recursive_reference(
+    pub(crate) fn lookup_maybe_recursive(
         &self,
         reference: &str,
+        is_recursive: bool,
     ) -> Result<Option<(Uri, Resource)>, ValidationError<'static>> {
         let resolved = if reference == "#" {
             // Known & simple recursive reference
@@ -203,7 +212,9 @@ impl<'a> Context<'a> {
             self.resolver.lookup(reference)?
         } else {
             // This is potentially recursive, but it is unknown yet
-            self.mark_seen(reference)?;
+            if !is_recursive {
+                self.mark_seen(reference)?;
+            }
             return Ok(None);
         };
         let resource = self.draft().create_resource(resolved.contents().clone());
@@ -212,7 +223,9 @@ impl<'a> Context<'a> {
         } else {
             resolved.resolver().base_uri().to_owned()
         };
-        self.mark_seen(reference)?;
+        if !is_recursive {
+            self.mark_seen(reference)?;
+        }
         Ok(Some((base_uri, resource)))
     }
 }

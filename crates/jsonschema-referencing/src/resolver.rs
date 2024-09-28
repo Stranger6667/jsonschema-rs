@@ -13,7 +13,7 @@ use crate::{uri, Error, Registry, ResourceRef};
 pub struct Resolver<'r> {
     pub(crate) registry: &'r Registry,
     base_uri: UriRef<String>,
-    parent: VecDeque<UriRef<String>>,
+    scopes: VecDeque<UriRef<String>>,
 }
 
 impl<'r> PartialEq for Resolver<'r> {
@@ -26,8 +26,20 @@ impl<'r> Eq for Resolver<'r> {}
 impl<'r> fmt::Debug for Resolver<'r> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Resolver")
-            .field("base_uri", &self.base_uri)
-            .field("parent", &self.parent)
+            .field("base_uri", &self.base_uri.as_str())
+            .field("parent", &{
+                let mut buf = String::from("[");
+                let mut values = self.scopes.iter();
+                if let Some(value) = values.next() {
+                    buf.push_str(value.as_str());
+                }
+                for value in values {
+                    buf.push_str(", ");
+                    buf.push_str(value.as_str());
+                }
+                buf.push(']');
+                buf
+            })
             .finish()
     }
 }
@@ -38,7 +50,18 @@ impl<'r> Resolver<'r> {
         Self {
             registry,
             base_uri,
-            parent: VecDeque::new(),
+            scopes: VecDeque::new(),
+        }
+    }
+    pub(crate) fn from_parts(
+        registry: &'r Registry,
+        base_uri: UriRef<String>,
+        parent: VecDeque<UriRef<String>>,
+    ) -> Self {
+        Self {
+            registry,
+            base_uri,
+            scopes: parent,
         }
     }
     #[must_use]
@@ -134,30 +157,35 @@ impl<'r> Resolver<'r> {
     pub fn in_subresource(&self, subresource: ResourceRef) -> Result<Self, Error> {
         if let Some(id) = subresource.id() {
             let base_uri = uri::resolve_against(&self.base_uri.borrow(), id)?;
-            Ok(self.evolve(base_uri))
+            Ok(Resolver {
+                registry: self.registry,
+                base_uri,
+                scopes: self.scopes.clone(),
+            })
         } else {
             Ok(self.clone())
         }
     }
-    pub(crate) fn dynamic_scope(&self) -> impl Iterator<Item = &UriRef<String>> {
-        self.parent.iter()
+    #[must_use]
+    pub fn dynamic_scope(&self) -> impl ExactSizeIterator<Item = &UriRef<String>> {
+        self.scopes.iter()
     }
     fn evolve(&self, base_uri: UriRef<String>) -> Resolver<'r> {
         if !self.base_uri.as_str().is_empty()
-            && (self.parent.is_empty() || base_uri != self.base_uri)
+            && (self.scopes.is_empty() || base_uri != self.base_uri)
         {
-            let mut parent = self.parent.clone();
-            parent.push_front(self.base_uri.clone());
+            let mut scopes = self.scopes.clone();
+            scopes.push_front(self.base_uri.clone());
             Resolver {
                 registry: self.registry,
                 base_uri,
-                parent,
+                scopes,
             }
         } else {
             Resolver {
                 registry: self.registry,
                 base_uri,
-                parent: self.parent.clone(),
+                scopes: self.scopes.clone(),
             }
         }
     }
