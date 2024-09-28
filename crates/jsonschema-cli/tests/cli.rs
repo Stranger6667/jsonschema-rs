@@ -27,7 +27,10 @@ fn test_version() {
     cmd.arg("--version");
     let output = cmd.output().unwrap();
     assert!(output.status.success());
-    assert_snapshot!(String::from_utf8_lossy(&output.stdout));
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        concat!("Version: ", env!("CARGO_PKG_VERSION"), "\n")
+    );
 }
 
 #[test]
