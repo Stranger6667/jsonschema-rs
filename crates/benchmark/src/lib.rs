@@ -122,7 +122,9 @@ static BENCHMARK_SUITE: LazyLock<BenchmarkSuite> = LazyLock::new(BenchmarkSuite:
 pub struct KeywordBenchmark {
     pub name: String,
     pub schema: Value,
+    #[serde(default)]
     pub valid: Vec<Value>,
+    #[serde(default)]
     pub invalid: Vec<Value>,
 }
 
