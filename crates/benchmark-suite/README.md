@@ -40,23 +40,23 @@ Sources:
 
 | Benchmark     | jsonschema_valid | valico        | boon          | jsonschema (validate) |
 |---------------|------------------|---------------|---------------|------------------------|
-| OpenAPI       | -                | -             | 12.23 ms (**x2.25**) | 5.43 ms              |
-| Swagger       | -                | 201.98 ms  (**x28.98**)   | 18.24 ms (**x2.62**)     | 6.97 ms              |
-| GeoJSON       | 35.75 ms   (**x30.56**)      | 559.52 ms  (**x478.22**)   | 29.01 ms (**x24.79**)  | 1.17 ms              |
-| CITM Catalog  | 5.51 ms  (**x2.45**)        | 46.31 ms  (**x20.58**)    | 2.07 ms  (**x0.92**)     | 2.25 ms              |
-| Fast (Valid)  | 2.10 µs     (**x4.27**)     | 6.61 µs  (**x13.44**)     | 597.00 ns  (**x1.21**)   | 491.82 ns            |
-| Fast (Invalid)| 368.53 ns     (**x0.56**)   | 6.77 µs  (**x10.22**)     | 748.22 ns (**x1.13**)    | 662.52 ns            |
+| OpenAPI       | -                | -             | 12.23 ms (**x2.51**) | 4.88 ms              |
+| Swagger       | -                | 201.98 ms  (**x30.60**)   | 18.24 ms (**x2.76**)     | 6.60 ms              |
+| GeoJSON       | 35.75 ms   (**x29.79**)      | 559.52 ms  (**x466.27**)   | 29.01 ms (**x24.18**)  | 1.20 ms              |
+| CITM Catalog  | 5.51 ms  (**x2.16**)        | 46.31 ms  (**x18.16**)    | 2.07 ms  (**x0.81**)     | 2.55 ms              |
+| Fast (Valid)  | 2.10 µs     (**x3.94**)     | 6.61 µs  (**x12.40**)     | 597.00 ns  (**x1.12**)   | 533.21 ns            |
+| Fast (Invalid)| 368.53 ns     (**x0.51**)   | 6.77 µs  (**x9.41**)     | 748.22 ns (**x1.04**)    | 719.71 ns            |
 
 ### jsonschema Performance: `validate` vs `is_valid`
 
 | Benchmark     | validate   | is_valid   | Speedup |
 |---------------|------------|------------|---------|
-| OpenAPI       | 5.43 ms  | 4.70 ms  | 1.16x   |
-| Swagger       | 6.97 ms  | 5.35 ms  | 1.30x   |
-| GeoJSON       | 1.17 ms  | 1.16 ms  | 1.00x   |
-| CITM Catalog  | 2.2510 ms  | 630.82 µs  | 3.57x   |
-| Fast (Valid)  | 491.82 ns  | 111.09 ns  | 4.43x   |
-| Fast (Invalid)| 662.52 ns  | 7.1289 ns  | 92.93x  |
+| OpenAPI       | 4.88 ms  | 4.43 ms  | **1.10x**   |
+| Swagger       | 6.60 ms  | 4.87 ms  | **1.36x**   |
+| GeoJSON       | 1.20 ms  | 1.19 ms  | **1.01x**   |
+| CITM Catalog  | 2.55 ms  | 657.51 µs  | **3.88x**   |
+| Fast (Valid)  | 533.21 ns  | 99.35 ns  | **5.37x**   |
+| Fast (Invalid)| 719.71 ns  | 5.7769 ns  | **124.58x**  |
 
 Notes:
 
