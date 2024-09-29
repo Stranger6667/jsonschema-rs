@@ -133,7 +133,10 @@ pub(crate) fn get_for_draft(draft: Draft, keyword: &str) -> Option<CompileFunc> 
             Some(unevaluated_properties::compile)
         }
 
-        // Default case
+        // Draft 2020-12 specific
+        (Draft::Draft202012, "$dynamicRef") => Some(ref_::compile),
+
+        // Unknown or not-yet-implemented keyword
         _ => None,
     }
 }

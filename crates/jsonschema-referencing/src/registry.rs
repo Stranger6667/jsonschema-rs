@@ -786,7 +786,7 @@ mod tests {
             .expect("Invalid base URI");
         assert_eq!(
             format!("{resolver:?}"),
-            "Resolver { base_uri: \"http://127.0.0.1/schema\", parent: \"[]\" }"
+            "Resolver { base_uri: \"http://127.0.0.1/schema\", scopes: \"[]\" }"
         );
     }
 

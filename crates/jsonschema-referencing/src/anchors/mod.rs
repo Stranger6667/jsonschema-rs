@@ -33,7 +33,11 @@ impl Anchor {
     /// Get the resource for this anchor.
     pub(crate) fn resolve<'r>(&'r self, resolver: Resolver<'r>) -> Result<Resolved<'r>, Error> {
         match self {
-            Anchor::Default { resource, .. } => Ok(Resolved::new(resource.contents(), resolver)),
+            Anchor::Default { resource, .. } => Ok(Resolved::new(
+                resource.contents(),
+                resolver,
+                resource.draft(),
+            )),
             Anchor::Dynamic { name, resource, .. } => {
                 let mut last = resource;
                 for uri in resolver.dynamic_scope() {
@@ -50,6 +54,7 @@ impl Anchor {
                 Ok(Resolved::new(
                     last.contents(),
                     resolver.in_subresource((**last).as_ref())?,
+                    last.draft(),
                 ))
             }
         }
@@ -189,7 +194,7 @@ mod tests {
             .lookup("#fooAnchor")
             .expect("Lookup failed");
         assert_eq!(fourth.contents(), root.contents());
-        assert_eq!(format!("{:?}", fourth.resolver()), "Resolver { base_uri: \"http://example.com\", parent: \"[http://example.com/foo/, http://example.com, http://example.com]\" }");
+        assert_eq!(format!("{:?}", fourth.resolver()), "Resolver { base_uri: \"http://example.com\", scopes: \"[http://example.com/foo/, http://example.com, http://example.com]\" }");
     }
 
     #[test]

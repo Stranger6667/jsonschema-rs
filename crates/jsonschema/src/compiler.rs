@@ -202,7 +202,7 @@ impl<'a> Context<'a> {
         &self,
         reference: &str,
         is_recursive: bool,
-    ) -> Result<Option<(Uri, Resource)>, ValidationError<'static>> {
+    ) -> Result<Option<(Uri, VecDeque<Uri>, Resource)>, ValidationError<'static>> {
         let resolved = if reference == "#" {
             // Known & simple recursive reference
             // It may also use some additional logic from the `$recursiveAnchor` keyword
@@ -218,15 +218,16 @@ impl<'a> Context<'a> {
             return Ok(None);
         };
         let resource = self.draft().create_resource(resolved.contents().clone());
-        let base_uri = if let Some(id) = resource.id() {
-            uri::from_str(id)?
-        } else {
-            resolved.resolver().base_uri().to_owned()
+        let mut base_uri = resolved.resolver().base_uri().to_owned();
+        let scopes = resolved
+            .resolver()
+            .dynamic_scope()
+            .cloned()
+            .collect::<VecDeque<_>>();
+        if let Some(id) = resource.id() {
+            base_uri = uri::resolve_against(&base_uri.borrow(), id)?;
         };
-        if !is_recursive {
-            self.mark_seen(reference)?;
-        }
-        Ok(Some((base_uri, resource)))
+        Ok(Some((base_uri, scopes, resource)))
     }
 }
 

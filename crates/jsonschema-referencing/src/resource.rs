@@ -99,7 +99,7 @@ impl Resource {
             }
             resolver = new_resolver;
         }
-        Ok(Resolved::new(contents, resolver))
+        Ok(Resolved::new(contents, resolver, self.draft()))
     }
     /// Give a reference to the underlying contents together with draft.
     #[must_use]

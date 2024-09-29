@@ -26,8 +26,9 @@ impl RefValidator {
         reference: &str,
         is_recursive: bool,
     ) -> CompilationResult<'a> {
-        let scopes = ctx.scopes();
-        if let Some((base_uri, resource)) = ctx.lookup_maybe_recursive(reference, is_recursive)? {
+        if let Some((base_uri, scopes, resource)) =
+            ctx.lookup_maybe_recursive(reference, is_recursive)?
+        {
             Ok(Box::new(RefValidator::Lazy(LazyRefValidator {
                 resource,
                 config: Arc::clone(ctx.config()),
@@ -38,8 +39,8 @@ impl RefValidator {
                 inner: OnceCell::default(),
             })))
         } else {
-            let (contents, resolver) = ctx.lookup(reference)?.into_inner();
-            let resource_ref = ctx.as_resource_ref(contents);
+            let (contents, resolver, draft) = ctx.lookup(reference)?.into_inner();
+            let resource_ref = draft.create_resource_ref(contents);
             let ctx = ctx.with_resolver_and_draft(resolver, resource_ref.draft());
             let inner =
                 compiler::compile_with(&ctx, resource_ref).map_err(|err| err.into_owned())?;

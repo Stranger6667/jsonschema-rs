@@ -6,6 +6,7 @@
 
 - `$anchor` support.
 - `$recursiveRef` & `$recursiveAnchor` support in Draft 2019-09.
+- `$dynamicRef` & `$dynamicAnchor` support in Draft 2020-12.
 
 ### Changed
 
