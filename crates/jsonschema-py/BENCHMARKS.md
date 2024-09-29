@@ -44,24 +44,24 @@ Sources:
 ### Comparison with Other Libraries
 
 | Benchmark     | fastjsonschema | jsonschema    | jsonschema-rs |
-|---------------|----------------|---------------|--------------------------|
-| OpenAPI       | - (1)          | 1477.92 ms (**x92.70**) | 15.94 ms     |
-| Swagger       | - (1)          | 2586.88 ms (**x177.61**)| 14.56 ms     |
-| Canada (GeoJSON) | 22.64 ms (**x5.03**)  | 1775.93 ms (**x394.76**) | 4.50 ms |
-| CITM Catalog  | 10.16 ms (**x1.92**)  | 178.60 ms (**x33.73**) | 5.29 ms  |
-| Fast (Valid)  | 3.73 µs (**x3.38**)   | 83.84 µs (**x75.94**) | 1.10 µs  |
-| Fast (Invalid)| 4.24 µs (**x2.77**)   | 83.11 µs (**x54.18**) | 1.53 µs  |
+|---------------|----------------|---------------|----------------|
+| OpenAPI       | - (1)          | 1516.65 ms (**x80.51**) | 18.84 ms     |
+| Swagger       | - (1)          | 2627.74 ms (**x162.59**)| 16.16 ms     |
+| Canada (GeoJSON) | 23.21 ms (**x5.15**)  | 1771.93 ms (**x393.52**) | 4.50 ms |
+| CITM Catalog  | 9.90 ms (**x1.95**)   | 176.04 ms (**x34.61**) | 5.09 ms  |
+| Fast (Valid)  | 3.79 µs (**x3.07**)   | 84.67 µs (**x68.56**) | 1.23 µs  |
+| Fast (Invalid)| 4.25 µs (**x2.51**)   | 84.49 µs (**x50.02**) | 1.69 µs  |
 
 ### jsonschema-rs Performance: `validate` vs `is_valid`
 
 | Benchmark     | validate   | is_valid   | Speedup |
 |---------------|------------|------------|---------|
-| OpenAPI       | 15.94 ms   | 15.49 ms   | 1.03x   |
-| Swagger       | 14.56 ms   | 14.42 ms   | 1.01x   |
-| Canada (GeoJSON) | 4.50 ms | 4.46 ms    | 1.01x   |
-| CITM Catalog  | 5.29 ms    | 3.01 ms    | 1.76x   |
-| Fast (Valid)  | 1.10 µs    | 696.00 ns  | 1.59x   |
-| Fast (Invalid)| 1.53 µs    | 1.08 µs    | 1.42x   |
+| OpenAPI       | 18.84 ms   | 17.31 ms   | 1.09x   |
+| Swagger       | 16.16 ms   | 14.18 ms   | 1.14x   |
+| Canada (GeoJSON) | 4.50 ms | 4.51 ms    | 1.00x   |
+| CITM Catalog  | 5.09 ms    | 3.03 ms    | 1.68x   |
+| Fast (Valid)  | 1.23 µs    | 714.00 ns  | 1.73x   |
+| Fast (Invalid)| 1.69 µs    | 1.14 µs    | 1.48x   |
 
 Notes:
 
