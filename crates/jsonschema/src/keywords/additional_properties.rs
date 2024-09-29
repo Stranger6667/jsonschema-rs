@@ -16,7 +16,7 @@ use crate::{
     properties::*,
     validator::{PartialApplication, Validate},
 };
-use referencing::Uri;
+use referencing::UriRef;
 use serde_json::{Map, Value};
 
 macro_rules! is_valid {
@@ -457,7 +457,7 @@ pub(crate) struct AdditionalPropertiesWithPatternsValidator {
     /// "additionalProperties" as it's path. However, we need to produce annotations which have the
     /// patternProperties keyword as their path so we store the paths here.
     pattern_keyword_path: JsonPointer,
-    pattern_keyword_absolute_location: Option<Uri>,
+    pattern_keyword_absolute_location: Option<UriRef<String>>,
 }
 impl AdditionalPropertiesWithPatternsValidator {
     #[inline]
@@ -591,7 +591,7 @@ pub(crate) struct AdditionalPropertiesWithPatternsFalseValidator {
     patterns: PatternedValidators,
     schema_path: JsonPointer,
     pattern_keyword_path: JsonPointer,
-    pattern_keyword_absolute_location: Option<Uri>,
+    pattern_keyword_absolute_location: Option<UriRef<String>>,
 }
 impl AdditionalPropertiesWithPatternsFalseValidator {
     #[inline]

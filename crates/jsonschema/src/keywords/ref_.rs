@@ -11,7 +11,7 @@ use crate::{
     ValidationError, ValidationOptions,
 };
 use once_cell::sync::OnceCell;
-use referencing::{uri, Draft, Registry, Resource, Uri};
+use referencing::{uri, Draft, Registry, Resource, UriRef};
 use serde_json::{Map, Value};
 
 pub(crate) enum RefValidator {
@@ -61,8 +61,8 @@ pub(crate) struct LazyRefValidator {
     resource: Resource,
     config: Arc<ValidationOptions>,
     registry: Arc<Registry>,
-    scopes: VecDeque<Uri>,
-    base_uri: Uri,
+    scopes: VecDeque<UriRef<String>>,
+    base_uri: UriRef<String>,
     draft: Draft,
     inner: OnceCell<SchemaNode>,
 }

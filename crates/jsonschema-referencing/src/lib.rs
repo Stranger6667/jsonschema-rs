@@ -18,5 +18,7 @@ pub use retriever::{DefaultRetriever, Retrieve};
 pub(crate) use segments::Segments;
 pub use specification::Draft;
 
-pub type Uri = fluent_uri::UriRef<String>;
-pub type UriRef<'a> = fluent_uri::UriRef<&'a str>;
+pub type Uri<T> = fluent_uri::Uri<T>;
+pub type Iri<T> = fluent_uri::Iri<T>;
+pub type UriRef<T> = fluent_uri::UriRef<T>;
+pub type IriRef<T> = fluent_uri::IriRef<T>;

@@ -190,7 +190,7 @@
 //!
 //!    fn retrieve(
 //!        &self,
-//!        uri: &UriRef<'_>,
+//!        uri: &UriRef<&str>,
 //!    ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
 //!         self.schemas
 //!             .get(uri.as_str())

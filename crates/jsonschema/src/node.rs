@@ -10,7 +10,7 @@ use crate::{
 use ahash::AHashMap;
 use referencing::{
     uri::{self, EncodedString, Path},
-    Uri,
+    UriRef,
 };
 use std::{collections::VecDeque, fmt};
 
@@ -19,7 +19,7 @@ use std::{collections::VecDeque, fmt};
 pub(crate) struct SchemaNode {
     validators: NodeValidators,
     relative_path: JsonPointer,
-    absolute_path: Option<Uri>,
+    absolute_path: Option<UriRef<String>>,
 }
 
 enum NodeValidators {
@@ -228,7 +228,7 @@ impl SchemaNode {
             let absolute_keyword_location = self.absolute_path.as_ref().map(|absolute_path| {
                 let mut buffer = EncodedString::new();
                 for chunk in path.iter() {
-                    buffer.push_byte(b'/');
+                    buffer.push('/');
                     match chunk {
                         PathChunk::Property(p) => buffer.encode::<Path>(p.as_bytes()),
                         PathChunk::Index(i) => {

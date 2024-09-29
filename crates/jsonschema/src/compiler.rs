@@ -17,13 +17,15 @@ use crate::{
 use ahash::{AHashMap, AHashSet};
 use once_cell::sync::Lazy;
 use referencing::{
-    uri, Draft, Registry, Resolved, Resolver, Resource, ResourceRef, Retrieve, Uri, SPECIFICATIONS,
+    uri, Draft, Registry, Resolved, Resolver, Resource, ResourceRef, Retrieve, UriRef,
+    SPECIFICATIONS,
 };
 use serde_json::Value;
 use std::{cell::RefCell, collections::VecDeque, rc::Rc, sync::Arc};
 
 const DEFAULT_SCHEME: &str = "json-schema";
 pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
+type BaseUri = UriRef<String>;
 
 /// Container for information required to build a tree.
 ///
@@ -35,7 +37,7 @@ pub(crate) struct Context<'a> {
     resolver: Rc<Resolver<'a>>,
     pub(crate) path: JsonPointerNode<'a, 'a>,
     pub(crate) draft: Draft,
-    seen: Rc<RefCell<AHashSet<Uri>>>,
+    seen: Rc<RefCell<AHashSet<UriRef<String>>>>,
 }
 
 impl<'a> Context<'a> {
@@ -100,7 +102,7 @@ impl<'a> Context<'a> {
         self.resolver.lookup(reference)
     }
 
-    pub(crate) fn scopes(&self) -> VecDeque<Uri> {
+    pub(crate) fn scopes(&self) -> VecDeque<UriRef<String>> {
         VecDeque::from_iter(self.resolver.dynamic_scope().cloned())
     }
 
@@ -116,7 +118,7 @@ impl<'a> Context<'a> {
         self.path.push(chunk).into()
     }
 
-    pub(crate) fn base_uri(&self) -> Option<Uri> {
+    pub(crate) fn base_uri(&self) -> Option<UriRef<String>> {
         let base_uri = self.resolver.base_uri();
         if base_uri.scheme().map(|s| s.as_str()) == Some(DEFAULT_SCHEME) {
             None
@@ -202,7 +204,7 @@ impl<'a> Context<'a> {
         &self,
         reference: &str,
         is_recursive: bool,
-    ) -> Result<Option<(Uri, VecDeque<Uri>, Resource)>, ValidationError<'static>> {
+    ) -> Result<Option<(BaseUri, VecDeque<BaseUri>, Resource)>, ValidationError<'static>> {
         let resolved = if reference == "#" {
             // Known & simple recursive reference
             // It may also use some additional logic from the `$recursiveAnchor` keyword
