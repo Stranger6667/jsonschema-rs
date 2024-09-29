@@ -156,8 +156,8 @@ jobs:
 
       - run: cargo fmt --all -- --check
 
-  clippy:
-    name: Clippy
+  lints-rust:
+    name: Rust lints
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -171,6 +171,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - run: cargo clippy --all-targets --all-features
+
+      - run: cargo publish --dry-run -p jsonschema
+      - run: cargo publish --dry-run -p jsonschema-cli
 
   features:
     name: Check features
