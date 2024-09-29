@@ -1,15 +1,16 @@
 use std::{collections::VecDeque, fmt::Debug, sync::Arc};
 
 use ahash::{AHashMap, AHashSet};
+use fluent_uri::UriRef;
 use once_cell::sync::Lazy;
 use serde_json::Value;
 
 use crate::{
     anchors::{AnchorKey, AnchorKeyRef},
-    meta, uri, Anchor, DefaultRetriever, Draft, Error, Resolver, Resource, Retrieve, Uri,
+    meta, uri, Anchor, DefaultRetriever, Draft, Error, Resolver, Resource, Retrieve,
 };
 
-type ResourceMap = AHashMap<Uri, Arc<Resource>>;
+type ResourceMap = AHashMap<UriRef<String>, Arc<Resource>>;
 
 pub static SPECIFICATIONS: Lazy<Registry> = Lazy::new(|| {
     let pairs = meta::META_SCHEMAS.into_iter().map(|(uri, schema)| {
@@ -215,14 +216,21 @@ impl Registry {
     }
     /// Create a new [`Resolver`] for this registry with a known valid base URI.
     #[must_use]
-    pub fn resolver(&self, base_uri: Uri) -> Resolver {
+    pub fn resolver(&self, base_uri: UriRef<String>) -> Resolver {
         Resolver::new(self, base_uri)
     }
     #[must_use]
-    pub fn resolver_from_raw_parts(&self, base_uri: Uri, scopes: VecDeque<Uri>) -> Resolver {
+    pub fn resolver_from_raw_parts(
+        &self,
+        base_uri: UriRef<String>,
+        scopes: VecDeque<UriRef<String>>,
+    ) -> Resolver {
         Resolver::from_parts(self, base_uri, scopes)
     }
-    pub(crate) fn get_or_retrieve<'r>(&'r self, uri: &Uri) -> Result<&'r Resource, Error> {
+    pub(crate) fn get_or_retrieve<'r>(
+        &'r self,
+        uri: &UriRef<String>,
+    ) -> Result<&'r Resource, Error> {
         if let Some(resource) = self.resources.get(uri) {
             Ok(resource)
         } else {
@@ -235,7 +243,11 @@ impl Registry {
             ))
         }
     }
-    pub(crate) fn anchor<'a>(&self, uri: &'a Uri, name: &'a str) -> Result<&Anchor, Error> {
+    pub(crate) fn anchor<'a>(
+        &self,
+        uri: &'a UriRef<String>,
+        name: &'a str,
+    ) -> Result<&Anchor, Error> {
         let key = AnchorKeyRef::new(uri, name);
         if let Some(value) = self.anchors.get(key.borrow_dyn()) {
             return Ok(value);
@@ -347,16 +359,16 @@ fn process_resources(
 }
 
 fn collect_external_references(
-    base: &Uri,
+    base: &UriRef<String>,
     contents: &Value,
-    collected: &mut AHashSet<Uri>,
+    collected: &mut AHashSet<UriRef<String>>,
 ) -> Result<(), Error> {
     if base.scheme().map(fluent_uri::component::Scheme::as_str) == Some("urn") {
         return Ok(());
     }
     if let Some(reference) = contents.get("$ref").and_then(Value::as_str) {
         let resolved = uri::resolve_against(&base.borrow(), reference)?;
-        let builder = Uri::builder();
+        let builder = UriRef::builder();
         let base_uri = match (resolved.scheme(), resolved.authority()) {
             (Some(scheme), Some(auth)) => {
                 builder.scheme(scheme).authority(auth).path(resolved.path())
@@ -701,20 +713,11 @@ mod tests {
 
         let result = Registry::try_from_resources(input_resources.into_iter());
         let error = result.expect_err("Should fail");
-        assert_eq!(
-            error.to_string(),
-            "Invalid URI: base URI without scheme or with fragment"
-        );
+        assert_eq!(error.to_string(), "Invalid URI: base URI/IRI with fragment");
         let source_error = error.source().expect("Should have a source");
-        assert_eq!(
-            source_error.to_string(),
-            "base URI without scheme or with fragment"
-        );
+        assert_eq!(source_error.to_string(), "base URI/IRI with fragment");
         let inner_source = source_error.source().expect("Should have a source");
-        assert_eq!(
-            inner_source.to_string(),
-            "base URI without scheme or with fragment"
-        );
+        assert_eq!(inner_source.to_string(), "base URI/IRI with fragment");
     }
 
     #[test]

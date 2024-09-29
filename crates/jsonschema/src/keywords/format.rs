@@ -8,7 +8,6 @@ use std::{
 use fancy_regex::Regex;
 use once_cell::sync::Lazy;
 use serde_json::{Map, Value};
-use url::Url;
 use uuid_simd::{parse_hyphenated, Out};
 
 use crate::{
@@ -23,8 +22,6 @@ use crate::{
 
 static DATE_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}\z").expect("Is a valid regex"));
-static IRI_REFERENCE_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^(\w+:(/?/?))?[^#\\\s]*(#[^\\\s]*)?\z").expect("Is a valid regex"));
 static JSON_POINTER_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(/(([^/~])|(~[01]))*)*\z").expect("Is a valid regex"));
 static RELATIVE_JSON_POINTER_RE: Lazy<Regex> = Lazy::new(|| {
@@ -225,7 +222,7 @@ impl Validate for IRIValidator {
     validate!("iri");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            Url::from_str(item).is_ok()
+            referencing::Iri::parse(item.as_str()).is_ok()
         } else {
             true
         }
@@ -236,7 +233,7 @@ impl Validate for URIValidator {
     validate!("uri");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            Url::from_str(item).is_ok()
+            referencing::Uri::parse(item.as_str()).is_ok()
         } else {
             true
         }
@@ -247,9 +244,18 @@ impl Validate for IRIReferenceValidator {
     validate!("iri-reference");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            IRI_REFERENCE_RE
-                .is_match(item)
-                .expect("Simple IRI_REFERENCE_RE pattern")
+            referencing::IriRef::parse(item.as_str()).is_ok()
+        } else {
+            true
+        }
+    }
+}
+format_validator!(URIReferenceValidator, "uri-reference");
+impl Validate for URIReferenceValidator {
+    validate!("uri-reference");
+    fn is_valid(&self, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            referencing::UriRef::parse(item.as_str()).is_ok()
         } else {
             true
         }
@@ -298,17 +304,6 @@ impl Validate for TimeValidator {
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
             TIME_RE.is_match(item).expect("Simple TIME_RE pattern")
-        } else {
-            true
-        }
-    }
-}
-format_validator!(URIReferenceValidator, "uri-reference");
-impl Validate for URIReferenceValidator {
-    validate!("uri-reference");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            referencing::UriRef::parse(item.as_str()).is_ok()
         } else {
             true
         }
@@ -438,49 +433,73 @@ pub(crate) fn compile<'a>(
             "email" => Some(EmailValidator::compile(ctx)),
             "hostname" => Some(HostnameValidator::compile(ctx)),
             "idn-email" => Some(IDNEmailValidator::compile(ctx)),
-            "idn-hostname" if draft == Draft::Draft7 => Some(IDNHostnameValidator::compile(ctx)),
-            "idn-hostname" if draft == Draft::Draft201909 => {
+            "idn-hostname"
+                if matches!(
+                    draft,
+                    Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
+                ) =>
+            {
                 Some(IDNHostnameValidator::compile(ctx))
             }
             "ipv4" => Some(IpV4Validator::compile(ctx)),
             "ipv6" => Some(IpV6Validator::compile(ctx)),
-            "iri-reference" if draft == Draft::Draft7 => Some(IRIReferenceValidator::compile(ctx)),
-            "iri-reference" if draft == Draft::Draft201909 => {
+            "iri-reference"
+                if matches!(
+                    draft,
+                    Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
+                ) =>
+            {
                 Some(IRIReferenceValidator::compile(ctx))
             }
-            "iri" if draft == Draft::Draft7 => Some(IRIValidator::compile(ctx)),
-            "iri" if draft == Draft::Draft201909 => Some(IRIValidator::compile(ctx)),
-            "json-pointer" if draft == Draft::Draft6 || draft == Draft::Draft7 => {
-                Some(JsonPointerValidator::compile(ctx))
+            "iri"
+                if matches!(
+                    draft,
+                    Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
+                ) =>
+            {
+                Some(IRIValidator::compile(ctx))
             }
-            "json-pointer" if draft == Draft::Draft201909 => {
+            "json-pointer"
+                if matches!(
+                    draft,
+                    Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
+                ) =>
+            {
                 Some(JsonPointerValidator::compile(ctx))
             }
             "regex" => Some(RegexValidator::compile(ctx)),
-            "relative-json-pointer" if draft == Draft::Draft7 => {
-                Some(RelativeJsonPointerValidator::compile(ctx))
-            }
-            "relative-json-pointer" if draft == Draft::Draft201909 => {
+            "relative-json-pointer"
+                if matches!(
+                    draft,
+                    Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
+                ) =>
+            {
                 Some(RelativeJsonPointerValidator::compile(ctx))
             }
             "time" => Some(TimeValidator::compile(ctx)),
-            "uri-reference" if draft == Draft::Draft6 || draft == Draft::Draft7 => {
+            "uri-reference"
+                if matches!(
+                    draft,
+                    Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
+                ) =>
+            {
                 Some(URIReferenceValidator::compile(ctx))
             }
-            "uri-reference" if draft == Draft::Draft201909 => {
-                Some(URIReferenceValidator::compile(ctx))
-            }
-            "uri-template" if draft == Draft::Draft6 || draft == Draft::Draft7 => {
-                Some(URITemplateValidator::compile(ctx))
-            }
-            "uri-template" if draft == Draft::Draft201909 => {
+            "uri-template"
+                if matches!(
+                    draft,
+                    Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
+                ) =>
+            {
                 Some(URITemplateValidator::compile(ctx))
             }
             "uuid" if matches!(draft, Draft::Draft201909 | Draft::Draft202012) => {
                 Some(UUIDValidator::compile(ctx))
             }
             "uri" => Some(URIValidator::compile(ctx)),
-            "duration" if draft == Draft::Draft201909 => Some(DurationValidator::compile(ctx)),
+            "duration" if matches!(draft, Draft::Draft201909 | Draft::Draft202012) => {
+                Some(DurationValidator::compile(ctx))
+            }
             _ => {
                 if ctx.are_unknown_formats_ignored() {
                     None

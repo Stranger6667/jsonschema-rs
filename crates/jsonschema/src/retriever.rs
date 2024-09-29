@@ -122,7 +122,7 @@ impl SchemaResolver for DefaultRetriever {
 impl Retrieve for DefaultRetriever {
     fn retrieve(
         &self,
-        uri: &UriRef<'_>,
+        uri: &UriRef<&str>,
     ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
         match uri.scheme().map(|scheme| scheme.as_str()) {
             Some("http" | "https") => {
@@ -165,7 +165,7 @@ impl RetrieverAdapter {
 
 impl Retrieve for RetrieverAdapter {
     #[allow(deprecated)]
-    fn retrieve(&self, uri: &UriRef<'_>) -> Result<Value, Box<dyn StdError + Send + Sync>> {
+    fn retrieve(&self, uri: &UriRef<&str>) -> Result<Value, Box<dyn StdError + Send + Sync>> {
         let url = Url::parse(uri.as_str())?;
         // NOTE: There is no easy way to pass the original reference here without significant
         // changes to `referencing`. This argument does not seem to be used much in practice,

@@ -20,10 +20,12 @@
 - Cross-draft validation from newer to older ones.
 - Changing base URI in folder.
 - Location-independent identifier in remote resource.
+- Missing some format validation for Draft 2020-12.
+- Incomplete `iri` & `iri-reference` validation.
 
 ### Performance
 
-- Faster `uri-reference` validation.
+- Faster validation for `uri`, `iri`, `uri-reference`, and `iri-reference` formats.
 
 ## [0.20.0] - 2024-09-18
 
