@@ -172,7 +172,7 @@ jobs:
 
       - run: cargo clippy --all-targets --all-features
 
-      - run: cargo publish --dry-run -p jsonschema-referencing
+      - run: cargo publish --dry-run -p referencing
       - run: cargo publish --dry-run -p jsonschema
       - run: cargo publish --dry-run -p jsonschema-cli
 
