@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 use fluent_uri::UriRef;
 use serde_json::Value;
 
-use crate::{uri, Error, Registry, ResourceRef};
+use crate::{uri, Draft, Error, Registry, ResourceRef};
 
 /// A reference resolver.
 ///
@@ -27,7 +27,7 @@ impl<'r> fmt::Debug for Resolver<'r> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Resolver")
             .field("base_uri", &self.base_uri.as_str())
-            .field("parent", &{
+            .field("scopes", &{
                 let mut buf = String::from("[");
                 let mut values = self.scopes.iter();
                 if let Some(value) = values.next() {
@@ -56,12 +56,12 @@ impl<'r> Resolver<'r> {
     pub(crate) fn from_parts(
         registry: &'r Registry,
         base_uri: UriRef<String>,
-        parent: VecDeque<UriRef<String>>,
+        scopes: VecDeque<UriRef<String>>,
     ) -> Self {
         Self {
             registry,
             base_uri,
-            scopes: parent,
+            scopes,
         }
     }
     #[must_use]
@@ -104,7 +104,11 @@ impl<'r> Resolver<'r> {
         }
 
         let resolver = self.evolve(uri);
-        Ok(Resolved::new(retrieved.contents(), resolver))
+        Ok(Resolved::new(
+            retrieved.contents(),
+            resolver,
+            retrieved.draft(),
+        ))
     }
     /// Resolve a recursive reference.
     ///
@@ -198,11 +202,16 @@ pub struct Resolved<'r> {
     contents: &'r Value,
     /// The resolver that resolved this reference, which can be used for further resolutions.
     resolver: Resolver<'r>,
+    draft: Draft,
 }
 
 impl<'r> Resolved<'r> {
-    pub(crate) fn new(contents: &'r Value, resolver: Resolver<'r>) -> Self {
-        Self { contents, resolver }
+    pub(crate) fn new(contents: &'r Value, resolver: Resolver<'r>, draft: Draft) -> Self {
+        Self {
+            contents,
+            resolver,
+            draft,
+        }
     }
     /// Resolved contents.
     #[must_use]
@@ -216,7 +225,11 @@ impl<'r> Resolved<'r> {
     }
 
     #[must_use]
-    pub fn into_inner(self) -> (&'r Value, Resolver<'r>) {
-        (self.contents, self.resolver)
+    pub fn draft(&self) -> Draft {
+        self.draft
+    }
+    #[must_use]
+    pub fn into_inner(self) -> (&'r Value, Resolver<'r>, Draft) {
+        (self.contents, self.resolver, self.draft)
     }
 }
