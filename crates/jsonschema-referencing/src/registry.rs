@@ -275,7 +275,7 @@ fn process_resources(
     anchors: &mut AHashMap<AnchorKey, Anchor>,
     default_draft: Draft,
 ) -> Result<(), Error> {
-    let mut queue = VecDeque::new();
+    let mut queue = VecDeque::with_capacity(32);
     let mut external = AHashSet::new();
 
     // Populate the resources & queue from the input
@@ -286,7 +286,7 @@ fn process_resources(
         queue.push_back((uri, resource));
     }
 
-    let mut stack = vec![];
+    let mut stack = Vec::with_capacity(32);
 
     loop {
         if queue.is_empty() && external.is_empty() {
