@@ -12,7 +12,7 @@ publish = false
 proc-macro = true
 
 [dependencies]
-internal = { package = "jsonschema-testsuite-internal", path = "../jsonschema-testsuite-internal/" }
+testsuite_internal = { package = "jsonschema-testsuite-internal", path = "../jsonschema-testsuite-internal/" }
 heck = "0.5"
 proc-macro2 = "1"
 quote = "1"

@@ -1,5 +1,5 @@
 use referencing::{Draft, Registry};
-use testsuite::{suite, Test};
+use referencing_testsuite::{suite, Test};
 
 #[suite(
     path = "crates/jsonschema-referencing/tests/suite",
