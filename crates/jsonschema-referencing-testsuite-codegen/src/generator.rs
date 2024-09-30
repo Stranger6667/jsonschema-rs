@@ -15,7 +15,7 @@ pub(crate) fn generate_modules(
         .iter()
         .enumerate()
         .map(|(case_idx, TestCase { name, case })| {
-            let module_name = testsuite::sanitize_name(name.to_snake_case());
+            let module_name = testsuite_common::sanitize_name(name.to_snake_case());
             let mut new_path = current_path.clone();
             new_path.push(module_name.clone());
             let module_ident = format_ident!("{}", module_name);
@@ -57,7 +57,7 @@ pub(crate) fn generate_modules(
                     #ignore_attr
                     #[test]
                     fn #test_ident() {
-                        let test = testsuite::Test {
+                        let test = referencing_testsuite::Test {
                             registry: serde_json::from_str(#registry).expect("Failed to load JSON"),
                             base_uri: #base_uri,
                             reference: #reference,

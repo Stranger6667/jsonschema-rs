@@ -8,8 +8,8 @@ repository.workspace = true
 license.workspace = true
 
 [dependencies]
-codegen = { package = "jsonschema-referencing-testsuite-codegen", path = "../jsonschema-referencing-testsuite-codegen/" }
-internal = { package = "jsonschema-referencing-testsuite-internal", path = "../jsonschema-referencing-testsuite-internal/" }
+referencing_codegen = { package = "jsonschema-referencing-testsuite-codegen", path = "../jsonschema-referencing-testsuite-codegen/" }
+referencing_internal = { package = "jsonschema-referencing-testsuite-internal", path = "../jsonschema-referencing-testsuite-internal/" }
 
 [lints]
 workspace = true

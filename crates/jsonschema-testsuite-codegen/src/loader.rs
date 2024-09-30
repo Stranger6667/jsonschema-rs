@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fs::File, io::BufReader, path::Path};
 
-use internal::Case;
+use testsuite_internal::Case;
 use walkdir::WalkDir;
 
 pub(crate) type TestCaseTree = BTreeMap<String, TestCaseNode>;

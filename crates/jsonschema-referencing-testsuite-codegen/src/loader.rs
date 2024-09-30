@@ -1,6 +1,6 @@
 use std::{fs::File, io::BufReader, path::Path};
 
-use internal::Case;
+use referencing_internal::Case;
 use walkdir::WalkDir;
 
 #[derive(Debug)]
