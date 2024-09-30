@@ -1,14 +1,16 @@
 use std::borrow::Cow;
 
+use smallvec::SmallVec;
+
 /// Represents a sequence of segments in a JSON pointer.
 ///
 /// Used to track the path during JSON pointer resolution.
-pub(crate) struct Segments<'a>(Vec<Segment<'a>>);
+pub(crate) struct Segments<'a>(SmallVec<[Segment<'a>; 2]>);
 
 impl<'a> Segments<'a> {
     /// Creates a new, empty `Segments` instance.
     pub(crate) fn new() -> Self {
-        Self(Vec::new())
+        Self(SmallVec::new())
     }
 
     /// Adds a new segment to the sequence.
