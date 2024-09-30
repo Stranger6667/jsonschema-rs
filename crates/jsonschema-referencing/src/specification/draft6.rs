@@ -14,7 +14,7 @@ pub(crate) fn subresources_of<'a>(contents: &'a Value) -> Box<dyn Iterator<Item 
     ];
     const IN_SUBARRAY: &[&str] = &["allOf", "anyOf", "oneOf"];
     const IN_SUBVALUES: &[&str] = &["definitions", "patternProperties", "properties"];
-    subresources::subresources_of_with_dependencies(contents, IN_VALUE, IN_SUBVALUES, IN_SUBARRAY)
+    subresources::subresources_of_with_dependencies(contents)
 }
 
 pub(crate) fn maybe_in_subresource<'r>(

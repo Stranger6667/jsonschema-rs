@@ -92,26 +92,82 @@ pub(crate) fn subresources_of<'a>(contents: &'a Value) -> Box<dyn Iterator<Item 
     }
 }
 
+pub(crate) enum SubresourceIterator<'a> {
+    Once(std::iter::Once<&'a Value>),
+    Array(std::slice::Iter<'a, Value>),
+    Object(serde_json::map::Values<'a>),
+    FilteredObject(std::iter::Filter<serde_json::map::Values<'a>, fn(&&Value) -> bool>),
+    Empty,
+}
+
+impl<'a> Iterator for SubresourceIterator<'a> {
+    type Item = &'a Value;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            SubresourceIterator::Once(it) => it.next(),
+            SubresourceIterator::Array(it) => it.next(),
+            SubresourceIterator::Object(it) => it.next(),
+            SubresourceIterator::FilteredObject(it) => it.next(),
+            SubresourceIterator::Empty => None,
+        }
+    }
+}
+
+impl<'a> SubresourceIterator<'a> {
+    pub(crate) fn once(value: &'a Value) -> Self {
+        SubresourceIterator::Once(std::iter::once(value))
+    }
+}
+
 #[inline]
 pub(crate) fn subresources_of_with_dependencies<'a>(
     contents: &'a Value,
-    in_value: &'static [&str],
-    in_subvalues: &'static [&str],
-    in_subarray: &'static [&str],
 ) -> Box<dyn Iterator<Item = &'a Value> + 'a> {
-    match contents.as_object() {
-        Some(schema) => {
-            let normal_subresources = lookup!(schema, in_value, in_subvalues, in_subarray);
-            let items_subresources = lookup_in_items!(schema);
-            let dependencies_subresources = lookup_in_dependencies!(schema);
-            Box::new(
-                normal_subresources
-                    .chain(items_subresources)
-                    .chain(dependencies_subresources),
-            )
-        }
-        None => Box::new(std::iter::empty()),
-    }
+    Box::new(contents.as_object().into_iter().flat_map(|schema| {
+        schema.iter().flat_map(move |(key, value)| {
+            match key.as_str() {
+                // IN_VALUE cases
+                "additionalItems"
+                | "additionalProperties"
+                | "contains"
+                | "else"
+                | "if"
+                | "not"
+                | "propertyNames"
+                | "then" => SubresourceIterator::once(value),
+
+                // IN_SUBARRAY cases
+                "allOf" | "anyOf" | "oneOf" => {
+                    value.as_array().map_or(SubresourceIterator::Empty, |arr| {
+                        SubresourceIterator::Array(arr.iter())
+                    })
+                }
+
+                // IN_SUBVALUES cases
+                "definitions" | "patternProperties" | "properties" => {
+                    value.as_object().map_or(SubresourceIterator::Empty, |obj| {
+                        SubresourceIterator::Object(obj.values())
+                    })
+                }
+
+                // Special case for "items"
+                "items" => match value {
+                    Value::Array(arr) => SubresourceIterator::Array(arr.iter()),
+                    _ => SubresourceIterator::once(value),
+                },
+
+                // Special case for "dependencies"
+                "dependencies" => value
+                    .as_object()
+                    .map_or(SubresourceIterator::Empty, |deps| {
+                        SubresourceIterator::FilteredObject(deps.values().filter(|v| v.is_object()))
+                    }),
+
+                // All other keys
+                _ => SubresourceIterator::Empty,
+            }
+        })
+    }))
 }
 
 pub(crate) fn maybe_in_subresource<'r>(
