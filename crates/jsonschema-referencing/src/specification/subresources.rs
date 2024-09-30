@@ -2,114 +2,32 @@ use serde_json::Value;
 
 use crate::{segments::Segment, Error, Resolver, ResourceRef, Segments};
 
-macro_rules! lookup {
-    ($schema:expr, $in_value:expr, $in_subvalues:expr, $in_subarray:expr) => {
-        $in_value
-            .iter()
-            .flat_map(|&keyword| $schema.get(keyword).into_iter())
-            .chain($in_subvalues.iter().flat_map(|&keyword| {
-                $schema
-                    .get(keyword)
-                    .and_then(Value::as_object)
-                    .into_iter()
-                    .flat_map(|o| o.values())
-            }))
-            .chain($in_subarray.iter().flat_map(|&keyword| {
-                $schema
-                    .get(keyword)
-                    .and_then(Value::as_array)
-                    .into_iter()
-                    .flatten()
-            }))
-    };
-}
+pub(crate) type SubresourceIterator<'a> = Box<dyn Iterator<Item = &'a Value> + 'a>;
 
-macro_rules! lookup_in_items {
-    ($schema:expr) => {
-        $schema
-            .get("items")
-            .into_iter()
-            .flat_map(|items| match items {
-                Value::Array(arr) => arr.iter().collect::<Vec<_>>(),
-                _ => vec![items],
-            })
-    };
-}
-
-macro_rules! lookup_in_dependencies {
-    ($schema:expr) => {
-        $schema
-            .get("dependencies")
-            .into_iter()
-            .flat_map(|dependencies| {
-                if let Value::Object(deps) = dependencies {
-                    let mut values = deps.values();
-                    if let Some(first) = values.next() {
-                        if first.is_object() {
-                            std::iter::once(first).chain(values).collect::<Vec<_>>()
-                        } else {
-                            Vec::new()
-                        }
-                    } else {
-                        Vec::new()
-                    }
-                } else {
-                    Vec::new()
-                }
-            })
-    };
-}
-pub(crate) use lookup;
-pub(crate) use lookup_in_dependencies;
-pub(crate) use lookup_in_items;
-
-pub(crate) fn subresources_of<'a>(contents: &'a Value) -> Box<dyn Iterator<Item = &'a Value> + 'a> {
-    const IN_VALUE: &[&str] = &[
-        "additionalProperties",
-        "contains",
-        "contentSchema",
-        "else",
-        "if",
-        "items",
-        "not",
-        "propertyNames",
-        "then",
-        "unevaluatedItems",
-        "unevaluatedProperties",
-    ];
-    const IN_SUBARRAY: &[&str] = &["allOf", "anyOf", "oneOf", "prefixItems"];
-    const IN_SUBVALUES: &[&str] = &[
-        "$defs",
-        "definitions",
-        "dependentSchemas",
-        "patternProperties",
-        "properties",
-    ];
-
+pub(crate) fn subresources_of<'a>(contents: &'a Value) -> SubresourceIterator<'a> {
     match contents.as_object() {
-        Some(schema) => Box::new(lookup!(schema, IN_VALUE, IN_SUBVALUES, IN_SUBARRAY)),
-        None => Box::new(std::iter::empty()),
-    }
-}
-
-#[inline]
-pub(crate) fn subresources_of_with_dependencies<'a>(
-    contents: &'a Value,
-    in_value: &'static [&str],
-    in_subvalues: &'static [&str],
-    in_subarray: &'static [&str],
-) -> Box<dyn Iterator<Item = &'a Value> + 'a> {
-    match contents.as_object() {
-        Some(schema) => {
-            let normal_subresources = lookup!(schema, in_value, in_subvalues, in_subarray);
-            let items_subresources = lookup_in_items!(schema);
-            let dependencies_subresources = lookup_in_dependencies!(schema);
-            Box::new(
-                normal_subresources
-                    .chain(items_subresources)
-                    .chain(dependencies_subresources),
-            )
-        }
+        Some(schema) => Box::new(schema.iter().flat_map(|(key, value)| match key.as_str() {
+            "additionalProperties"
+            | "contains"
+            | "contentSchema"
+            | "else"
+            | "if"
+            | "items"
+            | "not"
+            | "propertyNames"
+            | "then"
+            | "unevaluatedItems"
+            | "unevaluatedProperties" => {
+                Box::new(std::iter::once(value)) as SubresourceIterator<'a>
+            }
+            "allOf" | "anyOf" | "oneOf" | "prefixItems" => {
+                Box::new(value.as_array().into_iter().flatten())
+            }
+            "$defs" | "definitions" | "dependentSchemas" | "patternProperties" | "properties" => {
+                Box::new(value.as_object().into_iter().flat_map(|o| o.values()))
+            }
+            _ => Box::new(std::iter::empty()),
+        })),
         None => Box::new(std::iter::empty()),
     }
 }

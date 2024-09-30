@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Performance
+
+- Faster building of a validator.
+
 ## [0.21.0] - 2024-09-29
 
 **Important:** This release brings a complete rework of reference resolving which deprecates some older APIs.

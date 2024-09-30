@@ -2,30 +2,34 @@ use serde_json::Value;
 
 use crate::{Error, Resolver, ResourceRef, Segments};
 
-use super::subresources;
+use super::subresources::{self, SubresourceIterator};
 
-pub(crate) fn subresources_of<'a>(contents: &'a Value) -> Box<dyn Iterator<Item = &'a Value> + 'a> {
-    const IN_VALUE: &[&str] = &["not"];
-    const IN_SUBARRAY: &[&str] = &["allOf", "anyOf", "oneOf"];
-    const IN_SUBVALUES: &[&str] = &["definitions", "patternProperties", "properties"];
-
+pub(crate) fn subresources_of<'a>(contents: &'a Value) -> SubresourceIterator<'a> {
     match contents.as_object() {
-        Some(schema) => {
-            let subresources = subresources::lookup!(schema, IN_VALUE, IN_SUBVALUES, IN_SUBARRAY);
-            let items = subresources::lookup_in_items!(schema);
-            let dependencies = subresources::lookup_in_dependencies!(schema);
-            let additional = ["additionalItems", "additionalProperties"]
-                .iter()
-                .filter_map(|&key| schema.get(key))
-                .filter(|value| value.is_object());
-
-            Box::new(
-                subresources
-                    .chain(items)
-                    .chain(dependencies)
-                    .chain(additional),
-            )
-        }
+        Some(schema) => Box::new(schema.iter().flat_map(|(key, value)| {
+            match key.as_str() {
+                "not" => Box::new(std::iter::once(value)) as SubresourceIterator<'a>,
+                "allOf" | "anyOf" | "oneOf" => Box::new(value.as_array().into_iter().flatten()),
+                "definitions" | "patternProperties" | "properties" => {
+                    Box::new(value.as_object().into_iter().flat_map(|o| o.values()))
+                }
+                "items" => match value {
+                    Value::Array(arr) => Box::new(arr.iter()) as SubresourceIterator<'a>,
+                    _ => Box::new(std::iter::once(value)),
+                },
+                "dependencies" => Box::new(
+                    value
+                        .as_object()
+                        .into_iter()
+                        .flat_map(|o| o.values())
+                        .filter(|v| v.is_object()),
+                ),
+                "additionalItems" | "additionalProperties" if value.is_object() => {
+                    Box::new(std::iter::once(value))
+                }
+                _ => Box::new(std::iter::empty()),
+            }
+        })),
         None => Box::new(std::iter::empty()),
     }
 }
