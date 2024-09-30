@@ -172,9 +172,53 @@ jobs:
 
       - run: cargo clippy --all-targets --all-features
 
+  check-releases-rust:
+    name: Check Rust releases
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
       - run: cargo publish --dry-run -p referencing
       - run: cargo publish --dry-run -p jsonschema
       - run: cargo publish --dry-run -p jsonschema-cli
+
+  check-releases-python:
+    name: Check Python releases
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: hynek/setup-cached-uv@v2
+
+      - run: uv python install "3.12"
+
+      - run: uv build --sdist --wheel --out-dir dist
+        working-directory: crates/jsonschema-py
+
+      - run: uv venv
+        working-directory: crates/jsonschema-py
+
+      - name: Install sdist
+        run: |
+          uv pip install dist/*.tar.gz --force-reinstall
+        working-directory: crates/jsonschema-py
+
+      - name: Install wheel
+        run: |
+          uv pip install dist/*.whl --force-reinstall
+        working-directory: crates/jsonschema-py
 
   features:
     name: Check features

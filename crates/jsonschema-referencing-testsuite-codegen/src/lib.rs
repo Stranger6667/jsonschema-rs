@@ -9,7 +9,7 @@ mod loader;
 /// [JSON-Referencing-Test-Suite](https://github.com/python-jsonschema/referencing-suite).
 #[proc_macro_attribute]
 pub fn suite(args: TokenStream, input: TokenStream) -> TokenStream {
-    let config = parse_macro_input!(args as testsuite::SuiteConfig);
+    let config = parse_macro_input!(args as testsuite_common::SuiteConfig);
     let test_func = parse_macro_input!(input as ItemFn);
     let test_func_ident = &test_func.sig.ident;
 
@@ -33,7 +33,7 @@ pub fn suite(args: TokenStream, input: TokenStream) -> TokenStream {
             #output
 
             mod #draft {
-                use testsuite::Test;
+                use referencing_testsuite::Test;
                 use super::#test_func_ident;
 
                 #[inline]
