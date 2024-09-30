@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Performance
+
+- Faster building of a validator.
+
 ## [0.21.0] - 2024-09-30
 
 ### Added

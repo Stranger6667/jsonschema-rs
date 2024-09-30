@@ -2,22 +2,40 @@ use serde_json::Value;
 
 use crate::{Error, Resolver, ResourceRef, Segments};
 
-use super::subresources;
+use super::subresources::{self, SubresourceIterator};
 
-pub(crate) fn subresources_of<'a>(contents: &'a Value) -> Box<dyn Iterator<Item = &'a Value> + 'a> {
-    const IN_VALUE: &[&str] = &[
-        "additionalItems",
-        "additionalProperties",
-        "contains",
-        "else",
-        "if",
-        "not",
-        "propertyNames",
-        "then",
-    ];
-    const IN_SUBARRAY: &[&str] = &["allOf", "anyOf", "oneOf"];
-    const IN_SUBVALUES: &[&str] = &["definitions", "patternProperties", "properties"];
-    subresources::subresources_of_with_dependencies(contents, IN_VALUE, IN_SUBVALUES, IN_SUBARRAY)
+pub(crate) fn subresources_of<'a>(contents: &'a Value) -> SubresourceIterator<'a> {
+    match contents.as_object() {
+        Some(schema) => Box::new(schema.iter().flat_map(|(key, value)| {
+            match key.as_str() {
+                "additionalItems"
+                | "additionalProperties"
+                | "contains"
+                | "else"
+                | "if"
+                | "not"
+                | "propertyNames"
+                | "then" => Box::new(std::iter::once(value)) as SubresourceIterator<'a>,
+                "allOf" | "anyOf" | "oneOf" => Box::new(value.as_array().into_iter().flatten()),
+                "definitions" | "patternProperties" | "properties" => {
+                    Box::new(value.as_object().into_iter().flat_map(|o| o.values()))
+                }
+                "items" => match value {
+                    Value::Array(arr) => Box::new(arr.iter()) as SubresourceIterator<'a>,
+                    _ => Box::new(std::iter::once(value)),
+                },
+                "dependencies" => Box::new(
+                    value
+                        .as_object()
+                        .into_iter()
+                        .flat_map(|o| o.values())
+                        .filter(|v| v.is_object()),
+                ),
+                _ => Box::new(std::iter::empty()),
+            }
+        })),
+        None => Box::new(std::iter::empty()),
+    }
 }
 
 pub(crate) fn maybe_in_subresource<'r>(
