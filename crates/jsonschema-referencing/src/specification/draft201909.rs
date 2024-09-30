@@ -2,33 +2,40 @@ use serde_json::Value;
 
 use crate::{segments::Segment, Error, Resolver, ResourceRef, Segments};
 
-use super::subresources::SubresourceIterator;
+use super::subresources::{SubresourceIterator, SubresourceIteratorImpl};
 
-pub(crate) fn subresources_of<'a>(contents: &'a Value) -> SubresourceIterator<'a> {
+pub(crate) fn subresources_of(contents: &Value) -> SubresourceIterator<'_> {
     match contents.as_object() {
-        Some(schema) => Box::new(schema.iter().flat_map(|(key, value)| match key.as_str() {
-            "additionalItems"
-            | "additionalProperties"
-            | "contains"
-            | "contentSchema"
-            | "else"
-            | "if"
-            | "not"
-            | "propertyNames"
-            | "then"
-            | "unevaluatedItems"
-            | "unevaluatedProperties" => {
-                Box::new(std::iter::once(value)) as SubresourceIterator<'a>
+        Some(schema) => Box::new(schema.iter().flat_map(|(key, value)| {
+            match key.as_str() {
+                "additionalItems"
+                | "additionalProperties"
+                | "contains"
+                | "contentSchema"
+                | "else"
+                | "if"
+                | "not"
+                | "propertyNames"
+                | "then"
+                | "unevaluatedItems"
+                | "unevaluatedProperties" => SubresourceIteratorImpl::once(value),
+                "allOf" | "anyOf" | "oneOf" => value
+                    .as_array()
+                    .map_or(SubresourceIteratorImpl::Empty, |arr| {
+                        SubresourceIteratorImpl::Array(arr.iter())
+                    }),
+                "$defs" | "definitions" | "dependentSchemas" | "patternProperties"
+                | "properties" => value
+                    .as_object()
+                    .map_or(SubresourceIteratorImpl::Empty, |obj| {
+                        SubresourceIteratorImpl::Object(obj.values())
+                    }),
+                "items" => match value {
+                    Value::Array(arr) => SubresourceIteratorImpl::Array(arr.iter()),
+                    _ => SubresourceIteratorImpl::once(value),
+                },
+                _ => SubresourceIteratorImpl::Empty,
             }
-            "allOf" | "anyOf" | "oneOf" => Box::new(value.as_array().into_iter().flatten()),
-            "$defs" | "definitions" | "dependentSchemas" | "patternProperties" | "properties" => {
-                Box::new(value.as_object().into_iter().flat_map(|o| o.values()))
-            }
-            "items" => match value {
-                Value::Array(arr) => Box::new(arr.iter()) as SubresourceIterator<'a>,
-                _ => Box::new(std::iter::once(value)),
-            },
-            _ => Box::new(std::iter::empty()),
         })),
         None => Box::new(std::iter::empty()),
     }

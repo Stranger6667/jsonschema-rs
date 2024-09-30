@@ -4,29 +4,86 @@ use crate::{segments::Segment, Error, Resolver, ResourceRef, Segments};
 
 pub(crate) type SubresourceIterator<'a> = Box<dyn Iterator<Item = &'a Value> + 'a>;
 
-pub(crate) fn subresources_of<'a>(contents: &'a Value) -> SubresourceIterator<'a> {
+pub(crate) enum LegacySubresourceIteratorImpl<'a> {
+    Once(std::iter::Once<&'a Value>),
+    Array(std::slice::Iter<'a, Value>),
+    Object(serde_json::map::Values<'a>),
+    FilteredObject(std::iter::Filter<serde_json::map::Values<'a>, fn(&&Value) -> bool>),
+    Empty,
+}
+
+impl<'a> Iterator for LegacySubresourceIteratorImpl<'a> {
+    type Item = &'a Value;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            LegacySubresourceIteratorImpl::Once(it) => it.next(),
+            LegacySubresourceIteratorImpl::Array(it) => it.next(),
+            LegacySubresourceIteratorImpl::Object(it) => it.next(),
+            LegacySubresourceIteratorImpl::FilteredObject(it) => it.next(),
+            LegacySubresourceIteratorImpl::Empty => None,
+        }
+    }
+}
+
+impl<'a> LegacySubresourceIteratorImpl<'a> {
+    pub(crate) fn once(value: &'a Value) -> Self {
+        LegacySubresourceIteratorImpl::Once(std::iter::once(value))
+    }
+}
+
+pub(crate) enum SubresourceIteratorImpl<'a> {
+    Once(std::iter::Once<&'a Value>),
+    Array(std::slice::Iter<'a, Value>),
+    Object(serde_json::map::Values<'a>),
+    Empty,
+}
+
+impl<'a> Iterator for SubresourceIteratorImpl<'a> {
+    type Item = &'a Value;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            SubresourceIteratorImpl::Once(it) => it.next(),
+            SubresourceIteratorImpl::Array(it) => it.next(),
+            SubresourceIteratorImpl::Object(it) => it.next(),
+            SubresourceIteratorImpl::Empty => None,
+        }
+    }
+}
+
+impl<'a> SubresourceIteratorImpl<'a> {
+    pub(crate) fn once(value: &'a Value) -> Self {
+        SubresourceIteratorImpl::Once(std::iter::once(value))
+    }
+}
+
+pub(crate) fn subresources_of(contents: &Value) -> SubresourceIterator<'_> {
     match contents.as_object() {
-        Some(schema) => Box::new(schema.iter().flat_map(|(key, value)| match key.as_str() {
-            "additionalProperties"
-            | "contains"
-            | "contentSchema"
-            | "else"
-            | "if"
-            | "items"
-            | "not"
-            | "propertyNames"
-            | "then"
-            | "unevaluatedItems"
-            | "unevaluatedProperties" => {
-                Box::new(std::iter::once(value)) as SubresourceIterator<'a>
+        Some(schema) => Box::new(schema.iter().flat_map(|(key, value)| {
+            match key.as_str() {
+                "additionalProperties"
+                | "contains"
+                | "contentSchema"
+                | "else"
+                | "if"
+                | "items"
+                | "not"
+                | "propertyNames"
+                | "then"
+                | "unevaluatedItems"
+                | "unevaluatedProperties" => SubresourceIteratorImpl::once(value),
+                "allOf" | "anyOf" | "oneOf" | "prefixItems" => value
+                    .as_array()
+                    .map_or(SubresourceIteratorImpl::Empty, |arr| {
+                        SubresourceIteratorImpl::Array(arr.iter())
+                    }),
+                "$defs" | "definitions" | "dependentSchemas" | "patternProperties"
+                | "properties" => value
+                    .as_object()
+                    .map_or(SubresourceIteratorImpl::Empty, |obj| {
+                        SubresourceIteratorImpl::Object(obj.values())
+                    }),
+                _ => SubresourceIteratorImpl::Empty,
             }
-            "allOf" | "anyOf" | "oneOf" | "prefixItems" => {
-                Box::new(value.as_array().into_iter().flatten())
-            }
-            "$defs" | "definitions" | "dependentSchemas" | "patternProperties" | "properties" => {
-                Box::new(value.as_object().into_iter().flat_map(|o| o.values()))
-            }
-            _ => Box::new(std::iter::empty()),
         })),
         None => Box::new(std::iter::empty()),
     }

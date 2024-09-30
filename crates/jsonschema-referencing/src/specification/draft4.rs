@@ -2,32 +2,40 @@ use serde_json::Value;
 
 use crate::{Error, Resolver, ResourceRef, Segments};
 
-use super::subresources::{self, SubresourceIterator};
+use super::subresources::{self, LegacySubresourceIteratorImpl, SubresourceIterator};
 
-pub(crate) fn subresources_of<'a>(contents: &'a Value) -> SubresourceIterator<'a> {
+pub(crate) fn subresources_of(contents: &Value) -> SubresourceIterator<'_> {
     match contents.as_object() {
         Some(schema) => Box::new(schema.iter().flat_map(|(key, value)| {
             match key.as_str() {
-                "not" => Box::new(std::iter::once(value)) as SubresourceIterator<'a>,
-                "allOf" | "anyOf" | "oneOf" => Box::new(value.as_array().into_iter().flatten()),
-                "definitions" | "patternProperties" | "properties" => {
-                    Box::new(value.as_object().into_iter().flat_map(|o| o.values()))
-                }
+                "not" => LegacySubresourceIteratorImpl::once(value),
+                "allOf" | "anyOf" | "oneOf" => value
+                    .as_array()
+                    .map_or(LegacySubresourceIteratorImpl::Empty, |arr| {
+                        LegacySubresourceIteratorImpl::Array(arr.iter())
+                    }),
+                "definitions" | "patternProperties" | "properties" => value
+                    .as_object()
+                    .map_or(LegacySubresourceIteratorImpl::Empty, |obj| {
+                        LegacySubresourceIteratorImpl::Object(obj.values())
+                    }),
                 "items" => match value {
-                    Value::Array(arr) => Box::new(arr.iter()) as SubresourceIterator<'a>,
-                    _ => Box::new(std::iter::once(value)),
+                    Value::Array(arr) => LegacySubresourceIteratorImpl::Array(arr.iter()),
+                    _ => LegacySubresourceIteratorImpl::once(value),
                 },
-                "dependencies" => Box::new(
+                "dependencies" => {
                     value
                         .as_object()
-                        .into_iter()
-                        .flat_map(|o| o.values())
-                        .filter(|v| v.is_object()),
-                ),
-                "additionalItems" | "additionalProperties" if value.is_object() => {
-                    Box::new(std::iter::once(value))
+                        .map_or(LegacySubresourceIteratorImpl::Empty, |deps| {
+                            LegacySubresourceIteratorImpl::FilteredObject(
+                                deps.values().filter(|v| v.is_object()),
+                            )
+                        })
                 }
-                _ => Box::new(std::iter::empty()),
+                "additionalItems" | "additionalProperties" if value.is_object() => {
+                    LegacySubresourceIteratorImpl::once(value)
+                }
+                _ => LegacySubresourceIteratorImpl::Empty,
             }
         })),
         None => Box::new(std::iter::empty()),
