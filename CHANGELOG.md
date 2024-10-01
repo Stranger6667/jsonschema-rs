@@ -9,6 +9,7 @@
 ### Performance
 
 - Faster building of a validator.
+- `date` format validation.
 
 ## [0.21.0] - 2024-09-29
 
