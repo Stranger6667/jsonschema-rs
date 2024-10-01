@@ -6,10 +6,14 @@
 
 - Extend email validation. [#471](https://github.com/Stranger6667/jsonschema-rs/issues/471)
 
+### Fixed
+
+- `time` format validation (leap seconds and second fractions).
+
 ### Performance
 
 - Faster building of a validator.
-- `date` format validation.
+- `date` & `time` formats validation.
 
 ## [0.21.0] - 2024-09-30
 
