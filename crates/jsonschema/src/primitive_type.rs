@@ -117,10 +117,7 @@ impl IntoIterator for PrimitiveTypesBitMap {
     type Item = PrimitiveType;
     type IntoIter = PrimitiveTypesBitMapIterator;
     fn into_iter(self) -> Self::IntoIter {
-        PrimitiveTypesBitMapIterator {
-            idx: 0,
-            bit_map: self,
-        }
+        PrimitiveTypesBitMapIterator { bit_map: self }
     }
 }
 #[cfg(test)]
@@ -137,21 +134,25 @@ impl From<Vec<PrimitiveType>> for PrimitiveTypesBitMap {
 /// Iterator over all [`PrimitiveType`] present in a [`PrimitiveTypesBitMap`]
 #[derive(Debug)]
 pub struct PrimitiveTypesBitMapIterator {
-    idx: u8,
     bit_map: PrimitiveTypesBitMap,
 }
+
 impl Iterator for PrimitiveTypesBitMapIterator {
     type Item = PrimitiveType;
-    #[allow(clippy::arithmetic_side_effects)]
+
     fn next(&mut self) -> Option<Self::Item> {
-        while self.idx <= 7 {
-            let bit_value = 1 << self.idx;
-            self.idx += 1;
-            if self.bit_map.inner & bit_value != 0 {
-                return Some(bit_map_representation_primitive_type(bit_value));
-            }
+        if self.bit_map.inner == 0 {
+            None
+        } else {
+            // Find the least significant bit that is set
+            let least_significant_bit = self.bit_map.inner & -(self.bit_map.inner as i8) as u8;
+
+            // Clear the least significant bit
+            self.bit_map.inner &= self.bit_map.inner - 1;
+
+            // Convert the bit to PrimitiveType and return
+            Some(bit_map_representation_primitive_type(least_significant_bit))
         }
-        None
     }
 }
 
