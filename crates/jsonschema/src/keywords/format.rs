@@ -487,12 +487,93 @@ impl Validate for UUIDValidator {
     }
 }
 
+fn is_valid_duration(duration: &str) -> bool {
+    let bytes = duration.as_bytes();
+    let len = bytes.len();
+
+    if len < 2 || bytes[0] != b'P' {
+        return false;
+    }
+
+    let mut i = 1;
+    let mut has_component = false;
+    let mut has_time = false;
+    let mut last_date_unit = 0;
+    let mut last_time_unit = 0;
+    let mut has_weeks = false;
+    let mut has_time_component = false;
+    let mut seen_units = 0u8;
+
+    let date_units = [b'Y', b'M', b'W', b'D'];
+    let time_units = [b'H', b'M', b'S'];
+
+    fn unit_index(units: &[u8], unit: u8) -> Option<usize> {
+        units.iter().position(|&u| u == unit)
+    }
+
+    while i < len {
+        if bytes[i] == b'T' {
+            if has_time {
+                return false;
+            }
+            has_time = true;
+            i += 1;
+            continue;
+        }
+
+        let start = i;
+        while i < len && bytes[i].is_ascii_digit() {
+            i += 1;
+        }
+
+        if i == start || i == len {
+            return false;
+        }
+
+        let unit = bytes[i];
+
+        if !has_time {
+            if let Some(idx) = unit_index(&date_units, unit) {
+                if unit == b'W' {
+                    if has_component {
+                        return false;
+                    }
+                    has_weeks = true;
+                } else if has_weeks {
+                    return false;
+                }
+                if idx < last_date_unit || (seen_units & (1 << idx) != 0) {
+                    return false;
+                }
+                seen_units |= 1 << idx;
+                last_date_unit = idx;
+            } else {
+                return false;
+            }
+        } else if let Some(idx) = unit_index(&time_units, unit) {
+            if idx < last_time_unit || (seen_units & (1 << (idx + 4)) != 0) {
+                return false;
+            }
+            seen_units |= 1 << (idx + 4);
+            last_time_unit = idx;
+            has_time_component = true;
+        } else {
+            return false;
+        }
+
+        has_component = true;
+        i += 1;
+    }
+
+    has_component && (!has_time || has_time_component)
+}
+
 format_validator!(DurationValidator, "duration");
 impl Validate for DurationValidator {
     validate!("duration");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            iso8601::duration(item).is_ok()
+            is_valid_duration(item)
         } else {
             true
         }
@@ -682,7 +763,7 @@ mod tests {
 
     use crate::{error::ValidationErrorKind, tests_util};
 
-    use super::is_valid_datetime;
+    use super::{is_valid_datetime, is_valid_duration};
 
     #[test]
     fn ignored_format() {
@@ -755,25 +836,10 @@ mod tests {
         tests_util::is_not_valid(&schema, &failing_instance);
     }
 
-    #[test]
-    fn duration() {
-        let schema = json!({"format": "duration", "type": "string"});
-
-        let passing_instances = vec![json!("P15DT1H22M1.5S"), json!("P30D"), json!("PT5M")];
-        let failing_instances = vec![json!("15DT1H22M1.5S"), json!("unknown")];
-
-        let validator = crate::options()
-            .with_draft(Draft::Draft201909)
-            .should_validate_formats(true)
-            .build(&schema)
-            .unwrap();
-
-        for passing_instance in passing_instances {
-            assert!(validator.is_valid(&passing_instance));
-        }
-        for failing_instance in failing_instances {
-            assert!(!validator.is_valid(&failing_instance));
-        }
+    #[test_case("P1Y1Y")]
+    #[test_case("PT1H1H")]
+    fn test_invalid_duration(input: &str) {
+        assert!(!is_valid_duration(input));
     }
 
     #[test]

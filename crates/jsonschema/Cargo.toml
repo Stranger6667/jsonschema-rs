@@ -32,7 +32,6 @@ fancy-regex = "0.13"
 fraction = { version = "0.15", default-features = false, features = [
   "with-bigint",
 ] }
-iso8601 = "0.6"
 itoa = "1"
 num-cmp = "0.1"
 once_cell = "1.19"

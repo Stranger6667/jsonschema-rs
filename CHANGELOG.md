@@ -9,11 +9,12 @@
 ### Fixed
 
 - `time` format validation (leap seconds and second fractions).
+- `duration` format validation.
 
 ### Performance
 
 - Faster building of a validator.
-- `date`, `time`, & `date-time` formats validation.
+- `date`, `time`, `date-time`, `duration` formats validation.
 
 ## [0.21.0] - 2024-09-29
 
