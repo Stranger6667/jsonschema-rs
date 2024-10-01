@@ -4,17 +4,17 @@ use crate::{Error, Resolver, ResourceRef, Segments};
 
 use super::subresources::{self, SubresourceIterator};
 
-pub(crate) fn subresources_of<'a>(contents: &'a Value) -> SubresourceIterator<'a> {
+pub(crate) fn subresources_of(contents: &Value) -> SubresourceIterator<'_> {
     match contents.as_object() {
         Some(schema) => Box::new(schema.iter().flat_map(|(key, value)| {
             match key.as_str() {
-                "not" => Box::new(std::iter::once(value)) as SubresourceIterator<'a>,
+                "not" => Box::new(std::iter::once(value)) as SubresourceIterator<'_>,
                 "allOf" | "anyOf" | "oneOf" => Box::new(value.as_array().into_iter().flatten()),
                 "definitions" | "patternProperties" | "properties" => {
                     Box::new(value.as_object().into_iter().flat_map(|o| o.values()))
                 }
                 "items" => match value {
-                    Value::Array(arr) => Box::new(arr.iter()) as SubresourceIterator<'a>,
+                    Value::Array(arr) => Box::new(arr.iter()) as SubresourceIterator<'_>,
                     _ => Box::new(std::iter::once(value)),
                 },
                 "dependencies" => Box::new(

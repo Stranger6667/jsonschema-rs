@@ -4,7 +4,7 @@ use crate::{segments::Segment, Error, Resolver, ResourceRef, Segments};
 
 pub(crate) type SubresourceIterator<'a> = Box<dyn Iterator<Item = &'a Value> + 'a>;
 
-pub(crate) fn subresources_of<'a>(contents: &'a Value) -> SubresourceIterator<'a> {
+pub(crate) fn subresources_of(contents: &Value) -> SubresourceIterator<'_> {
     match contents.as_object() {
         Some(schema) => Box::new(schema.iter().flat_map(|(key, value)| match key.as_str() {
             "additionalProperties"
@@ -18,7 +18,7 @@ pub(crate) fn subresources_of<'a>(contents: &'a Value) -> SubresourceIterator<'a
             | "then"
             | "unevaluatedItems"
             | "unevaluatedProperties" => {
-                Box::new(std::iter::once(value)) as SubresourceIterator<'a>
+                Box::new(std::iter::once(value)) as SubresourceIterator<'_>
             }
             "allOf" | "anyOf" | "oneOf" | "prefixItems" => {
                 Box::new(value.as_array().into_iter().flatten())

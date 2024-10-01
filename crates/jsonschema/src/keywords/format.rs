@@ -98,13 +98,13 @@ fn is_valid_date(date: &str) -> bool {
         + (bytes[3] as u16 - b'0' as u16);
 
     // Parse month
-    let month = (bytes[5] as u8 - b'0') * 10 + (bytes[6] as u8 - b'0');
-    if month < 1 || month > 12 {
+    let month = (bytes[5] - b'0') * 10 + (bytes[6] - b'0');
+    if !(1..=12).contains(&month) {
         return false;
     }
 
     // Parse day
-    let day = (bytes[8] as u8 - b'0') * 10 + (bytes[9] as u8 - b'0');
+    let day = (bytes[8] - b'0') * 10 + (bytes[9] - b'0');
 
     // Check day validity
     match month {
@@ -137,13 +137,32 @@ impl Validate for DateValidator {
         }
     }
 }
+
+fn is_valid_datetime(datetime: &str) -> bool {
+    // Find the position of 'T' or 't' separator
+    let t_pos = match datetime.bytes().position(|b| b == b'T' || b == b't') {
+        Some(pos) => pos,
+        None => return false, // 'T' separator not found
+    };
+
+    // Split the string into date and time parts
+    let (date_part, time_part) = datetime.split_at(t_pos);
+
+    // Validate date part
+    if !is_valid_date(date_part) {
+        return false;
+    }
+
+    // Validate time part (skip the 'T' character)
+    is_valid_time(&time_part[1..])
+}
+
 format_validator!(DateTimeValidator, "date-time");
 impl Validate for DateTimeValidator {
     validate!("date-time");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            time::OffsetDateTime::parse(item, &time::format_description::well_known::Rfc3339)
-                .is_ok()
+            is_valid_datetime(item)
         } else {
             true
         }
@@ -329,8 +348,8 @@ impl Validate for RelativeJsonPointerValidator {
     }
 }
 
-fn is_valid_time(item: &str) -> bool {
-    let bytes = item.as_bytes();
+fn is_valid_time(time: &str) -> bool {
+    let bytes = time.as_bytes();
     let len = bytes.len();
 
     if len < 9 {
@@ -387,8 +406,10 @@ fn is_valid_time(item: &str) -> bool {
                 return false;
             }
             i += 1;
-            let offset_hh = (bytes[i] - b'0') * 10 + (bytes[i + 1] - b'0');
-            let offset_mm = (bytes[i + 3] - b'0') * 10 + (bytes[i + 4] - b'0');
+            let offset_hh =
+                (bytes[i] as i32 - b'0' as i32) * 10 + (bytes[i + 1] as i32 - b'0' as i32);
+            let offset_mm =
+                (bytes[i + 3] as i32 - b'0' as i32) * 10 + (bytes[i + 4] as i32 - b'0' as i32);
             if !bytes[i].is_ascii_digit()
                 || !bytes[i + 1].is_ascii_digit()
                 || bytes[i + 2] != b':'
@@ -403,12 +424,12 @@ fn is_valid_time(item: &str) -> bool {
                 let mut utc_hh = hh as i32;
                 let mut utc_mm = mm as i32;
                 if bytes[i - 1] == b'+' {
-                    utc_hh -= offset_hh as i32;
-                    utc_mm -= offset_mm as i32;
+                    utc_hh -= offset_hh;
+                    utc_mm -= offset_mm;
                 } else {
                     // '-'
-                    utc_hh += offset_hh as i32;
-                    utc_mm += offset_mm as i32;
+                    utc_hh += offset_hh;
+                    utc_mm += offset_mm;
                 }
                 // Adjust for minute overflow/underflow
                 utc_hh += utc_mm / 60;
@@ -661,6 +682,8 @@ mod tests {
 
     use crate::{error::ValidationErrorKind, tests_util};
 
+    use super::is_valid_datetime;
+
     #[test]
     fn ignored_format() {
         let schema = json!({"format": "custom", "type": "string"});
@@ -787,5 +810,10 @@ mod tests {
             .build(&json!({"format": "ipv4", "type": "string"}))
             .expect("Invalid schema");
         assert_eq!(validator.is_valid(&json!(input)), expected);
+    }
+
+    #[test]
+    fn test_is_valid_datetime_panic() {
+        is_valid_datetime("2624-04-25t23:14:04-256\x112");
     }
 }
