@@ -13,7 +13,7 @@
 ### Performance
 
 - Faster building of a validator.
-- `date` & `time` formats validation.
+- `date`, `time`, & `date-time` formats validation.
 
 ## [0.21.0] - 2024-09-29
 
