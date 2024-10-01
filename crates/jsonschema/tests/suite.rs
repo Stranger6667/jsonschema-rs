@@ -26,7 +26,7 @@ use testsuite::{suite, Test};
         "draft2019-09::optional::format::time::validation_of_time_strings",
         "draft2019-09::optional::ref_of_unknown_keyword::reference_internals_of_known_non_applicator",
         "draft2019-09::r#ref::ref_with_recursive_anchor",
-        "draft2019-09::unevaluated_items",
+        //"draft2019-09::unevaluated_items",
         "draft2019-09::unevaluated_properties::unevaluated_properties_with_recursive_ref",
         "draft2019-09::vocabulary::schema_that_uses_custom_metaschema_with_with_no_validation_vocabulary",
         "draft2020-12::optional::cross_draft::refs_to_historic_drafts_are_processed_as_historic_drafts",

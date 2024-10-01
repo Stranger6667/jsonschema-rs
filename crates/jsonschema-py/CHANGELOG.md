@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Support for `unevaluatedItems`.
+
 ### Performance
 
 - Faster building of a validator.

@@ -137,6 +137,8 @@ pub enum ValidationErrorKind {
     Schema,
     /// When the input value doesn't match one or multiple required types.
     Type { kind: TypeKind },
+    /// Unexpected items.
+    UnevaluatedItems { unexpected: Vec<String> },
     /// Unexpected properties.
     UnevaluatedProperties { unexpected: Vec<String> },
     /// When the input array has non-unique elements.
@@ -680,6 +682,19 @@ impl<'a> ValidationError<'a> {
             schema_path,
         }
     }
+    pub(crate) const fn unevaluated_items(
+        schema_path: JsonPointer,
+        instance_path: JsonPointer,
+        instance: &'a Value,
+        unexpected: Vec<String>,
+    ) -> ValidationError<'a> {
+        ValidationError {
+            instance_path,
+            instance: Cow::Borrowed(instance),
+            kind: ValidationErrorKind::UnevaluatedItems { unexpected },
+            schema_path,
+        }
+    }
     pub(crate) const fn unevaluated_properties(
         schema_path: JsonPointer,
         instance_path: JsonPointer,
@@ -956,6 +971,25 @@ impl fmt::Display for ValidationError<'_> {
             }
             ValidationErrorKind::MultipleOf { multiple_of } => {
                 write!(f, "{} is not a multiple of {}", self.instance, multiple_of)
+            }
+            ValidationErrorKind::UnevaluatedItems { unexpected } => {
+                let verb = {
+                    if unexpected.len() == 1 {
+                        "was"
+                    } else {
+                        "were"
+                    }
+                };
+                write!(
+                    f,
+                    "Unevaluated items are not allowed ({} {} unexpected)",
+                    unexpected
+                        .iter()
+                        .map(|x| format!("'{}'", x))
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                    verb
+                )
             }
             ValidationErrorKind::UnevaluatedProperties { unexpected } => {
                 let verb = {

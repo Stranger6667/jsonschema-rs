@@ -35,6 +35,7 @@ pub(crate) mod property_names;
 pub(crate) mod ref_;
 pub(crate) mod required;
 pub(crate) mod type_;
+pub(crate) mod unevaluated_items;
 pub(crate) mod unevaluated_properties;
 pub(crate) mod unique_items;
 use referencing::Draft;
@@ -129,6 +130,9 @@ pub(crate) fn get_for_draft(draft: Draft, keyword: &str) -> Option<CompileFunc> 
             Some(dependencies::compile_dependent_schemas)
         }
         (Draft::Draft201909 | Draft::Draft202012, "prefixItems") => Some(prefix_items::compile),
+        (Draft::Draft201909 | Draft::Draft202012, "unevaluatedItems") => {
+            Some(unevaluated_items::compile)
+        }
         (Draft::Draft201909 | Draft::Draft202012, "unevaluatedProperties") => {
             Some(unevaluated_properties::compile)
         }
