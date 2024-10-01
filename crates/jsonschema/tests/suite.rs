@@ -34,7 +34,6 @@ use testsuite::{suite, Test};
         "draft2020-12::optional::ecmascript_regex::w_in_pattern_properties_matches_a_za_z0_9_not_unicode_letters",
         "draft2020-12::optional::format::duration::validation_of_duration_strings",
         "draft2020-12::optional::format::ecmascript_regex::a_is_not_an_ecma_262_control_escape",
-        "draft2020-12::optional::format::email::validation_of_e_mail_addresses",
         "draft2020-12::optional::format::idn_hostname::validation_of_internationalized_host_names",
         "draft2020-12::optional::format::time::validation_of_time_strings",
         "draft2020-12::optional::format::uri_template::format_uri_template::an_invalid_uri",

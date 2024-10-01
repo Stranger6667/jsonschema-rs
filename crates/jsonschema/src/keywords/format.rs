@@ -5,6 +5,7 @@ use std::{
     sync::Arc,
 };
 
+use email_address::EmailAddress;
 use fancy_regex::Regex;
 use once_cell::sync::Lazy;
 use serde_json::{Map, Value};
@@ -112,24 +113,35 @@ impl Validate for DateTimeValidator {
         }
     }
 }
+
 fn is_valid_email(email: &str) -> bool {
-    if let Some('.') = email.chars().next() {
-        // dot before local part is not valid
-        return false;
-    }
-    // This loop exits early if it finds `@`.
-    // Therefore, match arms examine only the local part
-    for (a, b) in email.chars().zip(email.chars().skip(1)) {
-        match (a, b) {
-            // two subsequent dots inside local part are not valid
-            // dot after local part is not valid
-            ('.', '.') | ('.', '@') => return false,
-            // The domain part is not validated for simplicity
-            (_, '@') => return true,
-            (_, _) => continue,
+    if let Ok(parsed) = EmailAddress::from_str(email) {
+        let domain = parsed.domain();
+        if let Some(domain) = domain.strip_prefix('[').and_then(|d| d.strip_suffix(']')) {
+            if let Some(domain) = domain.strip_prefix("IPv6:") {
+                domain.parse::<Ipv6Addr>().is_ok()
+            } else {
+                domain.parse::<Ipv4Addr>().is_ok()
+            }
+        } else {
+            is_valid_hostname(domain)
         }
+    } else {
+        false
     }
-    false
+}
+
+fn is_valid_hostname(hostname: &str) -> bool {
+    !(hostname.ends_with('-')
+        || hostname.starts_with('-')
+        || hostname.is_empty()
+        || bytecount::num_chars(hostname.as_bytes()) > 255
+        || hostname
+            .chars()
+            .any(|c| !(c.is_alphanumeric() || c == '-' || c == '.'))
+        || hostname
+            .split('.')
+            .any(|part| bytecount::num_chars(part.as_bytes()) > 63))
 }
 
 format_validator!(EmailValidator, "email");
@@ -159,16 +171,7 @@ impl Validate for HostnameValidator {
     validate!("hostname");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            !(item.ends_with('-')
-                || item.starts_with('-')
-                || item.is_empty()
-                || bytecount::num_chars(item.as_bytes()) > 255
-                || item
-                    .chars()
-                    .any(|c| !(c.is_alphanumeric() || c == '-' || c == '.'))
-                || item
-                    .split('.')
-                    .any(|part| bytecount::num_chars(part.as_bytes()) > 63))
+            is_valid_hostname(item)
         } else {
             true
         }
@@ -179,16 +182,7 @@ impl Validate for IDNHostnameValidator {
     validate!("idn-hostname");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            !(item.ends_with('-')
-                || item.starts_with('-')
-                || item.is_empty()
-                || bytecount::num_chars(item.as_bytes()) > 255
-                || item
-                    .chars()
-                    .any(|c| !(c.is_alphanumeric() || c == '-' || c == '.'))
-                || item
-                    .split('.')
-                    .any(|part| bytecount::num_chars(part.as_bytes()) > 63))
+            is_valid_hostname(item)
         } else {
             true
         }
