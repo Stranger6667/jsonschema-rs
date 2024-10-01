@@ -21,8 +21,6 @@ use crate::{
     Draft,
 };
 
-static DATE_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}\z").expect("Is a valid regex"));
 static JSON_POINTER_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(/(([^/~])|(~[01]))*)*\z").expect("Is a valid regex"));
 static RELATIVE_JSON_POINTER_RE: Lazy<Regex> = Lazy::new(|| {
@@ -76,26 +74,69 @@ macro_rules! validate {
     };
 }
 
+fn is_valid_date(date: &str) -> bool {
+    if date.len() != 10 {
+        return false;
+    }
+
+    let bytes = date.as_bytes();
+
+    // Check format: YYYY-MM-DD
+    if bytes[4] != b'-'
+        || bytes[7] != b'-'
+        || !bytes[0].is_ascii_digit()
+        || !bytes[1].is_ascii_digit()
+        || !bytes[2].is_ascii_digit()
+        || !bytes[3].is_ascii_digit()
+        || !bytes[5].is_ascii_digit()
+        || !bytes[6].is_ascii_digit()
+        || !bytes[8].is_ascii_digit()
+        || !bytes[9].is_ascii_digit()
+    {
+        return false;
+    }
+
+    // Parse year
+    let year = (bytes[0] as u16 - b'0' as u16) * 1000
+        + (bytes[1] as u16 - b'0' as u16) * 100
+        + (bytes[2] as u16 - b'0' as u16) * 10
+        + (bytes[3] as u16 - b'0' as u16);
+
+    // Parse month
+    let month = (bytes[5] as u8 - b'0') * 10 + (bytes[6] as u8 - b'0');
+    if month < 1 || month > 12 {
+        return false;
+    }
+
+    // Parse day
+    let day = (bytes[8] as u8 - b'0') * 10 + (bytes[9] as u8 - b'0');
+
+    // Check day validity
+    match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => day <= 31,
+        4 | 6 | 9 | 11 => day <= 30,
+        2 => {
+            if is_leap_year(year) {
+                day <= 29
+            } else {
+                day <= 28
+            }
+        }
+        _ => false,
+    }
+}
+
+#[inline]
+fn is_leap_year(year: u16) -> bool {
+    (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+}
+
 format_validator!(DateValidator, "date");
 impl Validate for DateValidator {
     validate!("date");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            if time::Date::parse(
-                item,
-                &time::macros::format_description!("[year]-[month]-[day]"),
-            )
-            .is_ok()
-            {
-                // Padding with zeroes is ignored by the underlying parser. The most efficient
-                // way to check it will be to use a custom parser that won't ignore zeroes,
-                // but this regex will do the trick and costs ~20% extra time in this validator.
-                DATE_RE
-                    .is_match(item.as_str())
-                    .expect("Simple DATE_RE pattern")
-            } else {
-                false
-            }
+            is_valid_date(item)
         } else {
             true
         }
