@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Extend email validation. [#471](https://github.com/Stranger6667/jsonschema-rs/issues/471)
+
 ### Performance
 
 - Faster building of a validator.
