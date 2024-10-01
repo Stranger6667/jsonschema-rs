@@ -26,11 +26,6 @@ static JSON_POINTER_RE: Lazy<Regex> =
 static RELATIVE_JSON_POINTER_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"^(?:0|[1-9][0-9]*)(?:#|(?:/(?:[^~/]|~0|~1)*)*)\z").expect("Is a valid regex")
 });
-static TIME_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(
-        r"^([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])(\.[0-9]{6})?(([Zz])|([+|\-]([01][0-9]|2[0-3]):[0-5][0-9]))\z",
-    ).expect("Is a valid regex")
-});
 static URI_TEMPLATE_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
         r#"^(?:(?:[^\x00-\x20"'<>%\\^`{|}]|%[0-9a-f]{2})|\{[+#./;?&=,!@|]?(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?(?:,(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?)*})*\z"#
@@ -333,12 +328,112 @@ impl Validate for RelativeJsonPointerValidator {
         }
     }
 }
+
+fn is_valid_time(item: &str) -> bool {
+    let bytes = item.as_bytes();
+    let len = bytes.len();
+
+    if len < 9 {
+        // Minimum valid time is "HH:MM:SSZ"
+        return false;
+    }
+
+    // Check HH:MM:SS format
+    if !bytes[0].is_ascii_digit()
+        || !bytes[1].is_ascii_digit()
+        || bytes[2] != b':'
+        || !bytes[3].is_ascii_digit()
+        || !bytes[4].is_ascii_digit()
+        || bytes[5] != b':'
+        || !bytes[6].is_ascii_digit()
+        || !bytes[7].is_ascii_digit()
+    {
+        return false;
+    }
+
+    // Parse hours, minutes, seconds
+    let hh = (bytes[0] - b'0') * 10 + (bytes[1] - b'0');
+    let mm = (bytes[3] - b'0') * 10 + (bytes[4] - b'0');
+    let ss = (bytes[6] - b'0') * 10 + (bytes[7] - b'0');
+
+    if hh > 23 || mm > 59 || ss > 60 {
+        return false;
+    }
+
+    let mut i = 8;
+
+    // Check fractional seconds
+    if i < len && bytes[i] == b'.' {
+        i += 1;
+        let mut has_digit = false;
+        while i < len && bytes[i].is_ascii_digit() {
+            has_digit = true;
+            i += 1;
+        }
+        if !has_digit {
+            return false;
+        }
+    }
+
+    // Check offset
+    if i == len {
+        return false;
+    }
+
+    match bytes[i] {
+        b'Z' | b'z' => i == len - 1 && (ss != 60 || (hh == 23 && mm == 59)),
+        b'+' | b'-' => {
+            if len - i != 6 {
+                return false;
+            }
+            i += 1;
+            let offset_hh = (bytes[i] - b'0') * 10 + (bytes[i + 1] - b'0');
+            let offset_mm = (bytes[i + 3] - b'0') * 10 + (bytes[i + 4] - b'0');
+            if !bytes[i].is_ascii_digit()
+                || !bytes[i + 1].is_ascii_digit()
+                || bytes[i + 2] != b':'
+                || !bytes[i + 3].is_ascii_digit()
+                || !bytes[i + 4].is_ascii_digit()
+                || offset_hh > 23
+                || offset_mm > 59
+            {
+                return false;
+            }
+            if ss == 60 {
+                let mut utc_hh = hh as i32;
+                let mut utc_mm = mm as i32;
+                if bytes[i - 1] == b'+' {
+                    utc_hh -= offset_hh as i32;
+                    utc_mm -= offset_mm as i32;
+                } else {
+                    // '-'
+                    utc_hh += offset_hh as i32;
+                    utc_mm += offset_mm as i32;
+                }
+                // Adjust for minute overflow/underflow
+                utc_hh += utc_mm / 60;
+                utc_mm %= 60;
+                if utc_mm < 0 {
+                    utc_mm += 60;
+                    utc_hh -= 1;
+                }
+                // Adjust for hour overflow/underflow
+                utc_hh = (utc_hh + 24) % 24;
+                utc_hh == 23 && utc_mm == 59
+            } else {
+                true
+            }
+        }
+        _ => false,
+    }
+}
+
 format_validator!(TimeValidator, "time");
 impl Validate for TimeValidator {
     validate!("time");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            TIME_RE.is_match(item).expect("Simple TIME_RE pattern")
+            is_valid_time(item)
         } else {
             true
         }
