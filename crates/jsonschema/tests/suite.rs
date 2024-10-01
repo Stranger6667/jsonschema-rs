@@ -31,7 +31,6 @@ use testsuite::{suite, Test};
         "draft2020-12::optional::ecmascript_regex::w_in_pattern_properties_matches_a_za_z0_9_not_unicode_letters",
         "draft2020-12::optional::format::ecmascript_regex::a_is_not_an_ecma_262_control_escape",
         "draft2020-12::optional::format::idn_hostname::validation_of_internationalized_host_names",
-        "draft2020-12::optional::format::uri_template::format_uri_template::an_invalid_uri",
         "draft2020-12::optional::ref_of_unknown_keyword::reference_internals_of_known_non_applicator",
         "draft2020-12::unevaluated_properties::unevaluated_properties_with_dynamic_ref",
         "draft2020-12::unevaluated_items",
