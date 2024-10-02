@@ -1,6 +1,11 @@
-use std::{collections::VecDeque, fmt::Debug, sync::Arc};
+use std::{
+    collections::VecDeque,
+    fmt::Debug,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
-use ahash::{AHashMap, AHashSet};
+use ahash::{AHashMap, AHashSet, AHasher};
 use fluent_uri::UriRef;
 use once_cell::sync::Lazy;
 use serde_json::Value;
@@ -276,6 +281,7 @@ fn process_resources(
     default_draft: Draft,
 ) -> Result<(), Error> {
     let mut queue = VecDeque::with_capacity(32);
+    let mut seen = AHashSet::new();
     let mut external = AHashSet::new();
 
     // Populate the resources & queue from the input
@@ -308,7 +314,7 @@ fn process_resources(
             }
 
             // Collect references to external resources in this resource
-            collect_external_references(&base, resource.contents(), &mut external)?;
+            collect_external_references(&base, resource.contents(), &mut external, &mut seen)?;
 
             // Process subresources
             for subresource in resource.subresources() {
@@ -319,7 +325,12 @@ fn process_resources(
                 } else {
                     base.clone()
                 };
-                collect_external_references(&sub_base, subresource.contents(), &mut external)?;
+                collect_external_references(
+                    &sub_base,
+                    subresource.contents(),
+                    &mut external,
+                    &mut seen,
+                )?;
                 // Push subresources for further exploration
                 stack.push((sub_base, Arc::clone(&subresource)));
                 queue.push_back((base.clone(), subresource));
@@ -330,7 +341,12 @@ fn process_resources(
                     if let Some(sub_id) = subresource.id() {
                         base = uri::resolve_against(&base.borrow(), sub_id)?;
                     };
-                    collect_external_references(&base, subresource.contents(), &mut external)?;
+                    collect_external_references(
+                        &base,
+                        subresource.contents(),
+                        &mut external,
+                        &mut seen,
+                    )?;
                     stack.push((base.clone(), subresource));
                 }
             }
@@ -362,11 +378,23 @@ fn collect_external_references(
     base: &UriRef<String>,
     contents: &Value,
     collected: &mut AHashSet<UriRef<String>>,
+    seen: &mut AHashSet<u64>,
 ) -> Result<(), Error> {
     if base.scheme().map(fluent_uri::component::Scheme::as_str) == Some("urn") {
         return Ok(());
     }
     if let Some(reference) = contents.get("$ref").and_then(Value::as_str) {
+        if reference.starts_with('#') {
+            // Not an external reference
+            return Ok(());
+        }
+        let mut hasher = AHasher::default();
+        (base.as_str(), reference).hash(&mut hasher);
+        let hash = hasher.finish();
+        if !seen.insert(hash) {
+            // Reference has already been seen
+            return Ok(());
+        }
         let resolved = uri::resolve_against(&base.borrow(), reference)?;
         let builder = UriRef::builder();
         let base_uri = match (resolved.scheme(), resolved.authority()) {
