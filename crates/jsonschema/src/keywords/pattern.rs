@@ -6,15 +6,61 @@ use crate::{
     primitive_type::PrimitiveType,
     validator::Validate,
 };
+use ahash::AHashMap;
 use once_cell::sync::Lazy;
 use serde_json::{Map, Value};
 
 use crate::paths::JsonPointer;
-use std::ops::Index;
+use std::{collections::VecDeque, ops::Index, sync::Mutex};
 
 // Use regex::Regex here to take advantage of replace_all method not available in fancy_regex::Regex
 static CONTROL_GROUPS_RE: Lazy<regex::Regex> =
     Lazy::new(|| regex::Regex::new(r"\\c[A-Za-z]").expect("Is a valid regex"));
+
+static REGEX_CACHE: Lazy<Mutex<LruCache>> = Lazy::new(|| Mutex::new(LruCache::new(10)));
+
+struct LruCache {
+    map: AHashMap<String, fancy_regex::Regex>,
+    queue: VecDeque<String>,
+    capacity: usize,
+}
+
+impl LruCache {
+    fn new(capacity: usize) -> Self {
+        LruCache {
+            map: AHashMap::new(),
+            queue: VecDeque::new(),
+            capacity,
+        }
+    }
+
+    fn get(&mut self, key: &str) -> Option<&fancy_regex::Regex> {
+        if let Some(value) = self.map.get(key) {
+            let index = self.queue.iter().position(|x| x == key).unwrap();
+            let k = self.queue.remove(index).unwrap();
+            self.queue.push_back(k);
+            Some(value)
+        } else {
+            None
+        }
+    }
+
+    fn insert(&mut self, key: String, value: fancy_regex::Regex) -> Option<fancy_regex::Regex> {
+        if self.map.len() >= self.capacity && !self.map.contains_key(&key) {
+            if let Some(lru_key) = self.queue.pop_front() {
+                self.map.remove(&lru_key);
+            }
+        }
+
+        let old_value = self.map.insert(key.clone(), value);
+        if old_value.is_some() {
+            let index = self.queue.iter().position(|x| x == &key).unwrap();
+            self.queue.remove(index);
+        }
+        self.queue.push_back(key);
+        old_value
+    }
+}
 
 pub(crate) struct PatternValidator {
     original: String,
@@ -30,16 +76,23 @@ impl PatternValidator {
     ) -> CompilationResult<'a> {
         match pattern {
             Value::String(item) => {
-                let pattern = match convert_regex(item) {
-                    Ok(r) => r,
-                    Err(_) => {
-                        return Err(ValidationError::format(
-                            JsonPointer::default(),
-                            ctx.clone().into_pointer(),
-                            pattern,
-                            "regex",
-                        ))
-                    }
+                let mut cache = REGEX_CACHE.lock().expect("Lock is poisoned");
+                let pattern = if let Some(regex) = cache.get(item) {
+                    regex.clone()
+                } else {
+                    let regex = match convert_regex(item) {
+                        Ok(r) => r,
+                        Err(_) => {
+                            return Err(ValidationError::format(
+                                JsonPointer::default(),
+                                ctx.clone().into_pointer(),
+                                pattern,
+                                "regex",
+                            ))
+                        }
+                    };
+                    cache.insert(item.clone(), regex.clone());
+                    regex
                 };
                 Ok(Box::new(PatternValidator {
                     original: item.clone(),
