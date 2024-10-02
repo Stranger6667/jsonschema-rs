@@ -3,7 +3,7 @@ use codspeed_criterion_compat::{criterion_group, criterion_main, BenchmarkId, Cr
 use serde_json::Value;
 
 fn bench_build(c: &mut Criterion, name: &str, schema: &Value) {
-    c.bench_function(&format!("{}/build", name), |b| {
+    c.bench_with_input(BenchmarkId::new("build", name), schema, |b, schema| {
         b.iter(|| jsonschema::validator_for(schema).expect("Valid schema"))
     });
 }
@@ -11,7 +11,7 @@ fn bench_build(c: &mut Criterion, name: &str, schema: &Value) {
 fn bench_is_valid(c: &mut Criterion, name: &str, schema: &Value, instance: &Value) {
     let validator = jsonschema::validator_for(schema).expect("Valid schema");
     c.bench_with_input(
-        BenchmarkId::new(name, "is_valid"),
+        BenchmarkId::new("is_valid", name),
         instance,
         |b, instance| {
             b.iter(|| {
@@ -24,7 +24,7 @@ fn bench_is_valid(c: &mut Criterion, name: &str, schema: &Value, instance: &Valu
 fn bench_validate(c: &mut Criterion, name: &str, schema: &Value, instance: &Value) {
     let validator = jsonschema::validator_for(schema).expect("Valid schema");
     c.bench_with_input(
-        BenchmarkId::new(name, "validate"),
+        BenchmarkId::new("validate", name),
         instance,
         |b, instance| {
             b.iter(|| {

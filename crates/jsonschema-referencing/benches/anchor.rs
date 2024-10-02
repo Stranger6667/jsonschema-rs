@@ -1,4 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use codspeed_criterion_compat::{
+    black_box, criterion_group, criterion_main, BenchmarkId, Criterion,
+};
 use referencing::{Draft, Registry};
 use serde_json::json;
 
@@ -18,14 +20,18 @@ fn bench_anchor_lookup(c: &mut Criterion) {
     let mut group = c.benchmark_group("Anchor Lookup");
 
     // Benchmark lookup of existing anchor
-    group.bench_function("lookup", |b| {
-        b.iter(|| {
-            let resolver = registry
-                .try_resolver("http://example.com/")
-                .expect("Invalid base URI");
-            let _resolved = resolver.lookup(black_box("#foo"));
-        });
-    });
+    group.bench_with_input(
+        BenchmarkId::new("lookup", "small"),
+        &registry,
+        |b, registry| {
+            b.iter(|| {
+                let resolver = registry
+                    .try_resolver("http://example.com/")
+                    .expect("Invalid base URI");
+                let _resolved = resolver.lookup(black_box("#foo"));
+            });
+        },
+    );
 
     group.finish();
 }

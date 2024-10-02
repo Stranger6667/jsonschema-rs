@@ -1,4 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use codspeed_criterion_compat::{
+    black_box, criterion_group, criterion_main, BenchmarkId, Criterion,
+};
 use referencing::Draft;
 
 static DRAFT4: &[u8] = include_bytes!("../../benchmark/data/subresources/draft4.json");
@@ -14,11 +16,11 @@ fn bench_subresources(c: &mut Criterion) {
         (Draft::Draft7, DRAFT7, "draft 7"),
         (Draft::Draft201909, DRAFT201909, "draft 2019-09"),
         (Draft::Draft202012, DRAFT202012, "draft 2020-12"),
-        (Draft::Draft4, benchmark::GEOJSON, "geojson"),
-        (Draft::Draft4, benchmark::SWAGGER, "swagger"),
-        (Draft::Draft4, benchmark::OPEN_API, "openapi"),
-        (Draft::Draft4, benchmark::CITM_SCHEMA, "citm"),
-        (Draft::Draft7, benchmark::FAST_SCHEMA, "fast"),
+        (Draft::Draft4, benchmark::GEOJSON, "GeoJSON"),
+        (Draft::Draft4, benchmark::SWAGGER, "Swagger"),
+        (Draft::Draft4, benchmark::OPEN_API, "Open API"),
+        (Draft::Draft4, benchmark::CITM_SCHEMA, "CITM"),
+        (Draft::Draft7, benchmark::FAST_SCHEMA, "Fast"),
     ];
 
     let mut group = c.benchmark_group("subresources");
@@ -26,11 +28,15 @@ fn bench_subresources(c: &mut Criterion) {
     for (draft, data, name) in &drafts {
         let schema = benchmark::read_json(data);
 
-        group.bench_function((*name).to_string(), |b| {
-            b.iter(|| {
-                let _sub: Vec<_> = draft.subresources_of(black_box(&schema)).collect();
-            });
-        });
+        group.bench_with_input(
+            BenchmarkId::new("subresources_of", name),
+            &schema,
+            |b, schema| {
+                b.iter(|| {
+                    let _sub: Vec<_> = draft.subresources_of(black_box(schema)).collect();
+                });
+            },
+        );
     }
 
     group.finish();
