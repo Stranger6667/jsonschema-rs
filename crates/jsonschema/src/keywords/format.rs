@@ -77,34 +77,30 @@ fn is_valid_date(date: &str) -> bool {
     let bytes = date.as_bytes();
 
     // Check format: YYYY-MM-DD
-    if bytes[4] != b'-'
-        || bytes[7] != b'-'
-        || !bytes[0].is_ascii_digit()
-        || !bytes[1].is_ascii_digit()
-        || !bytes[2].is_ascii_digit()
-        || !bytes[3].is_ascii_digit()
-        || !bytes[5].is_ascii_digit()
-        || !bytes[6].is_ascii_digit()
-        || !bytes[8].is_ascii_digit()
-        || !bytes[9].is_ascii_digit()
-    {
+    if bytes[4] != b'-' || bytes[7] != b'-' {
         return false;
     }
 
-    // Parse year
-    let year = (bytes[0] as u16 - b'0' as u16) * 1000
-        + (bytes[1] as u16 - b'0' as u16) * 100
-        + (bytes[2] as u16 - b'0' as u16) * 10
-        + (bytes[3] as u16 - b'0' as u16);
+    // Parse year (YYYY)
+    let Some(year) = parse_four_digits(&bytes[0..4]) else {
+        return false;
+    };
 
-    // Parse month
-    let month = (bytes[5] - b'0') * 10 + (bytes[6] - b'0');
+    // Parse month (MM)
+    let Some(month) = parse_two_digits(&bytes[5..7]) else {
+        return false;
+    };
     if !(1..=12).contains(&month) {
         return false;
     }
 
-    // Parse day
-    let day = (bytes[8] - b'0') * 10 + (bytes[9] - b'0');
+    // Parse day (DD)
+    let Some(day) = parse_two_digits(&bytes[8..10]) else {
+        return false;
+    };
+    if day == 0 {
+        return false;
+    }
 
     // Check day validity
     match month {
@@ -126,15 +122,129 @@ fn is_leap_year(year: u16) -> bool {
     (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
 }
 
-format_validator!(DateValidator, "date");
-impl Validate for DateValidator {
-    validate!("date");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            is_valid_date(item)
-        } else {
-            true
+#[inline]
+fn parse_four_digits(bytes: &[u8]) -> Option<u16> {
+    let value = u32::from_ne_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+
+    // Check if all bytes are ASCII digits
+    if value.wrapping_sub(0x30303030) & 0xF0F0F0F0 == 0 {
+        let val = (value & 0x0F0F_0F0F).wrapping_mul(2561) >> 8;
+        Some(((val & 0x00FF_00FF).wrapping_mul(6_553_601) >> 16) as u16)
+    } else {
+        None
+    }
+}
+
+#[inline]
+fn parse_two_digits(bytes: &[u8]) -> Option<u8> {
+    let value = u16::from_ne_bytes([bytes[0], bytes[1]]);
+
+    // Check if both bytes are ASCII digits
+    if value.wrapping_sub(0x3030) & 0xF0F0 == 0 {
+        Some(((value & 0x0F0F).wrapping_mul(2561) >> 8) as u8)
+    } else {
+        None
+    }
+}
+
+fn is_valid_time(time: &str) -> bool {
+    let bytes = time.as_bytes();
+    let len = bytes.len();
+
+    if len < 9 {
+        // Minimum valid time is "HH:MM:SSZ"
+        return false;
+    }
+
+    // Check HH:MM:SS format
+    if !bytes[0].is_ascii_digit()
+        || !bytes[1].is_ascii_digit()
+        || bytes[2] != b':'
+        || !bytes[3].is_ascii_digit()
+        || !bytes[4].is_ascii_digit()
+        || bytes[5] != b':'
+        || !bytes[6].is_ascii_digit()
+        || !bytes[7].is_ascii_digit()
+    {
+        return false;
+    }
+
+    // Parse hours, minutes, seconds
+    let hh = (bytes[0] - b'0') * 10 + (bytes[1] - b'0');
+    let mm = (bytes[3] - b'0') * 10 + (bytes[4] - b'0');
+    let ss = (bytes[6] - b'0') * 10 + (bytes[7] - b'0');
+
+    if hh > 23 || mm > 59 || ss > 60 {
+        return false;
+    }
+
+    let mut i = 8;
+
+    // Check fractional seconds
+    if i < len && bytes[i] == b'.' {
+        i += 1;
+        let mut has_digit = false;
+        while i < len && bytes[i].is_ascii_digit() {
+            has_digit = true;
+            i += 1;
         }
+        if !has_digit {
+            return false;
+        }
+    }
+
+    // Check offset
+    if i == len {
+        return false;
+    }
+
+    match bytes[i] {
+        b'Z' | b'z' => i == len - 1 && (ss != 60 || (hh == 23 && mm == 59)),
+        b'+' | b'-' => {
+            if len - i != 6 {
+                return false;
+            }
+            i += 1;
+            let offset_hh =
+                (bytes[i] as i32 - b'0' as i32) * 10 + (bytes[i + 1] as i32 - b'0' as i32);
+            let offset_mm =
+                (bytes[i + 3] as i32 - b'0' as i32) * 10 + (bytes[i + 4] as i32 - b'0' as i32);
+            if !bytes[i].is_ascii_digit()
+                || !bytes[i + 1].is_ascii_digit()
+                || bytes[i + 2] != b':'
+                || !bytes[i + 3].is_ascii_digit()
+                || !bytes[i + 4].is_ascii_digit()
+                || offset_hh > 23
+                || offset_mm > 59
+            {
+                return false;
+            }
+            if ss == 60 {
+                let mut utc_hh = hh as i32;
+                let mut utc_mm = mm as i32;
+                if bytes[i - 1] == b'+' {
+                    utc_hh -= offset_hh;
+                    utc_mm -= offset_mm;
+                } else {
+                    // '-'
+                    utc_hh += offset_hh;
+                    utc_mm += offset_mm;
+                }
+                // Adjust for minute overflow/underflow
+                utc_hh += utc_mm / 60;
+                utc_mm %= 60;
+                if utc_mm < 0 {
+                    utc_mm += 60;
+                    utc_hh -= 1;
+                }
+                // Adjust for hour overflow/underflow
+                utc_hh = (utc_hh + 24) % 24;
+                utc_hh == 23 && utc_mm == 59
+            } else {
+                true
+            }
+        }
+        _ => false,
     }
 }
 
@@ -155,6 +265,30 @@ fn is_valid_datetime(datetime: &str) -> bool {
 
     // Validate time part (skip the 'T' character)
     is_valid_time(&time_part[1..])
+}
+
+format_validator!(DateValidator, "date");
+impl Validate for DateValidator {
+    validate!("date");
+    fn is_valid(&self, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            is_valid_date(item)
+        } else {
+            true
+        }
+    }
+}
+
+format_validator!(TimeValidator, "time");
+impl Validate for TimeValidator {
+    validate!("time");
+    fn is_valid(&self, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            is_valid_time(item)
+        } else {
+            true
+        }
+    }
 }
 
 format_validator!(DateTimeValidator, "date-time");
@@ -348,118 +482,6 @@ impl Validate for RelativeJsonPointerValidator {
     }
 }
 
-fn is_valid_time(time: &str) -> bool {
-    let bytes = time.as_bytes();
-    let len = bytes.len();
-
-    if len < 9 {
-        // Minimum valid time is "HH:MM:SSZ"
-        return false;
-    }
-
-    // Check HH:MM:SS format
-    if !bytes[0].is_ascii_digit()
-        || !bytes[1].is_ascii_digit()
-        || bytes[2] != b':'
-        || !bytes[3].is_ascii_digit()
-        || !bytes[4].is_ascii_digit()
-        || bytes[5] != b':'
-        || !bytes[6].is_ascii_digit()
-        || !bytes[7].is_ascii_digit()
-    {
-        return false;
-    }
-
-    // Parse hours, minutes, seconds
-    let hh = (bytes[0] - b'0') * 10 + (bytes[1] - b'0');
-    let mm = (bytes[3] - b'0') * 10 + (bytes[4] - b'0');
-    let ss = (bytes[6] - b'0') * 10 + (bytes[7] - b'0');
-
-    if hh > 23 || mm > 59 || ss > 60 {
-        return false;
-    }
-
-    let mut i = 8;
-
-    // Check fractional seconds
-    if i < len && bytes[i] == b'.' {
-        i += 1;
-        let mut has_digit = false;
-        while i < len && bytes[i].is_ascii_digit() {
-            has_digit = true;
-            i += 1;
-        }
-        if !has_digit {
-            return false;
-        }
-    }
-
-    // Check offset
-    if i == len {
-        return false;
-    }
-
-    match bytes[i] {
-        b'Z' | b'z' => i == len - 1 && (ss != 60 || (hh == 23 && mm == 59)),
-        b'+' | b'-' => {
-            if len - i != 6 {
-                return false;
-            }
-            i += 1;
-            let offset_hh =
-                (bytes[i] as i32 - b'0' as i32) * 10 + (bytes[i + 1] as i32 - b'0' as i32);
-            let offset_mm =
-                (bytes[i + 3] as i32 - b'0' as i32) * 10 + (bytes[i + 4] as i32 - b'0' as i32);
-            if !bytes[i].is_ascii_digit()
-                || !bytes[i + 1].is_ascii_digit()
-                || bytes[i + 2] != b':'
-                || !bytes[i + 3].is_ascii_digit()
-                || !bytes[i + 4].is_ascii_digit()
-                || offset_hh > 23
-                || offset_mm > 59
-            {
-                return false;
-            }
-            if ss == 60 {
-                let mut utc_hh = hh as i32;
-                let mut utc_mm = mm as i32;
-                if bytes[i - 1] == b'+' {
-                    utc_hh -= offset_hh;
-                    utc_mm -= offset_mm;
-                } else {
-                    // '-'
-                    utc_hh += offset_hh;
-                    utc_mm += offset_mm;
-                }
-                // Adjust for minute overflow/underflow
-                utc_hh += utc_mm / 60;
-                utc_mm %= 60;
-                if utc_mm < 0 {
-                    utc_mm += 60;
-                    utc_hh -= 1;
-                }
-                // Adjust for hour overflow/underflow
-                utc_hh = (utc_hh + 24) % 24;
-                utc_hh == 23 && utc_mm == 59
-            } else {
-                true
-            }
-        }
-        _ => false,
-    }
-}
-
-format_validator!(TimeValidator, "time");
-impl Validate for TimeValidator {
-    validate!("time");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            is_valid_time(item)
-        } else {
-            true
-        }
-    }
-}
 format_validator!(URITemplateValidator, "uri-template");
 impl Validate for URITemplateValidator {
     validate!("uri-template");
@@ -761,7 +783,7 @@ mod tests {
     use serde_json::json;
     use test_case::test_case;
 
-    use crate::{error::ValidationErrorKind, tests_util};
+    use crate::{error::ValidationErrorKind, keywords::format::is_valid_date, tests_util};
 
     use super::{is_valid_datetime, is_valid_duration};
 
@@ -854,6 +876,36 @@ mod tests {
             matches!(validation_error.kind, ValidationErrorKind::Format { format } if format == "unknown format")
         );
         assert_eq!("\"custom\"", validation_error.instance.to_string())
+    }
+
+    #[test_case("2023-01-01", true; "valid regular date")]
+    #[test_case("2020-02-29", true; "valid leap year date")]
+    #[test_case("2021-02-28", true; "valid non-leap year date")]
+    #[test_case("1900-02-28", true; "valid century non-leap year")]
+    #[test_case("2000-02-29", true; "valid leap century year")]
+    #[test_case("1999-12-31", true; "valid end of year date")]
+    #[test_case("202-12-01", false; "invalid short year")]
+    #[test_case("2023-1-01", false; "invalid short month")]
+    #[test_case("2023-12-1", false; "invalid short day")]
+    #[test_case("2023/12/01", false; "invalid separators")]
+    #[test_case("2023-13-01", false; "invalid month too high")]
+    #[test_case("2023-00-01", false; "invalid month too low")]
+    #[test_case("2023-12-32", false; "invalid day too high")]
+    #[test_case("2023-11-31", false; "invalid day for 30-day month")]
+    #[test_case("2023-02-30", false; "invalid day for February in non-leap year")]
+    #[test_case("2021-02-29", false; "invalid day for non-leap year")]
+    #[test_case("2023-12-00", false; "invalid day too low")]
+    #[test_case("99999-12-01", false; "year too long")]
+    #[test_case("1900-02-29", false; "invalid leap century non-leap year")]
+    #[test_case("2000-02-30", false; "invalid day for leap century year")]
+    #[test_case("2400-02-29", true; "valid leap year in distant future")]
+    #[test_case("0000-01-01", true; "valid boundary start date")]
+    #[test_case("9999-12-31", true; "valid boundary end date")]
+    #[test_case("aaaa-01-12", false; "Malformed (letters in year)")]
+    #[test_case("2000-bb-12", false; "Malformed (letters in month)")]
+    #[test_case("2000-01-cc", false; "Malformed (letters in day)")]
+    fn test_is_valid_date(input: &str, expected: bool) {
+        assert_eq!(is_valid_date(input), expected);
     }
 
     #[test_case("127.0.0.1", true)]
