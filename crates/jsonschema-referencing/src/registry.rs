@@ -292,8 +292,6 @@ fn process_resources(
         queue.push_back((uri, resource));
     }
 
-    let mut stack = Vec::with_capacity(32);
-
     loop {
         if queue.is_empty() && external.is_empty() {
             break;
@@ -320,37 +318,24 @@ fn process_resources(
             for subresource in resource.subresources() {
                 let subresource = Arc::new(subresource?);
                 // Collect references to external resources at this level
-                let sub_base = if let Some(sub_id) = subresource.id() {
-                    uri::resolve_against(&base.borrow(), sub_id)?
-                } else {
-                    base.clone()
-                };
-                collect_external_references(
-                    &sub_base,
-                    subresource.contents(),
-                    &mut external,
-                    &mut seen,
-                )?;
-                // Push subresources for further exploration
-                stack.push((sub_base, Arc::clone(&subresource)));
-                queue.push_back((base.clone(), subresource));
-            }
-            while let Some((mut base, parent)) = stack.pop() {
-                for subresource in parent.subresources() {
-                    let subresource = Arc::new(subresource?);
-                    if let Some(sub_id) = subresource.id() {
-                        base = uri::resolve_against(&base.borrow(), sub_id)?;
-                    };
+                if let Some(sub_id) = subresource.id() {
+                    let base = uri::resolve_against(&base.borrow(), sub_id)?;
                     collect_external_references(
                         &base,
                         subresource.contents(),
                         &mut external,
                         &mut seen,
                     )?;
-                    stack.push((base.clone(), subresource));
-                }
+                } else {
+                    collect_external_references(
+                        &base,
+                        subresource.contents(),
+                        &mut external,
+                        &mut seen,
+                    )?;
+                };
+                queue.push_back((base.clone(), subresource));
             }
-
             if resource.id().is_some() {
                 resources.insert(base, resource);
             }
