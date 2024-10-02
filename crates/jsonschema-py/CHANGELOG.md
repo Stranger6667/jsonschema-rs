@@ -15,6 +15,7 @@
 
 - Faster building of a validator.
 - `date`, `time`, `date-time`, `duration` formats validation.
+- Cache regular expressions for `pattern`. [#417](https://github.com/Stranger6667/jsonschema-rs/issues/417)
 
 ## [0.21.0] - 2024-09-30
 
