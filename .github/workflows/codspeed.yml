@@ -19,9 +19,9 @@ jobs:
 
       - run: cargo install cargo-codspeed
 
-      - run: cargo codspeed build -p jsonschema jsonschema
+      - run: cargo codspeed build -p jsonschema -p referencing jsonschema registry anchor pointer subresources
 
       - uses: CodSpeedHQ/action@v3
         with:
-          run: cargo codspeed run -p jsonschema jsonschema
+          run: cargo codspeed run -p jsonschema -p referencing jsonschema registry anchor pointer subresources
           token: ${{ secrets.CODSPEED_TOKEN }}

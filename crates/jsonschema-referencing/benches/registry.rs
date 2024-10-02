@@ -1,5 +1,5 @@
-use criterion::{criterion_group, criterion_main, Criterion};
-use referencing::{Draft, Registry};
+use codspeed_criterion_compat::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use referencing::{Draft, Registry, SPECIFICATIONS};
 
 static DRAFT4: &[u8] = include_bytes!("../../benchmark/data/subresources/draft4.json");
 static DRAFT6: &[u8] = include_bytes!("../../benchmark/data/subresources/draft6.json");
@@ -14,11 +14,6 @@ fn bench_subresources(c: &mut Criterion) {
         (Draft::Draft7, DRAFT7, "draft 7"),
         (Draft::Draft201909, DRAFT201909, "draft 2019-09"),
         (Draft::Draft202012, DRAFT202012, "draft 2020-12"),
-        (Draft::Draft4, benchmark::GEOJSON, "geojson"),
-        (Draft::Draft4, benchmark::SWAGGER, "swagger"),
-        (Draft::Draft4, benchmark::OPEN_API, "openapi"),
-        (Draft::Draft4, benchmark::CITM_SCHEMA, "citm"),
-        (Draft::Draft7, benchmark::FAST_SCHEMA, "fast"),
     ];
 
     let mut group = c.benchmark_group("registry");
@@ -26,13 +21,37 @@ fn bench_subresources(c: &mut Criterion) {
     for (draft, data, name) in &drafts {
         let schema = benchmark::read_json(data);
 
-        group.bench_function((*name).to_string(), |b| {
+        group.bench_with_input(BenchmarkId::new("try_new", name), &schema, |b, schema| {
             b.iter(|| {
                 let resource = draft.create_resource(schema.clone());
                 let _registry = Registry::try_new("http://example.com/schema.json", resource)
                     .expect("Invalid registry input");
             });
         });
+    }
+    let drafts = [
+        (Draft::Draft4, benchmark::GEOJSON, "GeoJSON"),
+        (Draft::Draft4, benchmark::SWAGGER, "Swagger"),
+        (Draft::Draft4, benchmark::OPEN_API, "Open API"),
+        (Draft::Draft4, benchmark::CITM_SCHEMA, "CITM"),
+        (Draft::Draft7, benchmark::FAST_SCHEMA, "Fast"),
+    ];
+
+    for (draft, data, name) in &drafts {
+        let schema = benchmark::read_json(data);
+
+        group.bench_with_input(
+            BenchmarkId::new("try_with_resource", name),
+            &schema,
+            |b, schema| {
+                b.iter(|| {
+                    let resource = draft.create_resource(schema.clone());
+                    let _registry = SPECIFICATIONS
+                        .clone()
+                        .try_with_resource("http://example.com/schema.json", resource);
+                });
+            },
+        );
     }
 
     group.finish();

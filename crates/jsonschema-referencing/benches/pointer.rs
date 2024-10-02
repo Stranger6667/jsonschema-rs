@@ -1,4 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use codspeed_criterion_compat::{
+    black_box, criterion_group, criterion_main, BenchmarkId, Criterion,
+};
 use referencing::{Draft, Registry};
 use serde_json::{json, Value};
 
@@ -33,14 +35,18 @@ fn bench_pointers(c: &mut Criterion) {
     let mut group = c.benchmark_group("JSON Pointer");
 
     let pointer = "#/properties/level_0/level_1/level_2/level_3/level_4/level_5/level_6/level_7/level_8/level_9/level_10/level_11/level_12/level_13/level_14/array/1";
-    group.bench_function("long pointer", |b| {
-        b.iter(|| {
+    group.bench_with_input(
+        BenchmarkId::new("pointer", "long"),
+        &registry,
+        |b, registry| {
             let resolver = registry
                 .try_resolver("http://example.com/schema.json")
                 .expect("Invalid base URI");
-            let _resolved = resolver.lookup(black_box(pointer));
-        });
-    });
+            b.iter(|| {
+                let _resolved = resolver.lookup(black_box(pointer));
+            });
+        },
+    );
 
     group.finish();
 }
