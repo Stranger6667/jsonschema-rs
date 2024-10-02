@@ -21,13 +21,13 @@ fn bench_anchor_lookup(c: &mut Criterion) {
 
     // Benchmark lookup of existing anchor
     group.bench_with_input(
-        BenchmarkId::new("lookup", "small"),
+        BenchmarkId::new("resolve", "small"),
         &registry,
         |b, registry| {
+            let resolver = registry
+                .try_resolver("http://example.com/")
+                .expect("Invalid base URI");
             b.iter(|| {
-                let resolver = registry
-                    .try_resolver("http://example.com/")
-                    .expect("Invalid base URI");
                 let _resolved = resolver.lookup(black_box("#foo"));
             });
         },
