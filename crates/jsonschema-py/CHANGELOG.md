@@ -14,7 +14,7 @@
 ### Performance
 
 - Faster building of a validator.
-- `date`, `time`, `date-time`, `duration` formats validation.
+- `date`, `time`, `date-time`, and `duration` formats validation.
 - Cache regular expressions for `pattern`. [#417](https://github.com/Stranger6667/jsonschema-rs/issues/417)
 
 ## [0.21.0] - 2024-09-30
@@ -27,7 +27,7 @@
 
 ### Changed
 
-- **BREAKING**: Treat `$ref` as URI, not URL and additionally normalize them. [#454](https://github.com/Stranger6667/jsonschema-rs/issues/454)
+- **BREAKING**: Treat `$ref` as URI, not URL, and additionally normalize them. [#454](https://github.com/Stranger6667/jsonschema-rs/issues/454)
 - **BREAKING**: Resolve all non-recursive references eagerly.
 - **BREAKING**: Disallow use of fragments in `$id`. [#264](https://github.com/Stranger6667/jsonschema-rs/issues/264)
 
