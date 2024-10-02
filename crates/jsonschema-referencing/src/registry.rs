@@ -1,5 +1,5 @@
 use std::{
-    collections::VecDeque,
+    collections::{hash_map::Entry, VecDeque},
     fmt::Debug,
     hash::{Hash, Hasher},
     sync::Arc,
@@ -352,12 +352,14 @@ fn process_resources(
             }
 
             if resource.id().is_some() {
-                resources.insert(base, resource);
+                resources
+                    .entry(base)
+                    .or_insert_with(|| Arc::clone(&resource));
             }
         }
         // Retrieve external resources
         for uri in external.drain() {
-            if !resources.contains_key(&uri) {
+            if let Entry::Vacant(entry) = resources.entry(uri.clone()) {
                 let retrieved = retriever
                     .retrieve(&uri.borrow())
                     .map_err(|err| Error::unretrievable(uri.as_str(), Some(err)))?;
@@ -365,7 +367,7 @@ fn process_resources(
                     retrieved,
                     default_draft,
                 )?);
-                resources.insert(uri.clone(), Arc::clone(&resource));
+                entry.insert(Arc::clone(&resource));
                 queue.push_back((uri, resource));
             }
         }
