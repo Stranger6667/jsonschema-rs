@@ -113,7 +113,7 @@ fn is_valid_date(date: &str) -> bool {
                 day <= 28
             }
         }
-        _ => false,
+        _ => unreachable!("Month value is checked above"),
     }
 }
 
@@ -147,6 +147,49 @@ fn parse_two_digits(bytes: &[u8]) -> Option<u8> {
     }
 }
 
+macro_rules! handle_offset {
+    ($sign:tt, $i:ident, $bytes:expr, $hour:expr, $minute:expr, $second:expr) => {{
+        if $bytes.len() - $i != 6 {
+            return false;
+        }
+        $i += 1;
+        if $bytes[$i + 2] != b':' {
+            return false;
+        }
+        let Some(offset_hh) = parse_two_digits(&$bytes[$i..$i + 2]) else {
+            return false;
+        };
+        let Some(offset_mm) = parse_two_digits(&$bytes[$i + 3..$i + 5]) else {
+            return false;
+        };
+        if offset_hh > 23 || offset_mm > 59 {
+            return false;
+        }
+
+        if $second == 60 {
+            let mut utc_hh = $hour as i8;
+            let mut utc_mm = $minute as i8;
+
+            // Apply offset based on the sign (+ or -)
+            utc_hh $sign offset_hh as i8;
+            utc_mm $sign offset_mm as i8;
+
+            // Adjust for minute overflow/underflow
+            utc_hh += utc_mm / 60;
+            utc_mm %= 60;
+            if utc_mm < 0 {
+                utc_mm += 60;
+                utc_hh -= 1;
+            }
+
+            // Adjust for hour overflow/underflow
+            utc_hh = (utc_hh + 24) % 24;
+            utc_hh == 23 && utc_mm == 59
+        } else {
+            true
+        }
+    }};
+}
 fn is_valid_time(time: &str) -> bool {
     let bytes = time.as_bytes();
     let len = bytes.len();
@@ -157,24 +200,24 @@ fn is_valid_time(time: &str) -> bool {
     }
 
     // Check HH:MM:SS format
-    if !bytes[0].is_ascii_digit()
-        || !bytes[1].is_ascii_digit()
-        || bytes[2] != b':'
-        || !bytes[3].is_ascii_digit()
-        || !bytes[4].is_ascii_digit()
-        || bytes[5] != b':'
-        || !bytes[6].is_ascii_digit()
-        || !bytes[7].is_ascii_digit()
-    {
+    if bytes[2] != b':' || bytes[5] != b':' {
         return false;
     }
 
-    // Parse hours, minutes, seconds
-    let hh = (bytes[0] - b'0') * 10 + (bytes[1] - b'0');
-    let mm = (bytes[3] - b'0') * 10 + (bytes[4] - b'0');
-    let ss = (bytes[6] - b'0') * 10 + (bytes[7] - b'0');
+    // Parse hour (HH)
+    let Some(hour) = parse_two_digits(&bytes[..2]) else {
+        return false;
+    };
+    // Parse minute (MM)
+    let Some(minute) = parse_two_digits(&bytes[3..5]) else {
+        return false;
+    };
+    // Parse second (SS)
+    let Some(second) = parse_two_digits(&bytes[6..8]) else {
+        return false;
+    };
 
-    if hh > 23 || mm > 59 || ss > 60 {
+    if hour > 23 || minute > 59 || second > 60 {
         return false;
     }
 
@@ -199,51 +242,9 @@ fn is_valid_time(time: &str) -> bool {
     }
 
     match bytes[i] {
-        b'Z' | b'z' => i == len - 1 && (ss != 60 || (hh == 23 && mm == 59)),
-        b'+' | b'-' => {
-            if len - i != 6 {
-                return false;
-            }
-            i += 1;
-            let offset_hh =
-                (bytes[i] as i32 - b'0' as i32) * 10 + (bytes[i + 1] as i32 - b'0' as i32);
-            let offset_mm =
-                (bytes[i + 3] as i32 - b'0' as i32) * 10 + (bytes[i + 4] as i32 - b'0' as i32);
-            if !bytes[i].is_ascii_digit()
-                || !bytes[i + 1].is_ascii_digit()
-                || bytes[i + 2] != b':'
-                || !bytes[i + 3].is_ascii_digit()
-                || !bytes[i + 4].is_ascii_digit()
-                || offset_hh > 23
-                || offset_mm > 59
-            {
-                return false;
-            }
-            if ss == 60 {
-                let mut utc_hh = hh as i32;
-                let mut utc_mm = mm as i32;
-                if bytes[i - 1] == b'+' {
-                    utc_hh -= offset_hh;
-                    utc_mm -= offset_mm;
-                } else {
-                    // '-'
-                    utc_hh += offset_hh;
-                    utc_mm += offset_mm;
-                }
-                // Adjust for minute overflow/underflow
-                utc_hh += utc_mm / 60;
-                utc_mm %= 60;
-                if utc_mm < 0 {
-                    utc_mm += 60;
-                    utc_hh -= 1;
-                }
-                // Adjust for hour overflow/underflow
-                utc_hh = (utc_hh + 24) % 24;
-                utc_hh == 23 && utc_mm == 59
-            } else {
-                true
-            }
-        }
+        b'Z' | b'z' => i == len - 1 && (second != 60 || (hour == 23 && minute == 59)),
+        b'+' => handle_offset!(-=, i, bytes, hour, minute, second),
+        b'-' => handle_offset!(+=, i, bytes, hour, minute, second),
         _ => false,
     }
 }
@@ -783,9 +784,9 @@ mod tests {
     use serde_json::json;
     use test_case::test_case;
 
-    use crate::{error::ValidationErrorKind, keywords::format::is_valid_date, tests_util};
+    use crate::{error::ValidationErrorKind, tests_util};
 
-    use super::{is_valid_datetime, is_valid_duration};
+    use super::{is_valid_date, is_valid_datetime, is_valid_duration, is_valid_time};
 
     #[test]
     fn ignored_format() {
@@ -906,6 +907,48 @@ mod tests {
     #[test_case("2000-01-cc", false; "Malformed (letters in day)")]
     fn test_is_valid_date(input: &str, expected: bool) {
         assert_eq!(is_valid_date(input), expected);
+    }
+
+    #[test_case("23:59:59Z", true; "valid time with Z")]
+    #[test_case("00:00:00Z", true; "valid midnight time with Z")]
+    #[test_case("12:30:45.123Z", true; "valid time with fractional seconds and Z")]
+    #[test_case("23:59:60Z", true; "valid leap second UTC time")]
+    #[test_case("12:30:45+01:00", true; "valid time with positive offset")]
+    #[test_case("12:30:45-01:00", true; "valid time with negative offset")]
+    #[test_case("23:59:60+00:00", true; "valid leap second with offset UTC 00:00")]
+    #[test_case("23:59:59+01:00", true; "valid time with +01:00 offset")]
+    #[test_case("23:59:59A", false; "invalid time with non-Z/non-offset letter")]
+    #[test_case("12:3:45Z", false; "invalid time with missing digit in minute")]
+    #[test_case("12:30:4Z", false; "invalid time with missing digit in second")]
+    #[test_case("12-30-45Z", false; "invalid time with wrong separator")]
+    #[test_case("12:30:45Z+01:00", false; "invalid time with Z and offset together")]
+    #[test_case("12:30:45A01:00", false; "invalid time with wrong separator between time and offset")]
+    #[test_case("12:30:45++01:00", false; "invalid double plus in offset")]
+    #[test_case("12:30:45+01:60", false; "invalid minute in offset")]
+    #[test_case("12:30:45+24:00", false; "invalid hour in offset")]
+    #[test_case("12:30:45.", false; "invalid time with incomplete fractional second")]
+    #[test_case("24:00:00Z", false; "invalid hour > 23")]
+    #[test_case("12:60:00Z", false; "invalid minute > 59")]
+    #[test_case("12:30:61Z", false; "invalid second > 60")]
+    #[test_case("12:30:60+01:00", false; "invalid leap second with non-UTC offset")]
+    #[test_case("23:59:60Z+01:00", false; "invalid leap second with non-zero offset")]
+    #[test_case("23:59:60+00:30", false; "invalid leap second with non-zero minute offset")]
+    #[test_case("23:59:60Z", true; "valid leap second at the end of day")]
+    #[test_case("23:59:60+00:00", true; "valid leap second with zero offset")]
+    #[test_case("ab:59:59Z", false; "invalid time with letters in hour")]
+    #[test_case("23:ab:59Z", false; "invalid time with letters in minute")]
+    #[test_case("23:59:abZ", false; "invalid time with letters in second")]
+    #[test_case("23:59:59aZ", false; "invalid time with letter after seconds")]
+    #[test_case("12:30:45+ab:00", false; "invalid offset hour with letters")]
+    #[test_case("12:30:45+01:ab", false; "invalid offset minute with letters")]
+    #[test_case("12:30:45.abcZ", false; "invalid fractional seconds with letters")]
+    fn test_is_valid_time(input: &str, expected: bool) {
+        assert_eq!(is_valid_time(input), expected);
+    }
+
+    #[test]
+    fn test_is_valid_datetime() {
+        assert!(!is_valid_datetime(""));
     }
 
     #[test_case("127.0.0.1", true)]
