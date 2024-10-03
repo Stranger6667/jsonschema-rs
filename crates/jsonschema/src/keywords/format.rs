@@ -362,7 +362,6 @@ fn is_valid_hostname(hostname: &str) -> bool {
 fn is_valid_idn_hostname(hostname: &str) -> bool {
     use idna::uts46::{AsciiDenyList, DnsLength, Hyphens, Uts46};
 
-    dbg!(42);
     let Ok(ascii_hostname) = Uts46::new().to_ascii(
         hostname.as_bytes(),
         AsciiDenyList::STD3,
