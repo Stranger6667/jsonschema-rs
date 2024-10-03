@@ -11,11 +11,13 @@
 - `time` format validation (leap seconds and second fractions).
 - `duration` format validation.
 - Panic on root `$id` without base. [#547](https://github.com/Stranger6667/jsonschema-rs/issues/547)
+- `hostname` format validation (double dot).
+- `idn-hostname` format validation. [#101](https://github.com/Stranger6667/jsonschema-rs/issues/101)
 
 ### Performance
 
 - Faster building of a validator.
-- `date`, `time`, `date-time`, and `duration` formats validation.
+- `hostname`, `date`, `time`, `date-time`, and `duration` formats validation.
 - Cache regular expressions for `pattern`. [#417](https://github.com/Stranger6667/jsonschema-rs/issues/417)
 
 ## [0.21.0] - 2024-09-30

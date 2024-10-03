@@ -304,7 +304,10 @@ impl Validate for DateTimeValidator {
     }
 }
 
-fn is_valid_email(email: &str) -> bool {
+fn is_valid_email_impl<F>(email: &str, is_valid_hostname_impl: F) -> bool
+where
+    F: Fn(&str) -> bool,
+{
     if let Ok(parsed) = EmailAddress::from_str(email) {
         let domain = parsed.domain();
         if let Some(domain) = domain.strip_prefix('[').and_then(|d| d.strip_suffix(']')) {
@@ -314,24 +317,182 @@ fn is_valid_email(email: &str) -> bool {
                 domain.parse::<Ipv4Addr>().is_ok()
             }
         } else {
-            is_valid_hostname(domain)
+            is_valid_hostname_impl(domain)
         }
     } else {
         false
     }
 }
 
+fn is_valid_email(email: &str) -> bool {
+    is_valid_email_impl(email, is_valid_hostname)
+}
+
+fn is_valid_idn_email(email: &str) -> bool {
+    is_valid_email_impl(email, is_valid_idn_hostname)
+}
+
 fn is_valid_hostname(hostname: &str) -> bool {
-    !(hostname.ends_with('-')
-        || hostname.starts_with('-')
-        || hostname.is_empty()
-        || bytecount::num_chars(hostname.as_bytes()) > 255
-        || hostname
-            .chars()
-            .any(|c| !(c.is_alphanumeric() || c == '-' || c == '.'))
-        || hostname
-            .split('.')
-            .any(|part| bytecount::num_chars(part.as_bytes()) > 63))
+    let hostname = hostname.trim_end_matches('.');
+    if hostname.len() > 253 {
+        return false;
+    }
+    for label in hostname.split('.') {
+        if !matches!(label.len(), 1..=63) {
+            return false;
+        }
+
+        if label.starts_with('-') || label.ends_with('-') {
+            return false;
+        }
+
+        // We can treat each byte as character here: all multibyte characters
+        // start with a byte that is not in the ASCII range
+        if !label
+            .as_bytes()
+            .iter()
+            .all(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-'))
+        {
+            return false;
+        }
+    }
+    true
+}
+
+fn is_valid_idn_hostname(hostname: &str) -> bool {
+    use idna::uts46::{AsciiDenyList, DnsLength, Hyphens, Uts46};
+
+    dbg!(42);
+    let Ok(ascii_hostname) = Uts46::new().to_ascii(
+        hostname.as_bytes(),
+        AsciiDenyList::STD3,
+        // Prohibit hyphens in the first, third, fourth, and last position in the label
+        Hyphens::Check,
+        DnsLength::Verify,
+    ) else {
+        return false;
+    };
+    let (unicode_hostname, _) = Uts46::new().to_unicode(
+        ascii_hostname.as_bytes(),
+        AsciiDenyList::EMPTY,
+        Hyphens::Allow,
+    );
+
+    let mut chars = unicode_hostname.chars().peekable();
+    let mut previous = '\0';
+    let mut has_katakana_middle_dot = false;
+    let mut has_hiragana_katakana_han = false;
+    let mut has_arabic_indic_digits = false;
+    let mut has_extended_arabic_indic_digits = false;
+
+    while let Some(current) = chars.next() {
+        match current {
+            // ZERO WIDTH JOINER
+            // https://www.rfc-editor.org/rfc/rfc5892#appendix-A.2
+            '\u{200D}'
+                if !matches!(
+                    previous,
+                    '\u{094D}'
+                        | '\u{09CD}'
+                        | '\u{0A4D}'
+                        | '\u{0ACD}'
+                        | '\u{0B4D}'
+                        | '\u{0BCD}'
+                        | '\u{0C4D}'
+                        | '\u{0CCD}'
+                        | '\u{0D4D}'
+                        | '\u{0DCA}'
+                        | '\u{0E3A}'
+                        | '\u{0F84}'
+                        | '\u{1039}'
+                        | '\u{1714}'
+                        | '\u{1734}'
+                        | '\u{17D2}'
+                        | '\u{1A60}'
+                        | '\u{1B44}'
+                        | '\u{1BAA}'
+                        | '\u{1BF2}'
+                        | '\u{1BF3}'
+                        | '\u{2D7F}'
+                        | '\u{A806}'
+                        | '\u{A8C4}'
+                        | '\u{A953}'
+                        | '\u{ABED}'
+                        | '\u{10A3F}'
+                        | '\u{11046}'
+                        | '\u{1107F}'
+                        | '\u{110B9}'
+                        | '\u{11133}'
+                        | '\u{111C0}'
+                        | '\u{11235}'
+                        | '\u{112EA}'
+                        | '\u{1134D}'
+                        | '\u{11442}'
+                        | '\u{114C2}'
+                        | '\u{115BF}'
+                        | '\u{1163F}'
+                        | '\u{116B6}'
+                        | '\u{1172B}'
+                        | '\u{11839}'
+                        | '\u{119E0}'
+                        | '\u{11A34}'
+                        | '\u{11A47}'
+                        | '\u{11A99}'
+                        | '\u{11C3F}'
+                        | '\u{11D44}'
+                        | '\u{11D45}'
+                        | '\u{11D97}'
+                ) =>
+            {
+                return false;
+            }
+            // MIDDLE DOT
+            // https://www.rfc-editor.org/rfc/rfc5892#appendix-A.3
+            '\u{00B7}' if previous != 'l' || chars.peek() != Some(&'l') => return false,
+            // Greek KERAIA
+            // https://www.rfc-editor.org/rfc/rfc5892#appendix-A.4
+            '\u{0375}'
+                if !chars
+                    .peek()
+                    .map_or(false, |next| ('\u{0370}'..='\u{03FF}').contains(next)) =>
+            {
+                return false
+            }
+            // Hebrew GERESH and GERSHAYIM
+            // https://www.rfc-editor.org/rfc/rfc5892#appendix-A.5
+            // https://www.rfc-editor.org/rfc/rfc5892#appendix-A.6
+            '\u{05F3}' | '\u{05F4}' if !('\u{0590}'..='\u{05FF}').contains(&previous) => {
+                return false
+            }
+            // KATAKANA MIDDLE DOT
+            '\u{30FB}' => has_katakana_middle_dot = true,
+            // Hiragana, Katakana, or Han
+            // https://www.rfc-editor.org/rfc/rfc5892#appendix-A.7
+            '\u{3040}'..='\u{309F}' | '\u{30A0}'..='\u{30FF}' | '\u{4E00}'..='\u{9FFF}' => {
+                has_hiragana_katakana_han = true
+            }
+            // ARABIC-INDIC DIGITS
+            // https://www.rfc-editor.org/rfc/rfc5892#appendix-A.8
+            '\u{0660}'..='\u{0669}' => has_arabic_indic_digits = true,
+            // EXTENDED ARABIC-INDIC DIGITS
+            // https://www.rfc-editor.org/rfc/rfc5892#appendix-A.9
+            '\u{06F0}'..='\u{06F9}' => has_extended_arabic_indic_digits = true,
+            // DISALLOWED
+            '\u{0640}' | '\u{07FA}' | '\u{302E}' | '\u{302F}' | '\u{3031}' | '\u{3032}'
+            | '\u{3033}' | '\u{3034}' | '\u{3035}' | '\u{303B}' => return false,
+
+            _ => {}
+        }
+        previous = current;
+    }
+
+    if (has_katakana_middle_dot && !has_hiragana_katakana_han)
+        || (has_arabic_indic_digits && has_extended_arabic_indic_digits)
+    {
+        return false;
+    }
+
+    is_valid_hostname(&ascii_hostname)
 }
 
 format_validator!(EmailValidator, "email");
@@ -350,7 +511,7 @@ impl Validate for IDNEmailValidator {
     validate!("idn-email");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            is_valid_email(item)
+            is_valid_idn_email(item)
         } else {
             true
         }
@@ -372,7 +533,7 @@ impl Validate for IDNHostnameValidator {
     validate!("idn-hostname");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            is_valid_hostname(item)
+            is_valid_idn_hostname(item)
         } else {
             true
         }
@@ -786,7 +947,7 @@ mod tests {
 
     use crate::{error::ValidationErrorKind, tests_util};
 
-    use super::{is_valid_date, is_valid_datetime, is_valid_duration, is_valid_time};
+    use super::*;
 
     #[test]
     fn ignored_format() {
@@ -976,5 +1137,39 @@ mod tests {
     #[test]
     fn test_is_valid_datetime_panic() {
         is_valid_datetime("2624-04-25t23:14:04-256\x112");
+    }
+
+    #[test_case("example.com" ; "simple valid hostname")]
+    #[test_case("xn--bcher-kva.com" ; "valid punycode")]
+    #[test_case("münchen.de" ; "valid IDN")]
+    #[test_case("test\u{094D}\u{200D}example.com" ; "valid zero width joiner after virama")]
+    #[test_case("۱۲۳.example.com" ; "valid extended arabic-indic digits")]
+    #[test_case("ひらがな・カタカナ.com" ; "valid katakana middle dot")]
+    fn test_valid_idn_hostnames(input: &str) {
+        assert!(is_valid_idn_hostname(input));
+    }
+
+    #[test_case("ex--ample.com" ; "hyphen at 3rd & 4th position")]
+    #[test_case("-example.com" ; "leading hyphen")]
+    #[test_case("example-.com" ; "trailing hyphen")]
+    #[test_case("xn--example.com" ; "invalid punycode")]
+    #[test_case("test\u{200D}example.com" ; "zero width joiner not after virama")]
+    #[test_case("test\u{0061}\u{200D}example.com" ; "zero width joiner after non-virama")]
+    #[test_case("" ; "empty string")]
+    #[test_case("." ; "single dot")]
+    #[test_case("example..com" ; "consecutive dots")]
+    #[test_case("exa mple.com" ; "contains space")]
+    #[test_case("example.com." ; "trailing dot")]
+    #[test_case("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com" ; "too long")]
+    #[test_case("xn--bcher-.com" ; "invalid punycode with hyphen")]
+    #[test_case("١۲٣.example.com" ; "mixed arabic-indic digits")]
+    #[test_case("example・com" ; "katakana middle dot without hiragana/katakana/han")]
+    fn test_invalid_idn_hostnames(input: &str) {
+        assert!(!is_valid_idn_hostname(input));
+    }
+
+    #[test]
+    fn test_invalid_hostname() {
+        assert!(!is_valid_hostname("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com"));
     }
 }
