@@ -6,6 +6,8 @@
 
 - Extend email validation. [#471](https://github.com/Stranger6667/jsonschema-rs/issues/471)
 - **BREAKING**: Custom retrievers now receive `&Uri<&str>` instead of `&UriRef<&str>`
+- Bump `once_cell` to `1.20`.
+- Bump `regex` to `1.11`.
 
 ### Fixed
 
