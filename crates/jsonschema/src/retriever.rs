@@ -193,7 +193,7 @@ mod tests {
             },
             "required": ["name"]
         });
-        write!(temp_file, "{}", external_schema.to_string()).expect("Failed to write to temp file");
+        write!(temp_file, "{}", external_schema).expect("Failed to write to temp file");
 
         let temp_file_path = temp_file
             .path()
@@ -260,7 +260,7 @@ mod tests {
             },
             "required": ["name"]
         });
-        write!(temp_file, "{}", external_schema.to_string()).expect("Failed to write to temp file");
+        write!(temp_file, "{}", external_schema).expect("Failed to write to temp file");
 
         let temp_file_path = temp_file
             .path()
