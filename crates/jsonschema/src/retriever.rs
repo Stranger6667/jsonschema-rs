@@ -1,8 +1,10 @@
 //! Logic for retrieving external resources.
-use referencing::{Retrieve, UriRef};
+use referencing::{Retrieve, Uri};
 use serde_json::{json, Value};
 use std::{error::Error as StdError, sync::Arc};
 use url::Url;
+
+use crate::compiler::DEFAULT_ROOT_URL;
 
 /// An opaque error type that is returned by resolvers on resolution failures.
 #[deprecated(
@@ -120,12 +122,9 @@ impl SchemaResolver for DefaultRetriever {
 }
 
 impl Retrieve for DefaultRetriever {
-    fn retrieve(
-        &self,
-        uri: &UriRef<&str>,
-    ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
-        match uri.scheme().map(|scheme| scheme.as_str()) {
-            Some("http" | "https") => {
+    fn retrieve(&self, uri: &Uri<&str>) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+        match uri.scheme().as_str() {
+            "http" | "https" => {
                 #[cfg(any(feature = "resolve-http", test))]
                 {
                     Ok(reqwest::blocking::get(uri.as_str())?.json()?)
@@ -133,7 +132,7 @@ impl Retrieve for DefaultRetriever {
                 #[cfg(not(any(feature = "resolve-http", test)))]
                 Err("`resolve-http` feature or a custom resolver is required to resolve external schemas via HTTP".into())
             }
-            Some("file") => {
+            "file" => {
                 #[cfg(any(feature = "resolve-file", test))]
                 {
                     let file = std::fs::File::open(uri.path().as_str())?;
@@ -144,8 +143,8 @@ impl Retrieve for DefaultRetriever {
                     Err("`resolve-file` feature or a custom resolver is required to resolve external schemas via files".into())
                 }
             }
-            Some(scheme) => Err(format!("Unknown scheme {scheme}").into()),
-            None => Err("Can not resolve resource without a scheme".into()),
+            DEFAULT_ROOT_URL => Err("Can not resolve resource without a scheme".into()),
+            scheme => Err(format!("Unknown scheme {scheme}").into()),
         }
     }
 }
@@ -165,7 +164,7 @@ impl RetrieverAdapter {
 
 impl Retrieve for RetrieverAdapter {
     #[allow(deprecated)]
-    fn retrieve(&self, uri: &UriRef<&str>) -> Result<Value, Box<dyn StdError + Send + Sync>> {
+    fn retrieve(&self, uri: &Uri<&str>) -> Result<Value, Box<dyn StdError + Send + Sync>> {
         let url = Url::parse(uri.as_str())?;
         // NOTE: There is no easy way to pass the original reference here without significant
         // changes to `referencing`. This argument does not seem to be used much in practice,

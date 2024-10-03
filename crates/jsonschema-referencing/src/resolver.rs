@@ -1,7 +1,7 @@
 use core::fmt;
 use std::collections::VecDeque;
 
-use fluent_uri::UriRef;
+use fluent_uri::Uri;
 use serde_json::Value;
 
 use crate::{uri, Draft, Error, Registry, ResourceRef};
@@ -12,8 +12,8 @@ use crate::{uri, Draft, Error, Registry, ResourceRef};
 #[derive(Clone)]
 pub struct Resolver<'r> {
     pub(crate) registry: &'r Registry,
-    base_uri: UriRef<String>,
-    scopes: VecDeque<UriRef<String>>,
+    base_uri: Uri<String>,
+    scopes: VecDeque<Uri<String>>,
 }
 
 impl<'r> PartialEq for Resolver<'r> {
@@ -46,7 +46,7 @@ impl<'r> fmt::Debug for Resolver<'r> {
 
 impl<'r> Resolver<'r> {
     /// Create a new `Resolver` with the given registry and base URI.
-    pub(crate) fn new(registry: &'r Registry, base_uri: UriRef<String>) -> Self {
+    pub(crate) fn new(registry: &'r Registry, base_uri: Uri<String>) -> Self {
         Self {
             registry,
             base_uri,
@@ -55,8 +55,8 @@ impl<'r> Resolver<'r> {
     }
     pub(crate) fn from_parts(
         registry: &'r Registry,
-        base_uri: UriRef<String>,
-        scopes: VecDeque<UriRef<String>>,
+        base_uri: Uri<String>,
+        scopes: VecDeque<Uri<String>>,
     ) -> Self {
         Self {
             registry,
@@ -65,7 +65,7 @@ impl<'r> Resolver<'r> {
         }
     }
     #[must_use]
-    pub fn base_uri(&self) -> UriRef<&str> {
+    pub fn base_uri(&self) -> Uri<&str> {
         self.base_uri.borrow()
     }
     /// Resolve a reference to the resource it points to.
@@ -82,12 +82,8 @@ impl<'r> Resolver<'r> {
             } else {
                 (reference, "")
             };
-            if self.base_uri.as_str().is_empty() {
-                (uri::from_str(uri)?, fragment)
-            } else {
-                let uri = uri::resolve_against(&self.base_uri.borrow(), uri)?;
-                (uri, fragment)
-            }
+            let uri = uri::resolve_against(&self.base_uri.borrow(), uri)?;
+            (uri, fragment)
         };
 
         let retrieved = self.registry.get_or_retrieve(&uri)?;
@@ -171,10 +167,10 @@ impl<'r> Resolver<'r> {
         }
     }
     #[must_use]
-    pub fn dynamic_scope(&self) -> impl ExactSizeIterator<Item = &UriRef<String>> {
+    pub fn dynamic_scope(&self) -> impl ExactSizeIterator<Item = &Uri<String>> {
         self.scopes.iter()
     }
-    fn evolve(&self, base_uri: UriRef<String>) -> Resolver<'r> {
+    fn evolve(&self, base_uri: Uri<String>) -> Resolver<'r> {
         if !self.base_uri.as_str().is_empty()
             && (self.scopes.is_empty() || base_uri != self.base_uri)
         {

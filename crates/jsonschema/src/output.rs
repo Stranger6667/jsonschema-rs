@@ -13,7 +13,7 @@ use std::{
 
 use crate::{validator::PartialApplication, ValidationError};
 use ahash::AHashMap;
-use referencing::UriRef;
+use referencing::Uri;
 use serde::ser::SerializeMap;
 
 use crate::{
@@ -203,7 +203,7 @@ impl<'a> FromIterator<BasicOutput<'a>> for PartialApplication<'a> {
 pub struct OutputUnit<T> {
     keyword_location: JsonPointer,
     instance_location: JsonPointer,
-    absolute_keyword_location: Option<UriRef<String>>,
+    absolute_keyword_location: Option<Uri<String>>,
     value: T,
 }
 
@@ -211,7 +211,7 @@ impl<T> OutputUnit<T> {
     pub(crate) const fn annotations(
         keyword_location: JsonPointer,
         instance_location: JsonPointer,
-        absolute_keyword_location: Option<UriRef<String>>,
+        absolute_keyword_location: Option<Uri<String>>,
         annotations: Annotations<'_>,
     ) -> OutputUnit<Annotations<'_>> {
         OutputUnit {
@@ -225,7 +225,7 @@ impl<T> OutputUnit<T> {
     pub(crate) const fn error(
         keyword_location: JsonPointer,
         instance_location: JsonPointer,
-        absolute_keyword_location: Option<UriRef<String>>,
+        absolute_keyword_location: Option<Uri<String>>,
         error: ErrorDescription,
     ) -> OutputUnit<ErrorDescription> {
         OutputUnit {
@@ -243,7 +243,7 @@ impl<T> OutputUnit<T> {
 
     /// The absolute location in the schema of the keyword. This will be
     /// different to `keyword_location` if the schema is a resolved reference.
-    pub fn absolute_keyword_location(&self) -> Option<UriRef<&str>> {
+    pub fn absolute_keyword_location(&self) -> Option<Uri<&str>> {
         self.absolute_keyword_location
             .as_ref()
             .map(|uri| uri.borrow())

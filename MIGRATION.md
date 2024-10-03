@@ -1,5 +1,34 @@
 # Migration Guide
 
+## Upgrading from 0.21.x to 0.22.0
+
+Replace `UriRef<&str>` with `Uri<&str>` in your custom retriever implementation.
+
+Example:
+
+```rust
+// Old (0.21.x)
+use jsonschema::{UriRef, Retrieve};
+
+struct MyCustomRetriever;
+
+impl Retrieve for MyCustomRetriever {
+    fn retrieve(&self, uri: &UriRef<&str>) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+        // ...
+    }
+}
+
+// New (0.21.0)
+use jsonschema::{Uri, Retrieve};
+
+struct MyCustomRetriever;
+impl Retrieve for MyCustomRetriever {
+    fn retrieve(&self, uri: &Uri<&str>) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+        // ...
+    }
+}
+```
+
 ## Upgrading from 0.20.x to 0.21.0
 
 1. Replace `SchemaResolver` with `Retrieve`:
@@ -32,7 +61,7 @@ use jsonschema::{UriRef, Retrieve};
 struct MyCustomRetriever;
 
 impl Retrieve for MyCustomRetriever {
-    fn retrieve(&self, uri: &UriRef<'_>) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+    fn retrieve(&self, uri: &UriRef<&str>) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
         match uri.scheme().map(|scheme| scheme.as_str()) {
             Some("http" | "https") => {
                 Ok(json!({ "description": "an external schema" }))

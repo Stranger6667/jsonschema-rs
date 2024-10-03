@@ -178,7 +178,7 @@
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! use std::{collections::HashMap, sync::Arc};
 //! use anyhow::anyhow;
-//! use jsonschema::{Retrieve, UriRef};
+//! use jsonschema::{Retrieve, Uri};
 //! use serde_json::{json, Value};
 //! use url::Url;
 //!
@@ -190,7 +190,7 @@
 //!
 //!    fn retrieve(
 //!        &self,
-//!        uri: &UriRef<&str>,
+//!        uri: &Uri<&str>,
 //!    ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
 //!         self.schemas
 //!             .get(uri.as_str())

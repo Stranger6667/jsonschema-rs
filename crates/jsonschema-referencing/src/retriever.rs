@@ -1,6 +1,6 @@
 use core::fmt;
 
-use fluent_uri::UriRef;
+use fluent_uri::Uri;
 use serde_json::Value;
 
 /// Trait for retrieving resources from external sources.
@@ -17,10 +17,7 @@ pub trait Retrieve: Send + Sync {
     /// # Errors
     ///
     /// If the resource couldn't be retrieved or an error occurred.
-    fn retrieve(
-        &self,
-        uri: &UriRef<&str>,
-    ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>>;
+    fn retrieve(&self, uri: &Uri<&str>) -> Result<Value, Box<dyn std::error::Error + Send + Sync>>;
 }
 
 #[derive(Debug, Clone)]
@@ -38,10 +35,7 @@ impl std::error::Error for DefaultRetrieverError {}
 pub struct DefaultRetriever;
 
 impl Retrieve for DefaultRetriever {
-    fn retrieve(
-        &self,
-        _: &UriRef<&str>,
-    ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+    fn retrieve(&self, _: &Uri<&str>) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
         Err(Box::new(DefaultRetrieverError))
     }
 }

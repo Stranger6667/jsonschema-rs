@@ -6,7 +6,7 @@ use std::{
 };
 
 use ahash::{AHashMap, AHashSet, AHasher};
-use fluent_uri::UriRef;
+use fluent_uri::Uri;
 use once_cell::sync::Lazy;
 use serde_json::Value;
 
@@ -15,7 +15,7 @@ use crate::{
     meta, uri, Anchor, DefaultRetriever, Draft, Error, Resolver, Resource, Retrieve,
 };
 
-type ResourceMap = AHashMap<UriRef<String>, Arc<Resource>>;
+type ResourceMap = AHashMap<Uri<String>, Arc<Resource>>;
 
 pub static SPECIFICATIONS: Lazy<Registry> = Lazy::new(|| {
     let pairs = meta::META_SCHEMAS.into_iter().map(|(uri, schema)| {
@@ -221,21 +221,18 @@ impl Registry {
     }
     /// Create a new [`Resolver`] for this registry with a known valid base URI.
     #[must_use]
-    pub fn resolver(&self, base_uri: UriRef<String>) -> Resolver {
+    pub fn resolver(&self, base_uri: Uri<String>) -> Resolver {
         Resolver::new(self, base_uri)
     }
     #[must_use]
     pub fn resolver_from_raw_parts(
         &self,
-        base_uri: UriRef<String>,
-        scopes: VecDeque<UriRef<String>>,
+        base_uri: Uri<String>,
+        scopes: VecDeque<Uri<String>>,
     ) -> Resolver {
         Resolver::from_parts(self, base_uri, scopes)
     }
-    pub(crate) fn get_or_retrieve<'r>(
-        &'r self,
-        uri: &UriRef<String>,
-    ) -> Result<&'r Resource, Error> {
+    pub(crate) fn get_or_retrieve<'r>(&'r self, uri: &Uri<String>) -> Result<&'r Resource, Error> {
         if let Some(resource) = self.resources.get(uri) {
             Ok(resource)
         } else {
@@ -248,11 +245,7 @@ impl Registry {
             ))
         }
     }
-    pub(crate) fn anchor<'a>(
-        &self,
-        uri: &'a UriRef<String>,
-        name: &'a str,
-    ) -> Result<&Anchor, Error> {
+    pub(crate) fn anchor<'a>(&self, uri: &'a Uri<String>, name: &'a str) -> Result<&Anchor, Error> {
         let key = AnchorKeyRef::new(uri, name);
         if let Some(value) = self.anchors.get(key.borrow_dyn()) {
             return Ok(value);
@@ -360,12 +353,12 @@ fn process_resources(
 }
 
 fn collect_external_references(
-    base: &UriRef<String>,
+    base: &Uri<String>,
     contents: &Value,
-    collected: &mut AHashSet<UriRef<String>>,
+    collected: &mut AHashSet<Uri<String>>,
     seen: &mut AHashSet<u64>,
 ) -> Result<(), Error> {
-    if base.scheme().map(fluent_uri::component::Scheme::as_str) == Some("urn") {
+    if base.scheme().as_str() == "urn" {
         return Ok(());
     }
     if let Some(reference) = contents.get("$ref").and_then(Value::as_str) {
@@ -381,14 +374,13 @@ fn collect_external_references(
             return Ok(());
         }
         let resolved = uri::resolve_against(&base.borrow(), reference)?;
-        let builder = UriRef::builder();
-        let base_uri = match (resolved.scheme(), resolved.authority()) {
-            (Some(scheme), Some(auth)) => {
-                builder.scheme(scheme).authority(auth).path(resolved.path())
-            }
-            (Some(scheme), None) => builder.scheme(scheme).path(resolved.path()),
-            (None, Some(auth)) => builder.authority(auth).path(resolved.path()),
-            (None, None) => builder.path(resolved.path()),
+        let builder = Uri::builder();
+        let base_uri = match resolved.authority() {
+            Some(auth) => builder
+                .scheme(resolved.scheme())
+                .authority(auth)
+                .path(resolved.path()),
+            None => builder.scheme(resolved.scheme()).path(resolved.path()),
         }
         .build()?;
         collected.insert(base_uri);
@@ -401,7 +393,7 @@ mod tests {
     use std::error::Error as _;
 
     use ahash::AHashMap;
-    use fluent_uri::UriRef;
+    use fluent_uri::Uri;
     use serde_json::{json, Value};
     use test_case::test_case;
 
@@ -463,7 +455,7 @@ mod tests {
     impl Retrieve for TestRetriever {
         fn retrieve(
             &self,
-            uri: &UriRef<&str>,
+            uri: &Uri<&str>,
         ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
             if let Some(value) = self.schemas.get(uri.as_str()) {
                 Ok(value.clone())

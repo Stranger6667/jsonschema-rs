@@ -14,28 +14,28 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use fluent_uri::UriRef;
+use fluent_uri::Uri;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub(crate) struct AnchorKey {
-    uri: UriRef<String>,
+    uri: Uri<String>,
     name: String,
 }
 
 impl AnchorKey {
-    pub(crate) fn new(uri: UriRef<String>, name: String) -> Self {
+    pub(crate) fn new(uri: Uri<String>, name: String) -> Self {
         Self { uri, name }
     }
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub(crate) struct AnchorKeyRef<'a> {
-    uri: &'a UriRef<String>,
+    uri: &'a Uri<String>,
     name: &'a str,
 }
 
 impl<'a> AnchorKeyRef<'a> {
-    pub(crate) fn new(uri: &'a UriRef<String>, name: &'a str) -> Self {
+    pub(crate) fn new(uri: &'a Uri<String>, name: &'a str) -> Self {
         AnchorKeyRef { uri, name }
     }
 

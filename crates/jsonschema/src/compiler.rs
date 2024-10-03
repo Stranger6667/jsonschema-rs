@@ -17,15 +17,14 @@ use crate::{
 use ahash::{AHashMap, AHashSet};
 use once_cell::sync::Lazy;
 use referencing::{
-    uri, Draft, Registry, Resolved, Resolver, Resource, ResourceRef, Retrieve, UriRef,
-    SPECIFICATIONS,
+    uri, Draft, Registry, Resolved, Resolver, Resource, ResourceRef, Retrieve, Uri, SPECIFICATIONS,
 };
 use serde_json::Value;
 use std::{cell::RefCell, collections::VecDeque, rc::Rc, sync::Arc};
 
 const DEFAULT_SCHEME: &str = "json-schema";
 pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
-type BaseUri = UriRef<String>;
+type BaseUri = Uri<String>;
 
 /// Container for information required to build a tree.
 ///
@@ -37,7 +36,7 @@ pub(crate) struct Context<'a> {
     resolver: Rc<Resolver<'a>>,
     pub(crate) path: JsonPointerNode<'a, 'a>,
     pub(crate) draft: Draft,
-    seen: Rc<RefCell<AHashSet<UriRef<String>>>>,
+    seen: Rc<RefCell<AHashSet<Uri<String>>>>,
 }
 
 impl<'a> Context<'a> {
@@ -102,7 +101,7 @@ impl<'a> Context<'a> {
         self.resolver.lookup(reference)
     }
 
-    pub(crate) fn scopes(&self) -> VecDeque<UriRef<String>> {
+    pub(crate) fn scopes(&self) -> VecDeque<Uri<String>> {
         VecDeque::from_iter(self.resolver.dynamic_scope().cloned())
     }
 
@@ -118,9 +117,9 @@ impl<'a> Context<'a> {
         self.path.push(chunk).into()
     }
 
-    pub(crate) fn base_uri(&self) -> Option<UriRef<String>> {
+    pub(crate) fn base_uri(&self) -> Option<Uri<String>> {
         let base_uri = self.resolver.base_uri();
-        if base_uri.scheme().map(|s| s.as_str()) == Some(DEFAULT_SCHEME) {
+        if base_uri.scheme().as_str() == DEFAULT_SCHEME {
             None
         } else {
             Some(base_uri.to_owned())
