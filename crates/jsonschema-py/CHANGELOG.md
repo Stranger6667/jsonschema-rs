@@ -10,6 +10,7 @@
 
 - `time` format validation (leap seconds and second fractions).
 - `duration` format validation.
+- Panic on root `$id` without base. [#547](https://github.com/Stranger6667/jsonschema-rs/issues/547)
 
 ### Performance
 

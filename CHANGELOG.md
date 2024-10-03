@@ -5,11 +5,13 @@
 ### Changed
 
 - Extend email validation. [#471](https://github.com/Stranger6667/jsonschema-rs/issues/471)
+- **BREAKING**: Custom retrievers now receive `&Uri<&str>` instead of `&UriRef<&str>`
 
 ### Fixed
 
 - `time` format validation (leap seconds and second fractions).
 - `duration` format validation.
+- Panic on root `$id` without base. [#547](https://github.com/Stranger6667/jsonschema-rs/issues/547)
 
 ### Performance
 

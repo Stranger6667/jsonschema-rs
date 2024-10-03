@@ -11,7 +11,7 @@ use crate::{
     ValidationError, ValidationOptions,
 };
 use once_cell::sync::OnceCell;
-use referencing::{uri, Draft, Registry, Resource, UriRef};
+use referencing::{uri, Draft, Registry, Resource, Uri};
 use serde_json::{Map, Value};
 
 pub(crate) enum RefValidator {
@@ -61,8 +61,8 @@ pub(crate) struct LazyRefValidator {
     resource: Resource,
     config: Arc<ValidationOptions>,
     registry: Arc<Registry>,
-    scopes: VecDeque<UriRef<String>>,
-    base_uri: UriRef<String>,
+    scopes: VecDeque<Uri<String>>,
+    base_uri: Uri<String>,
     draft: Draft,
     inner: OnceCell<SchemaNode>,
 }
@@ -229,7 +229,7 @@ mod tests {
                 "required": ["things"],
                 "$defs": { "codes": { "enum": ["AA", "BB"] } }
         });
-        let validator = crate::validator_for(&schema).unwrap();
+        let validator = crate::validator_for(&schema).expect("Invalid schema");
         let mut iter = validator.validate(&instance).expect_err("Should fail");
         let expected = "/properties/things/items/properties/code/enum";
         assert_eq!(
@@ -246,5 +246,24 @@ mod tests {
                 .to_string(),
             expected
         );
+    }
+
+    #[test]
+    fn test_relative_base_uri() {
+        let schema = json!({
+            "$id": "/root",
+            "$ref": "#/foo",
+            "foo": {
+                "$id": "#/foo",
+                "$ref": "#/bar"
+            },
+            "bar": {
+                "$id": "#/bar",
+                "type": "integer"
+            },
+        });
+        let validator = crate::validator_for(&schema).expect("Invalid schema");
+        assert!(validator.is_valid(&json!(2)));
+        assert!(!validator.is_valid(&json!("a")));
     }
 }

@@ -10,7 +10,7 @@ use crate::{
 use ahash::AHashMap;
 use referencing::{
     uri::{self, EncodedString, Path},
-    UriRef,
+    Uri,
 };
 use std::{collections::VecDeque, fmt};
 
@@ -19,7 +19,7 @@ use std::{collections::VecDeque, fmt};
 pub(crate) struct SchemaNode {
     validators: NodeValidators,
     relative_path: JsonPointer,
-    absolute_path: Option<UriRef<String>>,
+    absolute_path: Option<Uri<String>>,
 }
 
 enum NodeValidators {
