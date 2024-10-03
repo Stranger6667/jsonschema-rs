@@ -37,7 +37,7 @@ for error in validator.iter_errors(instance):
 assert validator.is_valid(instance)
 ```
 
-> ⚠️ **Upgrading from pre-0.20.0?** Check our [Migration Guide](MIGRATION.md) for key changes.
+> ⚠️ **Upgrading from pre-0.20.0?** Check our [Migration Guide](https://github.com/Stranger6667/jsonschema-rs/blob/master/crates/jsonschema-py/MIGRATION.md) for key changes.
 
 ## Highlights
 
@@ -126,7 +126,7 @@ validator.is_valid("invalid")  # False
 - Generally **2-5x** faster than `fastjsonschema` on CPython
 - Comparable or slightly slower performance for very small schemas
 
-For detailed benchmarks, see our [full performance comparison](BENCHMARKS.md).
+For detailed benchmarks, see our [full performance comparison](https://github.com/Stranger6667/jsonschema-rs/blob/master/crates/jsonschema-py/BENCHMARKS.md).
 
 ## Python support
 
@@ -152,9 +152,9 @@ We welcome contributions! Here's how you can help:
 - Implement missing keywords
 - Fix failing test cases from the [JSON Schema test suite](https://bowtie.report/#/implementations/rust-jsonschema)
 
-See [CONTRIBUTING.md](../../CONTRIBUTING.md) for more details.
+See [CONTRIBUTING.md](https://github.com/Stranger6667/jsonschema-rs/blob/master/CONTRIBUTING.md) for more details.
 
 ## License
 
-Licensed under [MIT License](LICENSE).
+Licensed under [MIT License](https://github.com/Stranger6667/jsonschema-rs/blob/master/LICENSE).
 

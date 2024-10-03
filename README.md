@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-You also can use it from the command line via the [jsonschema-cli](crates/jsonschema-cli) crate.
+You also can use it from the command line via the [jsonschema-cli](https://github.com/Stranger6667/jsonschema-rs/tree/master/crates/jsonschema-cli) crate.
 
 ```console
 $ jsonschema-cli schema.json -i instance.json
@@ -44,7 +44,7 @@ $ jsonschema-cli schema.json -i instance.json
 
 See more usage examples in the [documentation](https://docs.rs/jsonschema).
 
-> ⚠️ **Upgrading from pre-0.20.0?** Check our [Migration Guide](MIGRATION.md) for key changes.
+> ⚠️ **Upgrading from pre-0.20.0?** Check our [Migration Guide](https://github.com/Stranger6667/jsonschema-rs/blob/master/MIGRATION.md) for key changes.
 
 ## Highlights
 
@@ -52,7 +52,7 @@ See more usage examples in the [documentation](https://docs.rs/jsonschema).
 - 🔧 Custom keywords and format validators
 - 🌐 Remote reference fetching (network/file)
 - 🎨 `Basic` output style as per JSON Schema spec
-- 🔗 Bindings for [Python](crates/jsonschema-py), [Ruby](https://github.com/driv3r/rusty_json_schema), and [JavaScript](https://github.com/ahungrynoob/jsonschema)
+- 🔗 Bindings for [Python](https://github.com/Stranger6667/jsonschema-rs/tree/master/crates/jsonschema-py), [Ruby](https://github.com/driv3r/rusty_json_schema), and [JavaScript](https://github.com/ahungrynoob/jsonschema)
 - 💻 Command Line Interface
 
 ### Supported drafts
@@ -80,7 +80,7 @@ You can check the current status on the [Bowtie Report](https://bowtie.report/#/
 - Up to **20-470x** faster than `valico` and `jsonschema_valid` for complex schemas
 - Generally **2-3x** faster than `boon`
 
-For detailed benchmarks, see our [full performance comparison](crates/benchmark-suite).
+For detailed benchmarks, see our [full performance comparison](https://github.com/Stranger6667/jsonschema-rs/tree/master/crates/benchmark-suite).
 
 ## Minimum Supported Rust Version (MSRV)
 
@@ -106,9 +106,9 @@ We welcome contributions! Here's how you can help:
 - Implement missing keywords
 - Fix failing test cases from the [JSON Schema test suite](https://bowtie.report/#/implementations/rust-jsonschema)
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
+See [CONTRIBUTING.md](https://github.com/Stranger6667/jsonschema-rs/blob/master/CONTRIBUTING.md) for more details.
 
 ## License
 
-Licensed under [MIT License](LICENSE).
+Licensed under [MIT License](https://github.com/Stranger6667/jsonschema-rs/blob/master/LICENSE).
 
