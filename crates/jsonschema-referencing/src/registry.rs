@@ -217,7 +217,7 @@ impl Registry {
     /// Returns an error if the base URI is invalid.
     pub fn try_resolver(&self, base_uri: &str) -> Result<Resolver, Error> {
         let base = uri::from_str(base_uri)?;
-        Ok(Resolver::new(self, base))
+        Ok(self.resolver(base))
     }
     /// Create a new [`Resolver`] for this registry with a known valid base URI.
     #[must_use]
@@ -669,10 +669,7 @@ mod tests {
         // Verify that all expected URIs are resolved and present in resources
         for uri in test_case.expected_resolved_uris {
             let resolver = registry.try_resolver("").expect("Invalid base URI");
-            assert!(
-                resolver.lookup(uri).is_ok(),
-                "Expected URI not found: {uri}",
-            );
+            assert!(resolver.lookup(uri).is_ok());
         }
     }
 

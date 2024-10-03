@@ -4,8 +4,6 @@ use serde_json::{json, Value};
 use std::{error::Error as StdError, sync::Arc};
 use url::Url;
 
-use crate::compiler::DEFAULT_ROOT_URL;
-
 /// An opaque error type that is returned by resolvers on resolution failures.
 #[deprecated(
     since = "0.21.0",
@@ -116,7 +114,7 @@ impl SchemaResolver for DefaultRetriever {
             "json-schema" => Err(anyhow::anyhow!(
                 "cannot resolve relative external schema without root schema ID"
             )),
-            _ => Err(anyhow::anyhow!("unknown scheme {}", url.scheme())),
+            _ => Err(anyhow::anyhow!("Unknown scheme {}", url.scheme())),
         }
     }
 }
@@ -143,7 +141,6 @@ impl Retrieve for DefaultRetriever {
                     Err("`resolve-file` feature or a custom resolver is required to resolve external schemas via files".into())
                 }
             }
-            DEFAULT_ROOT_URL => Err("Can not resolve resource without a scheme".into()),
             scheme => Err(format!("Unknown scheme {scheme}").into()),
         }
     }
@@ -173,5 +170,119 @@ impl Retrieve for RetrieverAdapter {
             Ok(value) => Ok((*value).clone()),
             Err(err) => Err(err.into()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    use super::DefaultRetriever;
+
+    #[test]
+    // FIXME(dd): Windows paths are not properly handled as URI.
+    #[cfg(not(target_os = "windows"))]
+    fn test_retrieve_from_file() {
+        let mut temp_file = NamedTempFile::new().expect("Failed to create temp file");
+        let external_schema = json!({
+            "type": "object",
+            "properties": {
+                "name": { "type": "string" }
+            },
+            "required": ["name"]
+        });
+        write!(temp_file, "{}", external_schema.to_string()).expect("Failed to write to temp file");
+
+        let temp_file_path = temp_file
+            .path()
+            .to_str()
+            .expect("Failed to get temp file path");
+
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "user": { "$ref": format!("file://{temp_file_path}") }
+            }
+        });
+
+        let validator = crate::validator_for(&schema).expect("Schema compilation failed");
+
+        let valid = json!({"user": {"name": "John Doe"}});
+        assert!(validator.is_valid(&valid));
+
+        let invalid = json!({"user": {}});
+        assert!(!validator.is_valid(&invalid));
+    }
+
+    #[test]
+    fn test_unknown_scheme() {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "test": { "$ref": "unknown-schema://test" }
+            }
+        });
+
+        let result = crate::validator_for(&schema);
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Unknown scheme"));
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_deprecated_adapter_unknown_scheme() {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "test": { "$ref": "unknown-schema://test" }
+            }
+        });
+        let result = crate::options()
+            .with_resolver(DefaultRetriever)
+            .build(&schema);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Unknown scheme"));
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    // FIXME(dd): Windows paths are not properly handled as URI.
+    #[cfg(not(target_os = "windows"))]
+    fn test_deprecated_adapter_file_scheme() {
+        let mut temp_file = NamedTempFile::new().expect("Failed to create temp file");
+        let external_schema = json!({
+            "type": "object",
+            "properties": {
+                "name": { "type": "string" }
+            },
+            "required": ["name"]
+        });
+        write!(temp_file, "{}", external_schema.to_string()).expect("Failed to write to temp file");
+
+        let temp_file_path = temp_file
+            .path()
+            .to_str()
+            .expect("Failed to get temp file path");
+
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "user": { "$ref": format!("file://{temp_file_path}") }
+            }
+        });
+
+        let validator = crate::options()
+            .with_resolver(DefaultRetriever)
+            .build(&schema)
+            .expect("Invalid schema");
+
+        let valid = json!({"user": {"name": "John Doe"}});
+        assert!(validator.is_valid(&valid));
+
+        let invalid = json!({"user": {}});
+        assert!(!validator.is_valid(&invalid));
     }
 }
