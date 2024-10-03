@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.22.1] - 2024-10-03
+
 ### Fixed
 
 - Removed `dbg!` macro.
@@ -603,7 +605,8 @@ Old names are retained for backward compatibility but will be removed in a futur
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.22.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.22.1...HEAD
+[0.22.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.22.0...rust-v0.22.1
 [0.22.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.21.0...rust-v0.22.0
 [0.21.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.20.0...rust-v0.21.0
 [0.20.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.19.1...rust-v0.20.0
