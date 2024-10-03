@@ -316,7 +316,7 @@ fn process_resources(
 
             // Process subresources
             for subresource in resource.subresources() {
-                let subresource = Arc::new(subresource?);
+                let subresource = subresource?;
                 // Collect references to external resources at this level
                 if let Some(sub_id) = subresource.id() {
                     let base = uri::resolve_against(&base.borrow(), sub_id)?;
@@ -334,7 +334,7 @@ fn process_resources(
                         &mut seen,
                     )?;
                 };
-                queue.push_back((base.clone(), subresource));
+                queue.push_back((base.clone(), Arc::new(subresource)));
             }
             if resource.id().is_some() {
                 resources.insert(base, resource);
