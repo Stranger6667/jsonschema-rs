@@ -1,4 +1,4 @@
-use crate::{compiler, node::SchemaNode, validator::Validate as _};
+use crate::{compiler, ecma, node::SchemaNode, validator::Validate as _};
 use ahash::AHashMap;
 use fancy_regex::Regex;
 use serde_json::{Map, Value};
@@ -139,7 +139,9 @@ pub(crate) fn compile_patterns<'a>(
     let mut compiled_patterns = Vec::with_capacity(obj.len());
     for (pattern, subschema) in obj {
         let pctx = keyword_context.with_path(pattern.as_str());
-        if let Ok(compiled_pattern) = Regex::new(pattern) {
+        if let Ok(Ok(compiled_pattern)) =
+            ecma::to_rust_regex(pattern).map(|pattern| Regex::new(&pattern))
+        {
             let node = compiler::compile(&pctx, pctx.as_resource_ref(subschema))?;
             compiled_patterns.push((compiled_pattern, node));
         } else {
