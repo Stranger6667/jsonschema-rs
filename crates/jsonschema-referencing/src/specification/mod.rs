@@ -11,7 +11,7 @@ use crate::{anchors, Anchor, Error, Resolver, Resource, ResourceRef, Segments};
 
 /// JSON Schema specification versions.
 #[non_exhaustive]
-#[derive(Debug, Default, PartialEq, Copy, Clone, Hash, Eq)]
+#[derive(Debug, Default, PartialEq, Copy, Clone, Hash, Eq, PartialOrd, Ord)]
 pub enum Draft {
     /// JSON Schema Draft 4
     Draft4,
@@ -105,104 +105,69 @@ impl Draft {
         }
     }
     /// Identifies known JSON schema keywords per draft.
-    ///
-    /// Optimized for unknown keywords and uses first-byte check and a small number
-    /// of comparisons, which makes it ~2-3x faster than `AHashMap`.
     #[must_use]
     pub fn is_known_keyword(&self, keyword: &str) -> bool {
-        let bytes = keyword.as_bytes();
-        match bytes.first() {
-            Some(b'$') => {
-                bytes == b"$schema"
-                    || bytes == b"$ref"
-                    || (matches!(self, Draft::Draft201909 | Draft::Draft202012)
-                        && (bytes == b"$anchor" || bytes == b"$defs"))
-                    || (matches!(self, Draft::Draft201909)
-                        && (bytes == b"$recursiveAnchor" || bytes == b"$recursiveRef"))
-                    || (matches!(self, Draft::Draft202012)
-                        && (bytes == b"$dynamicAnchor" || bytes == b"$dynamicRef"))
-                    || (matches!(
-                        self,
-                        Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
-                    ) && bytes == b"$id")
+        match keyword {
+            "$ref"
+            | "$schema"
+            | "additionalItems"
+            | "additionalProperties"
+            | "allOf"
+            | "anyOf"
+            | "dependencies"
+            | "enum"
+            | "exclusiveMaximum"
+            | "exclusiveMinimum"
+            | "format"
+            | "items"
+            | "maxItems"
+            | "maxLength"
+            | "maxProperties"
+            | "maximum"
+            | "minItems"
+            | "minLength"
+            | "minProperties"
+            | "minimum"
+            | "multipleOf"
+            | "not"
+            | "oneOf"
+            | "pattern"
+            | "patternProperties"
+            | "properties"
+            | "required"
+            | "type"
+            | "uniqueItems" => true,
+
+            "id" if *self == Draft::Draft4 => true,
+
+            "$id" | "const" | "contains" | "propertyNames" if *self >= Draft::Draft6 => true,
+
+            "contentEncoding" | "contentMediaType"
+                if matches!(self, Draft::Draft6 | Draft::Draft7) =>
+            {
+                true
             }
-            Some(b'a') => {
-                bytes == b"additionalItems"
-                    || bytes == b"additionalProperties"
-                    || bytes == b"allOf"
-                    || bytes == b"anyOf"
+
+            "else" | "if" | "then" if *self >= Draft::Draft7 => true,
+
+            "$anchor"
+            | "$defs"
+            | "$recursiveAnchor"
+            | "$recursiveRef"
+            | "dependentRequired"
+            | "dependentSchemas"
+            | "maxContains"
+            | "minContains"
+            | "prefixItems"
+            | "unevaluatedItems"
+            | "unevaluatedProperties"
+                if *self >= Draft::Draft201909 =>
+            {
+                true
             }
-            Some(b'c') => {
-                ((bytes == b"const" || bytes == b"contains")
-                    && matches!(
-                        self,
-                        Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
-                    ))
-                    || (matches!(self, Draft::Draft6 | Draft::Draft7)
-                        && (bytes == b"contentEncoding" || bytes == b"contentMediaType"))
-            }
-            Some(b'd') => {
-                bytes == b"dependencies"
-                    || (matches!(self, Draft::Draft201909 | Draft::Draft202012)
-                        && (bytes == b"dependentRequired" || bytes == b"dependentSchemas"))
-            }
-            Some(b'e') => {
-                bytes == b"enum"
-                    || bytes == b"exclusiveMaximum"
-                    || bytes == b"exclusiveMinimum"
-                    || (matches!(
-                        self,
-                        Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
-                    ) && bytes == b"else")
-            }
-            Some(b'f') => bytes == b"format",
-            Some(b'i') => {
-                bytes == b"items"
-                    || (matches!(
-                        self,
-                        Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
-                    ) && bytes == b"if")
-                    || (matches!(self, Draft::Draft4) && bytes == b"id")
-            }
-            Some(b'm') => {
-                bytes == b"maximum"
-                    || bytes == b"maxItems"
-                    || bytes == b"maxLength"
-                    || bytes == b"maxProperties"
-                    || bytes == b"minimum"
-                    || bytes == b"minItems"
-                    || bytes == b"minLength"
-                    || bytes == b"minProperties"
-                    || bytes == b"multipleOf"
-                    || (matches!(self, Draft::Draft201909 | Draft::Draft202012)
-                        && (bytes == b"maxContains" || bytes == b"minContains"))
-            }
-            Some(b'n') => bytes == b"not",
-            Some(b'o') => bytes == b"oneOf",
-            Some(b'p') => {
-                bytes == b"pattern"
-                    || bytes == b"patternProperties"
-                    || bytes == b"properties"
-                    || (matches!(
-                        self,
-                        Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
-                    ) && bytes == b"propertyNames")
-                    || (matches!(self, Draft::Draft201909 | Draft::Draft202012)
-                        && bytes == b"prefixItems")
-            }
-            Some(b'r') => bytes == b"required",
-            Some(b't') => {
-                bytes == b"type"
-                    || (matches!(
-                        self,
-                        Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
-                    ) && bytes == b"then")
-            }
-            Some(b'u') => {
-                bytes == b"uniqueItems"
-                    || (matches!(self, Draft::Draft201909 | Draft::Draft202012)
-                        && (bytes == b"unevaluatedItems" || bytes == b"unevaluatedProperties"))
-            }
+
+            "$dynamicAnchor" | "$dynamicRef" if *self == Draft::Draft202012 => true,
+
             _ => false,
         }
     }

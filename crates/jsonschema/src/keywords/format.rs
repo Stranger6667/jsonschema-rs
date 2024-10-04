@@ -28,42 +28,6 @@ static URI_TEMPLATE_RE: Lazy<Regex> = Lazy::new(|| {
     .expect("Is a valid regex")
 });
 
-macro_rules! format_validator {
-    ($validator:ident, $format_name:tt) => {
-        struct $validator {
-            schema_path: JsonPointer,
-        }
-        impl $validator {
-            pub(crate) fn compile<'a>(ctx: &compiler::Context) -> CompilationResult<'a> {
-                let schema_path = ctx.as_pointer_with("format");
-                Ok(Box::new($validator { schema_path }))
-            }
-        }
-    };
-}
-
-macro_rules! validate {
-    ($format:expr) => {
-        fn validate<'instance>(
-            &self,
-            instance: &'instance Value,
-            instance_path: &JsonPointerNode,
-        ) -> ErrorIterator<'instance> {
-            if let Value::String(_item) = instance {
-                if !self.is_valid(instance) {
-                    return error(ValidationError::format(
-                        self.schema_path.clone(),
-                        instance_path.into(),
-                        instance,
-                        $format,
-                    ));
-                }
-            }
-            no_error()
-        }
-    };
-}
-
 fn is_valid_json_pointer(pointer: &str) -> bool {
     if pointer.is_empty() {
         // An empty string is a valid JSON Pointer
@@ -357,7 +321,7 @@ fn is_valid_hostname(hostname: &str) -> bool {
         return false;
     }
     for label in hostname.split('.') {
-        if !matches!(label.len(), 1..=63) {
+        if !(1..=63).contains(&label.len()) {
             return false;
         }
 
@@ -513,225 +477,6 @@ fn is_valid_idn_hostname(hostname: &str) -> bool {
     is_valid_hostname(&ascii_hostname)
 }
 
-format_validator!(DateValidator, "date");
-impl Validate for DateValidator {
-    validate!("date");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            is_valid_date(item)
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(TimeValidator, "time");
-impl Validate for TimeValidator {
-    validate!("time");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            is_valid_time(item)
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(DateTimeValidator, "date-time");
-impl Validate for DateTimeValidator {
-    validate!("date-time");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            is_valid_datetime(item)
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(EmailValidator, "email");
-impl Validate for EmailValidator {
-    validate!("email");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            is_valid_email(item)
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(IDNEmailValidator, "idn-email");
-impl Validate for IDNEmailValidator {
-    validate!("idn-email");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            is_valid_idn_email(item)
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(HostnameValidator, "hostname");
-impl Validate for HostnameValidator {
-    validate!("hostname");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            is_valid_hostname(item)
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(IDNHostnameValidator, "idn-hostname");
-impl Validate for IDNHostnameValidator {
-    validate!("idn-hostname");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            is_valid_idn_hostname(item)
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(IpV4Validator, "ipv4");
-impl Validate for IpV4Validator {
-    validate!("ipv4");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            Ipv4Addr::from_str(item).is_ok()
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(IpV6Validator, "ipv6");
-impl Validate for IpV6Validator {
-    validate!("ipv6");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            Ipv6Addr::from_str(item).is_ok()
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(IRIValidator, "iri");
-impl Validate for IRIValidator {
-    validate!("iri");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            referencing::Iri::parse(item.as_str()).is_ok()
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(URIValidator, "uri");
-impl Validate for URIValidator {
-    validate!("uri");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            referencing::Uri::parse(item.as_str()).is_ok()
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(IRIReferenceValidator, "iri-reference");
-impl Validate for IRIReferenceValidator {
-    validate!("iri-reference");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            referencing::IriRef::parse(item.as_str()).is_ok()
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(URIReferenceValidator, "uri-reference");
-impl Validate for URIReferenceValidator {
-    validate!("uri-reference");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            referencing::UriRef::parse(item.as_str()).is_ok()
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(JsonPointerValidator, "json-pointer");
-impl Validate for JsonPointerValidator {
-    validate!("json-pointer");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            is_valid_json_pointer(item)
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(RegexValidator, "regex");
-impl Validate for RegexValidator {
-    validate!("regex");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            pattern::convert_regex(item).is_ok()
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(RelativeJsonPointerValidator, "relative-json-pointer");
-impl Validate for RelativeJsonPointerValidator {
-    validate!("relative-json-pointer");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            is_valid_relative_json_pointer(item)
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(URITemplateValidator, "uri-template");
-impl Validate for URITemplateValidator {
-    validate!("uri-template");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            URI_TEMPLATE_RE
-                .is_match(item)
-                .expect("Simple URI_TEMPLATE_RE pattern")
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(UUIDValidator, "uuid");
-impl Validate for UUIDValidator {
-    validate!("uuid");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            let mut out = [0; 16];
-            parse_hyphenated(item.as_bytes(), Out::from_mut(&mut out)).is_ok()
-        } else {
-            true
-        }
-    }
-}
-
 fn is_valid_duration(duration: &str) -> bool {
     let bytes = duration.as_bytes();
     let len = bytes.len();
@@ -813,17 +558,122 @@ fn is_valid_duration(duration: &str) -> bool {
     has_component && (!has_time || has_time_component)
 }
 
-format_validator!(DurationValidator, "duration");
-impl Validate for DurationValidator {
-    validate!("duration");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            is_valid_duration(item)
-        } else {
-            true
-        }
-    }
+fn is_valid_ipv4(ip: &str) -> bool {
+    Ipv4Addr::from_str(ip).is_ok()
 }
+
+fn is_valid_ipv6(ip: &str) -> bool {
+    Ipv6Addr::from_str(ip).is_ok()
+}
+
+fn is_valid_iri(iri: &str) -> bool {
+    referencing::Iri::parse(iri).is_ok()
+}
+
+fn is_valid_iri_reference(iri_reference: &str) -> bool {
+    referencing::IriRef::parse(iri_reference).is_ok()
+}
+
+fn is_valid_uri(uri: &str) -> bool {
+    referencing::Uri::parse(uri).is_ok()
+}
+
+fn is_valid_uri_reference(uri_reference: &str) -> bool {
+    referencing::UriRef::parse(uri_reference).is_ok()
+}
+
+fn is_valid_regex(regex: &str) -> bool {
+    pattern::convert_regex(regex).is_ok()
+}
+
+fn is_valid_uri_template(uri_template: &str) -> bool {
+    URI_TEMPLATE_RE
+        .is_match(uri_template)
+        .expect("Simple URI_TEMPLATE_RE pattern")
+}
+
+fn is_valid_uuid(uuid: &str) -> bool {
+    let mut out = [0; 16];
+    parse_hyphenated(uuid.as_bytes(), Out::from_mut(&mut out)).is_ok()
+}
+
+macro_rules! format_validators {
+    ($(($validator:ident, $format:expr, $validation_fn:ident)),+ $(,)?) => {
+        $(
+            struct $validator {
+                schema_path: JsonPointer,
+            }
+
+            impl $validator {
+                pub(crate) fn compile<'a>(ctx: &compiler::Context) -> CompilationResult<'a> {
+                    let schema_path = ctx.as_pointer_with("format");
+                    Ok(Box::new($validator { schema_path }))
+                }
+            }
+
+            impl Validate for $validator {
+                fn is_valid(&self, instance: &Value) -> bool {
+                    if let Value::String(item) = instance {
+                        $validation_fn(item)
+                    } else {
+                        true
+                    }
+                }
+
+                fn validate<'instance>(
+                    &self,
+                    instance: &'instance Value,
+                    instance_path: &JsonPointerNode,
+                ) -> ErrorIterator<'instance> {
+                    if let Value::String(_item) = instance {
+                        if !self.is_valid(instance) {
+                            return error(ValidationError::format(
+                                self.schema_path.clone(),
+                                instance_path.into(),
+                                instance,
+                                $format,
+                            ));
+                        }
+                    }
+                    no_error()
+                }
+            }
+        )+
+    };
+}
+format_validators!(
+    (DateValidator, "date", is_valid_date),
+    (DateTimeValidator, "date-time", is_valid_datetime),
+    (DurationValidator, "duration", is_valid_duration),
+    (EmailValidator, "email", is_valid_email),
+    (HostnameValidator, "hostname", is_valid_hostname),
+    (IdnEmailValidator, "idn-email", is_valid_idn_email),
+    (IdnHostnameValidator, "idn-hostname", is_valid_idn_hostname),
+    (IpV4Validator, "ipv4", is_valid_ipv4),
+    (IpV6Validator, "ipv6", is_valid_ipv6),
+    (IriValidator, "iri", is_valid_iri),
+    (
+        IriReferenceValidator,
+        "iri-reference",
+        is_valid_iri_reference
+    ),
+    (JsonPointerValidator, "json-pointer", is_valid_json_pointer),
+    (RegexValidator, "regex", is_valid_regex),
+    (
+        RelativeJsonPointerValidator,
+        "relative-json-pointer",
+        is_valid_relative_json_pointer
+    ),
+    (TimeValidator, "time", is_valid_time),
+    (UriValidator, "uri", is_valid_uri),
+    (
+        UriReferenceValidator,
+        "uri-reference",
+        is_valid_uri_reference
+    ),
+    (UriTemplateValidator, "uri-template", is_valid_uri_template),
+    (UuidValidator, "uuid", is_valid_uuid),
+);
 
 struct CustomFormatValidator {
     schema_path: JsonPointer,
@@ -905,78 +755,27 @@ pub(crate) fn compile<'a>(
         }
         let draft = ctx.draft();
         match format.as_str() {
-            "date-time" => Some(DateTimeValidator::compile(ctx)),
             "date" => Some(DateValidator::compile(ctx)),
+            "date-time" => Some(DateTimeValidator::compile(ctx)),
+            "duration" if draft >= Draft::Draft201909 => Some(DurationValidator::compile(ctx)),
             "email" => Some(EmailValidator::compile(ctx)),
             "hostname" => Some(HostnameValidator::compile(ctx)),
-            "idn-email" => Some(IDNEmailValidator::compile(ctx)),
-            "idn-hostname"
-                if matches!(
-                    draft,
-                    Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
-                ) =>
-            {
-                Some(IDNHostnameValidator::compile(ctx))
-            }
+            "idn-email" => Some(IdnEmailValidator::compile(ctx)),
+            "idn-hostname" if draft >= Draft::Draft7 => Some(IdnHostnameValidator::compile(ctx)),
             "ipv4" => Some(IpV4Validator::compile(ctx)),
             "ipv6" => Some(IpV6Validator::compile(ctx)),
-            "iri-reference"
-                if matches!(
-                    draft,
-                    Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
-                ) =>
-            {
-                Some(IRIReferenceValidator::compile(ctx))
-            }
-            "iri"
-                if matches!(
-                    draft,
-                    Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
-                ) =>
-            {
-                Some(IRIValidator::compile(ctx))
-            }
-            "json-pointer"
-                if matches!(
-                    draft,
-                    Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
-                ) =>
-            {
-                Some(JsonPointerValidator::compile(ctx))
-            }
+            "iri" if draft >= Draft::Draft7 => Some(IriValidator::compile(ctx)),
+            "iri-reference" if draft >= Draft::Draft7 => Some(IriReferenceValidator::compile(ctx)),
+            "json-pointer" if draft >= Draft::Draft6 => Some(JsonPointerValidator::compile(ctx)),
             "regex" => Some(RegexValidator::compile(ctx)),
-            "relative-json-pointer"
-                if matches!(
-                    draft,
-                    Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
-                ) =>
-            {
+            "relative-json-pointer" if draft >= Draft::Draft7 => {
                 Some(RelativeJsonPointerValidator::compile(ctx))
             }
             "time" => Some(TimeValidator::compile(ctx)),
-            "uri-reference"
-                if matches!(
-                    draft,
-                    Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
-                ) =>
-            {
-                Some(URIReferenceValidator::compile(ctx))
-            }
-            "uri-template"
-                if matches!(
-                    draft,
-                    Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012
-                ) =>
-            {
-                Some(URITemplateValidator::compile(ctx))
-            }
-            "uuid" if matches!(draft, Draft::Draft201909 | Draft::Draft202012) => {
-                Some(UUIDValidator::compile(ctx))
-            }
-            "uri" => Some(URIValidator::compile(ctx)),
-            "duration" if matches!(draft, Draft::Draft201909 | Draft::Draft202012) => {
-                Some(DurationValidator::compile(ctx))
-            }
+            "uri" => Some(UriValidator::compile(ctx)),
+            "uri-reference" if draft >= Draft::Draft6 => Some(UriReferenceValidator::compile(ctx)),
+            "uri-template" if draft >= Draft::Draft6 => Some(UriTemplateValidator::compile(ctx)),
+            "uuid" if draft >= Draft::Draft201909 => Some(UuidValidator::compile(ctx)),
             _ => {
                 if ctx.are_unknown_formats_ignored() {
                     None
