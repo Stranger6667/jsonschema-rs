@@ -223,12 +223,12 @@ impl Registry {
     /// Create a new [`Resolver`] for this registry with a known valid base URI.
     #[must_use]
     pub fn resolver(&self, base_uri: Uri<String>) -> Resolver {
-        Resolver::new(self, base_uri)
+        Resolver::new(self, Arc::new(base_uri))
     }
     #[must_use]
     pub fn resolver_from_raw_parts(
         &self,
-        base_uri: Uri<String>,
+        base_uri: Arc<Uri<String>>,
         scopes: List<Uri<String>>,
     ) -> Resolver {
         Resolver::from_parts(self, base_uri, scopes)

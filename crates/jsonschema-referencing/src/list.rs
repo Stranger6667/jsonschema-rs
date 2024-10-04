@@ -34,7 +34,7 @@ impl<T> List<T> {
         self.head.is_none()
     }
     #[must_use]
-    pub fn push_front(&self, value: T) -> Self {
+    pub fn push_front(&self, value: Arc<T>) -> Self {
         List {
             head: Some(Arc::new(Node {
                 value,
@@ -52,7 +52,7 @@ impl<T> List<T> {
 
 #[derive(Debug)]
 pub(crate) struct Node<T> {
-    value: T,
+    value: Arc<T>,
     next: Option<Arc<Node<T>>>,
 }
 
@@ -68,7 +68,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
         self.current.map(|current| {
             let value = &current.value;
             self.current = current.next.as_ref();
-            value
+            &**value
         })
     }
 }

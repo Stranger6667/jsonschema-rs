@@ -1,4 +1,5 @@
 use core::fmt;
+use std::sync::Arc;
 
 use fluent_uri::Uri;
 use serde_json::Value;
@@ -11,7 +12,7 @@ use crate::{list::List, uri, Draft, Error, Registry, ResourceRef};
 #[derive(Clone)]
 pub struct Resolver<'r> {
     pub(crate) registry: &'r Registry,
-    base_uri: Uri<String>,
+    base_uri: Arc<Uri<String>>,
     scopes: List<Uri<String>>,
 }
 
@@ -45,7 +46,7 @@ impl<'r> fmt::Debug for Resolver<'r> {
 
 impl<'r> Resolver<'r> {
     /// Create a new `Resolver` with the given registry and base URI.
-    pub(crate) fn new(registry: &'r Registry, base_uri: Uri<String>) -> Self {
+    pub(crate) fn new(registry: &'r Registry, base_uri: Arc<Uri<String>>) -> Self {
         Self {
             registry,
             base_uri,
@@ -54,7 +55,7 @@ impl<'r> Resolver<'r> {
     }
     pub(crate) fn from_parts(
         registry: &'r Registry,
-        base_uri: Uri<String>,
+        base_uri: Arc<Uri<String>>,
         scopes: List<Uri<String>>,
     ) -> Self {
         Self {
@@ -64,8 +65,8 @@ impl<'r> Resolver<'r> {
         }
     }
     #[must_use]
-    pub fn base_uri(&self) -> Uri<&str> {
-        self.base_uri.borrow()
+    pub fn base_uri(&self) -> Arc<Uri<String>> {
+        self.base_uri.clone()
     }
     /// Resolve a reference to the resource it points to.
     ///
@@ -81,7 +82,7 @@ impl<'r> Resolver<'r> {
             } else {
                 (reference, "")
             };
-            let uri = uri::resolve_against(&self.base_uri.borrow(), uri)?;
+            let uri = Arc::new(uri::resolve_against(&self.base_uri.borrow(), uri)?);
             (uri, fragment)
         };
 
@@ -155,7 +156,7 @@ impl<'r> Resolver<'r> {
     /// Returns an error if the resource id cannot be resolved against the base URI of this resolver.
     pub fn in_subresource(&self, subresource: ResourceRef) -> Result<Self, Error> {
         if let Some(id) = subresource.id() {
-            let base_uri = uri::resolve_against(&self.base_uri.borrow(), id)?;
+            let base_uri = Arc::new(uri::resolve_against(&self.base_uri.borrow(), id)?);
             Ok(Resolver {
                 registry: self.registry,
                 base_uri,
@@ -169,7 +170,7 @@ impl<'r> Resolver<'r> {
     pub fn dynamic_scope(&self) -> List<Uri<String>> {
         self.scopes.clone()
     }
-    fn evolve(&self, base_uri: Uri<String>) -> Resolver<'r> {
+    fn evolve(&self, base_uri: Arc<Uri<String>>) -> Resolver<'r> {
         if !self.base_uri.as_str().is_empty()
             && (self.scopes.is_empty() || base_uri != self.base_uri)
         {
