@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Performance
+
+- Speedup resolving.
+
 ## [0.22.2] - 2024-10-04
 
 ### Fixed
