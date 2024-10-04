@@ -26,6 +26,7 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 const DEFAULT_SCHEME: &str = "json-schema";
 pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
 type BaseUri = Uri<String>;
+type ResolverComponents = (Arc<BaseUri>, List<BaseUri>, Resource);
 
 /// Container for information required to build a tree.
 ///
@@ -123,7 +124,7 @@ impl<'a> Context<'a> {
         if base_uri.scheme().as_str() == DEFAULT_SCHEME {
             None
         } else {
-            Some(base_uri.to_owned())
+            Some((*base_uri).clone())
         }
     }
     fn is_known_keyword(&self, keyword: &str) -> bool {
@@ -186,11 +187,11 @@ impl<'a> Context<'a> {
         &self,
         reference: &str,
     ) -> Result<bool, referencing::Error> {
-        let uri = uri::resolve_against(&self.resolver.base_uri(), reference)?;
+        let uri = uri::resolve_against(&self.resolver.base_uri().borrow(), reference)?;
         Ok(self.seen.borrow().contains(&uri))
     }
     pub(crate) fn mark_seen(&self, reference: &str) -> Result<(), referencing::Error> {
-        let uri = uri::resolve_against(&self.resolver.base_uri(), reference)?;
+        let uri = uri::resolve_against(&self.resolver.base_uri().borrow(), reference)?;
         self.seen.borrow_mut().insert(uri);
         Ok(())
     }
@@ -204,7 +205,7 @@ impl<'a> Context<'a> {
         &self,
         reference: &str,
         is_recursive: bool,
-    ) -> Result<Option<(BaseUri, List<BaseUri>, Resource)>, ValidationError<'static>> {
+    ) -> Result<Option<ResolverComponents>, ValidationError<'static>> {
         let resolved = if reference == "#" {
             // Known & simple recursive reference
             // It may also use some additional logic from the `$recursiveAnchor` keyword
@@ -223,7 +224,7 @@ impl<'a> Context<'a> {
         let mut base_uri = resolved.resolver().base_uri().to_owned();
         let scopes = resolved.resolver().dynamic_scope();
         if let Some(id) = resource.id() {
-            base_uri = uri::resolve_against(&base_uri.borrow(), id)?;
+            base_uri = Arc::new(uri::resolve_against(&base_uri.borrow(), id)?);
         };
         Ok(Some((base_uri, scopes, resource)))
     }

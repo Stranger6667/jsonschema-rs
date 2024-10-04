@@ -62,7 +62,7 @@ pub(crate) struct LazyRefValidator {
     config: Arc<ValidationOptions>,
     registry: Arc<Registry>,
     scopes: List<Uri<String>>,
-    base_uri: Uri<String>,
+    base_uri: Arc<Uri<String>>,
     draft: Draft,
     inner: OnceCell<SchemaNode>,
 }
@@ -73,9 +73,9 @@ impl LazyRefValidator {
         let scopes = ctx.scopes();
         let resolved = ctx.lookup_recursive_reference()?;
         let resource = ctx.draft().create_resource(resolved.contents().clone());
-        let mut base_uri = resolved.resolver().base_uri().to_owned();
+        let mut base_uri = resolved.resolver().base_uri();
         if let Some(id) = resource.id() {
-            base_uri = uri::resolve_against(&base_uri.borrow(), id)?;
+            base_uri = Arc::new(uri::resolve_against(&base_uri.borrow(), id)?);
         };
         Ok(Box::new(LazyRefValidator {
             resource,
