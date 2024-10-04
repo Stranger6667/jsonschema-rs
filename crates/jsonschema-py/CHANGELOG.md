@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Performance
+
+- Speedup `json-pointer` and `relative-json-pointer` formats validation.
+
 ## [0.22.1] - 2024-10-03
 
 ### Fixed

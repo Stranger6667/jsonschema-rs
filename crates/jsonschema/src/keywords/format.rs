@@ -21,11 +21,6 @@ use crate::{
     Draft,
 };
 
-static JSON_POINTER_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^(/(([^/~])|(~[01]))*)*\z").expect("Is a valid regex"));
-static RELATIVE_JSON_POINTER_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^(?:0|[1-9][0-9]*)(?:#|(?:/(?:[^~/]|~0|~1)*)*)\z").expect("Is a valid regex")
-});
 static URI_TEMPLATE_RE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
         r#"^(?:(?:[^\x00-\x20"'<>%\\^`{|}]|%[0-9a-f]{2})|\{[+#./;?&=,!@|]?(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?(?:,(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?)*})*\z"#
@@ -67,6 +62,71 @@ macro_rules! validate {
             no_error()
         }
     };
+}
+
+fn is_valid_json_pointer(pointer: &str) -> bool {
+    if pointer.is_empty() {
+        // An empty string is a valid JSON Pointer
+        return true;
+    }
+
+    let mut chars = pointer.chars();
+
+    // The first character must be a '/'
+    if chars.next() != Some('/') {
+        return false;
+    }
+    is_valid_json_pointer_impl(chars)
+}
+
+fn is_valid_relative_json_pointer(s: &str) -> bool {
+    let mut chars = s.chars();
+
+    // Parse the non-negative integer part
+    match chars.next() {
+        Some('0') => {
+            // If it starts with '0', it must be followed by '#' or '/'
+            match chars.next() {
+                Some('#') => chars.next().is_none(),
+                Some('/') => is_valid_json_pointer_impl(chars),
+                None => true,
+                _ => false,
+            }
+        }
+        Some(c) if c.is_ascii_digit() => {
+            // Parse the rest of the integer
+            while let Some(c) = chars.next() {
+                match c {
+                    '#' => return chars.next().is_none(),
+                    '/' => return is_valid_json_pointer_impl(chars),
+                    c if c.is_ascii_digit() => continue,
+                    _ => return false,
+                }
+            }
+            // Valid if it's just a number
+            true
+        }
+        _ => false,
+    }
+}
+
+#[inline]
+fn is_valid_json_pointer_impl<I: Iterator<Item = char>>(chars: I) -> bool {
+    let mut escaped = false;
+    for c in chars {
+        match c {
+            // '/' is only allowed as a separator between reference tokens
+            '/' if !escaped => escaped = false,
+            '~' if !escaped => escaped = true,
+            '0' | '1' if escaped => escaped = false,
+            // These ranges cover all allowed unescaped characters
+            '\x00'..='\x2E' | '\x30'..='\x7D' | '\x7F'..='\u{10FFFF}' if !escaped => {}
+            // Any other character or combination is invalid
+            _ => return false,
+        }
+    }
+    // If we end in an escaped state, it's invalid
+    !escaped
 }
 
 fn is_valid_date(date: &str) -> bool {
@@ -190,6 +250,7 @@ macro_rules! handle_offset {
         }
     }};
 }
+
 fn is_valid_time(time: &str) -> bool {
     let bytes = time.as_bytes();
     let len = bytes.len();
@@ -259,49 +320,7 @@ fn is_valid_datetime(datetime: &str) -> bool {
     // Split the string into date and time parts
     let (date_part, time_part) = datetime.split_at(t_pos);
 
-    // Validate date part
-    if !is_valid_date(date_part) {
-        return false;
-    }
-
-    // Validate time part (skip the 'T' character)
-    is_valid_time(&time_part[1..])
-}
-
-format_validator!(DateValidator, "date");
-impl Validate for DateValidator {
-    validate!("date");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            is_valid_date(item)
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(TimeValidator, "time");
-impl Validate for TimeValidator {
-    validate!("time");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            is_valid_time(item)
-        } else {
-            true
-        }
-    }
-}
-
-format_validator!(DateTimeValidator, "date-time");
-impl Validate for DateTimeValidator {
-    validate!("date-time");
-    fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::String(item) = instance {
-            is_valid_datetime(item)
-        } else {
-            true
-        }
-    }
+    is_valid_date(date_part) && is_valid_time(&time_part[1..])
 }
 
 fn is_valid_email_impl<F>(email: &str, is_valid_hostname_impl: F) -> bool
@@ -494,6 +513,42 @@ fn is_valid_idn_hostname(hostname: &str) -> bool {
     is_valid_hostname(&ascii_hostname)
 }
 
+format_validator!(DateValidator, "date");
+impl Validate for DateValidator {
+    validate!("date");
+    fn is_valid(&self, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            is_valid_date(item)
+        } else {
+            true
+        }
+    }
+}
+
+format_validator!(TimeValidator, "time");
+impl Validate for TimeValidator {
+    validate!("time");
+    fn is_valid(&self, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            is_valid_time(item)
+        } else {
+            true
+        }
+    }
+}
+
+format_validator!(DateTimeValidator, "date-time");
+impl Validate for DateTimeValidator {
+    validate!("date-time");
+    fn is_valid(&self, instance: &Value) -> bool {
+        if let Value::String(item) = instance {
+            is_valid_datetime(item)
+        } else {
+            true
+        }
+    }
+}
+
 format_validator!(EmailValidator, "email");
 impl Validate for EmailValidator {
     validate!("email");
@@ -505,6 +560,7 @@ impl Validate for EmailValidator {
         }
     }
 }
+
 format_validator!(IDNEmailValidator, "idn-email");
 impl Validate for IDNEmailValidator {
     validate!("idn-email");
@@ -516,6 +572,7 @@ impl Validate for IDNEmailValidator {
         }
     }
 }
+
 format_validator!(HostnameValidator, "hostname");
 impl Validate for HostnameValidator {
     validate!("hostname");
@@ -527,6 +584,7 @@ impl Validate for HostnameValidator {
         }
     }
 }
+
 format_validator!(IDNHostnameValidator, "idn-hostname");
 impl Validate for IDNHostnameValidator {
     validate!("idn-hostname");
@@ -538,6 +596,7 @@ impl Validate for IDNHostnameValidator {
         }
     }
 }
+
 format_validator!(IpV4Validator, "ipv4");
 impl Validate for IpV4Validator {
     validate!("ipv4");
@@ -561,6 +620,7 @@ impl Validate for IpV6Validator {
         }
     }
 }
+
 format_validator!(IRIValidator, "iri");
 impl Validate for IRIValidator {
     validate!("iri");
@@ -572,6 +632,7 @@ impl Validate for IRIValidator {
         }
     }
 }
+
 format_validator!(URIValidator, "uri");
 impl Validate for URIValidator {
     validate!("uri");
@@ -583,6 +644,7 @@ impl Validate for URIValidator {
         }
     }
 }
+
 format_validator!(IRIReferenceValidator, "iri-reference");
 impl Validate for IRIReferenceValidator {
     validate!("iri-reference");
@@ -594,6 +656,7 @@ impl Validate for IRIReferenceValidator {
         }
     }
 }
+
 format_validator!(URIReferenceValidator, "uri-reference");
 impl Validate for URIReferenceValidator {
     validate!("uri-reference");
@@ -605,19 +668,19 @@ impl Validate for URIReferenceValidator {
         }
     }
 }
+
 format_validator!(JsonPointerValidator, "json-pointer");
 impl Validate for JsonPointerValidator {
     validate!("json-pointer");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            JSON_POINTER_RE
-                .is_match(item)
-                .expect("Simple JSON_POINTER_RE pattern")
+            is_valid_json_pointer(item)
         } else {
             true
         }
     }
 }
+
 format_validator!(RegexValidator, "regex");
 impl Validate for RegexValidator {
     validate!("regex");
@@ -629,14 +692,13 @@ impl Validate for RegexValidator {
         }
     }
 }
+
 format_validator!(RelativeJsonPointerValidator, "relative-json-pointer");
 impl Validate for RelativeJsonPointerValidator {
     validate!("relative-json-pointer");
     fn is_valid(&self, instance: &Value) -> bool {
         if let Value::String(item) = instance {
-            RELATIVE_JSON_POINTER_RE
-                .is_match(item)
-                .expect("Simple RELATIVE_JSON_POINTER_RE pattern")
+            is_valid_relative_json_pointer(item)
         } else {
             true
         }
@@ -1170,5 +1232,49 @@ mod tests {
     #[test]
     fn test_invalid_hostname() {
         assert!(!is_valid_hostname("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com"));
+    }
+
+    #[test_case(""; "empty string")]
+    #[test_case("/"; "root")]
+    #[test_case("/foo"; "simple key")]
+    #[test_case("/foo/0"; "array index")]
+    #[test_case("/foo/bar"; "nested keys")]
+    #[test_case("/f~0o/b~1r"; "escaped characters")]
+    #[test_case("/foo/bar/"; "trailing slash")]
+    #[test_case("/foo//bar"; "empty reference token")]
+    fn test_valid_json_pointer(pointer: &str) {
+        assert!(is_valid_json_pointer(pointer));
+    }
+
+    #[test_case("foo"; "missing leading slash")]
+    #[test_case("/foo/~"; "incomplete escape")]
+    #[test_case("/foo/~2"; "invalid escape")]
+    #[test_case("/foo\x7E"; "unescaped tilde")]
+    fn test_invalid_json_pointer(pointer: &str) {
+        assert!(!is_valid_json_pointer(pointer));
+    }
+
+    #[test_case("0"; "zero")]
+    #[test_case("1"; "positive integer")]
+    #[test_case("10"; "multi-digit integer")]
+    #[test_case("0#"; "zero with hash")]
+    #[test_case("1#"; "positive integer with hash")]
+    #[test_case("0/"; "zero with slash")]
+    #[test_case("1/foo"; "integer with json pointer")]
+    #[test_case("10/foo/bar"; "multi-digit integer with json pointer")]
+    fn test_valid_relative_json_pointer(pointer: &str) {
+        assert!(is_valid_relative_json_pointer(pointer));
+    }
+
+    #[test_case(""; "empty string")]
+    #[test_case("-1"; "negative integer")]
+    #[test_case("01"; "leading zero")]
+    #[test_case("1.5"; "decimal")]
+    #[test_case("a"; "non-digit")]
+    #[test_case("1a"; "digit followed by non-digit")]
+    #[test_case("1#/"; "hash not at end")]
+    #[test_case("1/~"; "incomplete escape in json pointer")]
+    fn test_invalid_relative_json_pointer(pointer: &str) {
+        assert!(!is_valid_relative_json_pointer(pointer));
     }
 }
