@@ -17,10 +17,11 @@ use crate::{
 use ahash::{AHashMap, AHashSet};
 use once_cell::sync::Lazy;
 use referencing::{
-    uri, Draft, Registry, Resolved, Resolver, Resource, ResourceRef, Retrieve, Uri, SPECIFICATIONS,
+    uri, Draft, List, Registry, Resolved, Resolver, Resource, ResourceRef, Retrieve, Uri,
+    SPECIFICATIONS,
 };
 use serde_json::Value;
-use std::{cell::RefCell, collections::VecDeque, rc::Rc, sync::Arc};
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 const DEFAULT_SCHEME: &str = "json-schema";
 pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
@@ -101,8 +102,8 @@ impl<'a> Context<'a> {
         self.resolver.lookup(reference)
     }
 
-    pub(crate) fn scopes(&self) -> VecDeque<Uri<String>> {
-        VecDeque::from_iter(self.resolver.dynamic_scope().cloned())
+    pub(crate) fn scopes(&self) -> List<Uri<String>> {
+        self.resolver.dynamic_scope()
     }
 
     /// Create a JSON Pointer from the current `schema_path` & a new chunk.
@@ -203,7 +204,7 @@ impl<'a> Context<'a> {
         &self,
         reference: &str,
         is_recursive: bool,
-    ) -> Result<Option<(BaseUri, VecDeque<BaseUri>, Resource)>, ValidationError<'static>> {
+    ) -> Result<Option<(BaseUri, List<BaseUri>, Resource)>, ValidationError<'static>> {
         let resolved = if reference == "#" {
             // Known & simple recursive reference
             // It may also use some additional logic from the `$recursiveAnchor` keyword
@@ -220,11 +221,7 @@ impl<'a> Context<'a> {
         };
         let resource = self.draft().create_resource(resolved.contents().clone());
         let mut base_uri = resolved.resolver().base_uri().to_owned();
-        let scopes = resolved
-            .resolver()
-            .dynamic_scope()
-            .cloned()
-            .collect::<VecDeque<_>>();
+        let scopes = resolved.resolver().dynamic_scope();
         if let Some(id) = resource.id() {
             base_uri = uri::resolve_against(&base_uri.borrow(), id)?;
         };

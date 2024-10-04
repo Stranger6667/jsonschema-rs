@@ -1,10 +1,9 @@
 use core::fmt;
-use std::collections::VecDeque;
 
 use fluent_uri::Uri;
 use serde_json::Value;
 
-use crate::{uri, Draft, Error, Registry, ResourceRef};
+use crate::{list::List, uri, Draft, Error, Registry, ResourceRef};
 
 /// A reference resolver.
 ///
@@ -13,7 +12,7 @@ use crate::{uri, Draft, Error, Registry, ResourceRef};
 pub struct Resolver<'r> {
     pub(crate) registry: &'r Registry,
     base_uri: Uri<String>,
-    scopes: VecDeque<Uri<String>>,
+    scopes: List<Uri<String>>,
 }
 
 impl<'r> PartialEq for Resolver<'r> {
@@ -50,13 +49,13 @@ impl<'r> Resolver<'r> {
         Self {
             registry,
             base_uri,
-            scopes: VecDeque::new(),
+            scopes: List::new(),
         }
     }
     pub(crate) fn from_parts(
         registry: &'r Registry,
         base_uri: Uri<String>,
-        scopes: VecDeque<Uri<String>>,
+        scopes: List<Uri<String>>,
     ) -> Self {
         Self {
             registry,
@@ -126,7 +125,7 @@ impl<'r> Resolver<'r> {
                 .and_then(Value::as_bool)
                 .unwrap_or(false)
             {
-                for uri in self.dynamic_scope() {
+                for uri in &self.dynamic_scope() {
                     let next_resolved = self.lookup(uri.as_str())?;
 
                     match next_resolved.contents {
@@ -167,19 +166,17 @@ impl<'r> Resolver<'r> {
         }
     }
     #[must_use]
-    pub fn dynamic_scope(&self) -> impl ExactSizeIterator<Item = &Uri<String>> {
-        self.scopes.iter()
+    pub fn dynamic_scope(&self) -> List<Uri<String>> {
+        self.scopes.clone()
     }
     fn evolve(&self, base_uri: Uri<String>) -> Resolver<'r> {
         if !self.base_uri.as_str().is_empty()
             && (self.scopes.is_empty() || base_uri != self.base_uri)
         {
-            let mut scopes = self.scopes.clone();
-            scopes.push_front(self.base_uri.clone());
             Resolver {
                 registry: self.registry,
                 base_uri,
-                scopes,
+                scopes: self.scopes.push_front(self.base_uri.clone()),
             }
         } else {
             Resolver {
