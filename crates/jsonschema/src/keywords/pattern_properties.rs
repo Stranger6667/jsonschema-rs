@@ -1,5 +1,5 @@
 use crate::{
-    compiler,
+    compiler, ecma,
     error::{no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     node::SchemaNode,
@@ -26,9 +26,9 @@ impl PatternPropertiesValidator {
         for (pattern, subschema) in map {
             let pctx = ctx.with_path(pattern.as_str());
             patterns.push((
-                match Regex::new(pattern) {
-                    Ok(r) => r,
-                    Err(_) => {
+                match ecma::to_rust_regex(pattern).map(|pattern| Regex::new(&pattern)) {
+                    Ok(Ok(r)) => r,
+                    _ => {
                         return Err(ValidationError::format(
                             JsonPointer::default(),
                             ctx.clone().into_pointer(),
@@ -123,15 +123,17 @@ impl SingleValuePatternPropertiesValidator {
         let kctx = ctx.with_path("patternProperties");
         let pctx = kctx.with_path(pattern);
         Ok(Box::new(SingleValuePatternPropertiesValidator {
-            pattern: match Regex::new(pattern) {
-                Ok(r) => r,
-                Err(_) => {
-                    return Err(ValidationError::format(
-                        JsonPointer::default(),
-                        kctx.clone().into_pointer(),
-                        schema,
-                        "regex",
-                    ))
+            pattern: {
+                match ecma::to_rust_regex(pattern).map(|pattern| Regex::new(&pattern)) {
+                    Ok(Ok(r)) => r,
+                    _ => {
+                        return Err(ValidationError::format(
+                            JsonPointer::default(),
+                            kctx.clone().into_pointer(),
+                            schema,
+                            "regex",
+                        ))
+                    }
                 }
             },
             node: compiler::compile(&pctx, pctx.as_resource_ref(schema))?,

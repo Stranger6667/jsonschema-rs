@@ -12,9 +12,9 @@ use serde_json::{Map, Value};
 use uuid_simd::{parse_hyphenated, Out};
 
 use crate::{
-    compiler,
+    compiler, ecma,
     error::{error, no_error, ErrorIterator, ValidationError},
-    keywords::{pattern, CompilationResult},
+    keywords::CompilationResult,
     paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
     validator::Validate,
@@ -583,7 +583,7 @@ fn is_valid_uri_reference(uri_reference: &str) -> bool {
 }
 
 fn is_valid_regex(regex: &str) -> bool {
-    pattern::convert_regex(regex).is_ok()
+    ecma::to_rust_regex(regex).is_ok()
 }
 
 fn is_valid_uri_template(uri_template: &str) -> bool {

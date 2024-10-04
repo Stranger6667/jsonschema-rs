@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- ECMAScript 262 regex support.
+
 ### Performance
 
 - Speedup `json-pointer` and `relative-json-pointer` formats validation.
