@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Performance
+
+- Speedup `json-pointer` and `relative-json-pointer` formats validation.
+
 ## [0.22.1] - 2024-10-03
 
 ### Fixed
@@ -28,7 +32,7 @@
 ### Performance
 
 - Faster building of a validator.
-- `hostname`, `date`, `time`, `date-time`, and `duration` formats validation.
+- Speedup `hostname`, `date`, `time`, `date-time`, and `duration` formats validation.
 - Cache regular expressions for `pattern`. [#417](https://github.com/Stranger6667/jsonschema-rs/issues/417)
 
 ## [0.21.0] - 2024-09-29
