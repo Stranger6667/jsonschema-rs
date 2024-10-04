@@ -1,5 +1,6 @@
 mod anchors;
 mod error;
+mod list;
 pub mod meta;
 mod registry;
 mod resolver;
@@ -11,6 +12,7 @@ pub mod uri;
 
 pub(crate) use anchors::Anchor;
 pub use error::{Error, UriError};
+pub use list::List;
 pub use registry::{Registry, RegistryOptions, SPECIFICATIONS};
 pub use resolver::{Resolved, Resolver};
 pub use resource::{Resource, ResourceRef};

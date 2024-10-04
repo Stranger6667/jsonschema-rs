@@ -40,7 +40,7 @@ impl Anchor {
             )),
             Anchor::Dynamic { name, resource, .. } => {
                 let mut last = resource;
-                for uri in resolver.dynamic_scope() {
+                for uri in &resolver.dynamic_scope() {
                     match resolver.registry.anchor(uri, name) {
                         Ok(anchor) => {
                             if let Anchor::Dynamic { resource, .. } = anchor {

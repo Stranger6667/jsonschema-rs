@@ -12,6 +12,7 @@ use serde_json::Value;
 
 use crate::{
     anchors::{AnchorKey, AnchorKeyRef},
+    list::List,
     meta, uri, Anchor, DefaultRetriever, Draft, Error, Resolver, Resource, Retrieve,
 };
 
@@ -228,7 +229,7 @@ impl Registry {
     pub fn resolver_from_raw_parts(
         &self,
         base_uri: Uri<String>,
-        scopes: VecDeque<Uri<String>>,
+        scopes: List<Uri<String>>,
     ) -> Resolver {
         Resolver::from_parts(self, base_uri, scopes)
     }
