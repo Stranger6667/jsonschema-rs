@@ -53,28 +53,26 @@ jobs:
 
       - run: cargo test --no-fail-fast
 
-  build-wasm32:
-    strategy:
-      fail-fast: false
-      matrix:
-        target: ['wasm32-unknown-unknown']
-
-    name: Build on ${{ matrix.target }}
+  test-wasm:
+    name: Test on WASM
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: true
 
+      - name: Setup `wasmtime`
+        uses: bytecodealliance/actions/wasmtime/setup@v1
+
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: 'wasm32-wasip1'
 
       - uses: Swatinem/rust-cache@v2
         with:
           cache-all-crates: "true"
 
-      - run: cargo build --target ${{ matrix.target }} --no-default-features -p jsonschema
+      - run: cargo test --target wasm32-wasip1 --no-default-features -p jsonschema
 
   coverage:
     name: Run test coverage
@@ -157,7 +155,7 @@ jobs:
       - run: cargo fmt --all -- --check
 
   lints-rust:
-    name: Rust lints
+    name: Rust lints on WASM
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -171,6 +169,25 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - run: cargo clippy --all-targets --all-features
+
+  lints-wasm:
+    name: Rust lints
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: 'wasm32-wasip1'
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: "true"
+
+      - run: cargo clippy --target wasm32-wasip1 --no-default-features --all-targets -p jsonschema
 
   check-releases-rust:
     name: Check Rust releases
