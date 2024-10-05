@@ -74,12 +74,20 @@ pub(crate) struct DefaultRetriever;
 
 #[allow(deprecated)]
 impl SchemaResolver for DefaultRetriever {
+    #[allow(unused)]
     fn resolve(
         &self,
         _root_schema: &Value,
         url: &Url,
         _reference: &str,
     ) -> Result<Arc<Value>, SchemaResolverError> {
+        #[cfg(target_arch = "wasm32")]
+        {
+            Err(anyhow::anyhow!(
+                "External references are not supported in WASM"
+            ))
+        }
+        #[cfg(not(target_arch = "wasm32"))]
         match url.scheme() {
             "http" | "https" => {
                 #[cfg(all(feature = "reqwest", not(feature = "resolve-http")))]
@@ -120,7 +128,13 @@ impl SchemaResolver for DefaultRetriever {
 }
 
 impl Retrieve for DefaultRetriever {
+    #[allow(unused)]
     fn retrieve(&self, uri: &Uri<&str>) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+        #[cfg(target_arch = "wasm32")]
+        {
+            Err("External references are not supported in WASM".into())
+        }
+        #[cfg(not(target_arch = "wasm32"))]
         match uri.scheme().as_str() {
             "http" | "https" => {
                 #[cfg(any(feature = "resolve-http", test))]
@@ -176,16 +190,16 @@ impl Retrieve for RetrieverAdapter {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
+    #[cfg(not(target_arch = "wasm32"))]
     use std::io::Write;
-    use tempfile::NamedTempFile;
 
     use super::DefaultRetriever;
 
     #[test]
     // FIXME(dd): Windows paths are not properly handled as URI.
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(all(not(target_os = "windows"), not(target_arch = "wasm32")))]
     fn test_retrieve_from_file() {
-        let mut temp_file = NamedTempFile::new().expect("Failed to create temp file");
+        let mut temp_file = tempfile::NamedTempFile::new().expect("Failed to create temp file");
         let external_schema = json!({
             "type": "object",
             "properties": {
@@ -228,7 +242,11 @@ mod tests {
         let result = crate::validator_for(&schema);
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Unknown scheme"));
+        let error = result.unwrap_err().to_string();
+        #[cfg(not(target_arch = "wasm32"))]
+        assert!(error.contains("Unknown scheme"));
+        #[cfg(target_arch = "wasm32")]
+        assert!(error.contains("External references are not supported in WASM"));
     }
 
     #[test]
@@ -244,15 +262,19 @@ mod tests {
             .with_resolver(DefaultRetriever)
             .build(&schema);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Unknown scheme"));
+        let error = result.unwrap_err().to_string();
+        #[cfg(not(target_arch = "wasm32"))]
+        assert!(error.contains("Unknown scheme"));
+        #[cfg(target_arch = "wasm32")]
+        assert!(error.contains("External references are not supported in WASM"));
     }
 
     #[test]
     #[allow(deprecated)]
     // FIXME(dd): Windows paths are not properly handled as URI.
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(all(not(target_os = "windows"), not(target_arch = "wasm32")))]
     fn test_deprecated_adapter_file_scheme() {
-        let mut temp_file = NamedTempFile::new().expect("Failed to create temp file");
+        let mut temp_file = tempfile::NamedTempFile::new().expect("Failed to create temp file");
         let external_schema = json!({
             "type": "object",
             "properties": {

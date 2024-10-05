@@ -4,6 +4,7 @@
 //! - 🔧 Custom keywords and format validators
 //! - 🌐 Remote reference fetching (network/file)
 //! - 🎨 `Basic` output style as per JSON Schema spec
+//! - 🚀 WebAssembly support
 //!
 //! ## Supported drafts
 //!
@@ -446,6 +447,23 @@
 //! - Custom format validators are only called for string instances.
 //! - Format validation can be disabled globally or per-draft using [`ValidationOptions`].
 //!   Ensure format validation is enabled if you're using custom formats.
+//!
+//! # WebAssembly support
+//!
+//! When using `jsonschema` in WASM environments, be aware that external references are
+//! not supported by default due to WASM limitations:
+//!    - No filesystem access (`resolve-file` feature)
+//!    - No direct HTTP requests (`resolve-http` feature)
+//!
+//! To use `jsonschema` in WASM, disable default features:
+//!
+//! ```toml
+//! jsonschema = { version = "x.y.z", default-features = false }
+//! ```
+//!
+//! For external references in WASM you may want to implement a custom retriever.
+//! See the [External References](#external-references) section for implementation details.
+
 pub(crate) mod compiler;
 mod content_encoding;
 mod content_media_type;
@@ -471,6 +489,12 @@ pub use retriever::{SchemaResolver, SchemaResolverError};
 pub use validator::Validator;
 
 use serde_json::Value;
+
+#[cfg(all(
+    target_arch = "wasm32",
+    any(feature = "resolve-http", feature = "resolve-file")
+))]
+compile_error!("Features 'resolve-http' and 'resolve-file' are not supported on WASM.");
 
 // Backward-compatibility
 #[deprecated(

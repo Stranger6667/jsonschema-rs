@@ -49,16 +49,15 @@ serde_json.workspace = true
 url.workspace = true
 uuid-simd = "0.8"
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.2", features = ["js"] }
-
 [dev-dependencies]
 benchmark = { path = "../benchmark/" }
 codspeed-criterion-compat = { version = "2.7", default-features = false }
 criterion = { version = "0.5", default-features = false }
-mockito = "1.5"
 testsuite = { package = "jsonschema-testsuite", path = "../jsonschema-testsuite" }
 test-case = "3"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+mockito = "1.5"
 tempfile = "3.13.0"
 
 [[bench]]

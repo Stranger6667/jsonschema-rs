@@ -310,15 +310,16 @@ mod tests {
     use num_cmp::NumCmp;
     use once_cell::sync::Lazy;
     use regex::Regex;
-    use serde_json::{from_str, json, Map, Value};
-    use std::{fs::File, io::Read, path::Path};
+    use serde_json::{json, Map, Value};
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn load(path: &str, idx: usize) -> Value {
+        use std::{fs::File, io::Read, path::Path};
         let path = Path::new(path);
         let mut file = File::open(path).unwrap();
         let mut content = String::new();
         file.read_to_string(&mut content).ok().unwrap();
-        let data: Value = from_str(&content).unwrap();
+        let data: Value = serde_json::from_str(&content).unwrap();
         let case = &data.as_array().unwrap()[idx];
         case.get("schema").unwrap().clone()
     }
@@ -337,6 +338,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn validate_ref() {
         let schema = load("tests/suite/tests/draft7/ref.json", 1);
         let value = json!({"bar": 3});
