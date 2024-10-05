@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.22.3] - 2024-10-05
+
 ### Performance
 
 - Speedup resolving.
@@ -619,7 +621,8 @@ Old names are retained for backward compatibility but will be removed in a futur
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.22.2...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.22.3...HEAD
+[0.22.3]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.22.2...rust-v0.22.3
 [0.22.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.22.1...rust-v0.22.2
 [0.22.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.22.0...rust-v0.22.1
 [0.22.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.21.0...rust-v0.22.0
