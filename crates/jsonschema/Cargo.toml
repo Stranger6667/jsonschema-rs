@@ -54,7 +54,7 @@ getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
 benchmark = { path = "../benchmark/" }
-codspeed-criterion-compat = "2.7"
+codspeed-criterion-compat = { version = "2.7", default-features = false }
 criterion = { version = "0.5", default-features = false }
 mockito = "1.5"
 testsuite = { package = "jsonschema-testsuite", path = "../jsonschema-testsuite" }
