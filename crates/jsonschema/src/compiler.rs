@@ -47,12 +47,13 @@ impl<'a> Context<'a> {
         registry: Arc<Registry>,
         resolver: Rc<Resolver<'a>>,
         draft: Draft,
+        path: JsonPointerNode<'a, '_>,
     ) -> Self {
         Context {
             config,
             registry,
             resolver,
-            path: JsonPointerNode::new(),
+            path,
             draft,
             seen: Rc::new(RefCell::new(AHashSet::new())),
         }
@@ -148,13 +149,14 @@ impl<'a> Context<'a> {
         &'a self,
         resolver: Resolver<'a>,
         draft: Draft,
+        path: JsonPointerNode<'a, '_>,
     ) -> Context<'a> {
         Context {
             config: Arc::clone(&self.config),
             registry: Arc::clone(&self.registry),
             resolver: Rc::new(resolver),
             draft,
-            path: self.path.clone(),
+            path,
             seen: Rc::clone(&self.seen),
         }
     }
@@ -315,7 +317,13 @@ pub(crate) fn build_validator(
     let resolver = Rc::new(registry.try_resolver(&base_uri)?);
 
     let config = Arc::new(config);
-    let ctx = Context::new(Arc::clone(&config), Arc::clone(&registry), resolver, draft);
+    let ctx = Context::new(
+        Arc::clone(&config),
+        Arc::clone(&registry),
+        resolver,
+        draft,
+        JsonPointerNode::new(),
+    );
 
     // Validate the schema itself
     if config.validate_schema {
@@ -380,7 +388,7 @@ pub(crate) fn compile_with<'a>(
                             }
                         })
                         .collect();
-                    let validator = keywords::ref_::compile(ctx, schema, reference)
+                    let validator = keywords::ref_::compile_ref(ctx, schema, reference)
                         .expect("Missing `$ref` implementation")?;
                     let validators = vec![("$ref".to_string(), validator)];
                     return Ok(SchemaNode::from_keywords(

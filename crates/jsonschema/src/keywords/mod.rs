@@ -51,7 +51,7 @@ type CompileFunc<'a> =
 pub(crate) fn get_for_draft(draft: Draft, keyword: &str) -> Option<CompileFunc> {
     match (draft, keyword) {
         // Keywords common to all drafts
-        (_, "$ref") => Some(ref_::compile),
+        (_, "$ref") => Some(ref_::compile_ref),
         (_, "additionalItems") => Some(additional_items::compile),
         (_, "additionalProperties") => Some(additional_properties::compile),
         (_, "allOf") => Some(all_of::compile),
@@ -134,7 +134,7 @@ pub(crate) fn get_for_draft(draft: Draft, keyword: &str) -> Option<CompileFunc> 
         }
 
         // Draft 2020-12 specific
-        (Draft::Draft202012, "$dynamicRef") => Some(ref_::compile),
+        (Draft::Draft202012, "$dynamicRef") => Some(ref_::compile_dynamic_ref),
 
         // Unknown or not-yet-implemented keyword
         _ => None,
