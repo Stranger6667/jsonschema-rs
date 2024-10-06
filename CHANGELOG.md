@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Missing annotations from by-reference applicators. [#403](https://github.com/Stranger6667/jsonschema-rs/issues/403)
+
 ### Changed
 
 - Improve error messages on WASM. [#568](https://github.com/Stranger6667/jsonschema-rs/issues/568)
