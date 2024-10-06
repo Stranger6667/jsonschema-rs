@@ -5,6 +5,7 @@
 ### Fixed
 
 - Missing annotations from by-reference applicators. [#403](https://github.com/Stranger6667/jsonschema-rs/issues/403)
+- Relative keyword locations missing by-reference applicators (such as `$ref` or `$dynamicRef`).
 
 ### Changed
 

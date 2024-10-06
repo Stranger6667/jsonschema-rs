@@ -5,7 +5,7 @@ use crate::{
     error::ErrorIterator,
     keywords::CompilationResult,
     node::SchemaNode,
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointer, JsonPointerNode, PathChunk, PathChunkRef},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
     ValidationError, ValidationOptions,
@@ -25,7 +25,9 @@ impl RefValidator {
         ctx: &compiler::Context,
         reference: &str,
         is_recursive: bool,
+        keyword: &str,
     ) -> CompilationResult<'a> {
+        let relative_location = ctx.path.push(keyword);
         if let Some((base_uri, scopes, resource)) =
             ctx.lookup_maybe_recursive(reference, is_recursive)?
         {
@@ -35,13 +37,15 @@ impl RefValidator {
                 registry: Arc::clone(&ctx.registry),
                 base_uri,
                 scopes,
+                relative_location: relative_location.into(),
                 draft: ctx.draft(),
                 inner: OnceCell::default(),
             })))
         } else {
             let (contents, resolver, draft) = ctx.lookup(reference)?.into_inner();
             let resource_ref = draft.create_resource_ref(contents);
-            let ctx = ctx.with_resolver_and_draft(resolver, resource_ref.draft());
+            let ctx =
+                ctx.with_resolver_and_draft(resolver, resource_ref.draft(), relative_location);
             let inner =
                 compiler::compile_with(&ctx, resource_ref).map_err(|err| err.into_owned())?;
             Ok(Box::new(RefValidator::Default { inner }))
@@ -62,6 +66,7 @@ pub(crate) struct LazyRefValidator {
     registry: Arc<Registry>,
     scopes: List<Uri<String>>,
     base_uri: Arc<Uri<String>>,
+    relative_location: JsonPointer,
     draft: Draft,
     inner: OnceCell<SchemaNode>,
 }
@@ -82,6 +87,7 @@ impl LazyRefValidator {
             registry: Arc::clone(&ctx.registry),
             base_uri,
             scopes,
+            relative_location: ctx.path.push("$recursiveRef").into(),
             draft: ctx.draft(),
             inner: OnceCell::default(),
         }))
@@ -91,11 +97,48 @@ impl LazyRefValidator {
             let resolver = self
                 .registry
                 .resolver_from_raw_parts(self.base_uri.clone(), self.scopes.clone());
+
+            let segments: Vec<PathChunkRef<'_>> = self
+                .relative_location
+                .iter()
+                .map(PathChunk::as_ref)
+                .collect();
+
+            let dummy = JsonPointerNode::new();
+            let mut nodes = Vec::with_capacity(segments.len());
+
+            // NOTE: This is a temporary hack as `JsonPointerNode` was designed without
+            // lazy compilation in mind and uses references inside
+            for (i, &segment) in segments.iter().enumerate() {
+                nodes.push(JsonPointerNode {
+                    segment,
+                    parent: match i + 1 {
+                        1 => Some(&dummy),
+                        _ => {
+                            // SAFETY: `nodes` already have enough capacity and will not be
+                            // reallocated + they won't be dropped while `path` is used
+                            Some(unsafe {
+                                std::mem::transmute::<
+                                    &JsonPointerNode<'_, '_>,
+                                    &JsonPointerNode<'_, '_>,
+                                >(&nodes[i - 1])
+                            })
+                        }
+                    },
+                });
+            }
+
+            let path = if let Some(path) = nodes.last() {
+                path.clone()
+            } else {
+                JsonPointerNode::new()
+            };
             let ctx = compiler::Context::new(
                 Arc::clone(&self.config),
                 Arc::clone(&self.registry),
                 Rc::new(resolver),
                 self.draft,
+                path,
             );
             // INVARIANT: This schema was already used during compilation before detecting a
             // reference cycle that lead to building this validator.
@@ -164,10 +207,11 @@ fn invalid_reference<'a>(ctx: &compiler::Context, schema: &'a Value) -> Validati
 }
 
 #[inline]
-pub(crate) fn compile<'a>(
+pub(crate) fn compile_impl<'a>(
     ctx: &compiler::Context,
     parent: &'a Map<String, Value>,
     schema: &'a Value,
+    keyword: &str,
 ) -> Option<CompilationResult<'a>> {
     let is_recursive = parent
         .get("$recursiveAnchor")
@@ -177,8 +221,26 @@ pub(crate) fn compile<'a>(
         schema
             .as_str()
             .ok_or_else(|| invalid_reference(ctx, schema))
-            .and_then(|reference| RefValidator::compile(ctx, reference, is_recursive)),
+            .and_then(|reference| RefValidator::compile(ctx, reference, is_recursive, keyword)),
     )
+}
+
+#[inline]
+pub(crate) fn compile_dynamic_ref<'a>(
+    ctx: &compiler::Context,
+    parent: &'a Map<String, Value>,
+    schema: &'a Value,
+) -> Option<CompilationResult<'a>> {
+    compile_impl(ctx, parent, schema, "$dynamicRef")
+}
+
+#[inline]
+pub(crate) fn compile_ref<'a>(
+    ctx: &compiler::Context,
+    parent: &'a Map<String, Value>,
+    schema: &'a Value,
+) -> Option<CompilationResult<'a>> {
+    compile_impl(ctx, parent, schema, "$ref")
 }
 
 #[inline]
@@ -211,7 +273,7 @@ mod tests {
             }
         }),
         &json!({"foo": 42}),
-        "/properties/foo/type"
+        "/properties/foo/$ref/type"
     )]
     fn schema_path(schema: &Value, instance: &Value, expected: &str) {
         tests_util::assert_schema_path(schema, instance, expected)
@@ -247,7 +309,7 @@ mod tests {
         });
         let validator = crate::validator_for(&schema).expect("Invalid schema");
         let mut iter = validator.validate(&instance).expect_err("Should fail");
-        let expected = "/properties/things/items/properties/code/enum";
+        let expected = "/properties/things/items/properties/code/$ref/enum";
         assert_eq!(
             iter.next()
                 .expect("Should be present")
@@ -283,76 +345,107 @@ mod tests {
         assert!(!validator.is_valid(&json!("a")));
     }
 
-    #[test]
-    fn test_output_in_reference() {
-        let schema = crate::validator_for(&json!({
-          "$id": "https://example.com/schema.json",
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "type": "object",
-          "properties": {
-            "vegetables": {
-              "type": "array",
-              "description": "Desc1",
-              "items": { "$ref": "#/$defs/veggie" }
-            }
-          },
-          "$defs": {
-            "veggie": {
-              "type": "object",
-              "required": [ "veggieName", "veggieLike" ],
-              "properties": {
-                "veggieName": {
-                  "description": "Desc2",
-                  "type": "string"
-                },
-                "veggieLike": {
-                  "description": "Desc3",
-                  "type": "boolean"
+    #[test_case(
+        json!({
+            "$id": "https://example.com/schema.json",
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+                "foo": {
+                    "type": "array",
+                    "items": { "$ref": "#/$defs/item" }
                 }
-              }
+            },
+            "$defs": {
+                "item": {
+                    "type": "object",
+                    "required": ["name", "value"],
+                    "properties": {
+                        "name": { "type": "string" },
+                        "value": { "type": "boolean" }
+                    }
+                }
             }
-          }
-        }))
-        .unwrap();
-        let crate::BasicOutput::Valid(output) = schema
-            .apply(&json!({
-                "vegetables":[{"veggieName": "carrot", "veggieLike": true}]
-            }))
-            .basic()
-        else {
-            panic!("Should pass validation")
+        }),
+        json!({
+            "foo": [{"name": "item1", "value": true}]
+        }),
+        vec![
+            ("", "/properties"),
+            ("/foo", "/properties/foo/items"),
+            ("/foo/0", "/properties/foo/items/$ref/properties"),
+        ]
+    ; "standard $ref")]
+    #[test_case(
+        json!({
+            "$id": "https://example.com/schema.json",
+            "$schema": "https://json-schema.org/draft/2019-09/schema",
+            "$recursiveAnchor": true,
+            "type": "object",
+            "properties": {
+                "name": { "type": "string" },
+                "child": { "$recursiveRef": "#" }
+            }
+        }),
+        json!({
+            "name": "parent",
+            "child": {
+                "name": "child",
+                "child": { "name": "grandchild" }
+            }
+        }),
+        vec![
+            ("", "/properties"),
+            ("/child", "/properties/child/$recursiveRef/properties"),
+            ("/child/child", "/properties/child/$recursiveRef/properties/child/$recursiveRef/properties"),
+        ]
+    ; "$recursiveRef")]
+    #[test_case(
+        json!({
+            "$id": "https://example.com/schema.json",
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$dynamicAnchor": "node",
+            "type": "object",
+            "properties": {
+                "name": { "type": "string" },
+                "child": { "$dynamicRef": "#node" }
+            }
+        }),
+        json!({
+            "name": "parent",
+            "child": {
+                "name": "child",
+                "child": { "name": "grandchild" }
+            }
+        }),
+        vec![
+            ("", "/properties"),
+            ("/child", "/properties/child/$dynamicRef/properties"),
+            ("/child/child", "/properties/child/$dynamicRef/properties/child/$dynamicRef/properties"),
+        ]
+    ; "$dynamicRef")]
+    fn test_reference_types_location(
+        schema: serde_json::Value,
+        instance: serde_json::Value,
+        expected_locations: Vec<(&str, &str)>,
+    ) {
+        let schema = crate::validator_for(&schema).unwrap();
+
+        let crate::BasicOutput::Valid(output) = schema.apply(&instance).basic() else {
+            panic!("Should pass validation");
         };
 
-        macro_rules! assert_unit {
-            ($idx:expr, $instance_location:expr, $keyword_location:expr) => {
-                assert_eq!(
-                    output[$idx].instance_location().to_string(),
-                    $instance_location
-                );
-                assert_eq!(
-                    output[$idx].keyword_location().to_string(),
-                    $keyword_location
-                );
-            };
+        for (idx, (instance_location, keyword_location)) in expected_locations.iter().enumerate() {
+            assert_eq!(
+                output[idx].instance_location().to_string(),
+                *instance_location,
+                "Instance location mismatch at index {idx}"
+            );
+            assert_eq!(
+                output[idx].keyword_location().to_string(),
+                *keyword_location,
+                "Keyword location mismatch at index {idx}",
+            );
         }
-
-        assert_unit!(0, "", "/properties");
-        assert_unit!(1, "/vegetables", "/properties/vegetables");
-        assert_unit!(2, "/vegetables", "/properties/vegetables/items");
-        assert_unit!(
-            3,
-            "/vegetables/0",
-            "/properties/vegetables/items/properties"
-        );
-        assert_unit!(
-            4,
-            "/vegetables/0/veggieLike",
-            "/properties/vegetables/items/properties/veggieLike"
-        );
-        assert_unit!(
-            5,
-            "/vegetables/0/veggieName",
-            "/properties/vegetables/items/properties/veggieName"
-        );
     }
 }

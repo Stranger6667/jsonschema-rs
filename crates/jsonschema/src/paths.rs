@@ -108,6 +108,16 @@ pub enum PathChunk {
     Keyword(&'static str),
 }
 
+impl PathChunk {
+    pub(crate) fn as_ref(&self) -> PathChunkRef<'_> {
+        match self {
+            PathChunk::Property(p) => PathChunkRef::Property(p),
+            PathChunk::Index(i) => PathChunkRef::Index(*i),
+            PathChunk::Keyword(k) => PathChunkRef::Property(k),
+        }
+    }
+}
+
 /// A borrowed variant of [`PathChunk`].
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum PathChunkRef<'a> {
