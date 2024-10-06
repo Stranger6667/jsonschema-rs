@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Performance
+
+- Speedup `hostname` & `idn-hostname` formats validation.
+
 ## [0.22.3] - 2024-10-05
 
 ### Performance

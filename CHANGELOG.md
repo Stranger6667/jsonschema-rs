@@ -10,6 +10,10 @@
 
 - Improve error messages on WASM. [#568](https://github.com/Stranger6667/jsonschema-rs/issues/568)
 
+### Performance
+
+- Speedup `hostname` & `idn-hostname` formats validation.
+
 ## [0.22.3] - 2024-10-05
 
 ### Performance
