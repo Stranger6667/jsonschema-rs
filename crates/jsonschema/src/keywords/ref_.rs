@@ -7,7 +7,7 @@ use crate::{
     node::SchemaNode,
     paths::{JsonPointer, JsonPointerNode},
     primitive_type::PrimitiveType,
-    validator::Validate,
+    validator::{PartialApplication, Validate},
     ValidationError, ValidationOptions,
 };
 use once_cell::sync::OnceCell;
@@ -44,7 +44,6 @@ impl RefValidator {
             let ctx = ctx.with_resolver_and_draft(resolver, resource_ref.draft());
             let inner =
                 compiler::compile_with(&ctx, resource_ref).map_err(|err| err.into_owned())?;
-            // TODO: Should ctx include `$ref`?
             Ok(Box::new(RefValidator::Default { inner }))
         }
     }
@@ -116,6 +115,13 @@ impl Validate for LazyRefValidator {
     ) -> ErrorIterator<'instance> {
         self.lazy_compile().validate(instance, instance_path)
     }
+    fn apply<'a>(
+        &'a self,
+        instance: &Value,
+        instance_path: &JsonPointerNode,
+    ) -> PartialApplication<'a> {
+        self.lazy_compile().apply(instance, instance_path)
+    }
 }
 
 impl Validate for RefValidator {
@@ -134,6 +140,16 @@ impl Validate for RefValidator {
         match self {
             RefValidator::Default { inner } => inner.validate(instance, instance_path),
             RefValidator::Lazy(lazy) => lazy.validate(instance, instance_path),
+        }
+    }
+    fn apply<'a>(
+        &'a self,
+        instance: &Value,
+        instance_path: &JsonPointerNode,
+    ) -> PartialApplication<'a> {
+        match self {
+            RefValidator::Default { inner } => inner.apply(instance, instance_path),
+            RefValidator::Lazy(lazy) => lazy.apply(instance, instance_path),
         }
     }
 }
@@ -265,5 +281,78 @@ mod tests {
         let validator = crate::validator_for(&schema).expect("Invalid schema");
         assert!(validator.is_valid(&json!(2)));
         assert!(!validator.is_valid(&json!("a")));
+    }
+
+    #[test]
+    fn test_output_in_reference() {
+        let schema = crate::validator_for(&json!({
+          "$id": "https://example.com/schema.json",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "vegetables": {
+              "type": "array",
+              "description": "Desc1",
+              "items": { "$ref": "#/$defs/veggie" }
+            }
+          },
+          "$defs": {
+            "veggie": {
+              "type": "object",
+              "required": [ "veggieName", "veggieLike" ],
+              "properties": {
+                "veggieName": {
+                  "description": "Desc2",
+                  "type": "string"
+                },
+                "veggieLike": {
+                  "description": "Desc3",
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }))
+        .unwrap();
+        let crate::BasicOutput::Valid(output) = schema
+            .apply(&json!({
+                "vegetables":[{"veggieName": "carrot", "veggieLike": true}]
+            }))
+            .basic()
+        else {
+            panic!("Should pass validation")
+        };
+
+        macro_rules! assert_unit {
+            ($idx:expr, $instance_location:expr, $keyword_location:expr) => {
+                assert_eq!(
+                    output[$idx].instance_location().to_string(),
+                    $instance_location
+                );
+                assert_eq!(
+                    output[$idx].keyword_location().to_string(),
+                    $keyword_location
+                );
+            };
+        }
+
+        assert_unit!(0, "", "/properties");
+        assert_unit!(1, "/vegetables", "/properties/vegetables");
+        assert_unit!(2, "/vegetables", "/properties/vegetables/items");
+        assert_unit!(
+            3,
+            "/vegetables/0",
+            "/properties/vegetables/items/properties"
+        );
+        assert_unit!(
+            4,
+            "/vegetables/0/veggieLike",
+            "/properties/vegetables/items/properties/veggieLike"
+        );
+        assert_unit!(
+            5,
+            "/vegetables/0/veggieName",
+            "/properties/vegetables/items/properties/veggieName"
+        );
     }
 }
