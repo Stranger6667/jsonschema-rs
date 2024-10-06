@@ -316,30 +316,46 @@ fn is_valid_idn_email(email: &str) -> bool {
 }
 
 fn is_valid_hostname(hostname: &str) -> bool {
-    let hostname = hostname.trim_end_matches('.');
-    if hostname.len() > 253 {
+    const VALID_CHARS: [bool; 256] = {
+        let mut table = [false; 256];
+        let mut i = 0;
+        while i < 256 {
+            table[i] = matches!(i as u8, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-');
+            i += 1;
+        }
+        table
+    };
+    let hostname = hostname.as_bytes();
+    let len = hostname.len();
+    if len == 0 || len > 253 || hostname[len - 1] == b'.' {
         return false;
     }
-    for label in hostname.split('.') {
-        if !(1..=63).contains(&label.len()) {
-            return false;
-        }
 
-        if label.starts_with('-') || label.ends_with('-') {
-            return false;
-        }
+    let mut label_start = 0;
+    let mut i = 0;
 
-        // We can treat each byte as character here: all multibyte characters
-        // start with a byte that is not in the ASCII range
-        if !label
-            .as_bytes()
-            .iter()
-            .all(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-'))
-        {
+    while i < len {
+        if hostname[i] == b'.' {
+            let label_len = i - label_start;
+            if label_len == 0
+                || label_len > 63
+                || hostname[label_start] == b'-'
+                || hostname[i - 1] == b'-'
+            {
+                return false;
+            }
+            label_start = i + 1;
+        } else if !VALID_CHARS[hostname[i] as usize] {
             return false;
         }
+        i += 1;
     }
-    true
+
+    let last_label_len = len - label_start;
+    !(last_label_len == 0
+        || last_label_len > 63
+        || hostname[label_start] == b'-'
+        || hostname[len - 1] == b'-')
 }
 
 fn is_valid_idn_hostname(hostname: &str) -> bool {
