@@ -307,9 +307,9 @@ mod tests {
         primitive_type::PrimitiveType,
         ErrorIterator, Validator,
     };
+    use fancy_regex::Regex;
     use num_cmp::NumCmp;
     use once_cell::sync::Lazy;
-    use regex::Regex;
     use serde_json::{json, Map, Value};
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -462,7 +462,7 @@ mod tests {
             static CURRENCY_RE: Lazy<Regex> = Lazy::new(|| {
                 Regex::new("^(0|([1-9]+[0-9]*))(\\.[0-9]{2})$").expect("Invalid regex")
             });
-            CURRENCY_RE.is_match(s)
+            CURRENCY_RE.is_match(s).expect("Invalid regex")
         }
         /// A custom keyword validator that overrides "minimum"
         /// so that "minimum" may apply to "currency"-formatted strings as well.
