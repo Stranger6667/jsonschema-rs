@@ -101,6 +101,7 @@ To implement a custom format validator:
 
 1. Define a function that takes a `str` and returns a `bool`.
 2. Pass it with the `formats` argument.
+3. Ensure validate_formats is set appropriately (especially for Draft 2019-09 and 2020-12).
 
 ```python
 import jsonschema_rs
@@ -112,10 +113,36 @@ def is_currency(value):
 
 validator = jsonschema_rs.validator_for(
     {"type": "string", "format": "currency"}, 
-    formats={"currency": is_currency}
+    formats={"currency": is_currency},
+    validate_formats=True  # Important for Draft 2019-09 and 2020-12
 )
 validator.is_valid("USD")  # True
 validator.is_valid("invalid")  # False
+```
+
+Additional configuration options are available for fine-tuning the validation process:
+
+- `validate_formats`: Override the draft-specific default behavior for format validation.
+- `ignore_unknown_formats`: Control whether unrecognized formats should be reported as errors.
+
+Example usage of these options:
+
+```python
+import jsonschema_rs
+
+validator = jsonschema_rs.Draft202012Validator(
+    {"type": "string", "format": "date"},
+    validate_formats=True,
+    ignore_unknown_formats=False
+)
+
+# This will validate the "date" format
+validator.is_valid("2023-05-17")  # True
+validator.is_valid("not a date")  # False
+
+# With ignore_unknown_formats=False, using an unknown format will raise an error
+invalid_schema = {"type": "string", "format": "unknown"}
+jsonschema_rs.Draft202012Validator(invalid_schema, ignore_unknown_formats=False)  # Raises an error
 ```
 
 ## Performance

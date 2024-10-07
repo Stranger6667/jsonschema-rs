@@ -50,28 +50,31 @@ def mock_server():
         process.terminate()
 
 
-SUPPORTED_DRAFTS = (4, 6, 7)
+SUPPORTED_DRAFTS = ("4", "6", "7", "2019-09", "2020-12")
 NOT_SUPPORTED_CASES = {
-    4: ("bignum.json", "email.json", "ecmascript-regex.json"),
-    6: ("bignum.json", "email.json", "ecmascript-regex.json"),
-    7: (
+    "4": ("bignum.json",),
+    "6": ("bignum.json",),
+    "7": ("bignum.json",),
+    "2019-09": ("bignum.json", "unevaluatedItems.json", "vocabulary.json", "ref.json", "unevaluatedProperties.json"),
+    "2020-12": (
         "bignum.json",
-        "email.json",
-        "idn-hostname.json",
-        "time.json",
-        "ecmascript-regex.json",
+        "unevaluatedItems.json",
+        "vocabulary.json",
+        "cross-draft.json",
+        "unevaluatedProperties.json",
     ),
 }
 
 
 def load_file(path):
     with open(path, mode="r", encoding="utf-8") as fd:
-        for block in json.load(fd):
+        raw = fd.read().replace("https://localhost:1234", "http://127.0.0.1:1234")
+        for block in json.loads(raw):
             yield block
 
 
-def maybe_optional(draft, schema, instance, expected, description, filename):
-    output = (filename, draft, schema, instance, expected, description)
+def maybe_optional(draft, schema, instance, expected, description, filename, is_optional):
+    output = (filename, draft, schema, instance, expected, description, is_optional)
     if filename in NOT_SUPPORTED_CASES.get(draft, ()):
         output = pytest.param(*output, marks=pytest.mark.skip(reason=f"{filename} is not supported"))
     return output
@@ -80,12 +83,7 @@ def maybe_optional(draft, schema, instance, expected, description, filename):
 def pytest_generate_tests(metafunc):
     cases = [
         maybe_optional(
-            draft,
-            block["schema"],
-            test["data"],
-            test["valid"],
-            test["description"],
-            filename,
+            draft, block["schema"], test["data"], test["valid"], test["description"], filename, "optional" in str(root)
         )
         for draft in SUPPORTED_DRAFTS
         for root, _, files in os.walk(TEST_SUITE_PATH / f"tests/draft{draft}/")
@@ -93,13 +91,23 @@ def pytest_generate_tests(metafunc):
         for block in load_file(os.path.join(root, filename))
         for test in block["tests"]
     ]
-    metafunc.parametrize("filename, draft, schema, instance, expected, description", cases)
+    metafunc.parametrize("filename, draft, schema, instance, expected, description, is_optional", cases)
 
 
-def test_draft(filename, draft, schema, instance, expected, description):
+def test_draft(filename, draft, schema, instance, expected, description, is_optional):
     error_message = f"[{filename}] {description}: {schema} | {instance}"
     try:
-        result = jsonschema_rs.is_valid(schema, instance, int(draft))
+        cls = {
+            "4": jsonschema_rs.Draft4Validator,
+            "6": jsonschema_rs.Draft6Validator,
+            "7": jsonschema_rs.Draft7Validator,
+            "2019-09": jsonschema_rs.Draft201909Validator,
+            "2020-12": jsonschema_rs.Draft202012Validator,
+        }[draft]
+        kwargs = {}
+        if is_optional:
+            kwargs["validate_formats"] = True
+        result = cls(schema, **kwargs).is_valid(instance)
         assert result is expected, error_message
     except ValueError:
         pytest.fail(error_message)

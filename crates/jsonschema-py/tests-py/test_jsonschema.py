@@ -9,7 +9,18 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from jsonschema_rs import ValidationError, is_valid, iter_errors, validate, validator_for
+from jsonschema_rs import (
+    ValidationError,
+    is_valid,
+    iter_errors,
+    validate,
+    validator_for,
+    Draft4Validator,
+    Draft6Validator,
+    Draft7Validator,
+    Draft201909Validator,
+    Draft202012Validator,
+)
 
 json = st.recursive(
     st.none()
@@ -297,3 +308,57 @@ def test_custom_format_with_exception():
     with pytest.raises(ValueError, match="Invalid currency"):
         for _ in iter_errors(schema, "USD", formats=formats):
             pass
+
+
+@pytest.mark.parametrize(
+    "cls,validate_formats,input,expected",
+    [
+        (Draft202012Validator, None, "2023-05-17", True),
+        (Draft202012Validator, True, "2023-05-17", True),
+        (Draft202012Validator, True, "not a date", False),
+        (Draft202012Validator, False, "2023-05-17", True),
+        (Draft202012Validator, False, "not a date", True),
+        (Draft201909Validator, None, "2023-05-17", True),
+        # Formats are not validated at all by default in these drafts
+        (Draft202012Validator, None, "not a date", True),
+        (Draft201909Validator, None, "not a date", True),
+        (Draft7Validator, None, "2023-05-17", True),
+        (Draft7Validator, None, "not a date", False),
+        (Draft6Validator, None, "2023-05-17", True),
+        (Draft6Validator, None, "not a date", False),
+        (Draft4Validator, None, "2023-05-17", True),
+        (Draft4Validator, None, "not a date", False),
+    ],
+)
+def test_validate_formats(cls, validate_formats, input, expected):
+    schema = {"type": "string", "format": "date"}
+    validator = cls(schema, validate_formats=validate_formats)
+    assert validator.is_valid(input) == expected
+
+
+@pytest.mark.parametrize(
+    "cls,ignore_unknown_formats,should_raise",
+    [
+        (Draft202012Validator, None, False),
+        (Draft202012Validator, True, False),
+        (Draft201909Validator, None, False),
+        (Draft201909Validator, True, False),
+        (Draft7Validator, None, False),
+        (Draft7Validator, False, True),
+        (Draft6Validator, None, False),
+        (Draft6Validator, False, True),
+        (Draft4Validator, None, False),
+        (Draft4Validator, False, True),
+        # Formats are not validated at all by default in these drafts
+        (Draft202012Validator, False, False),
+        (Draft201909Validator, False, False),
+    ],
+)
+def test_ignore_unknown_formats(cls, ignore_unknown_formats, should_raise):
+    unknown_format_schema = {"type": "string", "format": "unknown"}
+    if should_raise:
+        with pytest.raises(ValidationError):
+            cls(unknown_format_schema, ignore_unknown_formats=ignore_unknown_formats)
+    else:
+        validator = cls(unknown_format_schema, ignore_unknown_formats=ignore_unknown_formats)
+        assert validator.is_valid("any string")
