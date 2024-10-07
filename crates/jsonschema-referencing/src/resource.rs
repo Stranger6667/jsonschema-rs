@@ -144,9 +144,6 @@ fn unescape_segment(mut segment: &str) -> Cow<str> {
     // over the input buffer. First, search in the first `contains('~')` call
     // and then replacing `~1` & `~0` at once in a single pass.
     //
-    // Hovewer with `match_indices` it is passible to achieve the same in a single pass
-    // without much penalty for the case without `~`.
-    //
     // This implementation is ~3x faster than the naive one.
     //
     // **NOTE**: Heavily inspired by the implementation in `boon`:
@@ -205,8 +202,8 @@ mod tests {
     #[test_case("~01")]
     #[test_case("~10")]
     #[test_case("a~0~1b")]
-    #[test_case("~"; "single tilda")]
-    #[test_case("~~"; "double tilda")]
+    #[test_case("~"; "single tilde")]
+    #[test_case("~~"; "double tilde")]
     #[test_case("~~~~~"; "many tildas")]
     #[test_case("~2")]
     #[test_case("a~c")]
@@ -215,17 +212,17 @@ mod tests {
     #[test_case("a/d")]
     #[test_case("a~01b")]
     #[test_case("🌟~0🌠~1🌡️"; "Emojis with escapes")]
-    #[test_case("~🌟"; "Tilda followed by emoji")]
+    #[test_case("~🌟"; "Tilde followed by emoji")]
     #[test_case("Café~0~1"; "Accented characters with escapes")]
-    #[test_case("~é"; "Tilda followed by accented character")]
+    #[test_case("~é"; "Tilde followed by accented character")]
     #[test_case("αβγ"; "Greek")]
-    #[test_case("~αβγ"; "Tilda followed by Greek")]
+    #[test_case("~αβγ"; "Tilde followed by Greek")]
     #[test_case("∀∂∈ℝ∧∪≡∞"; "Mathematical symbols")]
-    #[test_case("~∀∂∈ℝ∧∪≡∞"; "Tilda followed by mathematical symbols")]
+    #[test_case("~∀∂∈ℝ∧∪≡∞"; "Tilde followed by mathematical symbols")]
     #[test_case("¡¢£¤¥¦§¨©"; "Special characters")]
-    #[test_case("~¡¢£¤¥¦§¨©"; "Tilda followed by special characters")]
+    #[test_case("~¡¢£¤¥¦§¨©"; "Tilde followed by special characters")]
     #[test_case("\u{10FFFF}"; "Highest valid Unicode code point")]
-    #[test_case("~\u{10FFFF}"; "Tilda followed by highest valid Unicode code point")]
+    #[test_case("~\u{10FFFF}"; "Tilde followed by highest valid Unicode code point")]
     fn test_unescape_segment_equivalence(input: &str) {
         let unescaped = unescape_segment(input);
         let double_replaced = input.replace("~1", "/").replace("~0", "~");

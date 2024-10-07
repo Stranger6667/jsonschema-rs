@@ -272,3 +272,11 @@ jobs:
       - run: cargo install cargo-fuzz
 
       - run: cargo +nightly fuzz run --release ${{ matrix.target }} fuzz/seeds -- -dict=fuzz/dict -max_total_time=60
+
+  spell-check:
+    name: Spell Check
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: crate-ci/typos@master
