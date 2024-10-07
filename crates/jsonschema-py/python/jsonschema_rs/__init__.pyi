@@ -10,26 +10,27 @@ def is_valid(
     draft: int | None = None,
     with_meta_schemas: bool | None = None,
     formats: dict[str, _FormatFunc] | None = None,
-) -> bool:
-    pass
-
+    validate_formats: bool | None = None,
+    ignore_unknown_formats: bool = True,
+) -> bool: ...
 def validate(
     schema: _SchemaT,
     instance: Any,
     draft: int | None = None,
     with_meta_schemas: bool | None = None,
     formats: dict[str, _FormatFunc] | None = None,
-) -> None:
-    pass
-
+    validate_formats: bool | None = None,
+    ignore_unknown_formats: bool = True,
+) -> None: ...
 def iter_errors(
     schema: _SchemaT,
     instance: Any,
     draft: int | None = None,
     with_meta_schemas: bool | None = None,
     formats: dict[str, _FormatFunc] | None = None,
-) -> Iterator[ValidationError]:
-    pass
+    validate_formats: bool | None = None,
+    ignore_unknown_formats: bool = True,
+) -> Iterator[ValidationError]: ...
 
 class JSONSchema:
     def __init__(
@@ -38,9 +39,9 @@ class JSONSchema:
         draft: int | None = None,
         with_meta_schemas: bool | None = None,
         formats: dict[str, _FormatFunc] | None = None,
-    ) -> None:
-        pass
-
+        validate_formats: bool | None = None,
+        ignore_unknown_formats: bool = True,
+    ) -> None: ...
     @classmethod
     def from_str(
         cls,
@@ -48,17 +49,12 @@ class JSONSchema:
         draft: int | None = None,
         with_meta_schemas: bool | None = None,
         formats: dict[str, _FormatFunc] | None = None,
-    ) -> "JSONSchema":
-        pass
-
-    def is_valid(self, instance: Any) -> bool:
-        pass
-
-    def validate(self, instance: Any) -> None:
-        pass
-
-    def iter_errors(self, instance: Any) -> Iterator[ValidationError]:
-        pass
+        validate_formats: bool | None = None,
+        ignore_unknown_formats: bool = True,
+    ) -> "JSONSchema": ...
+    def is_valid(self, instance: Any) -> bool: ...
+    def validate(self, instance: Any) -> None: ...
+    def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
 
 class ValidationError(ValueError):
     message: str
@@ -76,88 +72,64 @@ class Draft4Validator:
         self,
         schema: _SchemaT | str,
         formats: dict[str, _FormatFunc] | None = None,
-    ) -> None:
-        pass
-
-    def is_valid(self, instance: Any) -> bool:
-        pass
-
-    def validate(self, instance: Any) -> None:
-        pass
-
-    def iter_errors(self, instance: Any) -> Iterator[ValidationError]:
-        pass
+        validate_formats: bool | None = None,
+        ignore_unknown_formats: bool = True,
+    ) -> None: ...
+    def is_valid(self, instance: Any) -> bool: ...
+    def validate(self, instance: Any) -> None: ...
+    def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
 
 class Draft6Validator:
     def __init__(
         self,
         schema: _SchemaT | str,
         formats: dict[str, _FormatFunc] | None = None,
-    ) -> None:
-        pass
-
-    def is_valid(self, instance: Any) -> bool:
-        pass
-
-    def validate(self, instance: Any) -> None:
-        pass
-
-    def iter_errors(self, instance: Any) -> Iterator[ValidationError]:
-        pass
+        validate_formats: bool | None = None,
+        ignore_unknown_formats: bool = True,
+    ) -> None: ...
+    def is_valid(self, instance: Any) -> bool: ...
+    def validate(self, instance: Any) -> None: ...
+    def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
 
 class Draft7Validator:
     def __init__(
         self,
         schema: _SchemaT | str,
         formats: dict[str, _FormatFunc] | None = None,
-    ) -> None:
-        pass
-
-    def is_valid(self, instance: Any) -> bool:
-        pass
-
-    def validate(self, instance: Any) -> None:
-        pass
-
-    def iter_errors(self, instance: Any) -> Iterator[ValidationError]:
-        pass
+        validate_formats: bool | None = None,
+        ignore_unknown_formats: bool = True,
+    ) -> None: ...
+    def is_valid(self, instance: Any) -> bool: ...
+    def validate(self, instance: Any) -> None: ...
+    def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
 
 class Draft201909Validator:
     def __init__(
         self,
         schema: _SchemaT | str,
         formats: dict[str, _FormatFunc] | None = None,
-    ) -> None:
-        pass
-
-    def is_valid(self, instance: Any) -> bool:
-        pass
-
-    def validate(self, instance: Any) -> None:
-        pass
-
-    def iter_errors(self, instance: Any) -> Iterator[ValidationError]:
-        pass
+        validate_formats: bool | None = None,
+        ignore_unknown_formats: bool = True,
+    ) -> None: ...
+    def is_valid(self, instance: Any) -> bool: ...
+    def validate(self, instance: Any) -> None: ...
+    def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
 
 class Draft202012Validator:
     def __init__(
         self,
         schema: _SchemaT | str,
         formats: dict[str, _FormatFunc] | None = None,
-    ) -> None:
-        pass
-
-    def is_valid(self, instance: Any) -> bool:
-        pass
-
-    def validate(self, instance: Any) -> None:
-        pass
-
-    def iter_errors(self, instance: Any) -> Iterator[ValidationError]:
-        pass
+        validate_formats: bool | None = None,
+        ignore_unknown_formats: bool = True,
+    ) -> None: ...
+    def is_valid(self, instance: Any) -> bool: ...
+    def validate(self, instance: Any) -> None: ...
+    def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
 
 def validator_for(
     schema: _SchemaT,
     formats: dict[str, _FormatFunc] | None = None,
-) -> Draft4Validator | Draft6Validator | Draft7Validator | Draft201909Validator | Draft202012Validator:
-    pass
+    validate_formats: bool | None = None,
+    ignore_unknown_formats: bool = True,
+) -> Draft4Validator | Draft6Validator | Draft7Validator | Draft201909Validator | Draft202012Validator: ...
