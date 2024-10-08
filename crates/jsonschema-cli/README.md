@@ -1,6 +1,9 @@
 # jsonschema-cli
 
-A fast and user-friendly command-line tool for JSON Schema validation, powered by the high-performance `jsonschema` Rust crate.
+[<img alt="crates.io" src="https://img.shields.io/crates/v/jsonschema-cli.svg?style=flat-square&color=fc8d62&logo=rust" height="20">](https://crates.io/crates/jsonschema-cli)
+[<img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-jsonschema-cli?style=flat-square&labelColor=555555&logo=docs.rs" height="20">](https://docs.rs/jsonschema-cli)
+
+A fast command-line tool for JSON Schema validation, powered by the `jsonschema` crate.
 
 ## Installation
 

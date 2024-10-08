@@ -1,5 +1,8 @@
 # jsonschema-referencing
 
+[<img alt="crates.io" src="https://img.shields.io/crates/v/referencing.svg?style=flat-square&color=fc8d62&logo=rust" height="20">](https://crates.io/crates/referencing)
+[<img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-referencing?style=flat-square&labelColor=555555&logo=docs.rs" height="20">](https://docs.rs/referencing)
+
 An implementation-agnostic JSON reference resolution library for Rust.
 
 ## Features and Design

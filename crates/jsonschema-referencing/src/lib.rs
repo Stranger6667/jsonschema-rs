@@ -1,3 +1,6 @@
+//! # referencing
+//!
+//! An implementation-agnostic JSON reference resolution library for Rust.
 mod anchors;
 mod error;
 mod list;
