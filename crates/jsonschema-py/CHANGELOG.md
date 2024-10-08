@@ -7,6 +7,10 @@
 - `validate_formats` argument to all validator classes and validation functions. This allows overriding the draft-specific default behavior for format validation.
 - `ignore_unknown_formats` argument to all validator classes and validation functions. When set to `False`, unrecognized formats will be reported as validation errors instead of being silently ignored.
 
+### Changed
+
+- Improve error messages on URI resolving and parsing.
+
 ### Performance
 
 - Speedup `hostname` & `idn-hostname` formats validation.

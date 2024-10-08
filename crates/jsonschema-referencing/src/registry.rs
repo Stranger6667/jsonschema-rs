@@ -375,6 +375,7 @@ fn collect_external_references(
             return Ok(());
         }
         let resolved = uri::resolve_against(&base.borrow(), reference)?;
+        // Drop the fragment
         let builder = Uri::builder();
         let base_uri = match resolved.authority() {
             Some(auth) => builder
@@ -383,7 +384,8 @@ fn collect_external_references(
                 .path(resolved.path()),
             None => builder.scheme(resolved.scheme()).path(resolved.path()),
         }
-        .build()?;
+        .build()
+        .map_err(|error| Error::uri_building_error(resolved, error))?;
         collected.insert(base_uri);
     }
     Ok(())
@@ -410,10 +412,9 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "Invalid URI: unexpected character at index 0"
+            "Invalid URI reference ':/example.com': unexpected character at index 0"
         );
         let source_error = error.source().expect("Should have a source");
-        assert_eq!(source_error.to_string(), "unexpected character at index 0");
         let inner_source = source_error.source().expect("Should have a source");
         assert_eq!(inner_source.to_string(), "unexpected character at index 0");
     }
@@ -716,9 +717,8 @@ mod tests {
 
         let result = Registry::try_from_resources(input_resources.into_iter());
         let error = result.expect_err("Should fail");
-        assert_eq!(error.to_string(), "Invalid URI: base URI/IRI with fragment");
+        assert_eq!(error.to_string(), "Failed to resolve 'other.json' against 'http://example.com/schema#base': base URI/IRI with fragment");
         let source_error = error.source().expect("Should have a source");
-        assert_eq!(source_error.to_string(), "base URI/IRI with fragment");
         let inner_source = source_error.source().expect("Should have a source");
         assert_eq!(inner_source.to_string(), "base URI/IRI with fragment");
     }
