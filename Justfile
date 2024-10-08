@@ -10,6 +10,8 @@ lint-rs:
   cargo clippy --all-features --all-targets
   cd fuzz && cargo +nightly fmt --all
   cd fuzz && cargo clippy --all-features --all-targets
+  cd profiler && cargo +nightly fmt --all
+  cd profiler && cargo clippy --all-features --all-targets
 
 lint-py:
   uvx ruff check crates/jsonschema-py/python crates/jsonschema-py/tests-py crates/jsonschema-py/benches
