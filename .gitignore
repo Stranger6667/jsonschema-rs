@@ -1,8 +1,11 @@
 # Rust
 /crates/*/target
 /target/
+/profiler/target
 .hypothesis
 .benchmarks
+
+/profiler/dhat-heap.json
 
 # IDEs
 /.idea
