@@ -1,7 +1,10 @@
 use core::fmt;
 use std::{num::ParseIntError, str::Utf8Error};
 
-use fluent_uri::error::{BuildError, ParseError, ResolveError};
+use fluent_uri::{
+    error::{BuildError, ParseError, ResolveError},
+    Uri,
+};
 
 /// Errors that can occur during reference resolution and resource handling.
 #[derive(Debug)]
@@ -79,6 +82,41 @@ impl Error {
             source,
         }
     }
+
+    pub(crate) fn uri_parsing_error(uri: impl Into<String>, error: ParseError) -> Error {
+        Error::InvalidUri(UriError::Parse {
+            uri: uri.into(),
+            is_reference: false,
+            error,
+        })
+    }
+
+    pub(crate) fn uri_reference_parsing_error(uri: impl Into<String>, error: ParseError) -> Error {
+        Error::InvalidUri(UriError::Parse {
+            uri: uri.into(),
+            is_reference: true,
+            error,
+        })
+    }
+
+    pub(crate) fn uri_resolving_error(
+        uri: impl Into<String>,
+        base: Uri<&str>,
+        error: ResolveError,
+    ) -> Error {
+        Error::InvalidUri(UriError::Resolve {
+            uri: uri.into(),
+            base: base.to_owned(),
+            error,
+        })
+    }
+
+    pub(crate) fn uri_building_error(uri: impl Into<String>, error: BuildError) -> Error {
+        Error::InvalidUri(UriError::Build {
+            uri: uri.into(),
+            error,
+        })
+    }
 }
 
 impl fmt::Display for Error {
@@ -106,7 +144,7 @@ impl fmt::Display for Error {
             Error::InvalidAnchor { anchor } => {
                 f.write_fmt(format_args!("Anchor '{anchor}' is invalid"))
             }
-            Error::InvalidUri(error) => f.write_fmt(format_args!("Invalid URI: {error}")),
+            Error::InvalidUri(error) => error.fmt(f),
             Error::UnknownSpecification { specification } => {
                 f.write_fmt(format_args!("Unknown specification: {specification}"))
             }
@@ -134,17 +172,42 @@ impl std::error::Error for Error {
 
 #[derive(Debug)]
 pub enum UriError {
-    Parse(ParseError),
-    Resolve(ResolveError),
-    Build(BuildError),
+    Parse {
+        uri: String,
+        is_reference: bool,
+        error: ParseError,
+    },
+    Resolve {
+        uri: String,
+        base: Uri<String>,
+        error: ResolveError,
+    },
+    Build {
+        uri: String,
+        error: BuildError,
+    },
 }
 
 impl fmt::Display for UriError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            UriError::Parse(err) => err.fmt(f),
-            UriError::Resolve(err) => err.fmt(f),
-            UriError::Build(err) => err.fmt(f),
+            UriError::Parse {
+                uri,
+                is_reference,
+                error,
+            } => {
+                if *is_reference {
+                    f.write_fmt(format_args!("Invalid URI reference '{uri}': {error}"))
+                } else {
+                    f.write_fmt(format_args!("Invalid URI '{uri}': {error}"))
+                }
+            }
+            UriError::Resolve { uri, base, error } => f.write_fmt(format_args!(
+                "Failed to resolve '{uri}' against '{base}': {error}"
+            )),
+            UriError::Build { uri, error } => f.write_fmt(format_args!(
+                "Failed to build a valid URI from '{uri}': {error}"
+            )),
         }
     }
 }
@@ -152,39 +215,9 @@ impl fmt::Display for UriError {
 impl std::error::Error for UriError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            UriError::Parse(err) => Some(err),
-            UriError::Resolve(err) => Some(err),
-            UriError::Build(err) => Some(err),
+            UriError::Parse { error, .. } => Some(error),
+            UriError::Resolve { error, .. } => Some(error),
+            UriError::Build { error, .. } => Some(error),
         }
-    }
-}
-
-impl From<ParseError<String>> for UriError {
-    fn from(error: ParseError<String>) -> Self {
-        UriError::Parse(error.strip_input())
-    }
-}
-
-impl From<ParseError> for UriError {
-    fn from(error: ParseError) -> Self {
-        UriError::Parse(error)
-    }
-}
-
-impl From<ParseError> for Error {
-    fn from(error: ParseError) -> Self {
-        Error::InvalidUri(error.into())
-    }
-}
-
-impl From<ResolveError> for Error {
-    fn from(error: ResolveError) -> Self {
-        Error::InvalidUri(UriError::Resolve(error))
-    }
-}
-
-impl From<BuildError> for Error {
-    fn from(error: BuildError) -> Self {
-        Error::InvalidUri(UriError::Build(error))
     }
 }
