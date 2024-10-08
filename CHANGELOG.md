@@ -12,6 +12,10 @@
 - Improve error messages on WASM. [#568](https://github.com/Stranger6667/jsonschema-rs/issues/568)
 - Improve error messages on URI resolving and parsing.
 
+### Fixed
+
+- Resolving file references on Windows. [#441](https://github.com/Stranger6667/jsonschema-rs/issues/441)
+
 ### Performance
 
 - Speedup `hostname` & `idn-hostname` formats validation.
