@@ -147,7 +147,20 @@ impl Retrieve for DefaultRetriever {
             "file" => {
                 #[cfg(any(feature = "resolve-file", test))]
                 {
-                    let file = std::fs::File::open(uri.path().as_str())?;
+                    let path = uri.path().as_str();
+                    let path = {
+                        #[cfg(windows)]
+                        {
+                            // Remove the leading slash and replace forward slashes with backslashes
+                            let path = path.trim_start_matches('/').replace('/', "\\");
+                            std::path::PathBuf::from(path)
+                        }
+                        #[cfg(not(windows))]
+                        {
+                            std::path::PathBuf::from(path)
+                        }
+                    };
+                    let file = std::fs::File::open(path)?;
                     Ok(serde_json::from_reader(file)?)
                 }
                 #[cfg(not(any(feature = "resolve-file", test)))]
@@ -195,9 +208,70 @@ mod tests {
 
     use super::DefaultRetriever;
 
+    #[cfg(not(target_arch = "wasm32"))]
+    fn path_to_uri(path: &std::path::Path) -> String {
+        use percent_encoding::{percent_encode, AsciiSet, CONTROLS};
+
+        let mut result = "file://".to_owned();
+        const SEGMENT: &AsciiSet = &CONTROLS
+            .add(b' ')
+            .add(b'"')
+            .add(b'<')
+            .add(b'>')
+            .add(b'`')
+            .add(b'#')
+            .add(b'?')
+            .add(b'{')
+            .add(b'}')
+            .add(b'/')
+            .add(b'%');
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            use std::os::unix::ffi::OsStrExt;
+
+            const CUSTOM_SEGMENT: &AsciiSet = &SEGMENT.add(b'\\');
+            for component in path.components().skip(1) {
+                result.push('/');
+                result.extend(percent_encode(
+                    component.as_os_str().as_bytes(),
+                    CUSTOM_SEGMENT,
+                ));
+            }
+        }
+        #[cfg(target_os = "windows")]
+        {
+            use std::path::{Component, Prefix};
+            let mut components = path.components();
+
+            match components.next() {
+                Some(Component::Prefix(ref p)) => match p.kind() {
+                    Prefix::Disk(letter) | Prefix::VerbatimDisk(letter) => {
+                        result.push('/');
+                        result.push(letter as char);
+                        result.push(':');
+                    }
+                    _ => panic!("Unexpected path"),
+                },
+                _ => panic!("Unexpected path"),
+            }
+
+            for component in components {
+                if component == Component::RootDir {
+                    continue;
+                }
+
+                let component = component.as_os_str().to_str().expect("Unexpected path");
+
+                result.push('/');
+                result.extend(percent_encode(component.as_bytes(), SEGMENT));
+            }
+        }
+        result
+    }
+
     #[test]
-    // FIXME(dd): Windows paths are not properly handled as URI.
-    #[cfg(all(not(target_os = "windows"), not(target_arch = "wasm32")))]
+    #[cfg(not(target_arch = "wasm32"))]
     fn test_retrieve_from_file() {
         let mut temp_file = tempfile::NamedTempFile::new().expect("Failed to create temp file");
         let external_schema = json!({
@@ -209,15 +283,12 @@ mod tests {
         });
         write!(temp_file, "{}", external_schema).expect("Failed to write to temp file");
 
-        let temp_file_path = temp_file
-            .path()
-            .to_str()
-            .expect("Failed to get temp file path");
+        let uri = path_to_uri(temp_file.path());
 
         let schema = json!({
             "type": "object",
             "properties": {
-                "user": { "$ref": format!("file://{temp_file_path}") }
+                "user": { "$ref": uri }
             }
         });
 
@@ -271,8 +342,7 @@ mod tests {
 
     #[test]
     #[allow(deprecated)]
-    // FIXME(dd): Windows paths are not properly handled as URI.
-    #[cfg(all(not(target_os = "windows"), not(target_arch = "wasm32")))]
+    #[cfg(not(target_arch = "wasm32"))]
     fn test_deprecated_adapter_file_scheme() {
         let mut temp_file = tempfile::NamedTempFile::new().expect("Failed to create temp file");
         let external_schema = json!({
@@ -284,15 +354,12 @@ mod tests {
         });
         write!(temp_file, "{}", external_schema).expect("Failed to write to temp file");
 
-        let temp_file_path = temp_file
-            .path()
-            .to_str()
-            .expect("Failed to get temp file path");
+        let uri = path_to_uri(temp_file.path());
 
         let schema = json!({
             "type": "object",
             "properties": {
-                "user": { "$ref": format!("file://{temp_file_path}") }
+                "user": { "$ref": uri }
             }
         });
 
