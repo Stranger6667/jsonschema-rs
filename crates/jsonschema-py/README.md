@@ -75,6 +75,8 @@ If you have a schema as a JSON string, then you could pass it to `validator_for`
 to avoid parsing on the Python side:
 
 ```python
+import jsonschema_rs
+
 validator = jsonschema_rs.validator_for('{"minimum": 42}')
 ...
 ```

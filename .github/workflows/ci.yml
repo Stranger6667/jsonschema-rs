@@ -124,7 +124,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, macos-12, windows-2022]
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
 
     name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -139,7 +139,7 @@ jobs:
 
       - run: uv python install ${{ matrix.python-version }}
 
-      - run: uvx --with=".[tests]" pytest tests-py
+      - run: uvx --with=".[tests]" --python='${{ matrix.python-version }}' pytest tests-py
         working-directory: crates/jsonschema-py
 
   fmt:
