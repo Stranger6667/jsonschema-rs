@@ -3,7 +3,7 @@ use crate::{
     error::{no_error, ErrorIterator, ValidationError},
     keywords::{required, unique_items, CompilationResult},
     node::SchemaNode,
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
@@ -17,28 +17,29 @@ impl DependenciesValidator {
     #[inline]
     pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
         if let Value::Object(map) = schema {
-            let kctx = ctx.with_path("dependencies");
+            let kctx = ctx.new_at_location("dependencies");
             let mut dependencies = Vec::with_capacity(map.len());
             for (key, subschema) in map {
-                let ctx = kctx.with_path(key.as_str());
-                let s = match subschema {
-                    Value::Array(_) => {
-                        let validators =
-                            vec![required::compile_with_path(subschema, (&kctx.path).into())
-                                .expect(
-                                    "The required validator compilation does not return None",
-                                )?];
-                        SchemaNode::from_array(&kctx, validators)
-                    }
-                    _ => compiler::compile(&ctx, ctx.as_resource_ref(subschema))?,
-                };
+                let ctx = kctx.new_at_location(key.as_str());
+                let s =
+                    match subschema {
+                        Value::Array(_) => {
+                            let validators = vec![required::compile_with_path(
+                                subschema,
+                                kctx.location().clone(),
+                            )
+                            .expect("The required validator compilation does not return None")?];
+                            SchemaNode::from_array(&kctx, validators)
+                        }
+                        _ => compiler::compile(&ctx, ctx.as_resource_ref(subschema))?,
+                    };
                 dependencies.push((key.clone(), s))
             }
             Ok(Box::new(DependenciesValidator { dependencies }))
         } else {
             Err(ValidationError::single_type_error(
-                JsonPointer::default(),
-                ctx.clone().into_pointer(),
+                Location::new(),
+                ctx.location().clone(),
                 schema,
                 PrimitiveType::Object,
             ))
@@ -87,26 +88,30 @@ impl DependentRequiredValidator {
     #[inline]
     pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
         if let Value::Object(map) = schema {
-            let kctx = ctx.with_path("dependentRequired");
+            let kctx = ctx.new_at_location("dependentRequired");
             let mut dependencies = Vec::with_capacity(map.len());
             for (key, subschema) in map {
-                let ictx = kctx.with_path(key.as_str());
+                let ictx = kctx.new_at_location(key.as_str());
                 if let Value::Array(dependency_array) = subschema {
                     if !unique_items::is_unique(dependency_array) {
                         return Err(ValidationError::unique_items(
-                            JsonPointer::default(),
-                            ictx.clone().into_pointer(),
+                            Location::new(),
+                            ictx.location().clone(),
                             subschema,
                         ));
                     }
                     let validators =
-                        vec![required::compile_with_path(subschema, (&kctx.path).into())
-                            .expect("The required validator compilation does not return None")?];
+                        vec![
+                            required::compile_with_path(subschema, kctx.location().clone())
+                                .expect(
+                                    "The required validator compilation does not return None",
+                                )?,
+                        ];
                     dependencies.push((key.clone(), SchemaNode::from_array(&kctx, validators)));
                 } else {
                     return Err(ValidationError::single_type_error(
-                        JsonPointer::default(),
-                        ictx.clone().into_pointer(),
+                        Location::new(),
+                        ictx.location().clone(),
                         subschema,
                         PrimitiveType::Array,
                     ));
@@ -115,8 +120,8 @@ impl DependentRequiredValidator {
             Ok(Box::new(DependentRequiredValidator { dependencies }))
         } else {
             Err(ValidationError::single_type_error(
-                JsonPointer::default(),
-                ctx.clone().into_pointer(),
+                Location::new(),
+                ctx.location().clone(),
                 schema,
                 PrimitiveType::Object,
             ))
@@ -160,18 +165,18 @@ impl DependentSchemasValidator {
     #[inline]
     pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
         if let Value::Object(map) = schema {
-            let ctx = ctx.with_path("dependentSchemas");
+            let ctx = ctx.new_at_location("dependentSchemas");
             let mut dependencies = Vec::with_capacity(map.len());
             for (key, subschema) in map {
-                let ctx = ctx.with_path(key.as_str());
+                let ctx = ctx.new_at_location(key.as_str());
                 let schema_nodes = compiler::compile(&ctx, ctx.as_resource_ref(subschema))?;
                 dependencies.push((key.clone(), schema_nodes));
             }
             Ok(Box::new(DependentSchemasValidator { dependencies }))
         } else {
             Err(ValidationError::single_type_error(
-                JsonPointer::default(),
-                ctx.clone().into_pointer(),
+                Location::new(),
+                ctx.location().clone(),
                 schema,
                 PrimitiveType::Object,
             ))
@@ -240,7 +245,7 @@ mod tests {
 
     #[test_case(&json!({"dependencies": {"bar": ["foo"]}}), &json!({"bar": 1}), "/dependencies")]
     #[test_case(&json!({"dependencies": {"bar": {"type": "string"}}}), &json!({"bar": 1}), "/dependencies/bar/type")]
-    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
-        tests_util::assert_schema_path(schema, instance, expected)
+    fn location(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_location(schema, instance, expected)
     }
 }

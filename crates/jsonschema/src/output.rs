@@ -11,16 +11,12 @@ use std::{
     ops::AddAssign,
 };
 
-use crate::{validator::PartialApplication, ValidationError};
+use crate::{paths::Location, validator::PartialApplication, ValidationError};
 use ahash::AHashMap;
 use referencing::Uri;
 use serde::ser::SerializeMap;
 
-use crate::{
-    node::SchemaNode,
-    paths::{JsonPointer, JsonPointerNode},
-    Validator,
-};
+use crate::{node::SchemaNode, paths::JsonPointerNode, Validator};
 
 /// The output format resulting from the application of a schema. This can be
 /// converted into various representations based on the definitions in
@@ -201,16 +197,16 @@ impl<'a> FromIterator<BasicOutput<'a>> for PartialApplication<'a> {
 /// detailed example.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OutputUnit<T> {
-    keyword_location: JsonPointer,
-    instance_location: JsonPointer,
+    keyword_location: Location,
+    instance_location: Location,
     absolute_keyword_location: Option<Uri<String>>,
     value: T,
 }
 
 impl<T> OutputUnit<T> {
     pub(crate) const fn annotations(
-        keyword_location: JsonPointer,
-        instance_location: JsonPointer,
+        keyword_location: Location,
+        instance_location: Location,
         absolute_keyword_location: Option<Uri<String>>,
         annotations: Annotations<'_>,
     ) -> OutputUnit<Annotations<'_>> {
@@ -223,8 +219,8 @@ impl<T> OutputUnit<T> {
     }
 
     pub(crate) const fn error(
-        keyword_location: JsonPointer,
-        instance_location: JsonPointer,
+        keyword_location: Location,
+        instance_location: Location,
         absolute_keyword_location: Option<Uri<String>>,
         error: ErrorDescription,
     ) -> OutputUnit<ErrorDescription> {
@@ -236,8 +232,8 @@ impl<T> OutputUnit<T> {
         }
     }
 
-    ///  The location in the schema of the keyword
-    pub const fn keyword_location(&self) -> &JsonPointer {
+    /// The location in the schema of the keyword
+    pub const fn keyword_location(&self) -> &Location {
         &self.keyword_location
     }
 
@@ -249,8 +245,8 @@ impl<T> OutputUnit<T> {
             .map(|uri| uri.borrow())
     }
 
-    ///  The location in the instance
-    pub const fn instance_location(&self) -> &JsonPointer {
+    /// The location in the instance
+    pub const fn instance_location(&self) -> &Location {
         &self.instance_location
     }
 }
@@ -385,8 +381,8 @@ impl<'a> serde::Serialize for OutputUnit<Annotations<'a>> {
         S: serde::Serializer,
     {
         let mut map_ser = serializer.serialize_map(Some(4))?;
-        map_ser.serialize_entry("keywordLocation", &self.keyword_location)?;
-        map_ser.serialize_entry("instanceLocation", &self.instance_location)?;
+        map_ser.serialize_entry("keywordLocation", self.keyword_location.as_str())?;
+        map_ser.serialize_entry("instanceLocation", self.instance_location.as_str())?;
         if let Some(absolute) = &self.absolute_keyword_location {
             map_ser.serialize_entry("absoluteKeywordLocation", &absolute)?;
         }
@@ -401,8 +397,8 @@ impl serde::Serialize for OutputUnit<ErrorDescription> {
         S: serde::Serializer,
     {
         let mut map_ser = serializer.serialize_map(Some(4))?;
-        map_ser.serialize_entry("keywordLocation", &self.keyword_location)?;
-        map_ser.serialize_entry("instanceLocation", &self.instance_location)?;
+        map_ser.serialize_entry("keywordLocation", self.keyword_location.as_str())?;
+        map_ser.serialize_entry("instanceLocation", self.instance_location.as_str())?;
         if let Some(absolute) = &self.absolute_keyword_location {
             map_ser.serialize_entry("absoluteKeywordLocation", &absolute)?;
         }

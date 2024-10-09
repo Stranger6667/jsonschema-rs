@@ -1,5 +1,5 @@
 use crate::{
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     validator::Validate,
     ErrorIterator, ValidationError,
 };
@@ -60,7 +60,7 @@ pub(crate) trait KeywordFactory: Send + Sync {
         &self,
         parent: &'a Map<String, Value>,
         schema: &'a Value,
-        path: JsonPointer,
+        path: Location,
     ) -> Result<Box<dyn Keyword>, ValidationError<'a>>;
 }
 
@@ -69,7 +69,7 @@ where
     F: for<'a> Fn(
             &'a Map<String, Value>,
             &'a Value,
-            JsonPointer,
+            Location,
         ) -> Result<Box<dyn Keyword>, ValidationError<'a>>
         + Send
         + Sync,
@@ -78,7 +78,7 @@ where
         &self,
         parent: &'a Map<String, Value>,
         schema: &'a Value,
-        path: JsonPointer,
+        path: Location,
     ) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
         self(parent, schema, path)
     }

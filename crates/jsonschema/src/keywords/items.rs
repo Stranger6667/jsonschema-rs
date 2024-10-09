@@ -17,10 +17,10 @@ impl ItemsArrayValidator {
         ctx: &compiler::Context,
         schemas: &'a [Value],
     ) -> CompilationResult<'a> {
-        let kctx = ctx.with_path("items");
+        let kctx = ctx.new_at_location("items");
         let mut items = Vec::with_capacity(schemas.len());
         for (idx, item) in schemas.iter().enumerate() {
-            let ictx = kctx.with_path(idx);
+            let ictx = kctx.new_at_location(idx);
             let validators = compiler::compile(&ictx, ictx.as_resource_ref(item))?;
             items.push(validators)
         }
@@ -66,7 +66,7 @@ pub(crate) struct ItemsObjectValidator {
 impl ItemsObjectValidator {
     #[inline]
     pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
-        let ctx = ctx.with_path("items");
+        let ctx = ctx.new_at_location("items");
         let node = compiler::compile(&ctx, ctx.as_resource_ref(schema))?;
         Ok(Box::new(ItemsObjectValidator { node }))
     }
@@ -136,7 +136,7 @@ impl ItemsObjectSkipPrefixValidator {
         skip_prefix: usize,
         ctx: &compiler::Context,
     ) -> CompilationResult<'a> {
-        let ctx = ctx.with_path("items");
+        let ctx = ctx.new_at_location("items");
         let node = compiler::compile(&ctx, ctx.as_resource_ref(schema))?;
         Ok(Box::new(ItemsObjectSkipPrefixValidator {
             node,
@@ -234,7 +234,7 @@ mod tests {
     #[test_case(&json!({"items": false}), &json!([1]), "/items")]
     #[test_case(&json!({"items": {"type": "string"}}), &json!([1]), "/items/type")]
     #[test_case(&json!({"items": [{"type": "string"}]}), &json!([1]), "/items/0/type")]
-    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
-        tests_util::assert_schema_path(schema, instance, expected)
+    fn location(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_location(schema, instance, expected)
     }
 }

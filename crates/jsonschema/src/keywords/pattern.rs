@@ -2,7 +2,7 @@ use crate::{
     compiler, ecma,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::JsonPointerNode,
+    paths::{JsonPointerNode, Location},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
@@ -10,7 +10,6 @@ use ahash::AHashMap;
 use once_cell::sync::Lazy;
 use serde_json::{Map, Value};
 
-use crate::paths::JsonPointer;
 use std::{collections::VecDeque, sync::Mutex};
 
 static REGEX_CACHE: Lazy<Mutex<LruCache>> = Lazy::new(|| Mutex::new(LruCache::new(10)));
@@ -61,7 +60,7 @@ impl LruCache {
 pub(crate) struct PatternValidator {
     original: String,
     pattern: fancy_regex::Regex,
-    schema_path: JsonPointer,
+    location: Location,
 }
 
 impl PatternValidator {
@@ -82,8 +81,8 @@ impl PatternValidator {
                         Ok(Ok(r)) => r,
                         _ => {
                             return Err(ValidationError::format(
-                                JsonPointer::default(),
-                                ctx.clone().into_pointer(),
+                                Location::new(),
+                                ctx.location().clone(),
                                 pattern,
                                 "regex",
                             ))
@@ -95,12 +94,12 @@ impl PatternValidator {
                 Ok(Box::new(PatternValidator {
                     original: item.clone(),
                     pattern,
-                    schema_path: ctx.as_pointer_with("pattern"),
+                    location: ctx.location().join("pattern"),
                 }))
             }
             _ => Err(ValidationError::single_type_error(
-                JsonPointer::default(),
-                ctx.clone().into_pointer(),
+                Location::new(),
+                ctx.location().clone(),
                 pattern,
                 PrimitiveType::String,
             )),
@@ -119,7 +118,7 @@ impl Validate for PatternValidator {
                 Ok(is_match) => {
                     if !is_match {
                         return error(ValidationError::pattern(
-                            self.schema_path.clone(),
+                            self.location.clone(),
                             instance_path.into(),
                             instance,
                             self.original.clone(),
@@ -128,7 +127,7 @@ impl Validate for PatternValidator {
                 }
                 Err(e) => {
                     return error(ValidationError::backtrack_limit(
-                        self.schema_path.clone(),
+                        self.location.clone(),
                         instance_path.into(),
                         instance,
                         e,
@@ -172,7 +171,7 @@ mod tests {
     }
 
     #[test]
-    fn schema_path() {
-        tests_util::assert_schema_path(&json!({"pattern": "^f"}), &json!("b"), "/pattern")
+    fn location() {
+        tests_util::assert_schema_location(&json!({"pattern": "^f"}), &json!("b"), "/pattern")
     }
 }

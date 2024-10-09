@@ -93,9 +93,9 @@ mod tests {
         );
             let errors = result.unwrap_err();
             for error in errors {
-                let pointer = error.instance_path.to_string();
+                let pointer = error.instance_path.as_str();
                 assert_eq!(
-                test.data.pointer(&pointer), Some(&*error.instance),
+                test.data.pointer(pointer), Some(&*error.instance),
                 "Expected error instance did not match actual error instance:\nCase: {}\nTest: {}\nSchema: {}\nInstance: {}\nExpected pointer: {:#?}\nActual pointer: {:#?}",
                 test.case,
                 test.description,
@@ -144,12 +144,16 @@ mod tests {
                 });
                 for test_data in item["tests"].as_array().expect("Valid array") {
                     let test_id = test_data["id"].as_u64().expect("Is integer") as usize;
-                    let instance_path: Vec<&str> = test_data["instance_path"]
+                    let mut instance_path = String::new();
+
+                    for segment in test_data["instance_path"]
                         .as_array()
                         .expect("Valid array")
                         .iter()
-                        .map(|value| value.as_str().expect("A string"))
-                        .collect();
+                    {
+                        instance_path.push('/');
+                        instance_path.push_str(segment.as_str().expect("A string"));
+                    }
                     let instance = &data[suite_id]["tests"][test_id]["data"];
                     let error = validator
                         .validate(instance)
@@ -162,7 +166,7 @@ mod tests {
                         .next()
                         .expect("Validation error");
                     assert_eq!(
-                        error.instance_path.clone().into_vec(),
+                        error.instance_path.as_str(),
                         instance_path,
                         "\nFile: {}\nSuite: {}\nTest: {}\nError: {}",
                         filename,

@@ -2,12 +2,13 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers::equal, CompilationResult},
+    paths::Location,
     validator::Validate,
 };
 use ahash::{AHashSet, AHasher};
 use serde_json::{Map, Value};
 
-use crate::paths::{JsonPointer, JsonPointerNode};
+use crate::paths::JsonPointerNode;
 use std::hash::{Hash, Hasher};
 
 // Based on implementation proposed by Sven Marnach:
@@ -91,13 +92,13 @@ pub(crate) fn is_unique(items: &[Value]) -> bool {
 }
 
 pub(crate) struct UniqueItemsValidator {
-    schema_path: JsonPointer,
+    location: Location,
 }
 
 impl UniqueItemsValidator {
     #[inline]
-    pub(crate) fn compile<'a>(schema_path: JsonPointer) -> CompilationResult<'a> {
-        Ok(Box::new(UniqueItemsValidator { schema_path }))
+    pub(crate) fn compile<'a>(location: Location) -> CompilationResult<'a> {
+        Ok(Box::new(UniqueItemsValidator { location }))
     }
 }
 
@@ -120,7 +121,7 @@ impl Validate for UniqueItemsValidator {
             no_error()
         } else {
             error(ValidationError::unique_items(
-                self.schema_path.clone(),
+                self.location.clone(),
                 instance_path.into(),
                 instance,
             ))
@@ -136,8 +137,8 @@ pub(crate) fn compile<'a>(
 ) -> Option<CompilationResult<'a>> {
     if let Value::Bool(value) = schema {
         if *value {
-            let schema_path = ctx.as_pointer_with("uniqueItems");
-            Some(UniqueItemsValidator::compile(schema_path))
+            let location = ctx.location().join("uniqueItems");
+            Some(UniqueItemsValidator::compile(location))
         } else {
             None
         }
@@ -154,8 +155,8 @@ mod tests {
     use test_case::test_case;
 
     #[test]
-    fn schema_path() {
-        tests_util::assert_schema_path(
+    fn location() {
+        tests_util::assert_schema_location(
             &json!({"uniqueItems": true}),
             &json!([1, 1]),
             "/uniqueItems",

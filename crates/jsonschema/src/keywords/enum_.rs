@@ -2,7 +2,7 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers, CompilationResult},
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
 };
@@ -14,7 +14,7 @@ pub(crate) struct EnumValidator {
     // Types that occur in items
     types: PrimitiveTypesBitMap,
     items: Vec<Value>,
-    schema_path: JsonPointer,
+    location: Location,
 }
 
 impl EnumValidator {
@@ -22,7 +22,7 @@ impl EnumValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         items: &'a [Value],
-        schema_path: JsonPointer,
+        location: Location,
     ) -> CompilationResult<'a> {
         let mut types = PrimitiveTypesBitMap::new();
         for item in items {
@@ -32,7 +32,7 @@ impl EnumValidator {
             options: schema.clone(),
             items: items.to_vec(),
             types,
-            schema_path,
+            location,
         }))
     }
 }
@@ -47,7 +47,7 @@ impl Validate for EnumValidator {
             no_error()
         } else {
             error(ValidationError::enumeration(
-                self.schema_path.clone(),
+                self.location.clone(),
                 instance_path.into(),
                 instance,
                 &self.options,
@@ -71,7 +71,7 @@ impl Validate for EnumValidator {
 pub(crate) struct SingleValueEnumValidator {
     value: Value,
     options: Value,
-    schema_path: JsonPointer,
+    location: Location,
 }
 
 impl SingleValueEnumValidator {
@@ -79,12 +79,12 @@ impl SingleValueEnumValidator {
     pub(crate) fn compile<'a>(
         schema: &'a Value,
         value: &'a Value,
-        schema_path: JsonPointer,
+        location: Location,
     ) -> CompilationResult<'a> {
         Ok(Box::new(SingleValueEnumValidator {
             options: schema.clone(),
             value: value.clone(),
-            schema_path,
+            location,
         }))
     }
 }
@@ -99,7 +99,7 @@ impl Validate for SingleValueEnumValidator {
             no_error()
         } else {
             error(ValidationError::enumeration(
-                self.schema_path.clone(),
+                self.location.clone(),
                 instance_path.into(),
                 instance,
                 &self.options,
@@ -119,21 +119,17 @@ pub(crate) fn compile<'a>(
     schema: &'a Value,
 ) -> Option<CompilationResult<'a>> {
     if let Value::Array(items) = schema {
-        let schema_path = ctx.as_pointer_with("enum");
+        let location = ctx.location().join("enum");
         if items.len() == 1 {
             let value = items.iter().next().expect("Vec is not empty");
-            Some(SingleValueEnumValidator::compile(
-                schema,
-                value,
-                schema_path,
-            ))
+            Some(SingleValueEnumValidator::compile(schema, value, location))
         } else {
-            Some(EnumValidator::compile(schema, items, schema_path))
+            Some(EnumValidator::compile(schema, items, location))
         }
     } else {
         Some(Err(ValidationError::single_type_error(
-            JsonPointer::default(),
-            ctx.clone().into_pointer(),
+            Location::new(),
+            ctx.location().clone(),
             schema,
             PrimitiveType::Array,
         )))
@@ -148,7 +144,7 @@ mod tests {
 
     #[test_case(&json!({"enum": [1]}), &json!(2), "/enum")]
     #[test_case(&json!({"enum": [1, 3]}), &json!(2), "/enum")]
-    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
-        tests_util::assert_schema_path(schema, instance, expected)
+    fn location(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_location(schema, instance, expected)
     }
 }

@@ -38,7 +38,7 @@ fn bench_apply(c: &mut Criterion, name: &str, schema: &Value, instance: &Value) 
     let validator = jsonschema::validator_for(schema).expect("Valid schema");
     c.bench_with_input(BenchmarkId::new("apply", name), instance, |b, instance| {
         b.iter(|| {
-            let _ = validator.apply(&instance).basic();
+            let _ = validator.apply(instance).basic();
         })
     });
 }

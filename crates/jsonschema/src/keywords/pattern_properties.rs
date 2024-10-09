@@ -4,7 +4,7 @@ use crate::{
     keywords::CompilationResult,
     node::SchemaNode,
     output::BasicOutput,
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
 };
@@ -21,17 +21,17 @@ impl PatternPropertiesValidator {
         ctx: &compiler::Context,
         map: &'a Map<String, Value>,
     ) -> CompilationResult<'a> {
-        let ctx = ctx.with_path("patternProperties");
+        let ctx = ctx.new_at_location("patternProperties");
         let mut patterns = Vec::with_capacity(map.len());
         for (pattern, subschema) in map {
-            let pctx = ctx.with_path(pattern.as_str());
+            let pctx = ctx.new_at_location(pattern.as_str());
             patterns.push((
                 match ecma::to_rust_regex(pattern).map(|pattern| Regex::new(&pattern)) {
                     Ok(Ok(r)) => r,
                     _ => {
                         return Err(ValidationError::format(
-                            JsonPointer::default(),
-                            ctx.clone().into_pointer(),
+                            Location::new(),
+                            ctx.location().clone(),
                             subschema,
                             "regex",
                         ))
@@ -120,16 +120,16 @@ impl SingleValuePatternPropertiesValidator {
         pattern: &'a str,
         schema: &'a Value,
     ) -> CompilationResult<'a> {
-        let kctx = ctx.with_path("patternProperties");
-        let pctx = kctx.with_path(pattern);
+        let kctx = ctx.new_at_location("patternProperties");
+        let pctx = kctx.new_at_location(pattern);
         Ok(Box::new(SingleValuePatternPropertiesValidator {
             pattern: {
                 match ecma::to_rust_regex(pattern).map(|pattern| Regex::new(&pattern)) {
                     Ok(Ok(r)) => r,
                     _ => {
                         return Err(ValidationError::format(
-                            JsonPointer::default(),
-                            kctx.clone().into_pointer(),
+                            Location::new(),
+                            kctx.location().clone(),
                             schema,
                             "regex",
                         ))
@@ -218,8 +218,8 @@ pub(crate) fn compile<'a>(
                 }
             } else {
                 Some(Err(ValidationError::single_type_error(
-                    JsonPointer::default(),
-                    ctx.clone().into_pointer(),
+                    Location::new(),
+                    ctx.location().clone(),
                     schema,
                     PrimitiveType::Object,
                 )))
@@ -236,7 +236,7 @@ mod tests {
 
     #[test_case(&json!({"patternProperties": {"^f": {"type": "string"}}}), &json!({"f": 42}), "/patternProperties/^f/type")]
     #[test_case(&json!({"patternProperties": {"^f": {"type": "string"}, "^x": {"type": "string"}}}), &json!({"f": 42}), "/patternProperties/^f/type")]
-    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
-        tests_util::assert_schema_path(schema, instance, expected)
+    fn location(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_location(schema, instance, expected)
     }
 }

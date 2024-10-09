@@ -4,7 +4,7 @@ use crate::{
     keywords::CompilationResult,
     node::SchemaNode,
     output::BasicOutput,
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     primitive_type::PrimitiveType,
     properties::*,
     validator::{PartialApplication, Validate},
@@ -22,7 +22,7 @@ use serde_json::{Map, Value};
 /// keywords.
 #[derive(Debug)]
 struct UnevaluatedPropertiesValidator {
-    schema_path: JsonPointer,
+    location: Location,
     unevaluated: UnevaluatedSubvalidator,
     additional: Option<UnevaluatedSubvalidator>,
     properties: Option<PropertySubvalidator>,
@@ -39,15 +39,17 @@ impl UnevaluatedPropertiesValidator {
         parent: &'a Map<String, Value>,
         schema: &'a Value,
     ) -> Result<Self, ValidationError<'a>> {
-        let unevaluated =
-            UnevaluatedSubvalidator::from_value(schema, &ctx.with_path("unevaluatedProperties"))?;
+        let unevaluated = UnevaluatedSubvalidator::from_value(
+            schema,
+            &ctx.new_at_location("unevaluatedProperties"),
+        )?;
 
         let additional = parent
             .get("additionalProperties")
             .map(|additional_properties| {
                 UnevaluatedSubvalidator::from_value(
                     additional_properties,
-                    &ctx.with_path("additionalProperties"),
+                    &ctx.new_at_location("additionalProperties"),
                 )
             })
             .transpose()?;
@@ -123,7 +125,7 @@ impl UnevaluatedPropertiesValidator {
         };
 
         Ok(Self {
-            schema_path: JsonPointer::from(&ctx.path),
+            location: ctx.location().clone(),
             unevaluated,
             additional,
             properties,
@@ -374,7 +376,7 @@ impl Validate for UnevaluatedPropertiesValidator {
 
             if !unevaluated.is_empty() {
                 errors.push(ValidationError::unevaluated_properties(
-                    self.schema_path.clone(),
+                    self.location.clone(),
                     instance_path.into(),
                     instance,
                     unevaluated,
@@ -418,7 +420,7 @@ impl Validate for UnevaluatedPropertiesValidator {
             if !unevaluated.is_empty() {
                 result.mark_errored(
                     ValidationError::unevaluated_properties(
-                        self.schema_path.clone(),
+                        self.location.clone(),
                         instance_path.into(),
                         instance,
                         unevaluated,
@@ -594,11 +596,11 @@ impl SubschemaSubvalidator {
         ctx: &compiler::Context,
     ) -> Result<Self, ValidationError<'a>> {
         let mut subvalidators = vec![];
-        let keyword_context = ctx.with_path(behavior.as_str());
+        let keyword_context = ctx.new_at_location(behavior.as_str());
 
         for (i, value) in values.iter().enumerate() {
             if let Value::Object(subschema) = value {
-                let ctx = keyword_context.with_path(i);
+                let ctx = keyword_context.new_at_location(i);
 
                 let node = compiler::compile(&ctx, ctx.as_resource_ref(value))?;
                 let subvalidator = UnevaluatedPropertiesValidator::compile(
@@ -937,7 +939,7 @@ impl ConditionalSubvalidator {
         success: Option<&'a Value>,
         failure: Option<&'a Value>,
     ) -> Result<Self, ValidationError<'a>> {
-        let if_context = ctx.with_path("if");
+        let if_context = ctx.new_at_location("if");
         compiler::compile(&if_context, if_context.as_resource_ref(schema)).and_then(|condition| {
             let node = schema
                 .as_object()
@@ -953,7 +955,7 @@ impl ConditionalSubvalidator {
                 .and_then(|value| value.as_object())
                 .map(|success_schema| {
                     UnevaluatedPropertiesValidator::compile(
-                        &ctx.with_path("then"),
+                        &ctx.new_at_location("then"),
                         success_schema,
                         get_transitive_unevaluated_props_schema(success_schema, parent),
                     )
@@ -963,7 +965,7 @@ impl ConditionalSubvalidator {
                 .and_then(|value| value.as_object())
                 .map(|failure_schema| {
                     UnevaluatedPropertiesValidator::compile(
-                        &ctx.with_path("else"),
+                        &ctx.new_at_location("else"),
                         failure_schema,
                         get_transitive_unevaluated_props_schema(failure_schema, parent),
                     )
@@ -1103,7 +1105,7 @@ impl DependentSchemaSubvalidator {
         parent: &'a Value,
         value: &'a Value,
     ) -> Result<Self, ValidationError<'a>> {
-        let ctx = ctx.with_path("dependentSchemas");
+        let ctx = ctx.new_at_location("dependentSchemas");
         let schemas = value
             .as_object()
             .ok_or_else(|| unexpected_type(&ctx, value, PrimitiveType::Object))?;
@@ -1114,7 +1116,7 @@ impl DependentSchemaSubvalidator {
                 .as_object()
                 .ok_or_else(ValidationError::null_schema)?;
 
-            let ctx = ctx.with_path(dependent_property_name.as_str());
+            let ctx = ctx.new_at_location(dependent_property_name.as_str());
             let node = UnevaluatedPropertiesValidator::compile(
                 &ctx,
                 dependent_schema,
@@ -1226,7 +1228,7 @@ impl ReferenceSubvalidator {
         parent: &'a Value,
         value: &'a Value,
     ) -> Result<Option<Self>, ValidationError<'a>> {
-        let kctx = ctx.with_path("$ref");
+        let kctx = ctx.new_at_location("$ref");
         let reference = value
             .as_str()
             .ok_or_else(|| unexpected_type(&kctx, value, PrimitiveType::String))?;
@@ -1333,8 +1335,8 @@ fn unexpected_type<'a>(
     expected_type: PrimitiveType,
 ) -> ValidationError<'a> {
     ValidationError::single_type_error(
-        JsonPointer::default(),
-        ctx.clone().into_pointer(),
+        Location::new(),
+        ctx.location().clone(),
         instance,
         expected_type,
     )

@@ -6,7 +6,7 @@ use std::{
     panic::{self, AssertUnwindSafe},
 };
 
-use jsonschema::{paths::JsonPointer, Draft};
+use jsonschema::Draft;
 use pyo3::{
     exceptions::{self, PyValueError},
     ffi::PyUnicode_AsUTF8AndSize,
@@ -68,6 +68,7 @@ impl ValidationError {
 struct ValidationErrorIter {
     iter: std::vec::IntoIter<PyErr>,
 }
+
 #[pymethods]
 impl ValidationErrorIter {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
@@ -82,26 +83,39 @@ fn into_py_err(py: Python<'_>, error: jsonschema::ValidationError<'_>) -> PyResu
     let pyerror_type = PyType::new_bound::<ValidationError>(py);
     let message = error.to_string();
     let verbose_message = to_error_message(&error);
-    let schema_path = into_path(py, error.schema_path)?;
-    let instance_path = into_path(py, error.instance_path)?;
+    let into_path = |segment: &str| {
+        if let Ok(idx) = segment.parse::<usize>() {
+            idx.into_py(py)
+        } else {
+            segment.into_py(py)
+        }
+    };
+    let schema_path = PyList::new_bound(
+        py,
+        error
+            .schema_path
+            .as_str()
+            .split('/')
+            .skip(1)
+            .map(into_path)
+            .collect::<Vec<_>>(),
+    )
+    .unbind();
+    let instance_path = PyList::new_bound(
+        py,
+        error
+            .instance_path
+            .as_str()
+            .split('/')
+            .skip(1)
+            .map(into_path)
+            .collect::<Vec<_>>(),
+    )
+    .unbind();
     Ok(PyErr::from_type_bound(
         pyerror_type,
         (message, verbose_message, schema_path, instance_path),
     ))
-}
-
-fn into_path(py: Python<'_>, pointer: JsonPointer) -> PyResult<Py<PyList>> {
-    let path = PyList::empty_bound(py);
-    for chunk in pointer {
-        match chunk {
-            jsonschema::paths::PathChunk::Property(property) => {
-                path.append(property.into_string())?;
-            }
-            jsonschema::paths::PathChunk::Index(index) => path.append(index)?,
-            jsonschema::paths::PathChunk::Keyword(keyword) => path.append(keyword)?,
-        };
-    }
-    Ok(path.unbind())
 }
 
 fn get_draft(draft: u8) -> PyResult<Draft> {
@@ -214,46 +228,35 @@ fn to_error_message(error: &jsonschema::ValidationError<'_>) -> String {
     message.push('\n');
     message.push_str("Failed validating");
 
-    let push_quoted = |m: &mut String, s: &str| {
-        m.push('"');
-        m.push_str(s);
-        m.push('"');
+    let push_segment = |m: &mut String, segment: &str| {
+        if segment.parse::<usize>().is_ok() {
+            m.push_str(segment);
+        } else {
+            m.push('"');
+            m.push_str(segment);
+            m.push('"');
+        }
     };
 
-    let push_chunk = |m: &mut String, chunk: &jsonschema::paths::PathChunk| {
-        match chunk {
-            jsonschema::paths::PathChunk::Property(property) => push_quoted(m, property),
-            jsonschema::paths::PathChunk::Index(index) => m.push_str(&index.to_string()),
-            jsonschema::paths::PathChunk::Keyword(keyword) => push_quoted(m, keyword),
-        };
-    };
+    let mut schema_path = error.schema_path.as_str();
 
-    if let Some(last) = error.schema_path.last() {
+    if let Some((rest, last)) = schema_path.rsplit_once('/') {
         message.push(' ');
-        push_chunk(&mut message, last);
+        push_segment(&mut message, last);
+        schema_path = rest;
     }
     message.push_str(" in schema");
-    let mut chunks = error.schema_path.iter().peekable();
-    while let Some(chunk) = chunks.next() {
-        // Skip the last element as it is already mentioned in the message
-        if chunks.peek().is_none() {
-            break;
-        }
+    for segment in schema_path.split('/').skip(1) {
         message.push('[');
-        push_chunk(&mut message, chunk);
+        push_segment(&mut message, segment);
         message.push(']');
     }
     message.push('\n');
     message.push('\n');
     message.push_str("On instance");
-    for chunk in &error.instance_path {
+    for segment in error.instance_path.as_str().split('/').skip(1) {
         message.push('[');
-        match chunk {
-            jsonschema::paths::PathChunk::Property(property) => push_quoted(&mut message, property),
-            jsonschema::paths::PathChunk::Index(index) => message.push_str(&index.to_string()),
-            // Keywords are not used for instances
-            jsonschema::paths::PathChunk::Keyword(_) => unreachable!("Internal error"),
-        };
+        push_segment(&mut message, segment);
         message.push(']');
     }
     message.push(':');

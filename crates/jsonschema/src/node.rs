@@ -3,22 +3,19 @@ use crate::{
     error::ErrorIterator,
     keywords::{BoxedValidator, Keyword},
     output::{Annotations, BasicOutput, ErrorDescription, OutputUnit},
-    paths::{JsonPointer, JsonPointerNode, PathChunk},
+    paths::{JsonPointerNode, Location, PathChunkRef},
     validator::{PartialApplication, Validate},
     ValidationError,
 };
 use ahash::AHashMap;
-use referencing::{
-    uri::{self, EncodedString, Path},
-    Uri,
-};
+use referencing::{uri, Uri};
 use std::{collections::VecDeque, fmt};
 
 /// A node in the schema tree, returned by [`compiler::compile`]
 #[derive(Debug)]
 pub(crate) struct SchemaNode {
     validators: NodeValidators,
-    relative_path: JsonPointer,
+    location: Location,
     absolute_path: Option<Uri<String>>,
 }
 
@@ -63,7 +60,7 @@ struct KeywordValidators {
 impl SchemaNode {
     pub(crate) fn from_boolean(ctx: &Context<'_>, validator: Option<BoxedValidator>) -> SchemaNode {
         SchemaNode {
-            relative_path: ctx.clone().into_pointer(),
+            location: ctx.location().clone(),
             absolute_path: ctx.base_uri(),
             validators: NodeValidators::Boolean { validator },
         }
@@ -75,7 +72,7 @@ impl SchemaNode {
         unmatched_keywords: Option<AHashMap<String, serde_json::Value>>,
     ) -> SchemaNode {
         SchemaNode {
-            relative_path: ctx.clone().into_pointer(),
+            location: ctx.location().clone(),
             absolute_path: ctx.base_uri(),
             validators: NodeValidators::Keyword(Box::new(KeywordValidators {
                 unmatched_keywords,
@@ -84,10 +81,9 @@ impl SchemaNode {
         }
     }
 
-    pub(crate) fn from_array(ctx: &Context<'_>, mut validators: Vec<BoxedValidator>) -> SchemaNode {
-        validators.shrink_to_fit();
+    pub(crate) fn from_array(ctx: &Context<'_>, validators: Vec<BoxedValidator>) -> SchemaNode {
         SchemaNode {
-            relative_path: ctx.clone().into_pointer(),
+            location: ctx.location().clone(),
             absolute_path: ctx.base_uri(),
             validators: NodeValidators::Array { validators },
         }
@@ -149,8 +145,8 @@ impl SchemaNode {
         error: ErrorDescription,
     ) -> OutputUnit<ErrorDescription> {
         OutputUnit::<ErrorDescription>::error(
-            self.relative_path.clone(),
-            instance_path.clone().into(),
+            self.location.clone(),
+            instance_path.into(),
             self.absolute_path.clone(),
             error,
         )
@@ -163,8 +159,8 @@ impl SchemaNode {
         annotations: Annotations<'a>,
     ) -> OutputUnit<Annotations<'a>> {
         OutputUnit::<Annotations<'_>>::annotations(
-            self.relative_path.clone(),
-            instance_path.clone().into(),
+            self.location.clone(),
+            instance_path.into(),
             self.absolute_path.clone(),
             annotations,
         )
@@ -218,26 +214,19 @@ impl SchemaNode {
     ) -> PartialApplication<'a>
     where
         I: Iterator<Item = (P, &'a Box<dyn Validate + Send + Sync + 'a>)> + 'a,
-        P: Into<PathChunk> + fmt::Display,
+        P: Into<PathChunkRef<'a>> + fmt::Display,
     {
         let mut success_results: VecDeque<OutputUnit<Annotations>> = VecDeque::new();
         let mut error_results = VecDeque::new();
+        let mut buffer = String::from("#");
         for (path, validator) in path_and_validators {
-            let path = self.relative_path.extend_with(&[path.into()]);
+            let location = self.location.join(path);
             let absolute_keyword_location = self.absolute_path.as_ref().map(|absolute_path| {
-                let mut buffer = EncodedString::new();
-                for chunk in path.iter() {
-                    buffer.push('/');
-                    match chunk {
-                        PathChunk::Property(p) => buffer.encode::<Path>(p.as_bytes()),
-                        PathChunk::Index(i) => {
-                            buffer.encode::<Path>(itoa::Buffer::new().format(*i).as_bytes())
-                        }
-                        PathChunk::Keyword(k) => buffer.encode::<Path>(k.as_bytes()),
-                    }
-                }
-                uri::resolve_against(&absolute_path.borrow(), &format!("#{}", buffer.as_str()))
-                    .expect("Invalid reference")
+                uri::encode_to(location.as_str(), &mut buffer);
+                let resolved = uri::resolve_against(&absolute_path.borrow(), &buffer)
+                    .expect("Invalid reference");
+                buffer.truncate(1);
+                resolved
             });
             match validator.apply(instance, instance_path) {
                 PartialApplication::Valid {
@@ -246,7 +235,7 @@ impl SchemaNode {
                 } => {
                     if let Some(annotations) = annotations {
                         success_results.push_front(OutputUnit::<Annotations<'a>>::annotations(
-                            path,
+                            location,
                             instance_path.into(),
                             absolute_keyword_location,
                             annotations,
@@ -261,7 +250,7 @@ impl SchemaNode {
                     error_results.extend(child_results);
                     error_results.extend(these_errors.into_iter().map(|error| {
                         OutputUnit::<ErrorDescription>::error(
-                            path.clone(),
+                            location.clone(),
                             instance_path.into(),
                             absolute_keyword_location.clone(),
                             error,
@@ -340,7 +329,7 @@ impl Validate for SchemaNode {
                 self.apply_subschemas(
                     instance,
                     instance_path,
-                    validators.iter().map(|(p, v)| (p.clone(), v)),
+                    validators.iter().map(|(p, v)| (p, v)),
                     annotations,
                 )
             }

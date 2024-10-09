@@ -2,7 +2,7 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
@@ -12,17 +12,17 @@ use serde_json::{Map, Value};
 pub(crate) struct MinimumU64Validator {
     limit: u64,
     limit_val: Value,
-    schema_path: JsonPointer,
+    location: Location,
 }
 pub(crate) struct MinimumI64Validator {
     limit: i64,
     limit_val: Value,
-    schema_path: JsonPointer,
+    location: Location,
 }
 pub(crate) struct MinimumF64Validator {
     limit: f64,
     limit_val: Value,
-    schema_path: JsonPointer,
+    location: Location,
 }
 
 macro_rules! validate {
@@ -37,7 +37,7 @@ macro_rules! validate {
                     no_error()
                 } else {
                     error(ValidationError::minimum(
-                        self.schema_path.clone(),
+                        self.location.clone(),
                         instance_path.into(),
                         instance,
                         self.limit_val.clone(),
@@ -89,7 +89,7 @@ impl Validate for MinimumF64Validator {
             no_error()
         } else {
             error(ValidationError::minimum(
-                self.schema_path.clone(),
+                self.location.clone(),
                 instance_path.into(),
                 instance,
                 self.limit_val.clone(),
@@ -105,31 +105,31 @@ pub(crate) fn compile<'a>(
     schema: &'a Value,
 ) -> Option<CompilationResult<'a>> {
     if let Value::Number(limit) = schema {
-        let schema_path = ctx.as_pointer_with("minimum");
+        let location = ctx.location().join("minimum");
         if let Some(limit) = limit.as_u64() {
             Some(Ok(Box::new(MinimumU64Validator {
                 limit,
                 limit_val: schema.clone(),
-                schema_path,
+                location,
             })))
         } else if let Some(limit) = limit.as_i64() {
             Some(Ok(Box::new(MinimumI64Validator {
                 limit,
                 limit_val: schema.clone(),
-                schema_path,
+                location,
             })))
         } else {
             let limit = limit.as_f64().expect("Always valid");
             Some(Ok(Box::new(MinimumF64Validator {
                 limit,
                 limit_val: schema.clone(),
-                schema_path,
+                location,
             })))
         }
     } else {
         Some(Err(ValidationError::single_type_error(
-            JsonPointer::default(),
-            ctx.clone().into_pointer(),
+            Location::new(),
+            ctx.location().clone(),
             schema,
             PrimitiveType::Number,
         )))
@@ -151,7 +151,7 @@ mod tests {
     #[test_case(&json!({"minimum": 5}), &json!(1), "/minimum")]
     #[test_case(&json!({"minimum": 6}), &json!(1), "/minimum")]
     #[test_case(&json!({"minimum": 7}), &json!(1), "/minimum")]
-    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
-        tests_util::assert_schema_path(schema, instance, expected)
+    fn location(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_location(schema, instance, expected)
     }
 }

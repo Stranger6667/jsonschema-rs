@@ -2,7 +2,7 @@ use crate::{
     compiler,
     error::{no_error, ErrorIterator, ValidationError},
     node::SchemaNode,
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
 };
@@ -20,10 +20,10 @@ impl PrefixItemsValidator {
         ctx: &compiler::Context,
         items: &'a [Value],
     ) -> CompilationResult<'a> {
-        let ctx = ctx.with_path("prefixItems");
+        let ctx = ctx.new_at_location("prefixItems");
         let mut schemas = Vec::with_capacity(items.len());
         for (idx, item) in items.iter().enumerate() {
-            let ctx = ctx.with_path(idx);
+            let ctx = ctx.new_at_location(idx);
             let validators = compiler::compile(&ctx, ctx.as_resource_ref(item))?;
             schemas.push(validators)
         }
@@ -107,8 +107,8 @@ pub(crate) fn compile<'a>(
         Some(PrefixItemsValidator::compile(ctx, items))
     } else {
         Some(Err(ValidationError::single_type_error(
-            JsonPointer::default(),
-            ctx.clone().into_pointer(),
+            Location::new(),
+            ctx.location().clone(),
             schema,
             PrimitiveType::Array,
         )))
@@ -125,8 +125,8 @@ mod tests {
     #[test_case(&json!({"$schema": "https://json-schema.org/draft/2020-12/schema", "prefixItems": [{"type": "integer"}, {"maximum": 5}]}), &json!([42, 42]), "/prefixItems/1/maximum")]
     #[test_case(&json!({"$schema": "https://json-schema.org/draft/2020-12/schema", "prefixItems": [{"type": "integer"}, {"maximum": 5}], "items": {"type": "boolean"}}), &json!([42, 1, 42]), "/items/type")]
     #[test_case(&json!({"$schema": "https://json-schema.org/draft/2020-12/schema", "prefixItems": [{"type": "integer"}, {"maximum": 5}], "items": {"type": "boolean"}}), &json!([42, 42, true]), "/prefixItems/1/maximum")]
-    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
-        tests_util::assert_schema_path(schema, instance, expected)
+    fn location(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_location(schema, instance, expected)
     }
 
     #[test_case{

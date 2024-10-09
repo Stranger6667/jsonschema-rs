@@ -2,14 +2,14 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers::fail_on_non_positive_integer, CompilationResult},
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     validator::Validate,
 };
 use serde_json::{Map, Value};
 
 pub(crate) struct MaxItemsValidator {
     limit: u64,
-    schema_path: JsonPointer,
+    location: Location,
 }
 
 impl MaxItemsValidator {
@@ -17,10 +17,10 @@ impl MaxItemsValidator {
     pub(crate) fn compile<'a>(
         ctx: &compiler::Context,
         schema: &'a Value,
-        schema_path: JsonPointer,
+        location: Location,
     ) -> CompilationResult<'a> {
         if let Some(limit) = schema.as_u64() {
-            return Ok(Box::new(MaxItemsValidator { limit, schema_path }));
+            return Ok(Box::new(MaxItemsValidator { limit, location }));
         }
         if ctx.supports_integer_valued_numbers() {
             if let Some(limit) = schema.as_f64() {
@@ -29,12 +29,12 @@ impl MaxItemsValidator {
                     return Ok(Box::new(MaxItemsValidator {
                         // NOTE: Imprecise cast as big integers are not supported yet
                         limit: limit as u64,
-                        schema_path,
+                        location,
                     }));
                 }
             }
         }
-        Err(fail_on_non_positive_integer(schema, schema_path))
+        Err(fail_on_non_positive_integer(schema, location))
     }
 }
 
@@ -56,7 +56,7 @@ impl Validate for MaxItemsValidator {
         if let Value::Array(items) = instance {
             if (items.len() as u64) > self.limit {
                 return error(ValidationError::max_items(
-                    self.schema_path.clone(),
+                    self.location.clone(),
                     instance_path.into(),
                     instance,
                     self.limit,
@@ -73,8 +73,8 @@ pub(crate) fn compile<'a>(
     _: &Map<String, Value>,
     schema: &'a Value,
 ) -> Option<CompilationResult<'a>> {
-    let schema_path = ctx.as_pointer_with("maxItems");
-    Some(MaxItemsValidator::compile(ctx, schema, schema_path))
+    let location = ctx.location().join("maxItems");
+    Some(MaxItemsValidator::compile(ctx, schema, location))
 }
 
 #[cfg(test)]
@@ -83,7 +83,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn schema_path() {
-        tests_util::assert_schema_path(&json!({"maxItems": 1}), &json!([1, 2]), "/maxItems")
+    fn location() {
+        tests_util::assert_schema_location(&json!({"maxItems": 1}), &json!([1, 2]), "/maxItems")
     }
 }

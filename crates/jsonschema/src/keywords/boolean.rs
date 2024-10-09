@@ -1,4 +1,4 @@
-use crate::paths::{JsonPointer, JsonPointerNode};
+use crate::paths::{JsonPointerNode, Location};
 
 use crate::{
     error::{error, ErrorIterator, ValidationError},
@@ -8,12 +8,12 @@ use crate::{
 use serde_json::Value;
 
 pub(crate) struct FalseValidator {
-    schema_path: JsonPointer,
+    location: Location,
 }
 impl FalseValidator {
     #[inline]
-    pub(crate) fn compile<'a>(schema_path: JsonPointer) -> CompilationResult<'a> {
-        Ok(Box::new(FalseValidator { schema_path }))
+    pub(crate) fn compile<'a>(location: Location) -> CompilationResult<'a> {
+        Ok(Box::new(FalseValidator { location }))
     }
 }
 impl Validate for FalseValidator {
@@ -27,7 +27,7 @@ impl Validate for FalseValidator {
         instance_path: &JsonPointerNode,
     ) -> ErrorIterator<'instance> {
         error(ValidationError::false_schema(
-            self.schema_path.clone(),
+            self.location.clone(),
             instance_path.into(),
             instance,
         ))
@@ -40,7 +40,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn schema_path() {
-        tests_util::assert_schema_path(&json!(false), &json!(1), "")
+    fn location() {
+        tests_util::assert_schema_location(&json!(false), &json!(1), "")
     }
 }

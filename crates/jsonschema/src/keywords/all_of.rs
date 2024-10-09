@@ -3,7 +3,7 @@ use crate::{
     error::{ErrorIterator, ValidationError},
     node::SchemaNode,
     output::BasicOutput,
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
 };
@@ -21,10 +21,10 @@ impl AllOfValidator {
         ctx: &compiler::Context,
         items: &'a [Value],
     ) -> CompilationResult<'a> {
-        let ctx = ctx.with_path("allOf");
+        let ctx = ctx.new_at_location("allOf");
         let mut schemas = Vec::with_capacity(items.len());
         for (idx, item) in items.iter().enumerate() {
-            let ctx = ctx.with_path(idx);
+            let ctx = ctx.new_at_location(idx);
             let validators = compiler::compile(&ctx, ctx.as_resource_ref(item))?;
             schemas.push(validators)
         }
@@ -71,8 +71,8 @@ pub(crate) struct SingleValueAllOfValidator {
 impl SingleValueAllOfValidator {
     #[inline]
     pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
-        let ctx = ctx.with_path("allOf");
-        let ctx = ctx.with_path(0);
+        let ctx = ctx.new_at_location("allOf");
+        let ctx = ctx.new_at_location(0);
         let node = compiler::compile(&ctx, ctx.as_resource_ref(schema))?;
         Ok(Box::new(SingleValueAllOfValidator { node }))
     }
@@ -115,8 +115,8 @@ pub(crate) fn compile<'a>(
         }
     } else {
         Some(Err(ValidationError::single_type_error(
-            JsonPointer::default(),
-            ctx.clone().into_pointer(),
+            Location::new(),
+            ctx.location().clone(),
             schema,
             PrimitiveType::Array,
         )))
@@ -131,7 +131,7 @@ mod tests {
 
     #[test_case(&json!({"allOf": [{"type": "string"}]}), &json!(1), "/allOf/0/type")]
     #[test_case(&json!({"allOf": [{"type": "integer"}, {"maximum": 5}]}), &json!(6), "/allOf/1/maximum")]
-    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
-        tests_util::assert_schema_path(schema, instance, expected)
+    fn location(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_location(schema, instance, expected)
     }
 }

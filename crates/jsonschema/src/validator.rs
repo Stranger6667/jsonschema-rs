@@ -303,7 +303,7 @@ mod tests {
     use crate::{
         error::{self, no_error, ValidationError},
         keywords::custom::Keyword,
-        paths::{JsonPointer, JsonPointerNode},
+        paths::{JsonPointerNode, Location},
         primitive_type::PrimitiveType,
         ErrorIterator, Validator,
     };
@@ -387,7 +387,7 @@ mod tests {
                 for key in instance.as_object().unwrap().keys() {
                     if !key.is_ascii() {
                         let error = ValidationError::custom(
-                            JsonPointer::default(),
+                            Location::new(),
                             instance_path.into(),
                             instance,
                             "Key is not ASCII",
@@ -411,12 +411,12 @@ mod tests {
         fn custom_object_type_factory<'a>(
             _: &'a Map<String, Value>,
             schema: &'a Value,
-            path: JsonPointer,
+            path: Location,
         ) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
             const EXPECTED: &str = "ascii-keys";
             if schema.as_str().map_or(true, |key| key != EXPECTED) {
                 Err(ValidationError::constant_string(
-                    JsonPointer::default(),
+                    Location::new(),
                     path,
                     schema,
                     EXPECTED,
@@ -470,7 +470,7 @@ mod tests {
             limit: f64,
             limit_val: Value,
             with_currency_format: bool,
-            schema_path: JsonPointer,
+            location: Location,
         }
 
         impl Keyword for CustomMinimumValidator {
@@ -483,7 +483,7 @@ mod tests {
                     no_error()
                 } else {
                     error::error(ValidationError::minimum(
-                        self.schema_path.clone(),
+                        self.location.clone(),
                         instance_path.into(),
                         instance,
                         self.limit_val.clone(),
@@ -526,15 +526,15 @@ mod tests {
         fn custom_minimum_factory<'a>(
             parent: &'a Map<String, Value>,
             schema: &'a Value,
-            schema_path: JsonPointer,
+            location: Location,
         ) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
             let limit = if let Value::Number(limit) = schema {
                 limit.as_f64().expect("Always valid")
             } else {
                 return Err(ValidationError::single_type_error(
                     // There is no metaschema definition for a custom keyword, hence empty `schema` pointer
-                    JsonPointer::default(),
-                    schema_path,
+                    Location::new(),
+                    location,
                     schema,
                     PrimitiveType::Number,
                 ));
@@ -546,7 +546,7 @@ mod tests {
                 limit,
                 limit_val: schema.clone(),
                 with_currency_format,
-                schema_path,
+                location,
             }))
         }
 
