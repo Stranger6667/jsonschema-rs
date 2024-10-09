@@ -1,4 +1,7 @@
-use fluent_uri::{encoding::EString, Uri, UriRef};
+use fluent_uri::{
+    encoding::{EString, Encoder},
+    Uri, UriRef,
+};
 use once_cell::sync::Lazy;
 
 use crate::Error;
@@ -41,3 +44,30 @@ static DEFAULT_ROOT_URI: Lazy<Uri<String>> =
     Lazy::new(|| Uri::parse("json-schema:///".to_string()).expect("Invalid URI"));
 
 pub type EncodedString = EString<Path>;
+
+pub fn encode_to(input: &str, buffer: &mut String) {
+    const HEX_TABLE: [u8; 512] = {
+        const HEX_DIGITS: &[u8; 16] = b"0123456789ABCDEF";
+
+        let mut i = 0;
+        let mut table = [0; 512];
+        while i < 256 {
+            table[i * 2] = HEX_DIGITS[i >> 4];
+            table[i * 2 + 1] = HEX_DIGITS[i & 0b1111];
+            i += 1;
+        }
+        table
+    };
+
+    for ch in input.chars() {
+        if Path::TABLE.allows(ch) {
+            buffer.push(ch);
+        } else {
+            for x in ch.encode_utf8(&mut [0; 4]).bytes() {
+                buffer.push('%');
+                buffer.push(HEX_TABLE[x as usize * 2] as char);
+                buffer.push(HEX_TABLE[x as usize * 2 + 1] as char);
+            }
+        }
+    }
+}

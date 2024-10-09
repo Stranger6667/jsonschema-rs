@@ -285,7 +285,7 @@
 //!
 //! ```rust
 //! use jsonschema::{
-//!     paths::{JsonPointer, JsonPointerNode},
+//!     paths::{JsonPointerNode, Location},
 //!     ErrorIterator, Keyword, ValidationError,
 //! };
 //! use serde_json::{json, Map, Value};
@@ -305,7 +305,7 @@
 //!                 Box::new(None.into_iter())
 //!             } else {
 //!                 let error = ValidationError::custom(
-//!                     JsonPointer::default(),
+//!                     Location::new(),
 //!                     instance_path.into(),
 //!                     instance,
 //!                     "Number must be even",
@@ -314,7 +314,7 @@
 //!             }
 //!         } else {
 //!             let error = ValidationError::custom(
-//!                 JsonPointer::default(),
+//!                 Location::new(),
 //!                 instance_path.into(),
 //!                 instance,
 //!                 "Value must be a number",
@@ -332,15 +332,15 @@
 //! fn even_number_validator_factory<'a>(
 //!     _parent: &'a Map<String, Value>,
 //!     value: &'a Value,
-//!     _path: JsonPointer,
+//!     path: Location,
 //! ) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
 //!     // You can use the `value` parameter to configure your validator if needed
 //!     if value.as_bool() == Some(true) {
 //!         Ok(Box::new(EvenNumberValidator))
 //!     } else {
 //!         Err(ValidationError::custom(
-//!             JsonPointer::default(),
-//!             JsonPointer::default(),
+//!             Location::new(),
+//!             path,
 //!             value,
 //!             "The 'even-number' keyword must be set to true",
 //!         ))
@@ -370,7 +370,7 @@
 //!
 //! ```rust
 //! # use jsonschema::{
-//! #     paths::{JsonPointer, JsonPointerNode},
+//! #     paths::JsonPointerNode,
 //! #     ErrorIterator, Keyword, ValidationError,
 //! # };
 //! # use serde_json::{json, Map, Value};
@@ -1119,16 +1119,19 @@ pub(crate) mod tests_util {
         );
     }
 
+    #[track_caller]
     pub(crate) fn is_valid(schema: &Value, instance: &Value) {
         let validator = crate::validator_for(schema).unwrap();
         is_valid_with(&validator, instance);
     }
 
+    #[track_caller]
     pub(crate) fn is_valid_with_draft(draft: crate::Draft, schema: &Value, instance: &Value) {
         let validator = crate::options().with_draft(draft).build(schema).unwrap();
         is_valid_with(&validator, instance)
     }
 
+    #[track_caller]
     pub(crate) fn validate(schema: &Value, instance: &Value) -> ValidationError<'static> {
         let validator = crate::validator_for(schema).unwrap();
         let err = validator
@@ -1140,18 +1143,20 @@ pub(crate) mod tests_util {
         err
     }
 
-    pub(crate) fn assert_schema_path(schema: &Value, instance: &Value, expected: &str) {
+    #[track_caller]
+    pub(crate) fn assert_schema_location(schema: &Value, instance: &Value, expected: &str) {
         let error = validate(schema, instance);
-        assert_eq!(error.schema_path.to_string(), expected)
+        assert_eq!(error.schema_path.as_str(), expected)
     }
 
-    pub(crate) fn assert_schema_paths(schema: &Value, instance: &Value, expected: &[&str]) {
+    #[track_caller]
+    pub(crate) fn assert_locations(schema: &Value, instance: &Value, expected: &[&str]) {
         let validator = crate::validator_for(schema).unwrap();
         let errors = validator
             .validate(instance)
             .expect_err("Should be an error");
-        for (error, schema_path) in errors.zip(expected) {
-            assert_eq!(error.schema_path.to_string(), *schema_path)
+        for (error, location) in errors.zip(expected) {
+            assert_eq!(error.schema_path.as_str(), *location)
         }
     }
 }

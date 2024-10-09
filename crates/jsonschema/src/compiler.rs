@@ -9,7 +9,7 @@ use crate::{
     },
     node::SchemaNode,
     options::ValidationOptions,
-    paths::{JsonPointer, JsonPointerNode, PathChunkRef},
+    paths::{Location, PathChunkRef},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     retriever::RetrieverAdapter,
     ValidationError, Validator,
@@ -36,7 +36,7 @@ pub(crate) struct Context<'a> {
     config: Arc<ValidationOptions>,
     pub(crate) registry: Arc<Registry>,
     resolver: Rc<Resolver<'a>>,
-    pub(crate) path: JsonPointerNode<'a, 'a>,
+    location: Location,
     pub(crate) draft: Draft,
     seen: Rc<RefCell<AHashSet<Uri<String>>>>,
 }
@@ -47,13 +47,13 @@ impl<'a> Context<'a> {
         registry: Arc<Registry>,
         resolver: Rc<Resolver<'a>>,
         draft: Draft,
-        path: JsonPointerNode<'a, '_>,
+        location: Location,
     ) -> Self {
         Context {
             config,
             registry,
             resolver,
-            path,
+            location,
             draft,
             seen: Rc::new(RefCell::new(AHashSet::new())),
         }
@@ -76,7 +76,7 @@ impl<'a> Context<'a> {
             registry: Arc::clone(&self.registry),
             resolver: Rc::new(resolver),
             draft: resource.draft(),
-            path: self.path.clone(),
+            location: self.location.clone(),
             seen: Rc::clone(&self.seen),
         })
     }
@@ -88,13 +88,13 @@ impl<'a> Context<'a> {
     }
 
     #[inline]
-    pub(crate) fn with_path(&'a self, chunk: impl Into<PathChunkRef<'a>>) -> Self {
-        let path = self.path.push(chunk);
+    pub(crate) fn new_at_location(&'a self, chunk: impl Into<PathChunkRef<'a>>) -> Self {
+        let location = self.location.join(chunk);
         Context {
             config: Arc::clone(&self.config),
             registry: Arc::clone(&self.registry),
             resolver: Rc::clone(&self.resolver),
-            path,
+            location,
             draft: self.draft,
             seen: Rc::clone(&self.seen),
         }
@@ -106,18 +106,6 @@ impl<'a> Context<'a> {
 
     pub(crate) fn scopes(&self) -> List<Uri<String>> {
         self.resolver.dynamic_scope()
-    }
-
-    /// Create a JSON Pointer from the current `schema_path` & a new chunk.
-    #[inline]
-    pub(crate) fn into_pointer(self) -> JsonPointer {
-        self.path.into()
-    }
-
-    /// Create a JSON Pointer from the current `schema_path` & a new chunk.
-    #[inline]
-    pub(crate) fn as_pointer_with(&'a self, chunk: impl Into<PathChunkRef<'a>>) -> JsonPointer {
-        self.path.push(chunk).into()
     }
 
     pub(crate) fn base_uri(&self) -> Option<Uri<String>> {
@@ -149,14 +137,14 @@ impl<'a> Context<'a> {
         &'a self,
         resolver: Resolver<'a>,
         draft: Draft,
-        path: JsonPointerNode<'a, '_>,
+        location: Location,
     ) -> Context<'a> {
         Context {
             config: Arc::clone(&self.config),
             registry: Arc::clone(&self.registry),
             resolver: Rc::new(resolver),
             draft,
-            path,
+            location,
             seen: Rc::clone(&self.seen),
         }
     }
@@ -229,6 +217,10 @@ impl<'a> Context<'a> {
             base_uri = Arc::new(uri::resolve_against(&base_uri.borrow(), id)?);
         };
         Ok(Some((base_uri, scopes, resource)))
+    }
+
+    pub(crate) fn location(&self) -> &Location {
+        &self.location
     }
 }
 
@@ -322,7 +314,7 @@ pub(crate) fn build_validator(
         Arc::clone(&registry),
         resolver,
         draft,
-        JsonPointerNode::new(),
+        Location::new(),
     );
 
     // Validate the schema itself
@@ -358,15 +350,14 @@ pub(crate) fn compile_with<'a>(
     ctx: &Context,
     resource: ResourceRef<'a>,
 ) -> Result<SchemaNode, ValidationError<'a>> {
-    // TODO: Don't clone here - `JsonPointer` should be cheap
-    let relative_path = ctx.clone().into_pointer();
+    let location = ctx.location().clone();
     match resource.contents() {
         Value::Bool(value) => match value {
             true => Ok(SchemaNode::from_boolean(ctx, None)),
             false => Ok(SchemaNode::from_boolean(
                 ctx,
                 Some(
-                    keywords::boolean::FalseValidator::compile(relative_path)
+                    keywords::boolean::FalseValidator::compile(location)
                         .expect("Should always compile"),
                 ),
             )),
@@ -404,7 +395,7 @@ pub(crate) fn compile_with<'a>(
             for (keyword, value) in schema {
                 // Check if this keyword is overridden, then check the standard definitions
                 if let Some(factory) = ctx.get_keyword_factory(keyword) {
-                    let path = ctx.as_pointer_with(keyword.as_str());
+                    let path = ctx.location().join(keyword);
                     let validator = CustomKeyword::new(factory.init(schema, value, path)?);
                     let validator: BoxedValidator = Box::new(validator);
                     validators.push((Keyword::custom(keyword), validator));
@@ -426,8 +417,8 @@ pub(crate) fn compile_with<'a>(
             Ok(SchemaNode::from_keywords(ctx, validators, annotations))
         }
         _ => Err(ValidationError::multiple_type_error(
-            JsonPointer::default(),
-            relative_path,
+            Location::new(),
+            location,
             resource.contents(),
             PrimitiveTypesBitMap::new()
                 .add_type(PrimitiveType::Boolean)

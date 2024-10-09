@@ -12,7 +12,7 @@ use crate::{
     keywords::CompilationResult,
     node::SchemaNode,
     output::{Annotations, BasicOutput, OutputUnit},
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     properties::*,
     validator::{PartialApplication, Validate},
 };
@@ -82,7 +82,7 @@ pub(crate) struct AdditionalPropertiesValidator {
 impl AdditionalPropertiesValidator {
     #[inline]
     pub(crate) fn compile<'a>(schema: &'a Value, ctx: &compiler::Context) -> CompilationResult<'a> {
-        let ctx = ctx.with_path("additionalProperties");
+        let ctx = ctx.new_at_location("additionalProperties");
         Ok(Box::new(AdditionalPropertiesValidator {
             node: compiler::compile(&ctx, ctx.as_resource_ref(schema))?,
         }))
@@ -150,12 +150,12 @@ impl Validate for AdditionalPropertiesValidator {
 /// {}
 /// ```
 pub(crate) struct AdditionalPropertiesFalseValidator {
-    schema_path: JsonPointer,
+    location: Location,
 }
 impl AdditionalPropertiesFalseValidator {
     #[inline]
-    pub(crate) fn compile<'a>(schema_path: JsonPointer) -> CompilationResult<'a> {
-        Ok(Box::new(AdditionalPropertiesFalseValidator { schema_path }))
+    pub(crate) fn compile<'a>(location: Location) -> CompilationResult<'a> {
+        Ok(Box::new(AdditionalPropertiesFalseValidator { location }))
     }
 }
 impl Validate for AdditionalPropertiesFalseValidator {
@@ -175,7 +175,7 @@ impl Validate for AdditionalPropertiesFalseValidator {
         if let Value::Object(item) = instance {
             if let Some((_, value)) = item.iter().next() {
                 return error(ValidationError::false_schema(
-                    self.schema_path.clone(),
+                    self.location.clone(),
                     instance_path.into(),
                     value,
                 ));
@@ -205,7 +205,7 @@ impl Validate for AdditionalPropertiesFalseValidator {
 /// ```
 pub(crate) struct AdditionalPropertiesNotEmptyFalseValidator<M: PropertiesValidatorsMap> {
     properties: M,
-    schema_path: JsonPointer,
+    location: Location,
 }
 impl AdditionalPropertiesNotEmptyFalseValidator<SmallValidatorsMap> {
     #[inline]
@@ -215,7 +215,7 @@ impl AdditionalPropertiesNotEmptyFalseValidator<SmallValidatorsMap> {
     ) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
             properties: compile_small_map(ctx, map)?,
-            schema_path: ctx.as_pointer_with("additionalProperties"),
+            location: ctx.location().join("additionalProperties"),
         }))
     }
 }
@@ -227,7 +227,7 @@ impl AdditionalPropertiesNotEmptyFalseValidator<BigValidatorsMap> {
     ) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalPropertiesNotEmptyFalseValidator {
             properties: compile_big_map(ctx, map)?,
-            schema_path: ctx.as_pointer_with("additionalProperties"),
+            location: ctx.location().join("additionalProperties"),
         }))
     }
 }
@@ -259,7 +259,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
             }
             if !unexpected.is_empty() {
                 errors.push(ValidationError::additional_properties(
-                    self.schema_path.clone(),
+                    self.location.clone(),
                     instance_path.into(),
                     instance,
                     unexpected,
@@ -291,7 +291,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
             if !unexpected.is_empty() {
                 result.mark_errored(
                     ValidationError::additional_properties(
-                        self.schema_path.clone(),
+                        self.location.clone(),
                         instance_path.into(),
                         instance,
                         unexpected,
@@ -344,7 +344,7 @@ impl AdditionalPropertiesNotEmptyValidator<SmallValidatorsMap> {
         ctx: &compiler::Context,
         schema: &'a Value,
     ) -> CompilationResult<'a> {
-        let kctx = ctx.with_path("additionalProperties");
+        let kctx = ctx.new_at_location("additionalProperties");
         Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
             properties: compile_small_map(ctx, map)?,
             node: compiler::compile(&kctx, kctx.as_resource_ref(schema))?,
@@ -358,7 +358,7 @@ impl AdditionalPropertiesNotEmptyValidator<BigValidatorsMap> {
         ctx: &compiler::Context,
         schema: &'a Value,
     ) -> CompilationResult<'a> {
-        let kctx = ctx.with_path("additionalProperties");
+        let kctx = ctx.new_at_location("additionalProperties");
         Ok(Box::new(AdditionalPropertiesNotEmptyValidator {
             properties: compile_big_map(ctx, map)?,
             node: compiler::compile(&kctx, kctx.as_resource_ref(schema))?,
@@ -456,7 +456,7 @@ pub(crate) struct AdditionalPropertiesWithPatternsValidator {
     /// this validator. That means that the schema node which contains this validator has
     /// "additionalProperties" as it's path. However, we need to produce annotations which have the
     /// patternProperties keyword as their path so we store the paths here.
-    pattern_keyword_path: JsonPointer,
+    pattern_keyword_path: Location,
     pattern_keyword_absolute_location: Option<Uri<String>>,
 }
 impl AdditionalPropertiesWithPatternsValidator {
@@ -466,12 +466,12 @@ impl AdditionalPropertiesWithPatternsValidator {
         schema: &'a Value,
         patterns: PatternedValidators,
     ) -> CompilationResult<'a> {
-        let kctx = ctx.with_path("additionalProperties");
+        let kctx = ctx.new_at_location("additionalProperties");
         Ok(Box::new(AdditionalPropertiesWithPatternsValidator {
             node: compiler::compile(&kctx, kctx.as_resource_ref(schema))?,
             patterns,
-            pattern_keyword_path: ctx.as_pointer_with("patternProperties"),
-            pattern_keyword_absolute_location: ctx.with_path("patternProperties").base_uri(),
+            pattern_keyword_path: ctx.location().join("patternProperties"),
+            pattern_keyword_absolute_location: ctx.new_at_location("patternProperties").base_uri(),
         }))
     }
 }
@@ -589,8 +589,8 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
 /// ```
 pub(crate) struct AdditionalPropertiesWithPatternsFalseValidator {
     patterns: PatternedValidators,
-    schema_path: JsonPointer,
-    pattern_keyword_path: JsonPointer,
+    location: Location,
+    pattern_keyword_path: Location,
     pattern_keyword_absolute_location: Option<Uri<String>>,
 }
 impl AdditionalPropertiesWithPatternsFalseValidator {
@@ -601,9 +601,9 @@ impl AdditionalPropertiesWithPatternsFalseValidator {
     ) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalPropertiesWithPatternsFalseValidator {
             patterns,
-            schema_path: ctx.as_pointer_with("additionalProperties"),
-            pattern_keyword_path: ctx.as_pointer_with("patternProperties"),
-            pattern_keyword_absolute_location: ctx.with_path("patternProperties").base_uri(),
+            location: ctx.location().join("additionalProperties"),
+            pattern_keyword_path: ctx.location().join("patternProperties"),
+            pattern_keyword_absolute_location: ctx.new_at_location("patternProperties").base_uri(),
         }))
     }
 }
@@ -643,7 +643,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
             }
             if !unexpected.is_empty() {
                 errors.push(ValidationError::additional_properties(
-                    self.schema_path.clone(),
+                    self.location.clone(),
                     instance_path.into(),
                     instance,
                     unexpected,
@@ -691,7 +691,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
             if !unexpected.is_empty() {
                 result.mark_errored(
                     ValidationError::additional_properties(
-                        self.schema_path.clone(),
+                        self.location.clone(),
                         instance_path.into(),
                         instance,
                         unexpected,
@@ -745,7 +745,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator<SmallValidatorsMap> {
         schema: &'a Value,
         patterns: PatternedValidators,
     ) -> CompilationResult<'a> {
-        let kctx = ctx.with_path("additionalProperties");
+        let kctx = ctx.new_at_location("additionalProperties");
         Ok(Box::new(
             AdditionalPropertiesWithPatternsNotEmptyValidator {
                 node: compiler::compile(&kctx, kctx.as_resource_ref(schema))?,
@@ -763,7 +763,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyValidator<BigValidatorsMap> {
         schema: &'a Value,
         patterns: PatternedValidators,
     ) -> CompilationResult<'a> {
-        let kctx = ctx.with_path("additionalProperties");
+        let kctx = ctx.new_at_location("additionalProperties");
         Ok(Box::new(
             AdditionalPropertiesWithPatternsNotEmptyValidator {
                 node: compiler::compile(&kctx, kctx.as_resource_ref(schema))?,
@@ -917,7 +917,7 @@ pub(crate) struct AdditionalPropertiesWithPatternsNotEmptyFalseValidator<M: Prop
 {
     properties: M,
     patterns: PatternedValidators,
-    schema_path: JsonPointer,
+    location: Location,
 }
 impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator<SmallValidatorsMap> {
     #[inline]
@@ -930,7 +930,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator<SmallValidatorsMap> 
             AdditionalPropertiesWithPatternsNotEmptyFalseValidator::<SmallValidatorsMap> {
                 properties: compile_small_map(ctx, map)?,
                 patterns,
-                schema_path: ctx.path.push("additionalProperties").into(),
+                location: ctx.location().join("additionalProperties"),
             },
         ))
     }
@@ -946,7 +946,7 @@ impl AdditionalPropertiesWithPatternsNotEmptyFalseValidator<BigValidatorsMap> {
             AdditionalPropertiesWithPatternsNotEmptyFalseValidator {
                 properties: compile_big_map(ctx, map)?,
                 patterns,
-                schema_path: ctx.path.push("additionalProperties").into(),
+                location: ctx.location().join("additionalProperties"),
             },
         ))
     }
@@ -1016,7 +1016,7 @@ impl<M: PropertiesValidatorsMap> Validate
             }
             if !unexpected.is_empty() {
                 errors.push(ValidationError::additional_properties(
-                    self.schema_path.clone(),
+                    self.location.clone(),
                     instance_path.into(),
                     instance,
                     unexpected,
@@ -1063,7 +1063,7 @@ impl<M: PropertiesValidatorsMap> Validate
             if !unexpected.is_empty() {
                 result.mark_errored(
                     ValidationError::additional_properties(
-                        self.schema_path.clone(),
+                        self.location.clone(),
                         instance_path.into(),
                         instance,
                         unexpected,
@@ -1148,8 +1148,8 @@ pub(crate) fn compile<'a>(
                         ctx,
                     )
                 } else {
-                    let schema_path = ctx.as_pointer_with("additionalProperties");
-                    Some(AdditionalPropertiesFalseValidator::compile(schema_path))
+                    let location = ctx.location().join("additionalProperties");
+                    Some(AdditionalPropertiesFalseValidator::compile(location))
                 }
             }
             _ => {
@@ -1251,11 +1251,11 @@ mod tests {
           "/additionalProperties"
       ]
     )]
-    fn schema_1_invalid(instance: &Value, expected: &[&str], schema_paths: &[&str]) {
+    fn schema_1_invalid(instance: &Value, expected: &[&str], locations: &[&str]) {
         let schema = schema_1();
         tests_util::is_not_valid(&schema, instance);
         tests_util::expect_errors(&schema, instance, expected);
-        tests_util::assert_schema_paths(&schema, instance, schema_paths)
+        tests_util::assert_locations(&schema, instance, locations)
     }
 
     fn schema_2() -> Value {
@@ -1318,11 +1318,11 @@ mod tests {
           "/additionalProperties"
       ]
     )]
-    fn schema_2_invalid(instance: &Value, expected: &[&str], schema_paths: &[&str]) {
+    fn schema_2_invalid(instance: &Value, expected: &[&str], locations: &[&str]) {
         let schema = schema_2();
         tests_util::is_not_valid(&schema, instance);
         tests_util::expect_errors(&schema, instance, expected);
-        tests_util::assert_schema_paths(&schema, instance, schema_paths)
+        tests_util::assert_locations(&schema, instance, locations)
     }
 
     fn schema_3() -> Value {
@@ -1363,11 +1363,11 @@ mod tests {
             "/additionalProperties",
         ]
     )]
-    fn schema_3_invalid(instance: &Value, expected: &[&str], schema_paths: &[&str]) {
+    fn schema_3_invalid(instance: &Value, expected: &[&str], locations: &[&str]) {
         let schema = schema_3();
         tests_util::is_not_valid(&schema, instance);
         tests_util::expect_errors(&schema, instance, expected);
-        tests_util::assert_schema_paths(&schema, instance, schema_paths)
+        tests_util::assert_locations(&schema, instance, locations)
     }
 
     fn schema_4() -> Value {
@@ -1412,11 +1412,11 @@ mod tests {
             "/properties/foo/type",
         ]
     )]
-    fn schema_4_invalid(instance: &Value, expected: &[&str], schema_paths: &[&str]) {
+    fn schema_4_invalid(instance: &Value, expected: &[&str], locations: &[&str]) {
         let schema = schema_4();
         tests_util::is_not_valid(&schema, instance);
         tests_util::expect_errors(&schema, instance, expected);
-        tests_util::assert_schema_paths(&schema, instance, schema_paths)
+        tests_util::assert_locations(&schema, instance, locations)
     }
 
     fn schema_5() -> Value {
@@ -1498,11 +1498,11 @@ mod tests {
           "/patternProperties/spam$/maximum",
       ]
     )]
-    fn schema_5_invalid(instance: &Value, expected: &[&str], schema_paths: &[&str]) {
+    fn schema_5_invalid(instance: &Value, expected: &[&str], locations: &[&str]) {
         let schema = schema_5();
         tests_util::is_not_valid(&schema, instance);
         tests_util::expect_errors(&schema, instance, expected);
-        tests_util::assert_schema_paths(&schema, instance, schema_paths)
+        tests_util::assert_locations(&schema, instance, locations)
     }
 
     fn schema_6() -> Value {
@@ -1570,10 +1570,10 @@ mod tests {
           "/patternProperties/spam$/maximum",
       ]
     )]
-    fn schema_6_invalid(instance: &Value, expected: &[&str], schema_paths: &[&str]) {
+    fn schema_6_invalid(instance: &Value, expected: &[&str], locations: &[&str]) {
         let schema = schema_6();
         tests_util::is_not_valid(&schema, instance);
         tests_util::expect_errors(&schema, instance, expected);
-        tests_util::assert_schema_paths(&schema, instance, schema_paths)
+        tests_util::assert_locations(&schema, instance, locations)
     }
 }

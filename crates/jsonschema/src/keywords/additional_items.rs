@@ -3,7 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{boolean::FalseValidator, CompilationResult},
     node::SchemaNode,
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
 };
@@ -61,17 +61,14 @@ impl Validate for AdditionalItemsObjectValidator {
 
 pub(crate) struct AdditionalItemsBooleanValidator {
     items_count: usize,
-    schema_path: JsonPointer,
+    location: Location,
 }
 impl AdditionalItemsBooleanValidator {
     #[inline]
-    pub(crate) fn compile<'a>(
-        items_count: usize,
-        schema_path: JsonPointer,
-    ) -> CompilationResult<'a> {
+    pub(crate) fn compile<'a>(items_count: usize, location: Location) -> CompilationResult<'a> {
         Ok(Box::new(AdditionalItemsBooleanValidator {
             items_count,
-            schema_path,
+            location,
         }))
     }
 }
@@ -93,7 +90,7 @@ impl Validate for AdditionalItemsBooleanValidator {
         if let Value::Array(items) = instance {
             if items.len() > self.items_count {
                 return error(ValidationError::additional_items(
-                    self.schema_path.clone(),
+                    self.location.clone(),
                     instance_path.into(),
                     instance,
                     self.items_count,
@@ -114,17 +111,17 @@ pub(crate) fn compile<'a>(
         match items {
             Value::Object(_) => None,
             Value::Array(items) => {
-                let keyword_context = ctx.with_path("additionalItems");
+                let kctx = ctx.new_at_location("additionalItems");
                 let items_count = items.len();
                 match schema {
                     Value::Object(_) => Some(AdditionalItemsObjectValidator::compile(
-                        &keyword_context,
+                        &kctx,
                         schema,
                         items_count,
                     )),
                     Value::Bool(false) => Some(AdditionalItemsBooleanValidator::compile(
                         items_count,
-                        keyword_context.into_pointer(),
+                        kctx.location().clone(),
                     )),
                     _ => None,
                 }
@@ -133,13 +130,13 @@ pub(crate) fn compile<'a>(
                 if *value {
                     None
                 } else {
-                    let schema_path = ctx.as_pointer_with("additionalItems");
-                    Some(FalseValidator::compile(schema_path))
+                    let location = ctx.location().join("additionalItems");
+                    Some(FalseValidator::compile(location))
                 }
             }
             _ => Some(Err(ValidationError::multiple_type_error(
-                JsonPointer::default(),
-                ctx.clone().into_pointer(),
+                Location::new(),
+                ctx.location().clone(),
                 schema,
                 PrimitiveTypesBitMap::new()
                     .add_type(PrimitiveType::Object)
@@ -161,7 +158,7 @@ mod tests {
     #[test_case(&json!({"additionalItems": false, "items": false}), &json!([1]), "/additionalItems")]
     #[test_case(&json!({"additionalItems": false, "items": [{}]}), &json!([1, 2]), "/additionalItems")]
     #[test_case(&json!({"additionalItems": {"type": "string"}, "items": [{}]}), &json!([1, 2]), "/additionalItems/type")]
-    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
-        tests_util::assert_schema_path(schema, instance, expected)
+    fn location(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_location(schema, instance, expected)
     }
 }

@@ -5,7 +5,7 @@ use crate::{
     error::ErrorIterator,
     keywords::CompilationResult,
     node::SchemaNode,
-    paths::{JsonPointer, JsonPointerNode, PathChunk, PathChunkRef},
+    paths::{JsonPointerNode, Location},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
     ValidationError, ValidationOptions,
@@ -27,7 +27,7 @@ impl RefValidator {
         is_recursive: bool,
         keyword: &str,
     ) -> CompilationResult<'a> {
-        let relative_location = ctx.path.push(keyword);
+        let location = ctx.location().join(keyword);
         if let Some((base_uri, scopes, resource)) =
             ctx.lookup_maybe_recursive(reference, is_recursive)?
         {
@@ -37,15 +37,14 @@ impl RefValidator {
                 registry: Arc::clone(&ctx.registry),
                 base_uri,
                 scopes,
-                relative_location: relative_location.into(),
+                location,
                 draft: ctx.draft(),
                 inner: OnceCell::default(),
             })))
         } else {
             let (contents, resolver, draft) = ctx.lookup(reference)?.into_inner();
             let resource_ref = draft.create_resource_ref(contents);
-            let ctx =
-                ctx.with_resolver_and_draft(resolver, resource_ref.draft(), relative_location);
+            let ctx = ctx.with_resolver_and_draft(resolver, resource_ref.draft(), location);
             let inner =
                 compiler::compile_with(&ctx, resource_ref).map_err(|err| err.into_owned())?;
             Ok(Box::new(RefValidator::Default { inner }))
@@ -66,7 +65,7 @@ pub(crate) struct LazyRefValidator {
     registry: Arc<Registry>,
     scopes: List<Uri<String>>,
     base_uri: Arc<Uri<String>>,
-    relative_location: JsonPointer,
+    location: Location,
     draft: Draft,
     inner: OnceCell<SchemaNode>,
 }
@@ -87,7 +86,7 @@ impl LazyRefValidator {
             registry: Arc::clone(&ctx.registry),
             base_uri,
             scopes,
-            relative_location: ctx.path.push("$recursiveRef").into(),
+            location: ctx.location().join("$recursiveRef"),
             draft: ctx.draft(),
             inner: OnceCell::default(),
         }))
@@ -98,47 +97,12 @@ impl LazyRefValidator {
                 .registry
                 .resolver_from_raw_parts(self.base_uri.clone(), self.scopes.clone());
 
-            let segments: Vec<PathChunkRef<'_>> = self
-                .relative_location
-                .iter()
-                .map(PathChunk::as_ref)
-                .collect();
-
-            let dummy = JsonPointerNode::new();
-            let mut nodes = Vec::with_capacity(segments.len());
-
-            // NOTE: This is a temporary hack as `JsonPointerNode` was designed without
-            // lazy compilation in mind and uses references inside
-            for (i, &segment) in segments.iter().enumerate() {
-                nodes.push(JsonPointerNode {
-                    segment,
-                    parent: match i + 1 {
-                        1 => Some(&dummy),
-                        _ => {
-                            // SAFETY: `nodes` already have enough capacity and will not be
-                            // reallocated + they won't be dropped while `path` is used
-                            Some(unsafe {
-                                std::mem::transmute::<
-                                    &JsonPointerNode<'_, '_>,
-                                    &JsonPointerNode<'_, '_>,
-                                >(&nodes[i - 1])
-                            })
-                        }
-                    },
-                });
-            }
-
-            let path = if let Some(path) = nodes.last() {
-                path.clone()
-            } else {
-                JsonPointerNode::new()
-            };
             let ctx = compiler::Context::new(
                 Arc::clone(&self.config),
                 Arc::clone(&self.registry),
                 Rc::new(resolver),
                 self.draft,
-                path,
+                self.location.clone(),
             );
             // INVARIANT: This schema was already used during compilation before detecting a
             // reference cycle that lead to building this validator.
@@ -199,8 +163,8 @@ impl Validate for RefValidator {
 
 fn invalid_reference<'a>(ctx: &compiler::Context, schema: &'a Value) -> ValidationError<'a> {
     ValidationError::single_type_error(
-        JsonPointer::default(),
-        ctx.clone().into_pointer(),
+        Location::new(),
+        ctx.location().clone(),
         schema,
         PrimitiveType::String,
     )
@@ -275,12 +239,12 @@ mod tests {
         &json!({"foo": 42}),
         "/properties/foo/$ref/type"
     )]
-    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
-        tests_util::assert_schema_path(schema, instance, expected)
+    fn location(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_location(schema, instance, expected)
     }
 
     #[test]
-    fn multiple_errors_schema_paths() {
+    fn multiple_errors_locations() {
         let instance = json!({
             "things": [
                 { "code": "CC" },

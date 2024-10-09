@@ -1,9 +1,9 @@
-use crate::{compiler, ecma, node::SchemaNode, validator::Validate as _};
+use crate::{compiler, ecma, node::SchemaNode, paths::Location, validator::Validate as _};
 use ahash::AHashMap;
 use fancy_regex::Regex;
 use serde_json::{Map, Value};
 
-use crate::{paths::JsonPointer, ValidationError};
+use crate::ValidationError;
 
 pub(crate) type PatternedValidators = Vec<(Regex, SchemaNode)>;
 
@@ -88,9 +88,9 @@ pub(crate) fn compile_small_map<'a>(
     map: &'a Map<String, Value>,
 ) -> Result<SmallValidatorsMap, ValidationError<'a>> {
     let mut properties = Vec::with_capacity(map.len());
-    let kctx = ctx.with_path("properties");
+    let kctx = ctx.new_at_location("properties");
     for (key, subschema) in map {
-        let pctx = kctx.with_path(key.as_str());
+        let pctx = kctx.new_at_location(key.as_str());
         properties.push((
             key.clone(),
             compiler::compile(&pctx, pctx.as_resource_ref(subschema))?,
@@ -104,9 +104,9 @@ pub(crate) fn compile_big_map<'a>(
     map: &'a Map<String, Value>,
 ) -> Result<BigValidatorsMap, ValidationError<'a>> {
     let mut properties = AHashMap::with_capacity(map.len());
-    let kctx = ctx.with_path("properties");
+    let kctx = ctx.new_at_location("properties");
     for (key, subschema) in map {
-        let pctx = kctx.with_path(key.as_str());
+        let pctx = kctx.new_at_location(key.as_str());
         properties.insert(
             key.clone(),
             compiler::compile(&pctx, pctx.as_resource_ref(subschema))?,
@@ -135,10 +135,10 @@ pub(crate) fn compile_patterns<'a>(
     ctx: &compiler::Context,
     obj: &'a Map<String, Value>,
 ) -> Result<PatternedValidators, ValidationError<'a>> {
-    let keyword_context = ctx.with_path("patternProperties");
+    let kctx = ctx.new_at_location("patternProperties");
     let mut compiled_patterns = Vec::with_capacity(obj.len());
     for (pattern, subschema) in obj {
-        let pctx = keyword_context.with_path(pattern.as_str());
+        let pctx = kctx.new_at_location(pattern.as_str());
         if let Ok(Ok(compiled_pattern)) =
             ecma::to_rust_regex(pattern).map(|pattern| Regex::new(&pattern))
         {
@@ -146,8 +146,8 @@ pub(crate) fn compile_patterns<'a>(
             compiled_patterns.push((compiled_pattern, node));
         } else {
             return Err(ValidationError::format(
-                JsonPointer::default(),
-                keyword_context.clone().into_pointer(),
+                Location::new(),
+                kctx.location().clone(),
                 subschema,
                 "regex",
             ));

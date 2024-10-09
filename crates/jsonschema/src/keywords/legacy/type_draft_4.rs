@@ -2,7 +2,7 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{type_, CompilationResult},
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
 };
@@ -11,12 +11,12 @@ use std::convert::TryFrom;
 
 pub(crate) struct MultipleTypesValidator {
     types: PrimitiveTypesBitMap,
-    schema_path: JsonPointer,
+    location: Location,
 }
 
 impl MultipleTypesValidator {
     #[inline]
-    pub(crate) fn compile(items: &[Value], schema_path: JsonPointer) -> CompilationResult {
+    pub(crate) fn compile(items: &[Value], location: Location) -> CompilationResult {
         let mut types = PrimitiveTypesBitMap::new();
         for item in items {
             match item {
@@ -25,8 +25,8 @@ impl MultipleTypesValidator {
                         types |= primitive_type;
                     } else {
                         return Err(ValidationError::enumeration(
-                            JsonPointer::default(),
-                            schema_path,
+                            Location::new(),
+                            location,
                             item,
                             &json!([
                                 "array", "boolean", "integer", "null", "number", "object", "string"
@@ -36,15 +36,15 @@ impl MultipleTypesValidator {
                 }
                 _ => {
                     return Err(ValidationError::single_type_error(
-                        JsonPointer::default(),
-                        schema_path,
+                        Location::new(),
+                        location,
                         item,
                         PrimitiveType::String,
                     ))
                 }
             }
         }
-        Ok(Box::new(MultipleTypesValidator { types, schema_path }))
+        Ok(Box::new(MultipleTypesValidator { types, location }))
     }
 }
 
@@ -71,7 +71,7 @@ impl Validate for MultipleTypesValidator {
             no_error()
         } else {
             error(ValidationError::multiple_type_error(
-                self.schema_path.clone(),
+                self.location.clone(),
                 instance_path.into(),
                 instance,
                 self.types,
@@ -81,13 +81,13 @@ impl Validate for MultipleTypesValidator {
 }
 
 pub(crate) struct IntegerTypeValidator {
-    schema_path: JsonPointer,
+    location: Location,
 }
 
 impl IntegerTypeValidator {
     #[inline]
-    pub(crate) fn compile<'a>(schema_path: JsonPointer) -> CompilationResult<'a> {
-        Ok(Box::new(IntegerTypeValidator { schema_path }))
+    pub(crate) fn compile<'a>(location: Location) -> CompilationResult<'a> {
+        Ok(Box::new(IntegerTypeValidator { location }))
     }
 }
 
@@ -109,7 +109,7 @@ impl Validate for IntegerTypeValidator {
             no_error()
         } else {
             error(ValidationError::single_type_error(
-                self.schema_path.clone(),
+                self.location.clone(),
                 instance_path.into(),
                 instance,
                 PrimitiveType::Integer,
@@ -128,29 +128,29 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
 ) -> Option<CompilationResult<'a>> {
-    let schema_path = ctx.as_pointer_with("type");
+    let location = ctx.location().join("type");
     match schema {
-        Value::String(item) => compile_single_type(item.as_str(), schema_path),
+        Value::String(item) => compile_single_type(item.as_str(), location),
         Value::Array(items) => {
             if items.len() == 1 {
                 let item = &items[0];
                 if let Value::String(item) = item {
-                    compile_single_type(item.as_str(), schema_path)
+                    compile_single_type(item.as_str(), location)
                 } else {
                     Some(Err(ValidationError::single_type_error(
-                        JsonPointer::default(),
-                        schema_path,
+                        Location::new(),
+                        location,
                         item,
                         PrimitiveType::String,
                     )))
                 }
             } else {
-                Some(MultipleTypesValidator::compile(items, schema_path))
+                Some(MultipleTypesValidator::compile(items, location))
             }
         }
         _ => Some(Err(ValidationError::multiple_type_error(
-            JsonPointer::default(),
-            ctx.clone().into_pointer(),
+            Location::new(),
+            ctx.location().clone(),
             schema,
             PrimitiveTypesBitMap::new()
                 .add_type(PrimitiveType::String)
@@ -159,15 +159,15 @@ pub(crate) fn compile<'a>(
     }
 }
 
-fn compile_single_type<'a>(item: &str, schema_path: JsonPointer) -> Option<CompilationResult<'a>> {
+fn compile_single_type<'a>(item: &str, location: Location) -> Option<CompilationResult<'a>> {
     match PrimitiveType::try_from(item) {
-        Ok(PrimitiveType::Array) => Some(type_::ArrayTypeValidator::compile(schema_path)),
-        Ok(PrimitiveType::Boolean) => Some(type_::BooleanTypeValidator::compile(schema_path)),
-        Ok(PrimitiveType::Integer) => Some(IntegerTypeValidator::compile(schema_path)),
-        Ok(PrimitiveType::Null) => Some(type_::NullTypeValidator::compile(schema_path)),
-        Ok(PrimitiveType::Number) => Some(type_::NumberTypeValidator::compile(schema_path)),
-        Ok(PrimitiveType::Object) => Some(type_::ObjectTypeValidator::compile(schema_path)),
-        Ok(PrimitiveType::String) => Some(type_::StringTypeValidator::compile(schema_path)),
+        Ok(PrimitiveType::Array) => Some(type_::ArrayTypeValidator::compile(location)),
+        Ok(PrimitiveType::Boolean) => Some(type_::BooleanTypeValidator::compile(location)),
+        Ok(PrimitiveType::Integer) => Some(IntegerTypeValidator::compile(location)),
+        Ok(PrimitiveType::Null) => Some(type_::NullTypeValidator::compile(location)),
+        Ok(PrimitiveType::Number) => Some(type_::NumberTypeValidator::compile(location)),
+        Ok(PrimitiveType::Object) => Some(type_::ObjectTypeValidator::compile(location)),
+        Ok(PrimitiveType::String) => Some(type_::StringTypeValidator::compile(location)),
         Err(()) => Some(Err(ValidationError::null_schema())),
     }
 }

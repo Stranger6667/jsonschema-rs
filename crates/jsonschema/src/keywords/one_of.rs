@@ -4,7 +4,7 @@ use crate::{
     keywords::CompilationResult,
     node::SchemaNode,
     output::BasicOutput,
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
 };
@@ -12,28 +12,28 @@ use serde_json::{Map, Value};
 
 pub(crate) struct OneOfValidator {
     schemas: Vec<SchemaNode>,
-    schema_path: JsonPointer,
+    location: Location,
 }
 
 impl OneOfValidator {
     #[inline]
     pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
         if let Value::Array(items) = schema {
-            let ctx = ctx.with_path("oneOf");
+            let ctx = ctx.new_at_location("oneOf");
             let mut schemas = Vec::with_capacity(items.len());
             for (idx, item) in items.iter().enumerate() {
-                let ctx = ctx.with_path(idx);
+                let ctx = ctx.new_at_location(idx);
                 let node = compiler::compile(&ctx, ctx.as_resource_ref(item))?;
                 schemas.push(node)
             }
             Ok(Box::new(OneOfValidator {
                 schemas,
-                schema_path: ctx.into_pointer(),
+                location: ctx.location().clone(),
             }))
         } else {
             Err(ValidationError::single_type_error(
-                JsonPointer::default(),
-                ctx.clone().into_pointer(),
+                Location::new(),
+                ctx.location().clone(),
                 schema,
                 PrimitiveType::Array,
             ))
@@ -77,7 +77,7 @@ impl Validate for OneOfValidator {
         if let Some(idx) = first_valid_idx {
             if self.are_others_valid(instance, idx) {
                 return error(ValidationError::one_of_multiple_valid(
-                    self.schema_path.clone(),
+                    self.location.clone(),
                     instance_path.into(),
                     instance,
                 ));
@@ -85,7 +85,7 @@ impl Validate for OneOfValidator {
             no_error()
         } else {
             error(ValidationError::one_of_not_valid(
-                self.schema_path.clone(),
+                self.location.clone(),
                 instance_path.into(),
                 instance,
             ))
@@ -134,7 +134,7 @@ mod tests {
 
     #[test_case(&json!({"oneOf": [{"type": "string"}]}), &json!(0), "/oneOf")]
     #[test_case(&json!({"oneOf": [{"type": "string"}, {"maxLength": 3}]}), &json!(""), "/oneOf")]
-    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
-        tests_util::assert_schema_path(schema, instance, expected)
+    fn location(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_location(schema, instance, expected)
     }
 }

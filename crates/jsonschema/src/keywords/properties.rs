@@ -4,7 +4,7 @@ use crate::{
     keywords::CompilationResult,
     node::SchemaNode,
     output::BasicOutput,
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
 };
@@ -19,10 +19,10 @@ impl PropertiesValidator {
     pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
         match schema {
             Value::Object(map) => {
-                let ctx = ctx.with_path("properties");
+                let ctx = ctx.new_at_location("properties");
                 let mut properties = Vec::with_capacity(map.len());
                 for (key, subschema) in map {
-                    let ctx = ctx.with_path(key.as_str());
+                    let ctx = ctx.new_at_location(key.as_str());
                     properties.push((
                         key.clone(),
                         compiler::compile(&ctx, ctx.as_resource_ref(subschema))?,
@@ -31,8 +31,8 @@ impl PropertiesValidator {
                 Ok(Box::new(PropertiesValidator { properties }))
             }
             _ => Err(ValidationError::single_type_error(
-                JsonPointer::default(),
-                ctx.clone().into_pointer(),
+                Location::new(),
+                ctx.location().clone(),
                 schema,
                 PrimitiveType::Object,
             )),
@@ -119,8 +119,8 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn schema_path() {
-        tests_util::assert_schema_path(
+    fn location() {
+        tests_util::assert_schema_location(
             &json!({"properties": {"foo": {"properties": {"bar": {"required": ["spam"]}}}}}),
             &json!({"foo": {"bar": {}}}),
             "/properties/foo/properties/bar/required",

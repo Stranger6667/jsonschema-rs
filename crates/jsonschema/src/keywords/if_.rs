@@ -22,11 +22,11 @@ impl IfThenValidator {
     ) -> CompilationResult<'a> {
         Ok(Box::new(IfThenValidator {
             schema: {
-                let ctx = ctx.with_path("if");
+                let ctx = ctx.new_at_location("if");
                 compiler::compile(&ctx, ctx.as_resource_ref(schema))?
             },
             then_schema: {
-                let ctx = ctx.with_path("then");
+                let ctx = ctx.new_at_location("then");
                 compiler::compile(&ctx, ctx.as_resource_ref(then_schema))?
             },
         }))
@@ -86,11 +86,11 @@ impl IfElseValidator {
     ) -> CompilationResult<'a> {
         Ok(Box::new(IfElseValidator {
             schema: {
-                let ctx = ctx.with_path("if");
+                let ctx = ctx.new_at_location("if");
                 compiler::compile(&ctx, ctx.as_resource_ref(schema))?
             },
             else_schema: {
-                let ctx = ctx.with_path("else");
+                let ctx = ctx.new_at_location("else");
                 compiler::compile(&ctx, ctx.as_resource_ref(else_schema))?
             },
         }))
@@ -152,15 +152,15 @@ impl IfThenElseValidator {
     ) -> CompilationResult<'a> {
         Ok(Box::new(IfThenElseValidator {
             schema: {
-                let ctx = ctx.with_path("if");
+                let ctx = ctx.new_at_location("if");
                 compiler::compile(&ctx, ctx.as_resource_ref(schema))?
             },
             then_schema: {
-                let ctx = ctx.with_path("then");
+                let ctx = ctx.new_at_location("then");
                 compiler::compile(&ctx, ctx.as_resource_ref(then_schema))?
             },
             else_schema: {
-                let ctx = ctx.with_path("else");
+                let ctx = ctx.new_at_location("else");
                 compiler::compile(&ctx, ctx.as_resource_ref(else_schema))?
             },
         }))
@@ -239,7 +239,7 @@ mod tests {
     #[test_case(&json!({"if": {"minimum": 0}, "then": {"multipleOf": 2}}), &json!(3), "/then/multipleOf")]
     #[test_case(&json!({"if": {"minimum": 0}, "then": {"multipleOf": 2}, "else": {"multipleOf": 2}}), &json!(-1), "/else/multipleOf")]
     #[test_case(&json!({"if": {"minimum": 0}, "then": {"multipleOf": 2}, "else": {"multipleOf": 2}}), &json!(3), "/then/multipleOf")]
-    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
-        tests_util::assert_schema_path(schema, instance, expected)
+    fn location(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_location(schema, instance, expected)
     }
 }

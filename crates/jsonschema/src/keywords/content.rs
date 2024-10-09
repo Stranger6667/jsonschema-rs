@@ -5,7 +5,7 @@ use crate::{
     content_media_type::ContentMediaTypeCheckType,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
@@ -15,7 +15,7 @@ use serde_json::{Map, Value};
 pub(crate) struct ContentMediaTypeValidator {
     media_type: String,
     func: ContentMediaTypeCheckType,
-    schema_path: JsonPointer,
+    location: Location,
 }
 
 impl ContentMediaTypeValidator {
@@ -23,12 +23,12 @@ impl ContentMediaTypeValidator {
     pub(crate) fn compile(
         media_type: &str,
         func: ContentMediaTypeCheckType,
-        schema_path: JsonPointer,
+        location: Location,
     ) -> CompilationResult {
         Ok(Box::new(ContentMediaTypeValidator {
             media_type: media_type.to_string(),
             func,
-            schema_path,
+            location,
         }))
     }
 }
@@ -53,7 +53,7 @@ impl Validate for ContentMediaTypeValidator {
                 no_error()
             } else {
                 error(ValidationError::content_media_type(
-                    self.schema_path.clone(),
+                    self.location.clone(),
                     instance_path.into(),
                     instance,
                     &self.media_type,
@@ -69,7 +69,7 @@ impl Validate for ContentMediaTypeValidator {
 pub(crate) struct ContentEncodingValidator {
     encoding: String,
     func: ContentEncodingCheckType,
-    schema_path: JsonPointer,
+    location: Location,
 }
 
 impl ContentEncodingValidator {
@@ -77,12 +77,12 @@ impl ContentEncodingValidator {
     pub(crate) fn compile(
         encoding: &str,
         func: ContentEncodingCheckType,
-        schema_path: JsonPointer,
+        location: Location,
     ) -> CompilationResult {
         Ok(Box::new(ContentEncodingValidator {
             encoding: encoding.to_string(),
             func,
-            schema_path,
+            location,
         }))
     }
 }
@@ -106,7 +106,7 @@ impl Validate for ContentEncodingValidator {
                 no_error()
             } else {
                 error(ValidationError::content_encoding(
-                    self.schema_path.clone(),
+                    self.location.clone(),
                     instance_path.into(),
                     instance,
                     &self.encoding,
@@ -124,7 +124,7 @@ pub(crate) struct ContentMediaTypeAndEncodingValidator {
     encoding: String,
     func: ContentMediaTypeCheckType,
     converter: ContentEncodingConverterType,
-    schema_path: JsonPointer,
+    location: Location,
 }
 
 impl ContentMediaTypeAndEncodingValidator {
@@ -134,14 +134,14 @@ impl ContentMediaTypeAndEncodingValidator {
         encoding: &'a str,
         func: ContentMediaTypeCheckType,
         converter: ContentEncodingConverterType,
-        schema_path: JsonPointer,
+        location: Location,
     ) -> CompilationResult<'a> {
         Ok(Box::new(ContentMediaTypeAndEncodingValidator {
             media_type: media_type.to_string(),
             encoding: encoding.to_string(),
             func,
             converter,
-            schema_path,
+            location,
         }))
     }
 }
@@ -167,7 +167,7 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
         if let Value::String(item) = instance {
             match (self.converter)(item) {
                 Ok(None) => error(ValidationError::content_encoding(
-                    self.schema_path.clone_with("contentEncoding"),
+                    self.location.join("contentEncoding"),
                     instance_path.into(),
                     instance,
                     &self.encoding,
@@ -177,7 +177,7 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
                         no_error()
                     } else {
                         error(ValidationError::content_media_type(
-                            self.schema_path.clone_with("contentMediaType"),
+                            self.location.join("contentMediaType"),
                             instance_path.into(),
                             instance,
                             &self.media_type,
@@ -216,12 +216,12 @@ pub(crate) fn compile_media_type<'a>(
                             content_encoding,
                             func,
                             converter,
-                            ctx.path.clone().into(),
+                            ctx.location().clone(),
                         ))
                     }
                     _ => Some(Err(ValidationError::single_type_error(
-                        JsonPointer::default(),
-                        ctx.clone().into_pointer(),
+                        Location::new(),
+                        ctx.location().clone(),
                         content_encoding,
                         PrimitiveType::String,
                     ))),
@@ -230,13 +230,13 @@ pub(crate) fn compile_media_type<'a>(
                 Some(ContentMediaTypeValidator::compile(
                     media_type,
                     func,
-                    ctx.as_pointer_with("contentMediaType"),
+                    ctx.location().join("contentMediaType"),
                 ))
             }
         }
         _ => Some(Err(ValidationError::single_type_error(
-            JsonPointer::default(),
-            ctx.clone().into_pointer(),
+            Location::new(),
+            ctx.location().clone(),
             subschema,
             PrimitiveType::String,
         ))),
@@ -263,12 +263,12 @@ pub(crate) fn compile_content_encoding<'a>(
             Some(ContentEncodingValidator::compile(
                 content_encoding,
                 func,
-                ctx.as_pointer_with("contentEncoding"),
+                ctx.location().join("contentEncoding"),
             ))
         }
         _ => Some(Err(ValidationError::single_type_error(
-            JsonPointer::default(),
-            ctx.clone().into_pointer(),
+            Location::new(),
+            ctx.location().clone(),
             subschema,
             PrimitiveType::String,
         ))),
@@ -285,7 +285,7 @@ mod tests {
     #[test_case(&json!({"contentMediaType": "application/json"}), &json!("asd"), "/contentMediaType")]
     #[test_case(&json!({"contentMediaType": "application/json", "contentEncoding": "base64"}), &json!("ezp9Cg=="), "/contentMediaType")]
     #[test_case(&json!({"contentMediaType": "application/json", "contentEncoding": "base64"}), &json!("{}"), "/contentEncoding")]
-    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
-        tests_util::assert_schema_path(schema, instance, expected)
+    fn location(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_location(schema, instance, expected)
     }
 }

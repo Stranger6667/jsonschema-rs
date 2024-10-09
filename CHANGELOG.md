@@ -11,6 +11,7 @@
 
 - Improve error messages on WASM. [#568](https://github.com/Stranger6667/jsonschema-rs/issues/568)
 - Improve error messages on URI resolving and parsing.
+- **BREAKING**: Replace `JsonPointer` in favor of `Location`.
 
 ### Fixed
 
@@ -20,6 +21,7 @@
 
 - Faster building of a validator.
 - Speedup `hostname` & `idn-hostname` formats validation.
+- Speedup `apply`.
 
 ## [0.22.3] - 2024-10-05
 

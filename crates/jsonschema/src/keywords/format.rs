@@ -15,7 +15,7 @@ use crate::{
     compiler, ecma,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     primitive_type::PrimitiveType,
     validator::Validate,
     Draft,
@@ -617,13 +617,13 @@ macro_rules! format_validators {
     ($(($validator:ident, $format:expr, $validation_fn:ident)),+ $(,)?) => {
         $(
             struct $validator {
-                schema_path: JsonPointer,
+                location: Location,
             }
 
             impl $validator {
                 pub(crate) fn compile<'a>(ctx: &compiler::Context) -> CompilationResult<'a> {
-                    let schema_path = ctx.as_pointer_with("format");
-                    Ok(Box::new($validator { schema_path }))
+                    let location = ctx.location().join("format");
+                    Ok(Box::new($validator { location }))
                 }
             }
 
@@ -644,7 +644,7 @@ macro_rules! format_validators {
                     if let Value::String(_item) = instance {
                         if !self.is_valid(instance) {
                             return error(ValidationError::format(
-                                self.schema_path.clone(),
+                                self.location.clone(),
                                 instance_path.into(),
                                 instance,
                                 $format,
@@ -692,7 +692,7 @@ format_validators!(
 );
 
 struct CustomFormatValidator {
-    schema_path: JsonPointer,
+    location: Location,
     format_name: String,
     check: Arc<dyn Format>,
 }
@@ -702,9 +702,9 @@ impl CustomFormatValidator {
         format_name: String,
         check: Arc<dyn Format>,
     ) -> CompilationResult<'a> {
-        let schema_path = ctx.as_pointer_with("format");
+        let location = ctx.location().join("format");
         Ok(Box::new(CustomFormatValidator {
-            schema_path,
+            location,
             format_name,
             check,
         }))
@@ -719,7 +719,7 @@ impl Validate for CustomFormatValidator {
     ) -> ErrorIterator<'instance> {
         if !self.is_valid(instance) {
             return error(ValidationError::format(
-                self.schema_path.clone(),
+                self.location.clone(),
                 instance_path.into(),
                 instance,
                 self.format_name.clone(),
@@ -797,8 +797,8 @@ pub(crate) fn compile<'a>(
                     None
                 } else {
                     return Some(Err(ValidationError::format(
-                        JsonPointer::default(),
-                        ctx.clone().path.into(),
+                        Location::new(),
+                        ctx.location().clone(),
                         schema,
                         "unknown format",
                     )));
@@ -807,8 +807,8 @@ pub(crate) fn compile<'a>(
         }
     } else {
         Some(Err(ValidationError::single_type_error(
-            JsonPointer::default(),
-            ctx.clone().into_pointer(),
+            Location::new(),
+            ctx.location().clone(),
             schema,
             PrimitiveType::String,
         )))
@@ -864,8 +864,8 @@ mod tests {
     }
 
     #[test]
-    fn schema_path() {
-        tests_util::assert_schema_path(&json!({"format": "date"}), &json!("bla"), "/format")
+    fn location() {
+        tests_util::assert_schema_location(&json!({"format": "date"}), &json!("bla"), "/format")
     }
 
     #[test]

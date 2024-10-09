@@ -3,7 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     node::SchemaNode,
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
@@ -15,7 +15,7 @@ pub(crate) struct PropertyNamesObjectValidator {
 impl PropertyNamesObjectValidator {
     #[inline]
     pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
-        let ctx = ctx.with_path("propertyNames");
+        let ctx = ctx.new_at_location("propertyNames");
         Ok(Box::new(PropertyNamesObjectValidator {
             node: compiler::compile(&ctx, ctx.as_resource_ref(schema))?,
         }))
@@ -85,14 +85,14 @@ impl Validate for PropertyNamesObjectValidator {
 }
 
 pub(crate) struct PropertyNamesBooleanValidator {
-    schema_path: JsonPointer,
+    location: Location,
 }
 
 impl PropertyNamesBooleanValidator {
     #[inline]
     pub(crate) fn compile<'a>(ctx: &compiler::Context) -> CompilationResult<'a> {
-        let schema_path = ctx.as_pointer_with("propertyNames");
-        Ok(Box::new(PropertyNamesBooleanValidator { schema_path }))
+        let location = ctx.location().join("propertyNames");
+        Ok(Box::new(PropertyNamesBooleanValidator { location }))
     }
 }
 
@@ -115,7 +115,7 @@ impl Validate for PropertyNamesBooleanValidator {
             no_error()
         } else {
             error(ValidationError::false_schema(
-                self.schema_path.clone(),
+                self.location.clone(),
                 instance_path.into(),
                 instance,
             ))
@@ -144,7 +144,7 @@ mod tests {
 
     #[test_case(&json!({"propertyNames": false}), &json!({"foo": 1}), "/propertyNames")]
     #[test_case(&json!({"propertyNames": {"minLength": 2}}), &json!({"f": 1}), "/propertyNames/minLength")]
-    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
-        tests_util::assert_schema_path(schema, instance, expected)
+    fn location(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_location(schema, instance, expected)
     }
 }

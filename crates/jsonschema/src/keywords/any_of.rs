@@ -2,39 +2,38 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     node::SchemaNode,
-    paths::JsonPointerNode,
+    paths::{JsonPointerNode, Location},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
 
 use super::CompilationResult;
-use crate::paths::JsonPointer;
 
 pub(crate) struct AnyOfValidator {
     schemas: Vec<SchemaNode>,
-    schema_path: JsonPointer,
+    location: Location,
 }
 
 impl AnyOfValidator {
     #[inline]
     pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
         if let Value::Array(items) = schema {
-            let ctx = ctx.with_path("anyOf");
+            let ctx = ctx.new_at_location("anyOf");
             let mut schemas = Vec::with_capacity(items.len());
             for (idx, item) in items.iter().enumerate() {
-                let ctx = ctx.with_path(idx);
+                let ctx = ctx.new_at_location(idx);
                 let node = compiler::compile(&ctx, ctx.as_resource_ref(item))?;
                 schemas.push(node)
             }
             Ok(Box::new(AnyOfValidator {
                 schemas,
-                schema_path: ctx.into_pointer(),
+                location: ctx.location().clone(),
             }))
         } else {
             Err(ValidationError::single_type_error(
-                JsonPointer::default(),
-                ctx.clone().into_pointer(),
+                Location::new(),
+                ctx.location().clone(),
                 schema,
                 PrimitiveType::Array,
             ))
@@ -56,7 +55,7 @@ impl Validate for AnyOfValidator {
             no_error()
         } else {
             error(ValidationError::any_of(
-                self.schema_path.clone(),
+                self.location.clone(),
                 instance_path.into(),
                 instance,
             ))
@@ -103,7 +102,7 @@ mod tests {
 
     #[test_case(&json!({"anyOf": [{"type": "string"}]}), &json!(1), "/anyOf")]
     #[test_case(&json!({"anyOf": [{"type": "integer"}, {"type": "string"}]}), &json!({}), "/anyOf")]
-    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
-        tests_util::assert_schema_path(schema, instance, expected)
+    fn location(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_location(schema, instance, expected)
     }
 }

@@ -1,122 +1,10 @@
 //! Facilities for working with paths within schemas or validated instances.
-use std::{fmt, fmt::Write, slice::Iter};
+use std::{
+    fmt::{self, Write},
+    sync::Arc,
+};
 
-/// JSON Pointer as a wrapper around individual path components.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct JsonPointer(Vec<PathChunk>);
-
-#[deprecated(
-    since = "0.20.0",
-    note = "Use `JsonPointer` instead. This type will be removed in a future release."
-)]
-/// Use [`JsonPointer`] instead. This type will be removed in a future release.
-pub type JSONPointer = JsonPointer;
-
-impl JsonPointer {
-    /// JSON pointer as a vector of strings. Each component is casted to `String`.
-    #[must_use]
-    pub fn into_vec(self) -> Vec<String> {
-        self.0
-            .into_iter()
-            .map(|item| match item {
-                PathChunk::Property(value) => value.into_string(),
-                PathChunk::Index(idx) => idx.to_string(),
-                PathChunk::Keyword(keyword) => keyword.to_string(),
-            })
-            .collect()
-    }
-
-    /// Return an iterator over the underlying vector of path components.
-    pub fn iter(&self) -> Iter<'_, PathChunk> {
-        self.0.iter()
-    }
-    /// Take the last pointer chunk.
-    #[must_use]
-    #[inline]
-    pub fn last(&self) -> Option<&PathChunk> {
-        self.0.last()
-    }
-
-    pub(crate) fn clone_with(&self, chunk: impl Into<PathChunk>) -> Self {
-        let mut new = self.clone();
-        new.0.push(chunk.into());
-        new
-    }
-
-    pub(crate) fn extend_with(&self, chunks: &[PathChunk]) -> Self {
-        let mut new = self.clone();
-        new.0.extend_from_slice(chunks);
-        new
-    }
-}
-
-impl serde::Serialize for JsonPointer {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.collect_str(self)
-    }
-}
-
-impl fmt::Display for JsonPointer {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if !self.0.is_empty() {
-            for chunk in &self.0 {
-                f.write_char('/')?;
-                match chunk {
-                    PathChunk::Property(value) => {
-                        for ch in value.chars() {
-                            match ch {
-                                '/' => f.write_str("~1")?,
-                                '~' => f.write_str("~0")?,
-                                _ => f.write_char(ch)?,
-                            }
-                        }
-                    }
-                    PathChunk::Index(idx) => f.write_str(itoa::Buffer::new().format(*idx))?,
-                    PathChunk::Keyword(keyword) => f.write_str(keyword)?,
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-/// A key within a JSON object or an index within a JSON array.
-/// A sequence of chunks represents a valid path within a JSON value.
-///
-/// Example:
-/// ```json
-/// {
-///    "cmd": ["ls", "-lh", "/home"]
-/// }
-/// ```
-///
-/// To extract "/home" from the JSON object above, we need to take two steps:
-/// 1. Go into property "cmd". It corresponds to `PathChunk::Property("cmd".to_string())`.
-/// 2. Take the 2nd value from the array - `PathChunk::Index(2)`
-///
-/// The primary purpose of this enum is to avoid converting indexes to strings during validation.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum PathChunk {
-    /// Property name within a JSON object.
-    Property(Box<str>),
-    /// Index within a JSON array.
-    Index(usize),
-    /// JSON Schema keyword.
-    Keyword(&'static str),
-}
-
-impl PathChunk {
-    pub(crate) fn as_ref(&self) -> PathChunkRef<'_> {
-        match self {
-            PathChunk::Property(p) => PathChunkRef::Property(p),
-            PathChunk::Index(i) => PathChunkRef::Index(*i),
-            PathChunk::Keyword(k) => PathChunkRef::Property(k),
-        }
-    }
-}
+use crate::keywords::Keyword;
 
 /// A borrowed variant of [`PathChunk`].
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -125,6 +13,15 @@ pub enum PathChunkRef<'a> {
     Property(&'a str),
     /// JSON Schema keyword.
     Index(usize),
+}
+
+impl<'a> fmt::Display for PathChunkRef<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PathChunkRef::Property(property) => f.write_str(property),
+            PathChunkRef::Index(idx) => f.write_str(itoa::Buffer::new().format(*idx)),
+        }
+    }
 }
 
 /// A node in a linked list representing a JSON pointer.
@@ -167,7 +64,7 @@ impl<'a, 'b> JsonPointerNode<'a, 'b> {
     }
 
     /// Convert the JSON pointer node to a vector of path segments.
-    pub fn to_vec(&'a self) -> Vec<PathChunk> {
+    pub fn to_vec(&'a self) -> Vec<PathChunkRef<'a>> {
         // Walk the linked list to calculate the capacity
         let mut capacity = 0;
         let mut head = self;
@@ -179,12 +76,12 @@ impl<'a, 'b> JsonPointerNode<'a, 'b> {
         let mut buffer = Vec::with_capacity(capacity);
         let mut head = self;
         if head.parent.is_some() {
-            buffer.push(head.segment.into())
+            buffer.push(head.segment)
         }
         while let Some(next) = head.parent {
             head = next;
             if head.parent.is_some() {
-                buffer.push(head.segment.into());
+                buffer.push(head.segment);
             }
         }
         // Reverse the buffer to get the segments in the correct order
@@ -193,57 +90,36 @@ impl<'a, 'b> JsonPointerNode<'a, 'b> {
     }
 }
 
-impl IntoIterator for JsonPointer {
-    type Item = PathChunk;
-    type IntoIter = <Vec<PathChunk> as IntoIterator>::IntoIter;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
-    }
-}
-
-impl<'a> IntoIterator for &'a JsonPointer {
-    type Item = &'a PathChunk;
-    type IntoIter = Iter<'a, PathChunk>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.iter()
-    }
-}
-
-impl From<String> for PathChunk {
-    #[inline]
-    fn from(value: String) -> Self {
-        PathChunk::Property(value.into_boxed_str())
-    }
-}
-
-impl From<&'static str> for PathChunk {
-    #[inline]
-    fn from(value: &'static str) -> Self {
-        PathChunk::Keyword(value)
-    }
-}
-
-impl From<crate::keywords::Keyword> for PathChunk {
-    fn from(value: crate::keywords::Keyword) -> Self {
-        match value {
-            crate::keywords::Keyword::Buildin(k) => PathChunk::Keyword(k.as_str()),
-            crate::keywords::Keyword::Custom(s) => PathChunk::Property(s),
+impl<'a> From<&'a JsonPointerNode<'_, '_>> for Location {
+    fn from(value: &'a JsonPointerNode<'_, '_>) -> Self {
+        let mut buffer = String::new();
+        for segment in value.to_vec() {
+            buffer.push('/');
+            write!(&mut buffer, "{}", segment).expect("Failed to write to a buffer");
         }
+        Location(Arc::new(buffer))
     }
 }
 
-impl From<usize> for PathChunk {
-    #[inline]
-    fn from(value: usize) -> Self {
-        PathChunk::Index(value)
+impl<'a> From<&'a Keyword> for PathChunkRef<'a> {
+    fn from(value: &'a Keyword) -> Self {
+        match value {
+            Keyword::Buildin(k) => PathChunkRef::Property(k.as_str()),
+            Keyword::Custom(s) => PathChunkRef::Property(s),
+        }
     }
 }
 
 impl<'a> From<&'a str> for PathChunkRef<'a> {
     #[inline]
     fn from(value: &'a str) -> PathChunkRef<'a> {
+        PathChunkRef::Property(value)
+    }
+}
+
+impl<'a> From<&'a String> for PathChunkRef<'a> {
+    #[inline]
+    fn from(value: &'a String) -> PathChunkRef<'a> {
         PathChunkRef::Property(value)
     }
 }
@@ -255,64 +131,146 @@ impl From<usize> for PathChunkRef<'_> {
     }
 }
 
-impl<'a> From<PathChunkRef<'a>> for PathChunk {
-    #[inline]
-    fn from(value: PathChunkRef<'a>) -> Self {
-        match value {
-            PathChunkRef::Property(value) => PathChunk::Property(value.into()),
-            PathChunkRef::Index(value) => PathChunk::Index(value),
+/// A cheap to clone JSON pointer that represents location with a JSON value.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Location(Arc<String>);
+
+impl Location {
+    /// Create a new, empty `Location`.
+    pub fn new() -> Self {
+        Self(Arc::new(String::new()))
+    }
+    pub(crate) fn join<'a>(&self, segment: impl Into<PathChunkRef<'a>>) -> Self {
+        let parent = self.0.as_str();
+        match segment.into() {
+            PathChunkRef::Property(property) => {
+                let mut buffer = String::with_capacity(parent.len() + property.len() + 1);
+                buffer.push_str(parent);
+                buffer.push('/');
+                match property.find(|c| c == '~' || c == '/') {
+                    Some(mut escape_idx) => {
+                        let mut remaining = property;
+
+                        // Loop through the string to replace `~` and `/`
+                        loop {
+                            let (before, after) = remaining.split_at(escape_idx);
+                            // Copy everything before the escape char
+                            buffer.push_str(before);
+
+                            // Append the appropriate escape sequence
+                            match after.as_bytes()[0] {
+                                b'~' => buffer.push_str("~0"),
+                                b'/' => buffer.push_str("~1"),
+                                _ => unreachable!(),
+                            }
+
+                            // Move past the escaped character
+                            remaining = &after[1..];
+
+                            // Find the next `~` or `/` to continue escaping
+                            if let Some(next_escape_idx) = remaining.find(|c| c == '~' || c == '/')
+                            {
+                                escape_idx = next_escape_idx;
+                            } else {
+                                // Append any remaining part of the string
+                                buffer.push_str(remaining);
+                                break;
+                            }
+                        }
+                    }
+                    None => {
+                        // If no escape characters are found, append the segment as is
+                        buffer.push_str(property);
+                    }
+                };
+                Self(Arc::new(buffer))
+            }
+            PathChunkRef::Index(idx) => {
+                let mut buffer = itoa::Buffer::new();
+                let segment = buffer.format(idx);
+                Self(Arc::new(format!("{parent}/{segment}")))
+            }
         }
     }
-}
-
-impl<'a, 'b> From<&'a JsonPointerNode<'a, 'b>> for JsonPointer {
-    #[inline]
-    fn from(path: &'a JsonPointerNode<'a, 'b>) -> Self {
-        JsonPointer(path.to_vec())
+    /// Get a string slice representing the location.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+    /// Get a byte slice representing the location.
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_bytes()
     }
 }
 
-impl From<JsonPointerNode<'_, '_>> for JsonPointer {
-    #[inline]
-    fn from(path: JsonPointerNode<'_, '_>) -> Self {
-        JsonPointer(path.to_vec())
+impl Default for Location {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
-impl From<&[&str]> for JsonPointer {
-    #[inline]
-    fn from(path: &[&str]) -> Self {
-        JsonPointer(
-            path.iter()
-                .map(|item| PathChunk::Property((*item).into()))
-                .collect(),
-        )
-    }
-}
-impl From<&[PathChunk]> for JsonPointer {
-    #[inline]
-    fn from(path: &[PathChunk]) -> Self {
-        JsonPointer(path.to_vec())
-    }
-}
-
-impl From<&str> for JsonPointer {
-    fn from(value: &str) -> Self {
-        JsonPointer(vec![value.to_string().into()])
+impl fmt::Display for Location {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::JsonPointer;
-    use serde_json::json;
+    use super::*;
+    use test_case::test_case;
 
     #[test]
-    fn json_pointer_to_string() {
-        let chunks = ["/", "~"];
-        let pointer = JsonPointer::from(&chunks[..]).to_string();
-        assert_eq!(pointer, "/~1/~0");
-        let data = json!({"/": {"~": 42}});
-        assert_eq!(data.pointer(&pointer), Some(&json!(42)))
+    fn test_location_default() {
+        let loc = Location::default();
+        assert_eq!(loc.as_str(), "");
+    }
+
+    #[test]
+    fn test_location_new() {
+        let loc = Location::new();
+        assert_eq!(loc.as_str(), "");
+    }
+
+    #[test]
+    fn test_location_join_property() {
+        let loc = Location::new();
+        let loc = loc.join("property");
+        assert_eq!(loc.as_str(), "/property");
+    }
+
+    #[test]
+    fn test_location_join_index() {
+        let loc = Location::new();
+        let loc = loc.join(0);
+        assert_eq!(loc.as_str(), "/0");
+    }
+
+    #[test]
+    fn test_location_join_multiple() {
+        let loc = Location::new();
+        let loc = loc.join("property").join(0);
+        assert_eq!(loc.as_str(), "/property/0");
+    }
+
+    #[test]
+    fn test_as_bytes() {
+        let loc = Location::new().join("test");
+        assert_eq!(loc.as_bytes(), b"/test");
+    }
+
+    #[test]
+    fn test_display_trait() {
+        let loc = Location::new().join("property");
+        assert_eq!(format!("{}", loc), "/property");
+    }
+
+    #[test_case("tilde~character", "/tilde~0character"; "escapes tilde")]
+    #[test_case("slash/character", "/slash~1character"; "escapes slash")]
+    #[test_case("combo~and/slash", "/combo~0and~1slash"; "escapes tilde and slash combined")]
+    #[test_case("multiple~/escapes~", "/multiple~0~1escapes~0"; "multiple escapes")]
+    #[test_case("first/segment", "/first~1segment"; "escapes slash in nested segment")]
+    fn test_location_escaping(segment: &str, expected: &str) {
+        let loc = Location::new().join(segment);
+        assert_eq!(loc.as_str(), expected);
     }
 }

@@ -2,7 +2,7 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
@@ -10,30 +10,27 @@ use serde_json::{Map, Value};
 
 pub(crate) struct RequiredValidator {
     required: Vec<String>,
-    schema_path: JsonPointer,
+    location: Location,
 }
 
 impl RequiredValidator {
     #[inline]
-    pub(crate) fn compile(items: &[Value], schema_path: JsonPointer) -> CompilationResult {
+    pub(crate) fn compile(items: &[Value], location: Location) -> CompilationResult {
         let mut required = Vec::with_capacity(items.len());
         for item in items {
             match item {
                 Value::String(string) => required.push(string.clone()),
                 _ => {
                     return Err(ValidationError::single_type_error(
-                        JsonPointer::default(),
-                        schema_path,
+                        Location::new(),
+                        location,
                         item,
                         PrimitiveType::String,
                     ))
                 }
             }
         }
-        Ok(Box::new(RequiredValidator {
-            required,
-            schema_path,
-        }))
+        Ok(Box::new(RequiredValidator { required, location }))
     }
 }
 
@@ -58,7 +55,7 @@ impl Validate for RequiredValidator {
             for property_name in &self.required {
                 if !item.contains_key(property_name) {
                     errors.push(ValidationError::required(
-                        self.schema_path.clone(),
+                        self.location.clone(),
                         instance_path.into(),
                         instance,
                         // Value enum is needed for proper string escaping
@@ -76,15 +73,15 @@ impl Validate for RequiredValidator {
 
 pub(crate) struct SingleItemRequiredValidator {
     value: String,
-    schema_path: JsonPointer,
+    location: Location,
 }
 
 impl SingleItemRequiredValidator {
     #[inline]
-    pub(crate) fn compile(value: &str, schema_path: JsonPointer) -> CompilationResult {
+    pub(crate) fn compile(value: &str, location: Location) -> CompilationResult {
         Ok(Box::new(SingleItemRequiredValidator {
             value: value.to_string(),
-            schema_path,
+            location,
         }))
     }
 }
@@ -97,7 +94,7 @@ impl Validate for SingleItemRequiredValidator {
     ) -> ErrorIterator<'instance> {
         if !self.is_valid(instance) {
             return error(ValidationError::required(
-                self.schema_path.clone(),
+                self.location.clone(),
                 instance_path.into(),
                 instance,
                 // Value enum is needed for proper string escaping
@@ -122,37 +119,34 @@ pub(crate) fn compile<'a>(
     _: &'a Map<String, Value>,
     schema: &'a Value,
 ) -> Option<CompilationResult<'a>> {
-    let schema_path = ctx.as_pointer_with("required");
-    compile_with_path(schema, schema_path)
+    let location = ctx.location().join("required");
+    compile_with_path(schema, location)
 }
 
 #[inline]
-pub(crate) fn compile_with_path(
-    schema: &Value,
-    schema_path: JsonPointer,
-) -> Option<CompilationResult> {
+pub(crate) fn compile_with_path(schema: &Value, location: Location) -> Option<CompilationResult> {
     // IMPORTANT: If this function will ever return `None`, adjust `dependencies.rs` accordingly
     match schema {
         Value::Array(items) => {
             if items.len() == 1 {
                 let item = &items[0];
                 if let Value::String(item) = item {
-                    Some(SingleItemRequiredValidator::compile(item, schema_path))
+                    Some(SingleItemRequiredValidator::compile(item, location))
                 } else {
                     Some(Err(ValidationError::single_type_error(
-                        JsonPointer::default(),
-                        schema_path,
+                        Location::new(),
+                        location,
                         item,
                         PrimitiveType::String,
                     )))
                 }
             } else {
-                Some(RequiredValidator::compile(items, schema_path))
+                Some(RequiredValidator::compile(items, location))
             }
         }
         _ => Some(Err(ValidationError::single_type_error(
-            JsonPointer::default(),
-            schema_path,
+            Location::new(),
+            location,
             schema,
             PrimitiveType::Array,
         ))),
@@ -167,7 +161,7 @@ mod tests {
 
     #[test_case(&json!({"required": ["a"]}), &json!({}), "/required")]
     #[test_case(&json!({"required": ["a", "b"]}), &json!({}), "/required")]
-    fn schema_path(schema: &Value, instance: &Value, expected: &str) {
-        tests_util::assert_schema_path(schema, instance, expected)
+    fn location(schema: &Value, instance: &Value, expected: &str) {
+        tests_util::assert_schema_location(schema, instance, expected)
     }
 }

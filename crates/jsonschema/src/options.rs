@@ -7,7 +7,7 @@ use crate::{
     },
     content_media_type::{ContentMediaTypeCheckType, DEFAULT_CONTENT_MEDIA_TYPE_CHECKS},
     keywords::{custom::KeywordFactory, format::Format},
-    paths::JsonPointer,
+    paths::Location,
     retriever::DefaultRetriever,
     Keyword, SchemaResolver, ValidationError, Validator,
 };
@@ -423,7 +423,7 @@ impl ValidationOptions {
     ///
     /// ```rust
     /// # use jsonschema::{
-    /// #    paths::{JsonPointer, JsonPointerNode},
+    /// #    paths::{JsonPointerNode, Location},
     /// #    ErrorIterator, Keyword, ValidationError,
     /// # };
     /// # use serde_json::{json, Map, Value};
@@ -440,7 +440,7 @@ impl ValidationOptions {
     ///         // ... validate instance ...
     ///         if !instance.is_object() {
     ///             let error = ValidationError::custom(
-    ///                 JsonPointer::default(),
+    ///                 Location::new(),
     ///                 instance_path.into(),
     ///                 instance,
     ///                 "Boom!",
@@ -460,7 +460,7 @@ impl ValidationOptions {
     /// fn custom_validator_factory<'a>(
     ///     parent: &'a Map<String, Value>,
     ///     value: &'a Value,
-    ///     path: JsonPointer,
+    ///     path: Location,
     /// ) -> Result<Box<dyn Keyword>, ValidationError<'a>> {
     ///     Ok(Box::new(MyCustomValidator))
     /// }
@@ -479,7 +479,7 @@ impl ValidationOptions {
         F: for<'a> Fn(
                 &'a serde_json::Map<String, Value>,
                 &'a Value,
-                JsonPointer,
+                Location,
             ) -> Result<Box<dyn Keyword>, ValidationError<'a>>
             + Send
             + Sync

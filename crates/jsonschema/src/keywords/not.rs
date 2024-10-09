@@ -3,7 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     node::SchemaNode,
-    paths::{JsonPointer, JsonPointerNode},
+    paths::{JsonPointerNode, Location},
     validator::Validate,
 };
 use serde_json::{Map, Value};
@@ -12,17 +12,17 @@ pub(crate) struct NotValidator {
     // needed only for error representation
     original: Value,
     node: SchemaNode,
-    schema_path: JsonPointer,
+    location: Location,
 }
 
 impl NotValidator {
     #[inline]
     pub(crate) fn compile<'a>(ctx: &compiler::Context, schema: &'a Value) -> CompilationResult<'a> {
-        let ctx = ctx.with_path("not");
+        let ctx = ctx.new_at_location("not");
         Ok(Box::new(NotValidator {
             original: schema.clone(),
             node: compiler::compile(&ctx, ctx.as_resource_ref(schema))?,
-            schema_path: ctx.into_pointer(),
+            location: ctx.location().clone(),
         }))
     }
 }
@@ -41,7 +41,7 @@ impl Validate for NotValidator {
             no_error()
         } else {
             error(ValidationError::not(
-                self.schema_path.clone(),
+                self.location.clone(),
                 instance_path.into(),
                 instance,
                 self.original.clone(),
@@ -65,7 +65,11 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn schema_path() {
-        tests_util::assert_schema_path(&json!({"not": {"type": "string"}}), &json!("foo"), "/not")
+    fn location() {
+        tests_util::assert_schema_location(
+            &json!({"not": {"type": "string"}}),
+            &json!("foo"),
+            "/not",
+        )
     }
 }
