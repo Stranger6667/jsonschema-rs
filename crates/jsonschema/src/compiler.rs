@@ -5,7 +5,7 @@ use crate::{
         self,
         custom::{CustomKeyword, KeywordFactory},
         format::Format,
-        BoxedValidator,
+        BoxedValidator, BuiltinKeyword, Keyword,
     },
     node::SchemaNode,
     options::ValidationOptions,
@@ -390,7 +390,7 @@ pub(crate) fn compile_with<'a>(
                         .collect();
                     let validator = keywords::ref_::compile_ref(ctx, schema, reference)
                         .expect("Missing `$ref` implementation")?;
-                    let validators = vec![("$ref".to_string(), validator)];
+                    let validators = vec![(BuiltinKeyword::Ref.into(), validator)];
                     return Ok(SchemaNode::from_keywords(
                         ctx,
                         validators,
@@ -407,11 +407,12 @@ pub(crate) fn compile_with<'a>(
                     let path = ctx.as_pointer_with(keyword.as_str());
                     let validator = CustomKeyword::new(factory.init(schema, value, path)?);
                     let validator: BoxedValidator = Box::new(validator);
-                    validators.push((keyword.clone(), validator));
-                } else if let Some(validator) = keywords::get_for_draft(ctx.draft(), keyword)
-                    .and_then(|f| f(ctx, schema, value))
+                    validators.push((Keyword::custom(keyword), validator));
+                } else if let Some((keyword, validator)) =
+                    keywords::get_for_draft(ctx.draft(), keyword)
+                        .and_then(|(keyword, f)| f(ctx, schema, value).map(|v| (keyword, v)))
                 {
-                    validators.push((keyword.clone(), validator.map_err(|err| err.into_owned())?));
+                    validators.push((keyword, validator.map_err(|err| err.into_owned())?));
                 } else if !ctx.is_known_keyword(keyword) {
                     // Treat all non-validation keywords as annotations
                     annotations.insert(keyword.to_string(), value.clone());

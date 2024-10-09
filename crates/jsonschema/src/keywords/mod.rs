@@ -37,6 +37,8 @@ pub(crate) mod required;
 pub(crate) mod type_;
 pub(crate) mod unevaluated_properties;
 pub(crate) mod unique_items;
+use core::fmt;
+
 use referencing::Draft;
 use serde_json::{Map, Value};
 
@@ -48,94 +50,252 @@ pub(crate) type BoxedValidator = Box<dyn Validate + Send + Sync>;
 type CompileFunc<'a> =
     fn(&compiler::Context, &'a Map<String, Value>, &'a Value) -> Option<CompilationResult<'a>>;
 
-pub(crate) fn get_for_draft(draft: Draft, keyword: &str) -> Option<CompileFunc> {
+#[derive(Debug, Clone)]
+pub(crate) enum Keyword {
+    Buildin(BuiltinKeyword),
+    Custom(Box<str>),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum BuiltinKeyword {
+    Ref,
+    AdditionalItems,
+    AdditionalProperties,
+    AllOf,
+    AnyOf,
+    Dependencies,
+    Enum,
+    Format,
+    Items,
+    MaxItems,
+    MaxLength,
+    MaxProperties,
+    MinItems,
+    MinLength,
+    MinProperties,
+    MultipleOf,
+    Not,
+    OneOf,
+    Pattern,
+    PatternProperties,
+    Properties,
+    Required,
+    UniqueItems,
+    Maximum,
+    Minimum,
+    Type,
+    Const,
+    Contains,
+    ExclusiveMaximum,
+    ExclusiveMinimum,
+    PropertyNames,
+    ContentMediaType,
+    ContentEncoding,
+    If,
+    RecursiveRef,
+    DependentRequired,
+    DependentSchemas,
+    PrefixItems,
+    UnevaluatedProperties,
+    DynamicRef,
+}
+
+impl BuiltinKeyword {
+    pub(crate) fn as_str(&self) -> &'static str {
+        match self {
+            Self::Ref => "$ref",
+            Self::AdditionalItems => "additionalItems",
+            Self::AdditionalProperties => "additionalProperties",
+            Self::AllOf => "allOf",
+            Self::AnyOf => "anyOf",
+            Self::Dependencies => "dependencies",
+            Self::Enum => "enum",
+            Self::Format => "format",
+            Self::Items => "items",
+            Self::MaxItems => "maxItems",
+            Self::MaxLength => "maxLength",
+            Self::MaxProperties => "maxProperties",
+            Self::MinItems => "minItems",
+            Self::MinLength => "minLength",
+            Self::MinProperties => "minProperties",
+            Self::MultipleOf => "multipleOf",
+            Self::Not => "not",
+            Self::OneOf => "oneOf",
+            Self::Pattern => "pattern",
+            Self::PatternProperties => "patternProperties",
+            Self::Properties => "properties",
+            Self::Required => "required",
+            Self::UniqueItems => "uniqueItems",
+            Self::Maximum => "maximum",
+            Self::Minimum => "minimum",
+            Self::Type => "type",
+            Self::Const => "const",
+            Self::Contains => "contains",
+            Self::ExclusiveMaximum => "exclusiveMaximum",
+            Self::ExclusiveMinimum => "exclusiveMinimum",
+            Self::PropertyNames => "propertyNames",
+            Self::ContentMediaType => "contentMediaType",
+            Self::ContentEncoding => "contentEncoding",
+            Self::If => "if",
+            Self::RecursiveRef => "$recursiveRef",
+            Self::DependentRequired => "dependentRequired",
+            Self::DependentSchemas => "dependentSchemas",
+            Self::PrefixItems => "prefixItems",
+            Self::UnevaluatedProperties => "unevaluatedProperties",
+            Self::DynamicRef => "$dynamicRef",
+        }
+    }
+}
+
+impl Keyword {
+    pub(crate) fn custom(name: impl Into<String>) -> Self {
+        Keyword::Custom(name.into().into_boxed_str())
+    }
+    pub(crate) fn as_str(&self) -> &str {
+        match self {
+            Self::Buildin(d) => d.as_str(),
+            Self::Custom(s) => s,
+        }
+    }
+}
+
+impl From<BuiltinKeyword> for Keyword {
+    fn from(value: BuiltinKeyword) -> Self {
+        Keyword::Buildin(value)
+    }
+}
+
+impl fmt::Display for Keyword {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+pub(crate) fn get_for_draft(draft: Draft, keyword: &str) -> Option<(Keyword, CompileFunc)> {
     match (draft, keyword) {
         // Keywords common to all drafts
-        (_, "$ref") => Some(ref_::compile_ref),
-        (_, "additionalItems") => Some(additional_items::compile),
-        (_, "additionalProperties") => Some(additional_properties::compile),
-        (_, "allOf") => Some(all_of::compile),
-        (_, "anyOf") => Some(any_of::compile),
-        (_, "dependencies") => Some(dependencies::compile),
-        (_, "enum") => Some(enum_::compile),
-        (_, "format") => Some(format::compile),
-        (_, "items") => Some(items::compile),
-        (_, "maxItems") => Some(max_items::compile),
-        (_, "maxLength") => Some(max_length::compile),
-        (_, "maxProperties") => Some(max_properties::compile),
-        (_, "minItems") => Some(min_items::compile),
-        (_, "minLength") => Some(min_length::compile),
-        (_, "minProperties") => Some(min_properties::compile),
-        (_, "multipleOf") => Some(multiple_of::compile),
-        (_, "not") => Some(not::compile),
-        (_, "oneOf") => Some(one_of::compile),
-        (_, "pattern") => Some(pattern::compile),
-        (_, "patternProperties") => Some(pattern_properties::compile),
-        (_, "properties") => Some(properties::compile),
-        (_, "required") => Some(required::compile),
-        (_, "uniqueItems") => Some(unique_items::compile),
-
+        (_, "$ref") => Some((BuiltinKeyword::Ref.into(), ref_::compile_ref)),
+        (_, "additionalItems") => Some((
+            BuiltinKeyword::AdditionalItems.into(),
+            additional_items::compile,
+        )),
+        (_, "additionalProperties") => Some((
+            BuiltinKeyword::AdditionalProperties.into(),
+            additional_properties::compile,
+        )),
+        (_, "allOf") => Some((BuiltinKeyword::AllOf.into(), all_of::compile)),
+        (_, "anyOf") => Some((BuiltinKeyword::AnyOf.into(), any_of::compile)),
+        (_, "dependencies") => Some((BuiltinKeyword::Dependencies.into(), dependencies::compile)),
+        (_, "enum") => Some((BuiltinKeyword::Enum.into(), enum_::compile)),
+        (_, "format") => Some((BuiltinKeyword::Format.into(), format::compile)),
+        (_, "items") => Some((BuiltinKeyword::Items.into(), items::compile)),
+        (_, "maxItems") => Some((BuiltinKeyword::MaxItems.into(), max_items::compile)),
+        (_, "maxLength") => Some((BuiltinKeyword::MaxLength.into(), max_length::compile)),
+        (_, "maxProperties") => Some((
+            BuiltinKeyword::MaxProperties.into(),
+            max_properties::compile,
+        )),
+        (_, "minItems") => Some((BuiltinKeyword::MinItems.into(), min_items::compile)),
+        (_, "minLength") => Some((BuiltinKeyword::MinLength.into(), min_length::compile)),
+        (_, "minProperties") => Some((
+            BuiltinKeyword::MinProperties.into(),
+            min_properties::compile,
+        )),
+        (_, "multipleOf") => Some((BuiltinKeyword::MultipleOf.into(), multiple_of::compile)),
+        (_, "not") => Some((BuiltinKeyword::Not.into(), not::compile)),
+        (_, "oneOf") => Some((BuiltinKeyword::OneOf.into(), one_of::compile)),
+        (_, "pattern") => Some((BuiltinKeyword::Pattern.into(), pattern::compile)),
+        (_, "patternProperties") => Some((
+            BuiltinKeyword::PatternProperties.into(),
+            pattern_properties::compile,
+        )),
+        (_, "properties") => Some((BuiltinKeyword::Properties.into(), properties::compile)),
+        (_, "required") => Some((BuiltinKeyword::Required.into(), required::compile)),
+        (_, "uniqueItems") => Some((BuiltinKeyword::UniqueItems.into(), unique_items::compile)),
         // Draft 4 specific
-        (Draft::Draft4, "maximum") => Some(legacy::maximum_draft_4::compile),
-        (Draft::Draft4, "minimum") => Some(legacy::minimum_draft_4::compile),
-        (Draft::Draft4, "type") => Some(legacy::type_draft_4::compile),
-
+        (Draft::Draft4, "maximum") => Some((
+            BuiltinKeyword::Maximum.into(),
+            legacy::maximum_draft_4::compile,
+        )),
+        (Draft::Draft4, "minimum") => Some((
+            BuiltinKeyword::Minimum.into(),
+            legacy::minimum_draft_4::compile,
+        )),
+        (Draft::Draft4, "type") => {
+            Some((BuiltinKeyword::Type.into(), legacy::type_draft_4::compile))
+        }
         // Draft 6 and later
         (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "const") => {
-            Some(const_::compile)
+            Some((BuiltinKeyword::Const.into(), const_::compile))
         }
         (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "contains") => {
-            Some(contains::compile)
+            Some((BuiltinKeyword::Contains.into(), contains::compile))
         }
         (
             Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012,
             "exclusiveMaximum",
-        ) => Some(exclusive_maximum::compile),
+        ) => Some((
+            BuiltinKeyword::ExclusiveMaximum.into(),
+            exclusive_maximum::compile,
+        )),
         (
             Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012,
             "exclusiveMinimum",
-        ) => Some(exclusive_minimum::compile),
+        ) => Some((
+            BuiltinKeyword::ExclusiveMinimum.into(),
+            exclusive_minimum::compile,
+        )),
         (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "maximum") => {
-            Some(maximum::compile)
+            Some((BuiltinKeyword::Maximum.into(), maximum::compile))
         }
         (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "minimum") => {
-            Some(minimum::compile)
+            Some((BuiltinKeyword::Minimum.into(), minimum::compile))
         }
         (
             Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012,
             "propertyNames",
-        ) => Some(property_names::compile),
+        ) => Some((
+            BuiltinKeyword::PropertyNames.into(),
+            property_names::compile,
+        )),
         (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "type") => {
-            Some(type_::compile)
+            Some((BuiltinKeyword::Type.into(), type_::compile))
         }
-
-        // Draft 6 and 7 specific
-        (Draft::Draft6 | Draft::Draft7, "contentMediaType") => Some(content::compile_media_type),
-        (Draft::Draft6 | Draft::Draft7, "contentEncoding") => {
-            Some(content::compile_content_encoding)
+        (Draft::Draft6 | Draft::Draft7, "contentMediaType") => Some((
+            BuiltinKeyword::ContentMediaType.into(),
+            content::compile_media_type,
+        )),
+        (Draft::Draft6 | Draft::Draft7, "contentEncoding") => Some((
+            BuiltinKeyword::ContentEncoding.into(),
+            content::compile_content_encoding,
+        )),
+        (Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "if") => {
+            Some((BuiltinKeyword::If.into(), if_::compile))
         }
-
-        // Draft 7 and later
-        (Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "if") => Some(if_::compile),
-
         // Draft 2019-09 specific
-        (Draft::Draft201909, "$recursiveRef") => Some(ref_::compile_recursive_ref),
-
-        // Draft 2019-09 and 2020-12 specific
-        (Draft::Draft201909 | Draft::Draft202012, "dependentRequired") => {
-            Some(dependencies::compile_dependent_required)
+        (Draft::Draft201909, "$recursiveRef") => Some((
+            BuiltinKeyword::RecursiveRef.into(),
+            ref_::compile_recursive_ref,
+        )),
+        (Draft::Draft201909 | Draft::Draft202012, "dependentRequired") => Some((
+            BuiltinKeyword::DependentRequired.into(),
+            dependencies::compile_dependent_required,
+        )),
+        (Draft::Draft201909 | Draft::Draft202012, "dependentSchemas") => Some((
+            BuiltinKeyword::DependentSchemas.into(),
+            dependencies::compile_dependent_schemas,
+        )),
+        (Draft::Draft201909 | Draft::Draft202012, "prefixItems") => {
+            Some((BuiltinKeyword::PrefixItems.into(), prefix_items::compile))
         }
-        (Draft::Draft201909 | Draft::Draft202012, "dependentSchemas") => {
-            Some(dependencies::compile_dependent_schemas)
-        }
-        (Draft::Draft201909 | Draft::Draft202012, "prefixItems") => Some(prefix_items::compile),
-        (Draft::Draft201909 | Draft::Draft202012, "unevaluatedProperties") => {
-            Some(unevaluated_properties::compile)
-        }
-
+        (Draft::Draft201909 | Draft::Draft202012, "unevaluatedProperties") => Some((
+            BuiltinKeyword::UnevaluatedProperties.into(),
+            unevaluated_properties::compile,
+        )),
         // Draft 2020-12 specific
-        (Draft::Draft202012, "$dynamicRef") => Some(ref_::compile_dynamic_ref),
-
+        (Draft::Draft202012, "$dynamicRef") => {
+            Some((BuiltinKeyword::DynamicRef.into(), ref_::compile_dynamic_ref))
+        }
         // Unknown or not-yet-implemented keyword
         _ => None,
     }
