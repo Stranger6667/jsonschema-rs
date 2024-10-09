@@ -336,16 +336,31 @@ fn process_resources(
         }
         // Retrieve external resources
         for uri in external.drain() {
-            if !resources.contains_key(&uri) {
+            let fragmentless = without_fragment(&uri)?;
+            if !resources.contains_key(&fragmentless) {
                 let retrieved = retriever
-                    .retrieve(&uri.borrow())
-                    .map_err(|err| Error::unretrievable(uri.as_str(), Some(err)))?;
+                    .retrieve(&fragmentless.borrow())
+                    .map_err(|err| Error::unretrievable(fragmentless.as_str(), Some(err)))?;
                 let resource = Arc::new(Resource::from_contents_and_specification(
                     retrieved,
                     default_draft,
                 )?);
-                resources.insert(uri.clone(), Arc::clone(&resource));
-                queue.push_back((uri, resource));
+                resources.insert(fragmentless.clone(), Arc::clone(&resource));
+                if let Some(fragment) = uri.fragment() {
+                    // The original `$ref` could have a fragment that points to a place that won't
+                    // be discovered via the regular sub-resources discovery. Therefore we need to
+                    // explicitly check it
+                    if let Some(resolved) = resource.contents().pointer(fragment.as_str()) {
+                        queue.push_back((
+                            uri,
+                            Arc::new(Resource::from_contents_and_specification(
+                                resolved.clone(),
+                                default_draft,
+                            )?),
+                        ));
+                    }
+                }
+                queue.push_back((fragmentless, resource));
             }
         }
     }
@@ -375,20 +390,22 @@ fn collect_external_references(
             return Ok(());
         }
         let resolved = uri::resolve_against(&base.borrow(), reference)?;
-        // Drop the fragment
-        let builder = Uri::builder();
-        let base_uri = match resolved.authority() {
-            Some(auth) => builder
-                .scheme(resolved.scheme())
-                .authority(auth)
-                .path(resolved.path()),
-            None => builder.scheme(resolved.scheme()).path(resolved.path()),
-        }
-        .build()
-        .map_err(|error| Error::uri_building_error(resolved, error))?;
-        collected.insert(base_uri);
+        collected.insert(resolved);
     }
     Ok(())
+}
+
+fn without_fragment(uri: &Uri<String>) -> Result<Uri<String>, Error> {
+    let builder = Uri::builder();
+    match uri.authority() {
+        Some(auth) => builder
+            .scheme(uri.scheme())
+            .authority(auth)
+            .path(uri.path()),
+        None => builder.scheme(uri.scheme()).path(uri.path()),
+    }
+    .build()
+    .map_err(|error| Error::uri_building_error(uri.as_str(), error))
 }
 
 #[cfg(test)]

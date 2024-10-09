@@ -15,6 +15,7 @@
 ### Fixed
 
 - Resolving file references on Windows. [#441](https://github.com/Stranger6667/jsonschema-rs/issues/441)
+- Incomplete external reference resolution.
 
 ### Performance
 
