@@ -407,16 +407,32 @@ fn process_resources(
         }
         // Retrieve external resources
         for uri in external.drain() {
-            if !resources.contains_key(&uri) {
+            let mut fragmentless = uri.clone();
+            fragmentless.set_fragment(None);
+            if !resources.contains_key(&fragmentless) {
                 let retrieved = retriever
-                    .retrieve(&uri.borrow())
-                    .map_err(|err| Error::unretrievable(uri.as_str(), Some(err)))?;
+                    .retrieve(&fragmentless.borrow())
+                    .map_err(|err| Error::unretrievable(fragmentless.as_str(), Some(err)))?;
                 let resource = Arc::new(Resource::from_contents_and_specification(
                     retrieved,
                     default_draft,
                 )?);
-                resources.insert(uri.clone(), Arc::clone(&resource));
-                queue.push_back((uri, resource));
+                resources.insert(fragmentless.clone(), Arc::clone(&resource));
+                if let Some(fragment) = uri.fragment() {
+                    // The original `$ref` could have a fragment that points to a place that won't
+                    // be discovered via the regular sub-resources discovery. Therefore we need to
+                    // explicitly check it
+                    if let Some(resolved) = resource.contents().pointer(fragment.as_str()) {
+                        queue.push_back((
+                            uri,
+                            Arc::new(Resource::from_contents_and_specification(
+                                resolved.clone(),
+                                default_draft,
+                            )?),
+                        ));
+                    }
+                }
+                queue.push_back((fragmentless, resource));
             }
         }
     }
@@ -452,8 +468,11 @@ fn collect_external_resources(
                 // Reference has already been seen
                 return Ok(());
             }
-            let mut resolved = uri::resolve_against(&base.borrow(), reference)?;
-            resolved.set_fragment(None);
+            let resolved = if reference.contains('#') && base.has_fragment() {
+                uri::resolve_against(&uri::DEFAULT_ROOT_URI.borrow(), reference)?
+            } else {
+                uri::resolve_against(&base.borrow(), reference)?
+            };
             collected.insert(resolved);
         }
     }

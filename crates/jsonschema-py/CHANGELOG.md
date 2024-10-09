@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Incomplete external reference resolution.
+
 ## [0.24.0] - 2024-10-20
 
 ### Added
