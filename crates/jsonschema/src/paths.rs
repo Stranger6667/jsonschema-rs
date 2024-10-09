@@ -225,6 +225,15 @@ impl From<&'static str> for PathChunk {
     }
 }
 
+impl From<crate::keywords::Keyword> for PathChunk {
+    fn from(value: crate::keywords::Keyword) -> Self {
+        match value {
+            crate::keywords::Keyword::Buildin(k) => PathChunk::Keyword(k.as_str()),
+            crate::keywords::Keyword::Custom(s) => PathChunk::Property(s),
+        }
+    }
+}
+
 impl From<usize> for PathChunk {
     #[inline]
     fn from(value: usize) -> Self {

@@ -1,7 +1,7 @@
 use crate::{
     compiler::Context,
     error::ErrorIterator,
-    keywords::BoxedValidator,
+    keywords::{BoxedValidator, Keyword},
     output::{Annotations, BasicOutput, ErrorDescription, OutputUnit},
     paths::{JsonPointer, JsonPointerNode, PathChunk},
     validator::{PartialApplication, Validate},
@@ -57,7 +57,7 @@ struct KeywordValidators {
     unmatched_keywords: Option<AHashMap<String, serde_json::Value>>,
     // We should probably use AHashMap here but it breaks a bunch of test which assume
     // validators are in a particular order
-    validators: Vec<(String, BoxedValidator)>,
+    validators: Vec<(Keyword, BoxedValidator)>,
 }
 
 impl SchemaNode {
@@ -71,10 +71,9 @@ impl SchemaNode {
 
     pub(crate) fn from_keywords(
         ctx: &Context<'_>,
-        mut validators: Vec<(String, BoxedValidator)>,
+        validators: Vec<(Keyword, BoxedValidator)>,
         unmatched_keywords: Option<AHashMap<String, serde_json::Value>>,
     ) -> SchemaNode {
-        validators.shrink_to_fit();
         SchemaNode {
             relative_path: ctx.clone().into_pointer(),
             absolute_path: ctx.base_uri(),
@@ -352,7 +351,7 @@ impl Validate for SchemaNode {
 enum NodeValidatorsIter<'a> {
     NoValidator,
     BooleanValidators(std::iter::Once<&'a BoxedValidator>),
-    KeywordValidators(std::slice::Iter<'a, (String, BoxedValidator)>),
+    KeywordValidators(std::slice::Iter<'a, (Keyword, BoxedValidator)>),
     ArrayValidators(std::slice::Iter<'a, BoxedValidator>),
 }
 
