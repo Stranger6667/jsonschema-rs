@@ -40,7 +40,7 @@ pub fn from_str(uri: &str) -> Result<Uri<String>, Error> {
     }
 }
 
-static DEFAULT_ROOT_URI: Lazy<Uri<String>> =
+pub(crate) static DEFAULT_ROOT_URI: Lazy<Uri<String>> =
     Lazy::new(|| Uri::parse("json-schema:///".to_string()).expect("Invalid URI"));
 
 pub type EncodedString = EStr<Fragment>;

@@ -215,6 +215,7 @@ pub(crate) fn compile_recursive_ref<'a>(
 #[cfg(test)]
 mod tests {
     use crate::tests_util;
+    use referencing::{Draft, Retrieve, Uri};
     use serde_json::{json, Value};
     use test_case::test_case;
 
@@ -402,5 +403,50 @@ mod tests {
                 "Keyword location mismatch at index {idx}",
             );
         }
+    }
+
+    #[test]
+    fn test_resolving_finds_references_in_referenced_resources() {
+        let schema = json!({"$ref": "/indirection#/baz"});
+
+        struct MyRetrieve;
+
+        impl Retrieve for MyRetrieve {
+            fn retrieve(
+                &self,
+                uri: &Uri<&str>,
+            ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+                match uri.path().as_str() {
+                    "/indirection" => Ok(json!({
+                        "$id": "/indirection",
+                        "baz": {
+                            "$ref": "/types#/foo"
+                        }
+                    })),
+                    "/types" => Ok(json!({
+                        "$id": "/types",
+                        "foo": {
+                            "$ref": "#/bar"
+                        },
+                        "bar": {
+                            "type": "integer"
+                        }
+                    })),
+                    _ => panic!("Not found"),
+                }
+            }
+        }
+
+        let validator = match crate::options()
+            .with_draft(Draft::Draft201909)
+            .with_retriever(MyRetrieve)
+            .build(&schema)
+        {
+            Ok(validator) => validator,
+            Err(error) => panic!("{error}"),
+        };
+
+        assert!(validator.is_valid(&json!(2)));
+        assert!(!validator.is_valid(&json!("")));
     }
 }
