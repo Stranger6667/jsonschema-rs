@@ -35,6 +35,7 @@ pub(crate) mod property_names;
 pub(crate) mod ref_;
 pub(crate) mod required;
 pub(crate) mod type_;
+pub(crate) mod unevaluated_items;
 pub(crate) mod unevaluated_properties;
 pub(crate) mod unique_items;
 use core::fmt;
@@ -96,6 +97,7 @@ pub(crate) enum BuiltinKeyword {
     DependentRequired,
     DependentSchemas,
     PrefixItems,
+    UnevaluatedItems,
     UnevaluatedProperties,
     DynamicRef,
 }
@@ -141,6 +143,7 @@ impl BuiltinKeyword {
             Self::DependentRequired => "dependentRequired",
             Self::DependentSchemas => "dependentSchemas",
             Self::PrefixItems => "prefixItems",
+            Self::UnevaluatedItems => "unevaluatedItems",
             Self::UnevaluatedProperties => "unevaluatedProperties",
             Self::DynamicRef => "$dynamicRef",
         }
@@ -288,6 +291,10 @@ pub(crate) fn get_for_draft(draft: Draft, keyword: &str) -> Option<(Keyword, Com
         (Draft::Draft201909 | Draft::Draft202012, "prefixItems") => {
             Some((BuiltinKeyword::PrefixItems.into(), prefix_items::compile))
         }
+        (Draft::Draft201909 | Draft::Draft202012, "unevaluatedItems") => Some((
+            BuiltinKeyword::UnevaluatedItems.into(),
+            unevaluated_items::compile,
+        )),
         (Draft::Draft201909 | Draft::Draft202012, "unevaluatedProperties") => Some((
             BuiltinKeyword::UnevaluatedProperties.into(),
             unevaluated_properties::compile,

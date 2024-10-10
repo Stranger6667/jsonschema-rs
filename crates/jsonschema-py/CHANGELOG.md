@@ -4,6 +4,7 @@
 
 ### Added
 
+- Partial support for `unevaluatedItems`.
 - `validate_formats` argument to all validator classes and validation functions. This allows overriding the draft-specific default behavior for format validation.
 - `ignore_unknown_formats` argument to all validator classes and validation functions. When set to `False`, unrecognized formats will be reported as validation errors instead of being silently ignored.
 - Python 3.13 support.
