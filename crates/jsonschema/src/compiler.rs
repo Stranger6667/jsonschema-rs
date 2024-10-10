@@ -38,7 +38,7 @@ pub(crate) struct Context<'a> {
     resolver: Rc<Resolver<'a>>,
     location: Location,
     pub(crate) draft: Draft,
-    seen: Rc<RefCell<AHashSet<Uri<String>>>>,
+    seen: Rc<RefCell<AHashSet<Arc<Uri<String>>>>>,
 }
 
 impl<'a> Context<'a> {
@@ -177,11 +177,15 @@ impl<'a> Context<'a> {
         &self,
         reference: &str,
     ) -> Result<bool, referencing::Error> {
-        let uri = uri::resolve_against(&self.resolver.base_uri().borrow(), reference)?;
-        Ok(self.seen.borrow().contains(&uri))
+        let uri = self
+            .resolver
+            .resolve_against(&self.resolver.base_uri().borrow(), reference)?;
+        Ok(self.seen.borrow().contains(&*uri))
     }
     pub(crate) fn mark_seen(&self, reference: &str) -> Result<(), referencing::Error> {
-        let uri = uri::resolve_against(&self.resolver.base_uri().borrow(), reference)?;
+        let uri = self
+            .resolver
+            .resolve_against(&self.resolver.base_uri().borrow(), reference)?;
         self.seen.borrow_mut().insert(uri);
         Ok(())
     }

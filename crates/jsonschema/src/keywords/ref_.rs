@@ -11,7 +11,7 @@ use crate::{
     ValidationError, ValidationOptions,
 };
 use once_cell::sync::OnceCell;
-use referencing::{uri, Draft, List, Registry, Resource, Uri};
+use referencing::{Draft, List, Registry, Resource, Uri};
 use serde_json::{Map, Value};
 
 pub(crate) enum RefValidator {
@@ -76,9 +76,10 @@ impl LazyRefValidator {
         let scopes = ctx.scopes();
         let resolved = ctx.lookup_recursive_reference()?;
         let resource = ctx.draft().create_resource(resolved.contents().clone());
-        let mut base_uri = resolved.resolver().base_uri();
+        let resolver = resolved.resolver();
+        let mut base_uri = resolver.base_uri();
         if let Some(id) = resource.id() {
-            base_uri = Arc::new(uri::resolve_against(&base_uri.borrow(), id)?);
+            base_uri = resolver.resolve_against(&base_uri.borrow(), id)?;
         };
         Ok(Box::new(LazyRefValidator {
             resource,
