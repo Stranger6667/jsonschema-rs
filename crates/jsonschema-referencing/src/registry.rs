@@ -2,7 +2,7 @@ use std::{
     collections::VecDeque,
     fmt::Debug,
     hash::{Hash, Hasher},
-    sync::Arc,
+    sync::{Arc, RwLock},
 };
 
 use ahash::{AHashMap, AHashSet, AHasher};
@@ -36,7 +36,11 @@ pub static SPECIFICATIONS: Lazy<Registry> = Lazy::new(|| {
         Draft::default(),
     )
     .expect("Failed to process meta schemas");
-    Registry { resources, anchors }
+    Registry {
+        resources,
+        anchors,
+        resolving_cache: RwLock::new(AHashMap::new()),
+    }
 });
 
 /// A registry of JSON Schema resources, each identified by their canonical URIs.
@@ -45,10 +49,21 @@ pub static SPECIFICATIONS: Lazy<Registry> = Lazy::new(|| {
 /// They eagerly process all added resources, including their subresources and anchors.
 /// This means that subresources contained within any added resources are immediately
 /// discoverable and retrievable via their own IDs.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct Registry {
     resources: ResourceMap,
     anchors: AHashMap<AnchorKey, Anchor>,
+    resolving_cache: RwLock<AHashMap<u64, Arc<Uri<String>>>>,
+}
+
+impl Clone for Registry {
+    fn clone(&self) -> Self {
+        Self {
+            resources: self.resources.clone(),
+            anchors: self.anchors.clone(),
+            resolving_cache: RwLock::new(AHashMap::new()),
+        }
+    }
 }
 
 /// Configuration options for creating a [`Registry`].
@@ -154,7 +169,11 @@ impl Registry {
         let mut resources = ResourceMap::new();
         let mut anchors = AHashMap::new();
         process_resources(pairs, retriever, &mut resources, &mut anchors, draft)?;
-        Ok(Registry { resources, anchors })
+        Ok(Registry {
+            resources,
+            anchors,
+            resolving_cache: RwLock::new(AHashMap::new()),
+        })
     }
     /// Create a new registry with a new resource.
     ///
@@ -209,7 +228,11 @@ impl Registry {
         let mut resources = self.resources;
         let mut anchors = self.anchors;
         process_resources(pairs, retriever, &mut resources, &mut anchors, draft)?;
-        Ok(Registry { resources, anchors })
+        Ok(Registry {
+            resources,
+            anchors,
+            resolving_cache: RwLock::new(AHashMap::new()),
+        })
     }
     /// Create a new [`Resolver`] for this registry with the given base URI.
     ///
@@ -263,6 +286,34 @@ impl Registry {
             Err(Error::invalid_anchor(name.to_string()))
         } else {
             Err(Error::no_such_anchor(name.to_string()))
+        }
+    }
+
+    pub(crate) fn cached_resolve_against(
+        &self,
+        base: &Uri<&str>,
+        uri: &str,
+    ) -> Result<Arc<Uri<String>>, Error> {
+        let mut hasher = AHasher::default();
+        (base.as_str(), uri).hash(&mut hasher);
+        let hash = hasher.finish();
+
+        let value = self
+            .resolving_cache
+            .read()
+            .expect("Lock is poisoned")
+            .get(&hash)
+            .cloned();
+
+        if let Some(cached) = value {
+            Ok(cached)
+        } else {
+            let new = Arc::new(uri::resolve_against(base, uri)?);
+            self.resolving_cache
+                .write()
+                .expect("Lock is poisoned")
+                .insert(hash, new.clone());
+            Ok(new)
         }
     }
 }
