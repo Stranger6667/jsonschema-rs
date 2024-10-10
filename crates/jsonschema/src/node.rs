@@ -220,24 +220,29 @@ impl SchemaNode {
         let mut error_results = VecDeque::new();
         let mut buffer = String::from("#");
         for (path, validator) in path_and_validators {
-            let location = self.location.join(path);
-            let absolute_keyword_location = self.absolute_path.as_ref().map(|absolute_path| {
-                uri::encode_to(location.as_str(), &mut buffer);
-                let resolved = uri::resolve_against(&absolute_path.borrow(), &buffer)
-                    .expect("Invalid reference");
-                buffer.truncate(1);
-                resolved
-            });
+            macro_rules! make_absolute_location {
+                ($location:expr) => {
+                    self.absolute_path.as_ref().map(|absolute_path| {
+                        uri::encode_to($location.as_str(), &mut buffer);
+                        let resolved = uri::resolve_against(&absolute_path.borrow(), &buffer)
+                            .expect("Invalid reference");
+                        buffer.truncate(1);
+                        resolved
+                    })
+                };
+            }
             match validator.apply(instance, instance_path) {
                 PartialApplication::Valid {
                     annotations,
                     child_results,
                 } => {
                     if let Some(annotations) = annotations {
+                        let location = self.location.join(path);
+                        let absolute_location = make_absolute_location!(location);
                         success_results.push_front(OutputUnit::<Annotations<'a>>::annotations(
                             location,
                             instance_path.into(),
-                            absolute_keyword_location,
+                            absolute_location,
                             annotations,
                         ));
                     }
@@ -247,12 +252,15 @@ impl SchemaNode {
                     errors: these_errors,
                     child_results,
                 } => {
+                    let location = self.location.join(path);
                     error_results.extend(child_results);
                     error_results.extend(these_errors.into_iter().map(|error| {
                         OutputUnit::<ErrorDescription>::error(
                             location.clone(),
                             instance_path.into(),
-                            absolute_keyword_location.clone(),
+                            // Resolving & encoding is faster than cloning because one of the
+                            // values won't be used when cloning
+                            make_absolute_location!(location),
                             error,
                         )
                     }));
