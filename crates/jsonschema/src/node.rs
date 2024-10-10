@@ -271,6 +271,10 @@ impl SchemaNode {
             }
         }
     }
+
+    pub(crate) fn location(&self) -> &Location {
+        &self.location
+    }
 }
 
 impl Validate for SchemaNode {
