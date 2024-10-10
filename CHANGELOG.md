@@ -2,11 +2,6 @@
 
 ## [Unreleased]
 
-### Fixed
-
-- Missing annotations from by-reference applicators. [#403](https://github.com/Stranger6667/jsonschema-rs/issues/403)
-- Relative keyword locations missing by-reference applicators (such as `$ref` or `$dynamicRef`).
-
 ### Changed
 
 - Improve error messages on WASM. [#568](https://github.com/Stranger6667/jsonschema-rs/issues/568)
@@ -17,6 +12,8 @@
 ### Fixed
 
 - Resolving file references on Windows. [#441](https://github.com/Stranger6667/jsonschema-rs/issues/441)
+- Missing annotations from by-reference applicators. [#403](https://github.com/Stranger6667/jsonschema-rs/issues/403)
+- Relative keyword locations missing by-reference applicators (such as `$ref` or `$dynamicRef`).
 
 ### Performance
 
