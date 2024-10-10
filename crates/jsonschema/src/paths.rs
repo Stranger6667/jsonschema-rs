@@ -1,8 +1,5 @@
 //! Facilities for working with paths within schemas or validated instances.
-use std::{
-    fmt::{self, Write},
-    sync::Arc,
-};
+use std::{fmt, sync::Arc};
 
 use crate::keywords::Keyword;
 
@@ -62,41 +59,52 @@ impl<'a, 'b> JsonPointerNode<'a, 'b> {
             parent: Some(self),
         }
     }
-
-    /// Convert the JSON pointer node to a vector of path segments.
-    pub fn to_vec(&'a self) -> Vec<PathChunkRef<'a>> {
-        // Walk the linked list to calculate the capacity
-        let mut capacity = 0;
-        let mut head = self;
-        while let Some(next) = head.parent {
-            head = next;
-            capacity += 1;
-        }
-        // Callect the segments from the head to the tail
-        let mut buffer = Vec::with_capacity(capacity);
-        let mut head = self;
-        if head.parent.is_some() {
-            buffer.push(head.segment)
-        }
-        while let Some(next) = head.parent {
-            head = next;
-            if head.parent.is_some() {
-                buffer.push(head.segment);
-            }
-        }
-        // Reverse the buffer to get the segments in the correct order
-        buffer.reverse();
-        buffer
-    }
 }
 
 impl<'a> From<&'a JsonPointerNode<'_, '_>> for Location {
     fn from(value: &'a JsonPointerNode<'_, '_>) -> Self {
-        let mut buffer = String::new();
-        for segment in value.to_vec() {
-            buffer.push('/');
-            write!(&mut buffer, "{}", segment).expect("Failed to write to a buffer");
+        let mut capacity = 0;
+        let mut string_capacity = 0;
+        let mut head = value;
+
+        while let Some(next) = head.parent {
+            capacity += 1;
+            string_capacity += match head.segment {
+                PathChunkRef::Property(property) => property.len() + 1,
+                PathChunkRef::Index(idx) => idx.checked_ilog10().unwrap_or(0) as usize + 2,
+            };
+            head = next;
         }
+
+        let mut buffer = String::with_capacity(string_capacity);
+
+        let mut segments = Vec::with_capacity(capacity);
+        head = value;
+
+        if head.parent.is_some() {
+            segments.push(head.segment);
+        }
+
+        while let Some(next) = head.parent {
+            head = next;
+            if head.parent.is_some() {
+                segments.push(head.segment);
+            }
+        }
+
+        for segment in segments.iter().rev() {
+            buffer.push('/');
+            match segment {
+                PathChunkRef::Property(property) => {
+                    write_escaped_str(&mut buffer, property);
+                }
+                PathChunkRef::Index(idx) => {
+                    let mut itoa_buffer = itoa::Buffer::new();
+                    buffer.push_str(itoa_buffer.format(*idx));
+                }
+            }
+        }
+
         Location(Arc::new(buffer))
     }
 }
@@ -147,42 +155,7 @@ impl Location {
                 let mut buffer = String::with_capacity(parent.len() + property.len() + 1);
                 buffer.push_str(parent);
                 buffer.push('/');
-                match property.find(|c| c == '~' || c == '/') {
-                    Some(mut escape_idx) => {
-                        let mut remaining = property;
-
-                        // Loop through the string to replace `~` and `/`
-                        loop {
-                            let (before, after) = remaining.split_at(escape_idx);
-                            // Copy everything before the escape char
-                            buffer.push_str(before);
-
-                            // Append the appropriate escape sequence
-                            match after.as_bytes()[0] {
-                                b'~' => buffer.push_str("~0"),
-                                b'/' => buffer.push_str("~1"),
-                                _ => unreachable!(),
-                            }
-
-                            // Move past the escaped character
-                            remaining = &after[1..];
-
-                            // Find the next `~` or `/` to continue escaping
-                            if let Some(next_escape_idx) = remaining.find(|c| c == '~' || c == '/')
-                            {
-                                escape_idx = next_escape_idx;
-                            } else {
-                                // Append any remaining part of the string
-                                buffer.push_str(remaining);
-                                break;
-                            }
-                        }
-                    }
-                    None => {
-                        // If no escape characters are found, append the segment as is
-                        buffer.push_str(property);
-                    }
-                };
+                write_escaped_str(&mut buffer, property);
                 Self(Arc::new(buffer))
             }
             PathChunkRef::Index(idx) => {
@@ -200,6 +173,44 @@ impl Location {
     pub fn as_bytes(&self) -> &[u8] {
         self.0.as_bytes()
     }
+}
+
+fn write_escaped_str(buffer: &mut String, value: &str) {
+    match value.find(['~', '/']) {
+        Some(mut escape_idx) => {
+            let mut remaining = value;
+
+            // Loop through the string to replace `~` and `/`
+            loop {
+                let (before, after) = remaining.split_at(escape_idx);
+                // Copy everything before the escape char
+                buffer.push_str(before);
+
+                // Append the appropriate escape sequence
+                match after.as_bytes()[0] {
+                    b'~' => buffer.push_str("~0"),
+                    b'/' => buffer.push_str("~1"),
+                    _ => unreachable!(),
+                }
+
+                // Move past the escaped character
+                remaining = &after[1..];
+
+                // Find the next `~` or `/` to continue escaping
+                if let Some(next_escape_idx) = remaining.find(['~', '/']) {
+                    escape_idx = next_escape_idx;
+                } else {
+                    // Append any remaining part of the string
+                    buffer.push_str(remaining);
+                    break;
+                }
+            }
+        }
+        None => {
+            // If no escape characters are found, append the segment as is
+            buffer.push_str(value);
+        }
+    };
 }
 
 impl Default for Location {
