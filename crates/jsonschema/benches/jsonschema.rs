@@ -34,6 +34,15 @@ fn bench_validate(c: &mut Criterion, name: &str, schema: &Value, instance: &Valu
     );
 }
 
+fn bench_apply(c: &mut Criterion, name: &str, schema: &Value, instance: &Value) {
+    let validator = jsonschema::validator_for(schema).expect("Valid schema");
+    c.bench_with_input(BenchmarkId::new("apply", name), instance, |b, instance| {
+        b.iter(|| {
+            let _ = validator.apply(&instance).basic();
+        })
+    });
+}
+
 fn run_benchmarks(c: &mut Criterion) {
     for benchmark in Benchmark::iter() {
         benchmark.run(&mut |name, schema, instances| {
@@ -42,6 +51,7 @@ fn run_benchmarks(c: &mut Criterion) {
                 let name = format!("{}/{}", name, instance.name);
                 bench_is_valid(c, &name, schema, &instance.data);
                 bench_validate(c, &name, schema, &instance.data);
+                bench_apply(c, &name, schema, &instance.data);
             }
         });
     }
