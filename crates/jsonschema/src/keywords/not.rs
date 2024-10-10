@@ -3,7 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     node::SchemaNode,
-    paths::{JsonPointerNode, Location},
+    paths::JsonPointerNode,
     validator::Validate,
 };
 use serde_json::{Map, Value};
@@ -12,7 +12,6 @@ pub(crate) struct NotValidator {
     // needed only for error representation
     original: Value,
     node: SchemaNode,
-    location: Location,
 }
 
 impl NotValidator {
@@ -22,7 +21,6 @@ impl NotValidator {
         Ok(Box::new(NotValidator {
             original: schema.clone(),
             node: compiler::compile(&ctx, ctx.as_resource_ref(schema))?,
-            location: ctx.location().clone(),
         }))
     }
 }
@@ -41,7 +39,7 @@ impl Validate for NotValidator {
             no_error()
         } else {
             error(ValidationError::not(
-                self.location.clone(),
+                self.node.location().clone(),
                 instance_path.into(),
                 instance,
                 self.original.clone(),

@@ -3,7 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     node::SchemaNode,
-    paths::{JsonPointerNode, Location},
+    paths::JsonPointerNode,
     validator::{PartialApplication, Validate},
     Draft,
 };
@@ -13,7 +13,6 @@ use super::helpers::map_get_u64;
 
 pub(crate) struct ContainsValidator {
     node: SchemaNode,
-    location: Location,
 }
 
 impl ContainsValidator {
@@ -22,7 +21,6 @@ impl ContainsValidator {
         let ctx = ctx.new_at_location("contains");
         Ok(Box::new(ContainsValidator {
             node: compiler::compile(&ctx, ctx.as_resource_ref(schema))?,
-            location: ctx.location().clone(),
         }))
     }
 }
@@ -46,7 +44,7 @@ impl Validate for ContainsValidator {
                 return no_error();
             }
             error(ValidationError::contains(
-                self.location.clone(),
+                self.node.location().clone(),
                 instance_path.into(),
                 instance,
             ))
@@ -75,7 +73,7 @@ impl Validate for ContainsValidator {
             if indices.is_empty() {
                 result.mark_errored(
                     ValidationError::contains(
-                        self.location.clone(),
+                        self.node.location().clone(),
                         instance_path.into(),
                         instance,
                     )
@@ -99,7 +97,6 @@ impl Validate for ContainsValidator {
 pub(crate) struct MinContainsValidator {
     node: SchemaNode,
     min_contains: u64,
-    location: Location,
 }
 
 impl MinContainsValidator {
@@ -113,7 +110,6 @@ impl MinContainsValidator {
         Ok(Box::new(MinContainsValidator {
             node: compiler::compile(&ctx, ctx.as_resource_ref(schema))?,
             min_contains,
-            location: ctx.location().clone(),
         }))
     }
 }
@@ -145,7 +141,7 @@ impl Validate for MinContainsValidator {
             }
             if self.min_contains > 0 {
                 error(ValidationError::contains(
-                    self.location.clone(),
+                    self.node.location().clone(),
                     instance_path.into(),
                     instance,
                 ))
@@ -186,7 +182,6 @@ impl Validate for MinContainsValidator {
 pub(crate) struct MaxContainsValidator {
     node: SchemaNode,
     max_contains: u64,
-    location: Location,
 }
 
 impl MaxContainsValidator {
@@ -200,7 +195,6 @@ impl MaxContainsValidator {
         Ok(Box::new(MaxContainsValidator {
             node: compiler::compile(&ctx, ctx.as_resource_ref(schema))?,
             max_contains,
-            location: ctx.location().clone(),
         }))
     }
 }
@@ -227,7 +221,7 @@ impl Validate for MaxContainsValidator {
                     // Shortcircuit - there should be no more than `self.max_contains` matches
                     if matches > self.max_contains {
                         return error(ValidationError::contains(
-                            self.location.clone(),
+                            self.node.location().clone(),
                             instance_path.into(),
                             instance,
                         ));
@@ -241,7 +235,7 @@ impl Validate for MaxContainsValidator {
             } else {
                 // No matches - it should be at least one match to satisfy `contains`
                 return error(ValidationError::contains(
-                    self.location.clone(),
+                    self.node.location().clone(),
                     instance_path.into(),
                     instance,
                 ));
@@ -282,7 +276,6 @@ pub(crate) struct MinMaxContainsValidator {
     node: SchemaNode,
     min_contains: u64,
     max_contains: u64,
-    location: Location,
 }
 
 impl MinMaxContainsValidator {
@@ -297,7 +290,6 @@ impl MinMaxContainsValidator {
             node: compiler::compile(ctx, ctx.as_resource_ref(schema))?,
             min_contains,
             max_contains,
-            location: ctx.location().clone(),
         }))
     }
 }
@@ -320,7 +312,7 @@ impl Validate for MinMaxContainsValidator {
                     // Shortcircuit - there should be no more than `self.max_contains` matches
                     if matches > self.max_contains {
                         return error(ValidationError::contains(
-                            self.location.join("maxContains"),
+                            self.node.location().join("maxContains"),
                             instance_path.into(),
                             instance,
                         ));
@@ -330,7 +322,7 @@ impl Validate for MinMaxContainsValidator {
             if matches < self.min_contains {
                 // Not enough matches
                 error(ValidationError::contains(
-                    self.location.join("minContains"),
+                    self.node.location().join("minContains"),
                     instance_path.into(),
                     instance,
                 ))
