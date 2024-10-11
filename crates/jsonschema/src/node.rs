@@ -9,7 +9,7 @@ use crate::{
 };
 use ahash::AHashMap;
 use referencing::{uri, Uri};
-use std::{collections::VecDeque, fmt};
+use std::{cell::OnceCell, collections::VecDeque, fmt};
 
 /// A node in the schema tree, returned by [`compiler::compile`]
 #[derive(Debug)]
@@ -218,15 +218,26 @@ impl SchemaNode {
     {
         let mut success_results: VecDeque<OutputUnit<Annotations>> = VecDeque::new();
         let mut error_results = VecDeque::new();
-        let mut buffer = String::from("#");
+        let mut buffer = String::new();
+        let instance_location: OnceCell<Location> = OnceCell::new();
+
+        macro_rules! instance_location {
+            () => {
+                instance_location
+                    .get_or_init(|| instance_path.into())
+                    .clone()
+            };
+        }
+
         for (path, validator) in path_and_validators {
             macro_rules! make_absolute_location {
                 ($location:expr) => {
                     self.absolute_path.as_ref().map(|absolute_path| {
+                        buffer.push('#');
                         uri::encode_to($location.as_str(), &mut buffer);
                         let resolved = uri::resolve_against(&absolute_path.borrow(), &buffer)
                             .expect("Invalid reference");
-                        buffer.truncate(1);
+                        buffer.clear();
                         resolved
                     })
                 };
@@ -241,7 +252,7 @@ impl SchemaNode {
                         let absolute_location = make_absolute_location!(location);
                         success_results.push_front(OutputUnit::<Annotations<'a>>::annotations(
                             location,
-                            instance_path.into(),
+                            instance_location!(),
                             absolute_location,
                             annotations,
                         ));
@@ -253,11 +264,12 @@ impl SchemaNode {
                     child_results,
                 } => {
                     let location = self.location.join(path);
+                    error_results.reserve(child_results.len() + these_errors.len());
                     error_results.extend(child_results);
                     error_results.extend(these_errors.into_iter().map(|error| {
                         OutputUnit::<ErrorDescription>::error(
                             location.clone(),
-                            instance_path.into(),
+                            instance_location!(),
                             // Resolving & encoding is faster than cloning because one of the
                             // values won't be used when cloning
                             make_absolute_location!(location),
