@@ -4,7 +4,7 @@
 
 ### Added
 
-- Partial support for `unevaluatedItems`.
+- Partial support for `unevaluatedItems`, excluding references.
 
 ### Changed
 

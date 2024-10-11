@@ -191,11 +191,11 @@ impl<'r> Resolver<'r> {
             }
         }
     }
-    // Resolve a reference against a base.
-    //
-    // # Errors
-    //
-    // If the reference is invalid.
+    /// Resolve a reference against a base.
+    ///
+    /// # Errors
+    ///
+    /// If the reference is invalid.
     pub fn resolve_against(&self, base: &Uri<&str>, uri: &str) -> Result<Arc<Uri<String>>, Error> {
         self.registry.cached_resolve_against(base, uri)
     }
