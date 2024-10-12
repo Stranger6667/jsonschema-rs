@@ -4,7 +4,7 @@ use crate::{
     keywords::CompilationResult,
     node::SchemaNode,
     output::BasicOutput,
-    paths::{JsonPointerNode, Location},
+    paths::{LazyLocation, Location},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
 };
@@ -71,7 +71,7 @@ impl Validate for OneOfValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         let first_valid_idx = self.get_first_valid(instance);
         if let Some(idx) = first_valid_idx {
@@ -94,7 +94,7 @@ impl Validate for OneOfValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> PartialApplication<'a> {
         let mut failures = Vec::new();
         let mut successes = Vec::new();

@@ -5,7 +5,7 @@ use crate::{
     error::ErrorIterator,
     node::SchemaNode,
     output::{Annotations, ErrorDescription, Output, OutputUnit},
-    paths::JsonPointerNode,
+    paths::LazyLocation,
     Draft, ValidationError, ValidationOptions,
 };
 use serde_json::Value;
@@ -29,7 +29,7 @@ pub(crate) trait Validate: Send + Sync {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance>;
     // The same as above, but does not construct ErrorIterator.
     // It is faster for cases when the result is not needed (like anyOf), since errors are
@@ -82,7 +82,7 @@ pub(crate) trait Validate: Send + Sync {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> PartialApplication<'a> {
         let errors: Vec<ErrorDescription> = self
             .validate(instance, instance_path)
@@ -224,7 +224,7 @@ impl Validator {
         &'instance self,
         instance: &'instance Value,
     ) -> Result<(), ErrorIterator<'instance>> {
-        let instance_path = JsonPointerNode::new();
+        let instance_path = LazyLocation::new();
         let mut errors = self.root.validate(instance, &instance_path).peekable();
         if errors.peek().is_none() {
             Ok(())
@@ -303,7 +303,7 @@ mod tests {
     use crate::{
         error::{self, no_error, ValidationError},
         keywords::custom::Keyword,
-        paths::{JsonPointerNode, Location},
+        paths::{LazyLocation, Location},
         primitive_type::PrimitiveType,
         ErrorIterator, Validator,
     };
@@ -381,7 +381,7 @@ mod tests {
             fn validate<'instance>(
                 &self,
                 instance: &'instance Value,
-                instance_path: &JsonPointerNode,
+                instance_path: &LazyLocation,
             ) -> ErrorIterator<'instance> {
                 let mut errors = vec![];
                 for key in instance.as_object().unwrap().keys() {
@@ -477,7 +477,7 @@ mod tests {
             fn validate<'instance>(
                 &self,
                 instance: &'instance Value,
-                instance_path: &JsonPointerNode,
+                instance_path: &LazyLocation,
             ) -> ErrorIterator<'instance> {
                 if self.is_valid(instance) {
                     no_error()

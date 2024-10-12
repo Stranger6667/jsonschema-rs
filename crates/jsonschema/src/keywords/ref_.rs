@@ -5,7 +5,7 @@ use crate::{
     error::ErrorIterator,
     keywords::CompilationResult,
     node::SchemaNode,
-    paths::{JsonPointerNode, Location},
+    paths::{LazyLocation, Location},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
     ValidationError, ValidationOptions,
@@ -119,14 +119,14 @@ impl Validate for LazyRefValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         self.lazy_compile().validate(instance, instance_path)
     }
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> PartialApplication<'a> {
         self.lazy_compile().apply(instance, instance_path)
     }
@@ -143,7 +143,7 @@ impl Validate for RefValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         match self {
             RefValidator::Default { inner } => inner.validate(instance, instance_path),
@@ -153,7 +153,7 @@ impl Validate for RefValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> PartialApplication<'a> {
         match self {
             RefValidator::Default { inner } => inner.apply(instance, instance_path),

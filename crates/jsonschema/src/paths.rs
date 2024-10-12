@@ -3,66 +3,73 @@ use std::{fmt, sync::Arc};
 
 use crate::keywords::Keyword;
 
-/// A borrowed variant of [`PathChunk`].
+#[deprecated(
+    since = "0.23.0",
+    note = "Use `jsonschema::paths::LocationSegment` instead. This alias will be removed in a future release."
+)]
+pub type PathChunkRef<'a> = LocationSegment<'a>;
+#[deprecated(
+    since = "0.23.0",
+    note = "Use `jsonschema::paths::LazyLocation` instead. This alias will be removed in a future release."
+)]
+pub type JsonPointerNode<'a, 'b> = LazyLocation<'a, 'b>;
+
+/// A location segment.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum PathChunkRef<'a> {
+pub enum LocationSegment<'a> {
     /// Property name within a JSON object.
     Property(&'a str),
     /// JSON Schema keyword.
     Index(usize),
 }
 
-impl<'a> fmt::Display for PathChunkRef<'a> {
+impl<'a> fmt::Display for LocationSegment<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            PathChunkRef::Property(property) => f.write_str(property),
-            PathChunkRef::Index(idx) => f.write_str(itoa::Buffer::new().format(*idx)),
+            LocationSegment::Property(property) => f.write_str(property),
+            LocationSegment::Index(idx) => f.write_str(itoa::Buffer::new().format(*idx)),
         }
     }
 }
 
-/// A node in a linked list representing a JSON pointer.
+/// A lazily constructed location within a JSON instance.
 ///
-/// [`JsonPointerNode`] is used to build a JSON pointer incrementally during the JSON Schema validation process.
-/// Each node contains a segment of the JSON pointer and a reference to its parent node, forming
-/// a linked list.
-///
-/// The linked list representation allows for efficient traversal and manipulation of the JSON pointer
-/// without the need for memory allocation.
+/// [`LazyLocation`] builds a path incrementally during JSON Schema validation without allocating
+/// memory until required by storing each segment on the stack.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct JsonPointerNode<'a, 'b> {
-    pub(crate) segment: PathChunkRef<'a>,
-    pub(crate) parent: Option<&'b JsonPointerNode<'b, 'a>>,
+pub struct LazyLocation<'a, 'b> {
+    pub(crate) segment: LocationSegment<'a>,
+    pub(crate) parent: Option<&'b LazyLocation<'b, 'a>>,
 }
 
-impl Default for JsonPointerNode<'_, '_> {
+impl Default for LazyLocation<'_, '_> {
     fn default() -> Self {
-        JsonPointerNode::new()
+        LazyLocation::new()
     }
 }
 
-impl<'a, 'b> JsonPointerNode<'a, 'b> {
+impl<'a, 'b> LazyLocation<'a, 'b> {
     /// Create a root node of a JSON pointer.
     pub const fn new() -> Self {
-        JsonPointerNode {
+        LazyLocation {
             // The value does not matter, it will never be used
-            segment: PathChunkRef::Index(0),
+            segment: LocationSegment::Index(0),
             parent: None,
         }
     }
 
     /// Push a new segment to the JSON pointer.
     #[inline]
-    pub fn push(&'a self, segment: impl Into<PathChunkRef<'a>>) -> Self {
-        JsonPointerNode {
+    pub fn push(&'a self, segment: impl Into<LocationSegment<'a>>) -> Self {
+        LazyLocation {
             segment: segment.into(),
             parent: Some(self),
         }
     }
 }
 
-impl<'a> From<&'a JsonPointerNode<'_, '_>> for Location {
-    fn from(value: &'a JsonPointerNode<'_, '_>) -> Self {
+impl<'a> From<&'a LazyLocation<'_, '_>> for Location {
+    fn from(value: &'a LazyLocation<'_, '_>) -> Self {
         let mut capacity = 0;
         let mut string_capacity = 0;
         let mut head = value;
@@ -70,8 +77,8 @@ impl<'a> From<&'a JsonPointerNode<'_, '_>> for Location {
         while let Some(next) = head.parent {
             capacity += 1;
             string_capacity += match head.segment {
-                PathChunkRef::Property(property) => property.len() + 1,
-                PathChunkRef::Index(idx) => idx.checked_ilog10().unwrap_or(0) as usize + 2,
+                LocationSegment::Property(property) => property.len() + 1,
+                LocationSegment::Index(idx) => idx.checked_ilog10().unwrap_or(0) as usize + 2,
             };
             head = next;
         }
@@ -95,10 +102,10 @@ impl<'a> From<&'a JsonPointerNode<'_, '_>> for Location {
         for segment in segments.iter().rev() {
             buffer.push('/');
             match segment {
-                PathChunkRef::Property(property) => {
+                LocationSegment::Property(property) => {
                     write_escaped_str(&mut buffer, property);
                 }
-                PathChunkRef::Index(idx) => {
+                LocationSegment::Index(idx) => {
                     let mut itoa_buffer = itoa::Buffer::new();
                     buffer.push_str(itoa_buffer.format(*idx));
                 }
@@ -109,33 +116,33 @@ impl<'a> From<&'a JsonPointerNode<'_, '_>> for Location {
     }
 }
 
-impl<'a> From<&'a Keyword> for PathChunkRef<'a> {
+impl<'a> From<&'a Keyword> for LocationSegment<'a> {
     fn from(value: &'a Keyword) -> Self {
         match value {
-            Keyword::Buildin(k) => PathChunkRef::Property(k.as_str()),
-            Keyword::Custom(s) => PathChunkRef::Property(s),
+            Keyword::Buildin(k) => LocationSegment::Property(k.as_str()),
+            Keyword::Custom(s) => LocationSegment::Property(s),
         }
     }
 }
 
-impl<'a> From<&'a str> for PathChunkRef<'a> {
+impl<'a> From<&'a str> for LocationSegment<'a> {
     #[inline]
-    fn from(value: &'a str) -> PathChunkRef<'a> {
-        PathChunkRef::Property(value)
+    fn from(value: &'a str) -> LocationSegment<'a> {
+        LocationSegment::Property(value)
     }
 }
 
-impl<'a> From<&'a String> for PathChunkRef<'a> {
+impl<'a> From<&'a String> for LocationSegment<'a> {
     #[inline]
-    fn from(value: &'a String) -> PathChunkRef<'a> {
-        PathChunkRef::Property(value)
+    fn from(value: &'a String) -> LocationSegment<'a> {
+        LocationSegment::Property(value)
     }
 }
 
-impl From<usize> for PathChunkRef<'_> {
+impl From<usize> for LocationSegment<'_> {
     #[inline]
     fn from(value: usize) -> Self {
-        PathChunkRef::Index(value)
+        LocationSegment::Index(value)
     }
 }
 
@@ -148,17 +155,17 @@ impl Location {
     pub fn new() -> Self {
         Self(Arc::new(String::new()))
     }
-    pub(crate) fn join<'a>(&self, segment: impl Into<PathChunkRef<'a>>) -> Self {
+    pub(crate) fn join<'a>(&self, segment: impl Into<LocationSegment<'a>>) -> Self {
         let parent = self.0.as_str();
         match segment.into() {
-            PathChunkRef::Property(property) => {
+            LocationSegment::Property(property) => {
                 let mut buffer = String::with_capacity(parent.len() + property.len() + 1);
                 buffer.push_str(parent);
                 buffer.push('/');
                 write_escaped_str(&mut buffer, property);
                 Self(Arc::new(buffer))
             }
-            PathChunkRef::Index(idx) => {
+            LocationSegment::Index(idx) => {
                 let mut buffer = itoa::Buffer::new();
                 let segment = buffer.format(idx);
                 Self(Arc::new(format!("{parent}/{segment}")))

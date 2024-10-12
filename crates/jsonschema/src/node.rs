@@ -3,7 +3,7 @@ use crate::{
     error::ErrorIterator,
     keywords::{BoxedValidator, Keyword},
     output::{Annotations, BasicOutput, ErrorDescription, OutputUnit},
-    paths::{JsonPointerNode, Location, PathChunkRef},
+    paths::{LazyLocation, Location, LocationSegment},
     validator::{PartialApplication, Validate},
     ValidationError,
 };
@@ -114,7 +114,7 @@ impl SchemaNode {
     pub(crate) fn apply_rooted(
         &self,
         instance: &serde_json::Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> BasicOutput {
         match self.apply(instance, instance_path) {
             PartialApplication::Valid {
@@ -141,7 +141,7 @@ impl SchemaNode {
     /// Create an error output which is marked as occurring at this schema node
     pub(crate) fn error_at(
         &self,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
         error: ErrorDescription,
     ) -> OutputUnit<ErrorDescription> {
         OutputUnit::<ErrorDescription>::error(
@@ -155,7 +155,7 @@ impl SchemaNode {
     /// Create an annotation output which is marked as occurring at this schema node
     pub(crate) fn annotation_at<'a>(
         &self,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
         annotations: Annotations<'a>,
     ) -> OutputUnit<Annotations<'a>> {
         OutputUnit::<Annotations<'_>>::annotations(
@@ -172,7 +172,7 @@ impl SchemaNode {
     pub(crate) fn err_iter<'a>(
         &self,
         instance: &'a serde_json::Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> NodeValidatorsErrIter<'a> {
         match &self.validators {
             NodeValidators::Keyword(kvs) if kvs.validators.len() == 1 => {
@@ -208,13 +208,13 @@ impl SchemaNode {
     fn apply_subschemas<'a, I, P>(
         &self,
         instance: &serde_json::Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
         path_and_validators: I,
         annotations: Option<Annotations<'a>>,
     ) -> PartialApplication<'a>
     where
         I: Iterator<Item = (P, &'a Box<dyn Validate + Send + Sync + 'a>)> + 'a,
-        P: Into<PathChunkRef<'a>> + fmt::Display,
+        P: Into<LocationSegment<'a>> + fmt::Display,
     {
         let mut success_results: VecDeque<OutputUnit<Annotations>> = VecDeque::new();
         let mut error_results = VecDeque::new();
@@ -301,7 +301,7 @@ impl Validate for SchemaNode {
     fn validate<'instance>(
         &self,
         instance: &'instance serde_json::Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         Box::new(self.err_iter(instance, instance_path))
     }
@@ -327,7 +327,7 @@ impl Validate for SchemaNode {
     fn apply<'a>(
         &'a self,
         instance: &serde_json::Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> PartialApplication<'a> {
         match self.validators {
             NodeValidators::Array { ref validators } => {

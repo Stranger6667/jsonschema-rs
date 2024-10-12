@@ -2,7 +2,7 @@ use crate::{
     compiler,
     error::{no_error, ErrorIterator, ValidationError},
     node::SchemaNode,
-    paths::{JsonPointerNode, Location},
+    paths::{LazyLocation, Location},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
 };
@@ -47,7 +47,7 @@ impl Validate for PrefixItemsValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = self
@@ -66,7 +66,7 @@ impl Validate for PrefixItemsValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> PartialApplication<'a> {
         if let Value::Array(items) = instance {
             if !items.is_empty() {

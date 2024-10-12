@@ -2,7 +2,7 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{JsonPointerNode, Location},
+    paths::{LazyLocation, Location},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
@@ -48,7 +48,7 @@ impl Validate for RequiredValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
@@ -90,7 +90,7 @@ impl Validate for SingleItemRequiredValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if !self.is_valid(instance) {
             return error(ValidationError::required(

@@ -2,7 +2,7 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{JsonPointerNode, Location},
+    paths::{LazyLocation, Location},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
@@ -31,7 +31,7 @@ macro_rules! validate {
             fn validate<'instance>(
                 &self,
                 instance: &'instance Value,
-                instance_path: &JsonPointerNode,
+                instance_path: &LazyLocation,
             ) -> ErrorIterator<'instance> {
                 if self.is_valid(instance) {
                     no_error()
@@ -83,7 +83,7 @@ impl Validate for ExclusiveMinimumF64Validator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if self.is_valid(instance) {
             no_error()

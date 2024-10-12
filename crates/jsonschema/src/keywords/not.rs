@@ -3,7 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     node::SchemaNode,
-    paths::JsonPointerNode,
+    paths::LazyLocation,
     validator::Validate,
 };
 use serde_json::{Map, Value};
@@ -33,7 +33,7 @@ impl Validate for NotValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if self.is_valid(instance) {
             no_error()

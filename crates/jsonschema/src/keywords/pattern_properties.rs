@@ -4,7 +4,7 @@ use crate::{
     keywords::CompilationResult,
     node::SchemaNode,
     output::BasicOutput,
-    paths::{JsonPointerNode, Location},
+    paths::{LazyLocation, Location},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
 };
@@ -61,7 +61,7 @@ impl Validate for PatternPropertiesValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
@@ -85,7 +85,7 @@ impl Validate for PatternPropertiesValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             let mut matched_propnames = Vec::with_capacity(item.len());
@@ -156,7 +156,7 @@ impl Validate for SingleValuePatternPropertiesValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = item
@@ -176,7 +176,7 @@ impl Validate for SingleValuePatternPropertiesValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             let mut matched_propnames = Vec::with_capacity(item.len());

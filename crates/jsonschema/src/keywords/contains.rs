@@ -3,7 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     node::SchemaNode,
-    paths::JsonPointerNode,
+    paths::LazyLocation,
     validator::{PartialApplication, Validate},
     Draft,
 };
@@ -37,7 +37,7 @@ impl Validate for ContainsValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             if items.iter().any(|i| self.node.is_valid(i)) {
@@ -56,7 +56,7 @@ impl Validate for ContainsValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> PartialApplication<'a> {
         if let Value::Array(items) = instance {
             let mut results = Vec::with_capacity(items.len());
@@ -118,7 +118,7 @@ impl Validate for MinContainsValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             // From docs:
@@ -203,7 +203,7 @@ impl Validate for MaxContainsValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             // From docs:
@@ -298,7 +298,7 @@ impl Validate for MinMaxContainsValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             let mut matches = 0;

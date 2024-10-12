@@ -285,7 +285,7 @@
 //!
 //! ```rust
 //! use jsonschema::{
-//!     paths::{JsonPointerNode, Location},
+//!     paths::{LazyLocation, Location},
 //!     ErrorIterator, Keyword, ValidationError,
 //! };
 //! use serde_json::{json, Map, Value};
@@ -298,7 +298,7 @@
 //!     fn validate<'instance>(
 //!         &self,
 //!         instance: &'instance Value,
-//!         instance_path: &JsonPointerNode,
+//!         instance_path: &LazyLocation,
 //!     ) -> ErrorIterator<'instance> {
 //!         if let Value::Number(n) = instance {
 //!             if n.as_u64().map_or(false, |n| n % 2 == 0) {
@@ -370,7 +370,7 @@
 //!
 //! ```rust
 //! # use jsonschema::{
-//! #     paths::JsonPointerNode,
+//! #     paths::LazyLocation,
 //! #     ErrorIterator, Keyword, ValidationError,
 //! # };
 //! # use serde_json::{json, Map, Value};
@@ -382,7 +382,7 @@
 //! #     fn validate<'instance>(
 //! #         &self,
 //! #         instance: &'instance Value,
-//! #         instance_path: &JsonPointerNode,
+//! #         instance_path: &LazyLocation,
 //! #     ) -> ErrorIterator<'instance> {
 //! #         Box::new(None.into_iter())
 //! #     }

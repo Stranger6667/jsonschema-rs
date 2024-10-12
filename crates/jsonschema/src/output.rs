@@ -16,7 +16,7 @@ use ahash::AHashMap;
 use referencing::Uri;
 use serde::ser::SerializeMap;
 
-use crate::{node::SchemaNode, paths::JsonPointerNode, Validator};
+use crate::{node::SchemaNode, paths::LazyLocation, Validator};
 
 /// The output format resulting from the application of a schema. This can be
 /// converted into various representations based on the definitions in
@@ -103,7 +103,7 @@ impl<'a, 'b> Output<'a, 'b> {
     #[must_use]
     pub fn basic(&self) -> BasicOutput<'a> {
         self.root_node
-            .apply_rooted(self.instance, &JsonPointerNode::new())
+            .apply_rooted(self.instance, &LazyLocation::new())
     }
 }
 

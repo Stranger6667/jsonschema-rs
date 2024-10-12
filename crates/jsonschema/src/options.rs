@@ -423,7 +423,7 @@ impl ValidationOptions {
     ///
     /// ```rust
     /// # use jsonschema::{
-    /// #    paths::{JsonPointerNode, Location},
+    /// #    paths::{LazyLocation, Location},
     /// #    ErrorIterator, Keyword, ValidationError,
     /// # };
     /// # use serde_json::{json, Map, Value};
@@ -435,7 +435,7 @@ impl ValidationOptions {
     ///     fn validate<'instance>(
     ///         &self,
     ///         instance: &'instance Value,
-    ///         instance_path: &JsonPointerNode,
+    ///         instance_path: &LazyLocation,
     ///     ) -> ErrorIterator<'instance> {
     ///         // ... validate instance ...
     ///         if !instance.is_object() {

@@ -5,7 +5,7 @@ use crate::{
     content_media_type::ContentMediaTypeCheckType,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{JsonPointerNode, Location},
+    paths::{LazyLocation, Location},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
@@ -46,7 +46,7 @@ impl Validate for ContentMediaTypeValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::String(item) = instance {
             if (self.func)(item) {
@@ -99,7 +99,7 @@ impl Validate for ContentEncodingValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::String(item) = instance {
             if (self.func)(item) {
@@ -162,7 +162,7 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::String(item) = instance {
             match (self.converter)(item) {
