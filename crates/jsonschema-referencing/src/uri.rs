@@ -45,6 +45,7 @@ static DEFAULT_ROOT_URI: Lazy<Uri<String>> =
 
 pub type EncodedString = EString<Path>;
 
+// Adapted from `https://github.com/yescallop/fluent-uri-rs/blob/main/src/encoding/table.rs#L153`
 pub fn encode_to(input: &str, buffer: &mut String) {
     const HEX_TABLE: [u8; 512] = {
         const HEX_DIGITS: &[u8; 16] = b"0123456789ABCDEF";
