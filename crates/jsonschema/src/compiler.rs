@@ -9,7 +9,7 @@ use crate::{
     },
     node::SchemaNode,
     options::ValidationOptions,
-    paths::{Location, PathChunkRef},
+    paths::{Location, LocationSegment},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     retriever::RetrieverAdapter,
     ValidationError, Validator,
@@ -88,7 +88,7 @@ impl<'a> Context<'a> {
     }
 
     #[inline]
-    pub(crate) fn new_at_location(&'a self, chunk: impl Into<PathChunkRef<'a>>) -> Self {
+    pub(crate) fn new_at_location(&'a self, chunk: impl Into<LocationSegment<'a>>) -> Self {
         let location = self.location.join(chunk);
         Context {
             config: Arc::clone(&self.config),

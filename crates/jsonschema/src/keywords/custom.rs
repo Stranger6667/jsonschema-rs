@@ -1,5 +1,5 @@
 use crate::{
-    paths::{JsonPointerNode, Location},
+    paths::{LazyLocation, Location},
     validator::Validate,
     ErrorIterator, ValidationError,
 };
@@ -26,7 +26,7 @@ impl Validate for CustomKeyword {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         self.inner.validate(instance, instance_path)
     }
@@ -47,7 +47,7 @@ pub trait Keyword: Send + Sync {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance>;
     /// Validate instance and return a boolean result.
     ///

@@ -275,7 +275,7 @@ fn to_error_message(error: &jsonschema::ValidationError<'_>) -> String {
 /// If your workflow implies validating against the same schema, consider using `validator_for(...).is_valid`
 /// instead.
 #[pyfunction]
-#[allow(unused_variables)]
+#[allow(unused_variables, clippy::too_many_arguments)]
 #[pyo3(signature = (schema, instance, draft=None, with_meta_schemas=false, formats=None, validate_formats=None, ignore_unknown_formats=true))]
 fn is_valid(
     py: Python<'_>,
@@ -311,7 +311,7 @@ fn is_valid(
 /// If your workflow implies validating against the same schema, consider using `validator_for(...).validate`
 /// instead.
 #[pyfunction]
-#[allow(unused_variables)]
+#[allow(unused_variables, clippy::too_many_arguments)]
 #[pyo3(signature = (schema, instance, draft=None, with_meta_schemas=false, formats=None, validate_formats=None, ignore_unknown_formats=true))]
 fn validate(
     py: Python<'_>,
@@ -342,7 +342,7 @@ fn validate(
 /// If your workflow implies validating against the same schema, consider using `validator_for().iter_errors`
 /// instead.
 #[pyfunction]
-#[allow(unused_variables)]
+#[allow(unused_variables, clippy::too_many_arguments)]
 #[pyo3(signature = (schema, instance, draft=None, with_meta_schemas=false, formats=None, validate_formats=None, ignore_unknown_formats=true))]
 fn iter_errors(
     py: Python<'_>,
@@ -571,7 +571,7 @@ impl JSONSchema {
     ///
     /// Use it if you have your schema as a string and want to utilize Rust JSON parsing.
     #[classmethod]
-    #[allow(unused_variables)]
+    #[allow(unused_variables, clippy::too_many_arguments)]
     #[pyo3(signature = (string, draft=None, with_meta_schemas=false, formats=None, validate_formats=None, ignore_unknown_formats=true))]
     fn from_str(
         _: &Bound<'_, PyType>,

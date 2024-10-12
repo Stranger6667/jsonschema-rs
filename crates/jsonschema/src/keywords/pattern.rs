@@ -2,7 +2,7 @@ use crate::{
     compiler, ecma,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{JsonPointerNode, Location},
+    paths::{LazyLocation, Location},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
@@ -111,7 +111,7 @@ impl Validate for PatternValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::String(item) = instance {
             match self.pattern.is_match(item) {

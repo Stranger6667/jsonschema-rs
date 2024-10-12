@@ -15,7 +15,7 @@ use crate::{
     compiler, ecma,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{JsonPointerNode, Location},
+    paths::{LazyLocation, Location},
     primitive_type::PrimitiveType,
     validator::Validate,
     Draft,
@@ -639,7 +639,7 @@ macro_rules! format_validators {
                 fn validate<'instance>(
                     &self,
                     instance: &'instance Value,
-                    instance_path: &JsonPointerNode,
+                    instance_path: &LazyLocation,
                 ) -> ErrorIterator<'instance> {
                     if let Value::String(_item) = instance {
                         if !self.is_valid(instance) {
@@ -715,7 +715,7 @@ impl Validate for CustomFormatValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if !self.is_valid(instance) {
             return error(ValidationError::format(

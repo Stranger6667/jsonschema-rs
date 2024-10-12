@@ -2,7 +2,7 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{JsonPointerNode, Location},
+    paths::{LazyLocation, Location},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
@@ -48,7 +48,7 @@ impl Validate for MultipleOfFloatValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if !self.is_valid(instance) {
             return error(ValidationError::multiple_of(
@@ -92,7 +92,7 @@ impl Validate for MultipleOfIntegerValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if !self.is_valid(instance) {
             return error(ValidationError::multiple_of(

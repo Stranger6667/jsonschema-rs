@@ -3,7 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{boolean::FalseValidator, CompilationResult},
     node::SchemaNode,
-    paths::{JsonPointerNode, Location},
+    paths::{LazyLocation, Location},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
 };
@@ -43,7 +43,7 @@ impl Validate for AdditionalItemsObjectValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = items
@@ -85,7 +85,7 @@ impl Validate for AdditionalItemsBooleanValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             if items.len() > self.items_count {

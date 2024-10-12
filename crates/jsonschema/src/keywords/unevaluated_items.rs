@@ -5,7 +5,7 @@ use crate::{
     compiler,
     error::no_error,
     node::SchemaNode,
-    paths::{JsonPointerNode, Location},
+    paths::{LazyLocation, Location},
     validator::Validate,
     ErrorIterator, ValidationError,
 };
@@ -66,7 +66,7 @@ impl<F: ItemsFilter> Validate for UnevaluatedItemsValidator<F> {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             // NOTE: It could be a packed bitset instead

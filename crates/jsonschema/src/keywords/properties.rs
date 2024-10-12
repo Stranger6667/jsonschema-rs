@@ -4,7 +4,7 @@ use crate::{
     keywords::CompilationResult,
     node::SchemaNode,
     output::BasicOutput,
-    paths::{JsonPointerNode, Location},
+    paths::{LazyLocation, Location},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
 };
@@ -56,7 +56,7 @@ impl Validate for PropertiesValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
@@ -79,7 +79,7 @@ impl Validate for PropertiesValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> PartialApplication<'a> {
         if let Value::Object(props) = instance {
             let mut result = BasicOutput::default();

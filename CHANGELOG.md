@@ -12,6 +12,11 @@
 - Improve error messages on URI resolving and parsing.
 - **BREAKING**: Replace `JsonPointer` in favor of `Location`.
 
+### Deprecated
+
+- `PathChunkRef` in favor of `LocationSegment`.
+- `JsonPointerNode` in favor of `LazyLocation`.
+
 ### Fixed
 
 - Resolving file references on Windows. [#441](https://github.com/Stranger6667/jsonschema-rs/issues/441)

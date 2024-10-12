@@ -2,7 +2,7 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers::fail_on_non_positive_integer, CompilationResult},
-    paths::{JsonPointerNode, Location},
+    paths::{LazyLocation, Location},
     validator::Validate,
 };
 use serde_json::{Map, Value};
@@ -51,7 +51,7 @@ impl Validate for MaxItemsValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::Array(items) = instance {
             if (items.len() as u64) > self.limit {

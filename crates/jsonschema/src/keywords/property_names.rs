@@ -3,7 +3,7 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     node::SchemaNode,
-    paths::{JsonPointerNode, Location},
+    paths::{LazyLocation, Location},
     validator::{PartialApplication, Validate},
 };
 use serde_json::{Map, Value};
@@ -38,7 +38,7 @@ impl Validate for PropertyNamesObjectValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if let Value::Object(item) = &instance {
             let errors: Vec<_> = item
@@ -69,7 +69,7 @@ impl Validate for PropertyNamesObjectValidator {
     fn apply<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             item.keys()
@@ -109,7 +109,7 @@ impl Validate for PropertyNamesBooleanValidator {
     fn validate<'instance>(
         &self,
         instance: &'instance Value,
-        instance_path: &JsonPointerNode,
+        instance_path: &LazyLocation,
     ) -> ErrorIterator<'instance> {
         if self.is_valid(instance) {
             no_error()
