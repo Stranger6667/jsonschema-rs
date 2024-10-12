@@ -35,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-12, windows-2022]
+        os: [ubuntu-22.04, macos-15, windows-2022]
 
     name: Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -123,7 +123,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-12, windows-2022]
+        os: [ubuntu-22.04, macos-15, windows-2022]
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
 
     name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
