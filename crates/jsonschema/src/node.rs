@@ -233,10 +233,9 @@ impl SchemaNode {
             macro_rules! make_absolute_location {
                 ($location:expr) => {
                     self.absolute_path.as_ref().map(|absolute_path| {
-                        buffer.push('#');
                         uri::encode_to($location.as_str(), &mut buffer);
-                        let resolved = uri::resolve_against(&absolute_path.borrow(), &buffer)
-                            .expect("Invalid reference");
+                        let resolved = absolute_path
+                            .with_fragment(Some(uri::EncodedString::new_or_panic(&buffer)));
                         buffer.clear();
                         resolved
                     })
