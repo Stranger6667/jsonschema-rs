@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.23.0] - 2024-10-12
+
 ### Added
 
 - Partial support for `unevaluatedItems`, excluding references.
@@ -488,7 +490,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.22.3...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.23.0...HEAD
+[0.23.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.22.3...python-v0.23.0
 [0.22.3]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.22.2...python-v0.22.3
 [0.22.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.22.1...python-v0.22.2
 [0.22.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.22.0...python-v0.22.1
