@@ -1,5 +1,13 @@
 # Migration Guide
 
+## Upgrading from 0.22.x to 0.23.0
+
+Replace:
+
+ - `JsonPointer` to `Location`
+ - `PathChunkRef` to `LocationSegment`
+ - `JsonPointerNode` to `LazyLocation`
+
 ## Upgrading from 0.21.x to 0.22.0
 
 Replace `UriRef<&str>` with `Uri<&str>` in your custom retriever implementation.
