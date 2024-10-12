@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Performance
+
+- Speedup `apply`.
+
 ## [0.23.0] - 2024-10-12
 
 ### Added

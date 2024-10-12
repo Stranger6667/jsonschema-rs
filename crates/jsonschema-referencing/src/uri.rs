@@ -1,5 +1,5 @@
 use fluent_uri::{
-    encoding::{EString, Encoder},
+    encoding::{encoder::Fragment, EStr, Encoder},
     Uri, UriRef,
 };
 use once_cell::sync::Lazy;
@@ -43,7 +43,7 @@ pub fn from_str(uri: &str) -> Result<Uri<String>, Error> {
 static DEFAULT_ROOT_URI: Lazy<Uri<String>> =
     Lazy::new(|| Uri::parse("json-schema:///".to_string()).expect("Invalid URI"));
 
-pub type EncodedString = EString<Path>;
+pub type EncodedString = EStr<Fragment>;
 
 // Adapted from `https://github.com/yescallop/fluent-uri-rs/blob/main/src/encoding/table.rs#L153`
 pub fn encode_to(input: &str, buffer: &mut String) {
