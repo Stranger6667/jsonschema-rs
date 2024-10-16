@@ -2,7 +2,7 @@ use core::fmt;
 use std::{num::ParseIntError, str::Utf8Error};
 
 use fluent_uri::{
-    error::{BuildError, ParseError, ResolveError},
+    error::{ParseError, ResolveError},
     Uri,
 };
 
@@ -110,13 +110,6 @@ impl Error {
             error,
         })
     }
-
-    pub(crate) fn uri_building_error(uri: impl Into<String>, error: BuildError) -> Error {
-        Error::InvalidUri(UriError::Build {
-            uri: uri.into(),
-            error,
-        })
-    }
 }
 
 impl fmt::Display for Error {
@@ -182,10 +175,6 @@ pub enum UriError {
         base: Uri<String>,
         error: ResolveError,
     },
-    Build {
-        uri: String,
-        error: BuildError,
-    },
 }
 
 impl fmt::Display for UriError {
@@ -205,9 +194,6 @@ impl fmt::Display for UriError {
             UriError::Resolve { uri, base, error } => f.write_fmt(format_args!(
                 "Failed to resolve '{uri}' against '{base}': {error}"
             )),
-            UriError::Build { uri, error } => f.write_fmt(format_args!(
-                "Failed to build a valid URI from '{uri}': {error}"
-            )),
         }
     }
 }
@@ -217,7 +203,6 @@ impl std::error::Error for UriError {
         match self {
             UriError::Parse { error, .. } => Some(error),
             UriError::Resolve { error, .. } => Some(error),
-            UriError::Build { error, .. } => Some(error),
         }
     }
 }
