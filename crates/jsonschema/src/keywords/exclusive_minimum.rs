@@ -28,17 +28,17 @@ pub(crate) struct ExclusiveMinimumF64Validator {
 macro_rules! validate {
     ($validator: ty) => {
         impl Validate for $validator {
-            fn validate<'instance>(
+            fn validate<'i>(
                 &self,
-                instance: &'instance Value,
-                instance_path: &LazyLocation,
-            ) -> ErrorIterator<'instance> {
+                instance: &'i Value,
+                location: &LazyLocation,
+            ) -> ErrorIterator<'i> {
                 if self.is_valid(instance) {
                     no_error()
                 } else {
                     error(ValidationError::exclusive_minimum(
                         self.location.clone(),
-                        instance_path.into(),
+                        location.into(),
                         instance,
                         self.limit_val.clone(),
                     ))
@@ -80,17 +80,13 @@ impl Validate for ExclusiveMinimumF64Validator {
         true
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::exclusive_minimum(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 self.limit_val.clone(),
             ))

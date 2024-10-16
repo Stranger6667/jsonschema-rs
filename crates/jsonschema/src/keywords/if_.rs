@@ -43,27 +43,19 @@ impl Validate for IfThenValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.schema.is_valid(instance) {
-            let errors: Vec<_> = self.then_schema.validate(instance, instance_path).collect();
+            let errors: Vec<_> = self.then_schema.validate(instance, location).collect();
             Box::new(errors.into_iter())
         } else {
             no_error()
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
-        let mut if_result = self.schema.apply_rooted(instance, instance_path);
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+        let mut if_result = self.schema.apply_rooted(instance, location);
         if if_result.is_valid() {
-            let then_result = self.then_schema.apply_rooted(instance, instance_path);
+            let then_result = self.then_schema.apply_rooted(instance, location);
             if_result += then_result;
             if_result.into()
         } else {
@@ -107,31 +99,21 @@ impl Validate for IfElseValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.schema.is_valid(instance) {
             no_error()
         } else {
-            let errors: Vec<_> = self.else_schema.validate(instance, instance_path).collect();
+            let errors: Vec<_> = self.else_schema.validate(instance, location).collect();
             Box::new(errors.into_iter())
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
-        let if_result = self.schema.apply_rooted(instance, instance_path);
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+        let if_result = self.schema.apply_rooted(instance, location);
         if if_result.is_valid() {
             if_result.into()
         } else {
-            self.else_schema
-                .apply_rooted(instance, instance_path)
-                .into()
+            self.else_schema.apply_rooted(instance, location).into()
         }
     }
 }
@@ -177,33 +159,23 @@ impl Validate for IfThenElseValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.schema.is_valid(instance) {
-            let errors: Vec<_> = self.then_schema.validate(instance, instance_path).collect();
+            let errors: Vec<_> = self.then_schema.validate(instance, location).collect();
             Box::new(errors.into_iter())
         } else {
-            let errors: Vec<_> = self.else_schema.validate(instance, instance_path).collect();
+            let errors: Vec<_> = self.else_schema.validate(instance, location).collect();
             Box::new(errors.into_iter())
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
-        let mut if_result = self.schema.apply_rooted(instance, instance_path);
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+        let mut if_result = self.schema.apply_rooted(instance, location);
         if if_result.is_valid() {
-            if_result += self.then_schema.apply_rooted(instance, instance_path);
+            if_result += self.then_schema.apply_rooted(instance, location);
             if_result.into()
         } else {
-            self.else_schema
-                .apply_rooted(instance, instance_path)
-                .into()
+            self.else_schema.apply_rooted(instance, location).into()
         }
     }
 }

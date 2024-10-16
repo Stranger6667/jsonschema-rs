@@ -40,17 +40,13 @@ impl Validate for ItemsArrayValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = items
                 .iter()
                 .zip(self.items.iter())
                 .enumerate()
-                .flat_map(move |(idx, (item, node))| node.validate(item, &instance_path.push(idx)))
+                .flat_map(move |(idx, (item, node))| node.validate(item, &location.push(idx)))
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -81,16 +77,12 @@ impl Validate for ItemsObjectValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = items
                 .iter()
                 .enumerate()
-                .flat_map(move |(idx, item)| self.node.validate(item, &instance_path.push(idx)))
+                .flat_map(move |(idx, item)| self.node.validate(item, &location.push(idx)))
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -98,15 +90,11 @@ impl Validate for ItemsObjectValidator {
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         if let Value::Array(items) = instance {
             let mut results = Vec::with_capacity(items.len());
             for (idx, item) in items.iter().enumerate() {
-                let path = instance_path.push(idx);
+                let path = location.push(idx);
                 results.push(self.node.apply_rooted(item, &path));
             }
             let mut output: PartialApplication = results.into_iter().collect();
@@ -158,11 +146,7 @@ impl Validate for ItemsObjectSkipPrefixValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = items
                 .iter()
@@ -170,7 +154,7 @@ impl Validate for ItemsObjectSkipPrefixValidator {
                 .enumerate()
                 .flat_map(move |(idx, item)| {
                     self.node
-                        .validate(item, &instance_path.push(idx + self.skip_prefix))
+                        .validate(item, &location.push(idx + self.skip_prefix))
                 })
                 .collect();
             Box::new(errors.into_iter())
@@ -179,15 +163,11 @@ impl Validate for ItemsObjectSkipPrefixValidator {
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         if let Value::Array(items) = instance {
             let mut results = Vec::with_capacity(items.len().saturating_sub(self.skip_prefix));
             for (idx, item) in items.iter().enumerate().skip(self.skip_prefix) {
-                let path = instance_path.push(idx);
+                let path = location.push(idx);
                 results.push(self.node.apply_rooted(item, &path));
             }
             let mut output: PartialApplication = results.into_iter().collect();

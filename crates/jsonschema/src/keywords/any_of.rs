@@ -46,31 +46,23 @@ impl Validate for AnyOfValidator {
         self.schemas.iter().any(|s| s.is_valid(instance))
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::any_of(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
             ))
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         let mut successes = Vec::new();
         let mut failures = Vec::new();
         for node in &self.schemas {
-            let result = node.apply_rooted(instance, instance_path);
+            let result = node.apply_rooted(instance, location);
             if result.is_valid() {
                 successes.push(result);
             } else {

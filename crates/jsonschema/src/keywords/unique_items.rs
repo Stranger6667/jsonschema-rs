@@ -112,17 +112,13 @@ impl Validate for UniqueItemsValidator {
         true
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::unique_items(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
             ))
         }

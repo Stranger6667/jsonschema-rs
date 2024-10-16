@@ -44,18 +44,14 @@ impl Validate for PrefixItemsValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = self
                 .schemas
                 .iter()
                 .zip(items.iter())
                 .enumerate()
-                .flat_map(|(idx, (n, i))| n.validate(i, &instance_path.push(idx)))
+                .flat_map(|(idx, (n, i))| n.validate(i, &location.push(idx)))
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -63,11 +59,7 @@ impl Validate for PrefixItemsValidator {
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         if let Value::Array(items) = instance {
             if !items.is_empty() {
                 let validate_total = self.schemas.len();
@@ -75,7 +67,7 @@ impl Validate for PrefixItemsValidator {
                 let mut max_index_applied = 0;
                 for (idx, (schema_node, item)) in self.schemas.iter().zip(items.iter()).enumerate()
                 {
-                    let path = instance_path.push(idx);
+                    let path = location.push(idx);
                     results.push(schema_node.apply_rooted(item, &path));
                     max_index_applied = idx;
                 }

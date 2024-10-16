@@ -636,16 +636,16 @@ macro_rules! format_validators {
                     }
                 }
 
-                fn validate<'instance>(
+                fn validate<'i>(
                     &self,
-                    instance: &'instance Value,
-                    instance_path: &LazyLocation,
-                ) -> ErrorIterator<'instance> {
+                    instance: &'i Value,
+                    location: &LazyLocation,
+                ) -> ErrorIterator<'i> {
                     if let Value::String(_item) = instance {
                         if !self.is_valid(instance) {
                             return error(ValidationError::format(
                                 self.location.clone(),
-                                instance_path.into(),
+                                location.into(),
                                 instance,
                                 $format,
                             ));
@@ -712,15 +712,11 @@ impl CustomFormatValidator {
 }
 
 impl Validate for CustomFormatValidator {
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if !self.is_valid(instance) {
             return error(ValidationError::format(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 self.format_name.clone(),
             ));

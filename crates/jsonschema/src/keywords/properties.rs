@@ -53,11 +53,7 @@ impl Validate for PropertiesValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
                 .properties
@@ -65,7 +61,7 @@ impl Validate for PropertiesValidator {
                 .flat_map(move |(name, node)| {
                     let option = item.get(name);
                     option.into_iter().flat_map(move |item| {
-                        let instance_path = instance_path.push(name.as_str());
+                        let instance_path = location.push(name.as_str());
                         node.validate(item, &instance_path)
                     })
                 })
@@ -76,17 +72,13 @@ impl Validate for PropertiesValidator {
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         if let Value::Object(props) = instance {
             let mut result = BasicOutput::default();
             let mut matched_props = Vec::with_capacity(props.len());
             for (prop_name, node) in &self.properties {
                 if let Some(prop) = props.get(prop_name) {
-                    let path = instance_path.push(prop_name.as_str());
+                    let path = location.push(prop_name.as_str());
                     matched_props.push(prop_name.clone());
                     result += node.apply_rooted(prop, &path);
                 }

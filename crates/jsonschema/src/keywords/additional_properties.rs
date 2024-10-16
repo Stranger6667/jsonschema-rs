@@ -98,15 +98,11 @@ impl Validate for AdditionalPropertiesValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = item
                 .iter()
-                .flat_map(|(name, value)| validate!(self.node, value, instance_path, name))
+                .flat_map(|(name, value)| validate!(self.node, value, location, name))
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -114,16 +110,12 @@ impl Validate for AdditionalPropertiesValidator {
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             let mut matched_props = Vec::with_capacity(item.len());
             let mut output = BasicOutput::default();
             for (name, value) in item {
-                let path = instance_path.push(name.as_str());
+                let path = location.push(name.as_str());
                 output += self.node.apply_rooted(value, &path);
                 matched_props.push(name.clone());
             }
@@ -167,16 +159,12 @@ impl Validate for AdditionalPropertiesFalseValidator {
         }
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             if let Some((_, value)) = item.iter().next() {
                 return error(ValidationError::false_schema(
                     self.location.clone(),
-                    instance_path.into(),
+                    location.into(),
                     value,
                 ));
             }
@@ -240,18 +228,14 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
         }
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             let mut unexpected = vec![];
             for (property, value) in item {
                 if let Some((name, node)) = self.properties.get_key_validator(property) {
                     // When a property is in `properties`, then it should be VALID
-                    errors.extend(validate!(node, value, instance_path, name));
+                    errors.extend(validate!(node, value, location, name));
                 } else {
                     // No extra properties are allowed
                     unexpected.push(property.clone());
@@ -260,7 +244,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
             if !unexpected.is_empty() {
                 errors.push(ValidationError::additional_properties(
                     self.location.clone(),
-                    instance_path.into(),
+                    location.into(),
                     instance,
                     unexpected,
                 ))
@@ -271,17 +255,13 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             let mut unexpected = Vec::with_capacity(item.len());
             let mut output = BasicOutput::default();
             for (property, value) in item {
                 if let Some((_name, node)) = self.properties.get_key_validator(property) {
-                    let path = instance_path.push(property.as_str());
+                    let path = location.push(property.as_str());
                     output += node.apply_rooted(value, &path);
                 } else {
                     unexpected.push(property.clone())
@@ -292,7 +272,7 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
                 result.mark_errored(
                     ValidationError::additional_properties(
                         self.location.clone(),
-                        instance_path.into(),
+                        location.into(),
                         instance,
                         unexpected,
                     )
@@ -376,20 +356,16 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValida
         }
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(map) = instance {
             let mut errors = vec![];
             for (property, value) in map {
                 if let Some((name, property_validators)) =
                     self.properties.get_key_validator(property)
                 {
-                    errors.extend(validate!(property_validators, value, instance_path, name))
+                    errors.extend(validate!(property_validators, value, location, name))
                 } else {
-                    errors.extend(validate!(self.node, value, instance_path, property))
+                    errors.extend(validate!(self.node, value, location, property))
                 }
             }
             Box::new(errors.into_iter())
@@ -398,16 +374,12 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValida
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         if let Value::Object(map) = instance {
             let mut matched_propnames = Vec::with_capacity(map.len());
             let mut output = BasicOutput::default();
             for (property, value) in map {
-                let path = instance_path.push(property.as_str());
+                let path = location.push(property.as_str());
                 if let Some((_name, property_validators)) =
                     self.properties.get_key_validator(property)
                 {
@@ -494,11 +466,7 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
         true
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for (property, value) in item {
@@ -509,11 +477,11 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
                         .filter(|(re, _)| re.is_match(property).unwrap_or(false))
                         .flat_map(|(_, node)| {
                             has_match = true;
-                            validate!(node, value, instance_path, property)
+                            validate!(node, value, location, property)
                         }),
                 );
                 if !has_match {
-                    errors.extend(validate!(self.node, value, instance_path, property))
+                    errors.extend(validate!(self.node, value, location, property))
                 }
             }
             Box::new(errors.into_iter())
@@ -522,17 +490,13 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             let mut output = BasicOutput::default();
             let mut pattern_matched_propnames = Vec::with_capacity(item.len());
             let mut additional_matched_propnames = Vec::with_capacity(item.len());
             for (property, value) in item {
-                let path = instance_path.push(property.as_str());
+                let path = location.push(property.as_str());
                 let mut has_match = false;
                 for (pattern, node) in &self.patterns {
                     if pattern.is_match(property).unwrap_or(false) {
@@ -549,7 +513,7 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
             if !pattern_matched_propnames.is_empty() {
                 output += OutputUnit::<Annotations<'_>>::annotations(
                     self.pattern_keyword_path.clone(),
-                    instance_path.into(),
+                    location.into(),
                     self.pattern_keyword_absolute_location.clone(),
                     Value::from(pattern_matched_propnames).into(),
                 )
@@ -618,11 +582,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
         true
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             let mut unexpected = vec![];
@@ -634,7 +594,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
                         .filter(|(re, _)| re.is_match(property).unwrap_or(false))
                         .flat_map(|(_, node)| {
                             has_match = true;
-                            validate!(node, value, instance_path, property)
+                            validate!(node, value, location, property)
                         }),
                 );
                 if !has_match {
@@ -644,7 +604,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
             if !unexpected.is_empty() {
                 errors.push(ValidationError::additional_properties(
                     self.location.clone(),
-                    instance_path.into(),
+                    location.into(),
                     instance,
                     unexpected,
                 ))
@@ -655,17 +615,13 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             let mut output = BasicOutput::default();
             let mut unexpected = Vec::with_capacity(item.len());
             let mut pattern_matched_props = Vec::with_capacity(item.len());
             for (property, value) in item {
-                let path = instance_path.push(property.as_str());
+                let path = location.push(property.as_str());
                 let mut has_match = false;
                 for (pattern, node) in &self.patterns {
                     if pattern.is_match(property).unwrap_or(false) {
@@ -681,7 +637,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
             if !pattern_matched_props.is_empty() {
                 output += OutputUnit::<Annotations<'_>>::annotations(
                     self.pattern_keyword_path.clone(),
-                    instance_path.into(),
+                    location.into(),
                     self.pattern_keyword_absolute_location.clone(),
                     Value::from(pattern_matched_props).into(),
                 )
@@ -692,7 +648,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
                 result.mark_errored(
                     ValidationError::additional_properties(
                         self.location.clone(),
-                        instance_path.into(),
+                        location.into(),
                         instance,
                         unexpected,
                     )
@@ -810,21 +766,17 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
         }
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for (property, value) in item {
                 if let Some((name, node)) = self.properties.get_key_validator(property) {
-                    errors.extend(validate!(node, value, instance_path, name));
+                    errors.extend(validate!(node, value, location, name));
                     errors.extend(
                         self.patterns
                             .iter()
                             .filter(|(re, _)| re.is_match(property).unwrap_or(false))
-                            .flat_map(|(_, node)| validate!(node, value, instance_path, name)),
+                            .flat_map(|(_, node)| validate!(node, value, location, name)),
                     );
                 } else {
                     let mut has_match = false;
@@ -834,11 +786,11 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
                             .filter(|(re, _)| re.is_match(property).unwrap_or(false))
                             .flat_map(|(_, node)| {
                                 has_match = true;
-                                validate!(node, value, instance_path, property)
+                                validate!(node, value, location, property)
                             }),
                     );
                     if !has_match {
-                        errors.extend(validate!(self.node, value, instance_path, property))
+                        errors.extend(validate!(self.node, value, location, property))
                     }
                 }
             }
@@ -848,16 +800,12 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             let mut output = BasicOutput::default();
             let mut additional_matches = Vec::with_capacity(item.len());
             for (property, value) in item {
-                let path = instance_path.push(property.as_str());
+                let path = location.push(property.as_str());
                 if let Some((_name, node)) = self.properties.get_key_validator(property) {
                     output += node.apply_rooted(value, &path);
                     for (pattern, node) in &self.patterns {
@@ -980,23 +928,19 @@ impl<M: PropertiesValidatorsMap> Validate
         true
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             let mut unexpected = vec![];
             // No properties are allowed, except ones defined in `properties` or `patternProperties`
             for (property, value) in item {
                 if let Some((name, node)) = self.properties.get_key_validator(property) {
-                    errors.extend(validate!(node, value, instance_path, name));
+                    errors.extend(validate!(node, value, location, name));
                     errors.extend(
                         self.patterns
                             .iter()
                             .filter(|(re, _)| re.is_match(property).unwrap_or(false))
-                            .flat_map(|(_, node)| validate!(node, value, instance_path, name)),
+                            .flat_map(|(_, node)| validate!(node, value, location, name)),
                     );
                 } else {
                     let mut has_match = false;
@@ -1006,7 +950,7 @@ impl<M: PropertiesValidatorsMap> Validate
                             .filter(|(re, _)| re.is_match(property).unwrap_or(false))
                             .flat_map(|(_, node)| {
                                 has_match = true;
-                                validate!(node, value, instance_path, property)
+                                validate!(node, value, location, property)
                             }),
                     );
                     if !has_match {
@@ -1017,7 +961,7 @@ impl<M: PropertiesValidatorsMap> Validate
             if !unexpected.is_empty() {
                 errors.push(ValidationError::additional_properties(
                     self.location.clone(),
-                    instance_path.into(),
+                    location.into(),
                     instance,
                     unexpected,
                 ))
@@ -1028,17 +972,13 @@ impl<M: PropertiesValidatorsMap> Validate
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             let mut output = BasicOutput::default();
             let mut unexpected = vec![];
             // No properties are allowed, except ones defined in `properties` or `patternProperties`
             for (property, value) in item {
-                let path = instance_path.push(property.as_str());
+                let path = location.push(property.as_str());
                 if let Some((_name, node)) = self.properties.get_key_validator(property) {
                     output += node.apply_rooted(value, &path);
                     for (pattern, node) in &self.patterns {
@@ -1064,7 +1004,7 @@ impl<M: PropertiesValidatorsMap> Validate
                 result.mark_errored(
                     ValidationError::additional_properties(
                         self.location.clone(),
-                        instance_path.into(),
+                        location.into(),
                         instance,
                         unexpected,
                     )

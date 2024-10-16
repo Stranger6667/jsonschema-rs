@@ -68,17 +68,13 @@ impl Validate for OneOfValidator {
         let first_valid_idx = self.get_first_valid(instance);
         first_valid_idx.map_or(false, |idx| !self.are_others_valid(instance, idx))
     }
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         let first_valid_idx = self.get_first_valid(instance);
         if let Some(idx) = first_valid_idx {
             if self.are_others_valid(instance, idx) {
                 return error(ValidationError::one_of_multiple_valid(
                     self.location.clone(),
-                    instance_path.into(),
+                    location.into(),
                     instance,
                 ));
             }
@@ -86,20 +82,16 @@ impl Validate for OneOfValidator {
         } else {
             error(ValidationError::one_of_not_valid(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
             ))
         }
     }
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         let mut failures = Vec::new();
         let mut successes = Vec::new();
         for node in &self.schemas {
-            match node.apply_rooted(instance, instance_path) {
+            match node.apply_rooted(instance, location) {
                 output @ BasicOutput::Valid(..) => successes.push(output),
                 output @ BasicOutput::Invalid(..) => failures.push(output),
             };

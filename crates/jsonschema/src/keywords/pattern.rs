@@ -108,18 +108,14 @@ impl PatternValidator {
 }
 
 impl Validate for PatternValidator {
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::String(item) = instance {
             match self.pattern.is_match(item) {
                 Ok(is_match) => {
                     if !is_match {
                         return error(ValidationError::pattern(
                             self.location.clone(),
-                            instance_path.into(),
+                            location.into(),
                             instance,
                             self.original.clone(),
                         ));
@@ -128,7 +124,7 @@ impl Validate for PatternValidator {
                 Err(e) => {
                     return error(ValidationError::backtrack_limit(
                         self.location.clone(),
-                        instance_path.into(),
+                        location.into(),
                         instance,
                         e,
                     ));

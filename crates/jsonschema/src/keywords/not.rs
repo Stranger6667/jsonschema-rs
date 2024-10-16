@@ -30,17 +30,13 @@ impl Validate for NotValidator {
         !self.node.is_valid(instance)
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::not(
                 self.node.location().clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 self.original.clone(),
             ))

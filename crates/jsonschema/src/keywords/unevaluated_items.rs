@@ -63,11 +63,7 @@ impl<F: ItemsFilter> Validate for UnevaluatedItemsValidator<F> {
         true
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             // NOTE: It could be a packed bitset instead
             let mut indexes = vec![false; items.len()];
@@ -82,7 +78,7 @@ impl<F: ItemsFilter> Validate for UnevaluatedItemsValidator<F> {
                 return Box::new(
                     vec![ValidationError::unevaluated_items(
                         self.location.clone(),
-                        instance_path.into(),
+                        location.into(),
                         instance,
                         unevaluated,
                     )]

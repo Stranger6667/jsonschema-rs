@@ -48,16 +48,12 @@ impl Validate for MaxItemsValidator {
         true
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             if (items.len() as u64) > self.limit {
                 return error(ValidationError::max_items(
                     self.location.clone(),
-                    instance_path.into(),
+                    location.into(),
                     instance,
                     self.limit,
                 ));

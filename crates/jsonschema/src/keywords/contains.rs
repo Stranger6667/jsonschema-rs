@@ -34,18 +34,14 @@ impl Validate for ContainsValidator {
         }
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             if items.iter().any(|i| self.node.is_valid(i)) {
                 return no_error();
             }
             error(ValidationError::contains(
                 self.node.location().clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
             ))
         } else {
@@ -53,16 +49,12 @@ impl Validate for ContainsValidator {
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         if let Value::Array(items) = instance {
             let mut results = Vec::with_capacity(items.len());
             let mut indices = Vec::new();
             for (idx, item) in items.iter().enumerate() {
-                let path = instance_path.push(idx);
+                let path = location.push(idx);
                 let result = self.node.apply_rooted(item, &path);
                 if result.is_valid() {
                     indices.push(idx);
@@ -74,7 +66,7 @@ impl Validate for ContainsValidator {
                 result.mark_errored(
                     ValidationError::contains(
                         self.node.location().clone(),
-                        instance_path.into(),
+                        location.into(),
                         instance,
                     )
                     .into(),
@@ -115,11 +107,7 @@ impl MinContainsValidator {
 }
 
 impl Validate for MinContainsValidator {
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             // From docs:
             //   An array instance is valid against "minContains" if the number of elements
@@ -142,7 +130,7 @@ impl Validate for MinContainsValidator {
             if self.min_contains > 0 {
                 error(ValidationError::contains(
                     self.node.location().clone(),
-                    instance_path.into(),
+                    location.into(),
                     instance,
                 ))
             } else {
@@ -200,11 +188,7 @@ impl MaxContainsValidator {
 }
 
 impl Validate for MaxContainsValidator {
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             // From docs:
             //   An array instance is valid against "maxContains" if the number of elements
@@ -222,7 +206,7 @@ impl Validate for MaxContainsValidator {
                     if matches > self.max_contains {
                         return error(ValidationError::contains(
                             self.node.location().clone(),
-                            instance_path.into(),
+                            location.into(),
                             instance,
                         ));
                     }
@@ -236,7 +220,7 @@ impl Validate for MaxContainsValidator {
                 // No matches - it should be at least one match to satisfy `contains`
                 return error(ValidationError::contains(
                     self.node.location().clone(),
-                    instance_path.into(),
+                    location.into(),
                     instance,
                 ));
             }
@@ -295,11 +279,7 @@ impl MinMaxContainsValidator {
 }
 
 impl Validate for MinMaxContainsValidator {
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             let mut matches = 0;
             for item in items {
@@ -313,7 +293,7 @@ impl Validate for MinMaxContainsValidator {
                     if matches > self.max_contains {
                         return error(ValidationError::contains(
                             self.node.location().join("maxContains"),
-                            instance_path.into(),
+                            location.into(),
                             instance,
                         ));
                     }
@@ -323,7 +303,7 @@ impl Validate for MinMaxContainsValidator {
                 // Not enough matches
                 error(ValidationError::contains(
                     self.node.location().join("minContains"),
-                    instance_path.into(),
+                    location.into(),
                     instance,
                 ))
             } else {

@@ -26,11 +26,7 @@ use std::{collections::VecDeque, sync::Arc};
 /// `is_valid`. `apply` is only necessary for validators which compose other validators. See the
 /// documentation for `apply` for more information.
 pub(crate) trait Validate: Send + Sync {
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance>;
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i>;
     // The same as above, but does not construct ErrorIterator.
     // It is faster for cases when the result is not needed (like anyOf), since errors are
     // not constructed
@@ -79,13 +75,9 @@ pub(crate) trait Validate: Send + Sync {
     ///
     /// `BasicOutput` also implements `Sum<BasicOutput>` and `FromIterator<BasicOutput<'a>> for PartialApplication<'a>`
     /// so you can use `sum()` and `collect()` in simple cases.
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         let errors: Vec<ErrorDescription> = self
-            .validate(instance, instance_path)
+            .validate(instance, location)
             .map(ErrorDescription::from)
             .collect();
         if errors.is_empty() {
@@ -220,10 +212,7 @@ impl Validator {
     }
     /// Run validation against `instance` and return an iterator over [`ValidationError`] in the error case.
     #[inline]
-    pub fn validate<'instance>(
-        &'instance self,
-        instance: &'instance Value,
-    ) -> Result<(), ErrorIterator<'instance>> {
+    pub fn validate<'i>(&'i self, instance: &'i Value) -> Result<(), ErrorIterator<'i>> {
         let instance_path = LazyLocation::new();
         let mut errors = self.root.validate(instance, &instance_path).peekable();
         if errors.peek().is_none() {
@@ -378,17 +367,17 @@ mod tests {
         /// regex usage.
         struct CustomObjectValidator;
         impl Keyword for CustomObjectValidator {
-            fn validate<'instance>(
+            fn validate<'i>(
                 &self,
-                instance: &'instance Value,
-                instance_path: &LazyLocation,
-            ) -> ErrorIterator<'instance> {
+                instance: &'i Value,
+                location: &LazyLocation,
+            ) -> ErrorIterator<'i> {
                 let mut errors = vec![];
                 for key in instance.as_object().unwrap().keys() {
                     if !key.is_ascii() {
                         let error = ValidationError::custom(
                             Location::new(),
-                            instance_path.into(),
+                            location.into(),
                             instance,
                             "Key is not ASCII",
                         );
@@ -474,17 +463,17 @@ mod tests {
         }
 
         impl Keyword for CustomMinimumValidator {
-            fn validate<'instance>(
+            fn validate<'i>(
                 &self,
-                instance: &'instance Value,
-                instance_path: &LazyLocation,
-            ) -> ErrorIterator<'instance> {
+                instance: &'i Value,
+                location: &LazyLocation,
+            ) -> ErrorIterator<'i> {
                 if self.is_valid(instance) {
                     no_error()
                 } else {
                     error::error(ValidationError::minimum(
                         self.location.clone(),
-                        instance_path.into(),
+                        location.into(),
                         instance,
                         self.limit_val.clone(),
                     ))

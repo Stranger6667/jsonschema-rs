@@ -38,17 +38,13 @@ impl EnumValidator {
 }
 
 impl Validate for EnumValidator {
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::enumeration(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 &self.options,
             ))
@@ -90,17 +86,13 @@ impl SingleValueEnumValidator {
 }
 
 impl Validate for SingleValueEnumValidator {
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::enumeration(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 &self.options,
             ))

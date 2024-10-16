@@ -122,7 +122,7 @@
 //!
 //! For configuration options that are not draft-specific, `jsonschema` provides a general builder via `jsonschema::options()`.
 //!
-//! Here's an example of using the general options builder:
+//! Here's an example of using the options builder:
 //!
 //! ```rust
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -295,18 +295,18 @@
 //! struct EvenNumberValidator;
 //!
 //! impl Keyword for EvenNumberValidator {
-//!     fn validate<'instance>(
+//!     fn validate<'i>(
 //!         &self,
-//!         instance: &'instance Value,
-//!         instance_path: &LazyLocation,
-//!     ) -> ErrorIterator<'instance> {
+//!         instance: &'i Value,
+//!         location: &LazyLocation,
+//!     ) -> ErrorIterator<'i> {
 //!         if let Value::Number(n) = instance {
 //!             if n.as_u64().map_or(false, |n| n % 2 == 0) {
 //!                 Box::new(None.into_iter())
 //!             } else {
 //!                 let error = ValidationError::custom(
 //!                     Location::new(),
-//!                     instance_path.into(),
+//!                     location.into(),
 //!                     instance,
 //!                     "Number must be even",
 //!                 );
@@ -315,7 +315,7 @@
 //!         } else {
 //!             let error = ValidationError::custom(
 //!                 Location::new(),
-//!                 instance_path.into(),
+//!                 location.into(),
 //!                 instance,
 //!                 "Value must be a number",
 //!             );
@@ -379,11 +379,11 @@
 //! # struct EvenNumberValidator;
 //! #
 //! # impl Keyword for EvenNumberValidator {
-//! #     fn validate<'instance>(
+//! #     fn validate<'i>(
 //! #         &self,
-//! #         instance: &'instance Value,
-//! #         instance_path: &LazyLocation,
-//! #     ) -> ErrorIterator<'instance> {
+//! #         instance: &'i Value,
+//! #         location: &LazyLocation,
+//! #     ) -> ErrorIterator<'i> {
 //! #         Box::new(None.into_iter())
 //! #     }
 //! #
@@ -453,7 +453,7 @@
 //! When using `jsonschema` in WASM environments, be aware that external references are
 //! not supported by default due to WASM limitations:
 //!    - No filesystem access (`resolve-file` feature)
-//!    - No direct HTTP requests (`resolve-http` feature)
+//!    - No direct HTTP requests, at least right now (`resolve-http` feature)
 //!
 //! To use `jsonschema` in WASM, disable default features:
 //!
@@ -483,7 +483,7 @@ pub use error::{ErrorIterator, ValidationError};
 pub use keywords::custom::Keyword;
 pub use options::ValidationOptions;
 pub use output::BasicOutput;
-pub use referencing::{Draft, Resource, Retrieve, Uri, UriRef};
+pub use referencing::{Draft, Resource, Retrieve, Uri};
 #[allow(deprecated)]
 pub use retriever::{SchemaResolver, SchemaResolverError};
 pub use validator::Validator;

@@ -24,17 +24,13 @@ impl ConstArrayValidator {
 }
 impl Validate for ConstArrayValidator {
     #[inline]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::constant_array(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 &self.value,
             ))
@@ -63,17 +59,13 @@ impl ConstBooleanValidator {
 }
 impl Validate for ConstBooleanValidator {
     #[inline]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::constant_boolean(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 self.value,
             ))
@@ -101,17 +93,13 @@ impl ConstNullValidator {
 }
 impl Validate for ConstNullValidator {
     #[inline]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::constant_null(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
             ))
         }
@@ -144,17 +132,13 @@ impl ConstNumberValidator {
 }
 
 impl Validate for ConstNumberValidator {
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::constant_number(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 &self.original_value,
             ))
@@ -186,17 +170,13 @@ impl ConstObjectValidator {
 }
 
 impl Validate for ConstObjectValidator {
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::constant_object(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 &self.value,
             ))
@@ -228,17 +208,13 @@ impl ConstStringValidator {
 }
 
 impl Validate for ConstStringValidator {
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::constant_string(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 &self.value,
             ))

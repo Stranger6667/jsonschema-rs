@@ -35,11 +35,7 @@ impl Validate for PropertyNamesObjectValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(item) = &instance {
             let errors: Vec<_> = item
                 .keys()
@@ -47,11 +43,11 @@ impl Validate for PropertyNamesObjectValidator {
                     let wrapper = Value::String(key.to_string());
                     let errors: Vec<_> = self
                         .node
-                        .validate(&wrapper, instance_path)
+                        .validate(&wrapper, location)
                         .map(|error| {
                             ValidationError::property_names(
                                 error.schema_path.clone(),
-                                instance_path.into(),
+                                location.into(),
                                 instance,
                                 error.into_owned(),
                             )
@@ -66,16 +62,12 @@ impl Validate for PropertyNamesObjectValidator {
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             item.keys()
                 .map(|key| {
                     let wrapper = Value::String(key.to_string());
-                    self.node.apply_rooted(&wrapper, instance_path)
+                    self.node.apply_rooted(&wrapper, location)
                 })
                 .collect()
         } else {
@@ -106,17 +98,13 @@ impl Validate for PropertyNamesBooleanValidator {
         true
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::false_schema(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
             ))
         }

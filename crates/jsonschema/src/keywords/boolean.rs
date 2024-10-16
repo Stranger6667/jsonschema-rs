@@ -21,14 +21,10 @@ impl Validate for FalseValidator {
         false
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         error(ValidationError::false_schema(
             self.location.clone(),
-            instance_path.into(),
+            location.into(),
             instance,
         ))
     }
