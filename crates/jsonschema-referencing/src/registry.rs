@@ -425,19 +425,9 @@ fn collect_external_references(
             // Reference has already been seen
             return Ok(());
         }
-        let resolved = uri::resolve_against(&base.borrow(), reference)?;
-        // Drop the fragment
-        let builder = Uri::builder();
-        let base_uri = match resolved.authority() {
-            Some(auth) => builder
-                .scheme(resolved.scheme())
-                .authority(auth)
-                .path(resolved.path()),
-            None => builder.scheme(resolved.scheme()).path(resolved.path()),
-        }
-        .build()
-        .map_err(|error| Error::uri_building_error(resolved, error))?;
-        collected.insert(base_uri);
+        let mut resolved = uri::resolve_against(&base.borrow(), reference)?;
+        resolved.set_fragment(None);
+        collected.insert(resolved);
     }
     Ok(())
 }
