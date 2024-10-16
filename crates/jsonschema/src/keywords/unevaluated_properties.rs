@@ -184,14 +184,14 @@ impl UnevaluatedPropertiesValidator {
             })
     }
 
-    fn validate_property<'instance>(
+    fn validate_property<'i>(
         &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
+        instance: &'i Value,
+        location: &LazyLocation,
         property_path: &LazyLocation,
-        property_instance: &'instance Value,
+        property_instance: &'i Value,
         property_name: &str,
-    ) -> Option<ErrorIterator<'instance>> {
+    ) -> Option<ErrorIterator<'i>> {
         self.properties
             .as_ref()
             .and_then(|prop_map| {
@@ -206,7 +206,7 @@ impl UnevaluatedPropertiesValidator {
                 self.conditional.as_ref().and_then(|conditional| {
                     conditional.validate_property(
                         instance,
-                        instance_path,
+                        location,
                         property_path,
                         property_instance,
                         property_name,
@@ -217,7 +217,7 @@ impl UnevaluatedPropertiesValidator {
                 self.dependent.as_ref().and_then(|dependent| {
                     dependent.validate_property(
                         instance,
-                        instance_path,
+                        location,
                         property_path,
                         property_instance,
                         property_name,
@@ -228,7 +228,7 @@ impl UnevaluatedPropertiesValidator {
                 self.reference.as_ref().and_then(|reference| {
                     reference.validate_property(
                         instance,
-                        instance_path,
+                        location,
                         property_path,
                         property_instance,
                         property_name,
@@ -240,7 +240,7 @@ impl UnevaluatedPropertiesValidator {
                     subschemas.iter().find_map(|subschema| {
                         subschema.validate_property(
                             instance,
-                            instance_path,
+                            location,
                             property_path,
                             property_instance,
                             property_name,
@@ -262,7 +262,7 @@ impl UnevaluatedPropertiesValidator {
     fn apply_property<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &LazyLocation,
+        location: &LazyLocation,
         property_path: &LazyLocation,
         property_instance: &Value,
         property_name: &str,
@@ -281,7 +281,7 @@ impl UnevaluatedPropertiesValidator {
                 self.conditional.as_ref().and_then(|conditional| {
                     conditional.apply_property(
                         instance,
-                        instance_path,
+                        location,
                         property_path,
                         property_instance,
                         property_name,
@@ -292,7 +292,7 @@ impl UnevaluatedPropertiesValidator {
                 self.dependent.as_ref().and_then(|dependent| {
                     dependent.apply_property(
                         instance,
-                        instance_path,
+                        location,
                         property_path,
                         property_instance,
                         property_name,
@@ -303,7 +303,7 @@ impl UnevaluatedPropertiesValidator {
                 self.reference.as_ref().and_then(|reference| {
                     reference.apply_property(
                         instance,
-                        instance_path,
+                        location,
                         property_path,
                         property_instance,
                         property_name,
@@ -315,7 +315,7 @@ impl UnevaluatedPropertiesValidator {
                     subschemas.iter().find_map(|subschema| {
                         subschema.apply_property(
                             instance,
-                            instance_path,
+                            location,
                             property_path,
                             property_instance,
                             property_name,
@@ -347,20 +347,16 @@ impl Validate for UnevaluatedPropertiesValidator {
         }
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(props) = instance {
             let mut errors = vec![];
             let mut unevaluated = vec![];
 
             for (property_name, property_instance) in props {
-                let property_path = instance_path.push(property_name.as_str());
+                let property_path = location.push(property_name.as_str());
                 let maybe_property_errors = self.validate_property(
                     instance,
-                    instance_path,
+                    location,
                     &property_path,
                     property_instance,
                     property_name,
@@ -377,7 +373,7 @@ impl Validate for UnevaluatedPropertiesValidator {
             if !unevaluated.is_empty() {
                 errors.push(ValidationError::unevaluated_properties(
                     self.location.clone(),
-                    instance_path.into(),
+                    location.into(),
                     instance,
                     unevaluated,
                 ));
@@ -389,20 +385,16 @@ impl Validate for UnevaluatedPropertiesValidator {
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         if let Value::Object(props) = instance {
             let mut output = BasicOutput::default();
             let mut unevaluated = vec![];
 
             for (property_name, property_instance) in props {
-                let property_path = instance_path.push(property_name.as_str());
+                let property_path = location.push(property_name.as_str());
                 let maybe_property_output = self.apply_property(
                     instance,
-                    instance_path,
+                    location,
                     &property_path,
                     property_instance,
                     property_name,
@@ -421,7 +413,7 @@ impl Validate for UnevaluatedPropertiesValidator {
                 result.mark_errored(
                     ValidationError::unevaluated_properties(
                         self.location.clone(),
-                        instance_path.into(),
+                        location.into(),
                         instance,
                         unevaluated,
                     )
@@ -459,12 +451,12 @@ impl PropertySubvalidator {
             .map(|node| node.is_valid(property_instance))
     }
 
-    fn validate_property<'instance>(
+    fn validate_property<'i>(
         &self,
         property_path: &LazyLocation,
-        property_instance: &'instance Value,
+        property_instance: &'i Value,
         property_name: &str,
-    ) -> Option<ErrorIterator<'instance>> {
+    ) -> Option<ErrorIterator<'i>> {
         self.prop_map
             .get_key_validator(property_name)
             .map(|(_, node)| node.validate(property_instance, property_path))
@@ -516,12 +508,12 @@ impl PatternSubvalidator {
         had_match.then_some(true)
     }
 
-    fn validate_property<'instance>(
+    fn validate_property<'i>(
         &self,
         property_path: &LazyLocation,
-        property_instance: &'instance Value,
+        property_instance: &'i Value,
         property_name: &str,
-    ) -> Option<ErrorIterator<'instance>> {
+    ) -> Option<ErrorIterator<'i>> {
         let mut had_match = false;
         let mut errors = vec![];
 
@@ -681,26 +673,26 @@ impl SubschemaSubvalidator {
         }
     }
 
-    fn validate_property<'instance>(
+    fn validate_property<'i>(
         &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
+        instance: &'i Value,
+        location: &LazyLocation,
         property_path: &LazyLocation,
-        property_instance: &'instance Value,
+        property_instance: &'i Value,
         property_name: &str,
-    ) -> Option<ErrorIterator<'instance>> {
+    ) -> Option<ErrorIterator<'i>> {
         let mapped = self.subvalidators.iter().map(|(node, subvalidator)| {
             let property_result = subvalidator
                 .validate_property(
                     instance,
-                    instance_path,
+                    location,
                     property_path,
                     property_instance,
                     property_name,
                 )
                 .map(|errs| errs.collect::<Vec<_>>());
 
-            let instance_result = node.validate(instance, instance_path).collect::<Vec<_>>();
+            let instance_result = node.validate(instance, location).collect::<Vec<_>>();
 
             (property_result, instance_result)
         });
@@ -766,7 +758,7 @@ impl SubschemaSubvalidator {
     fn apply_property<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &LazyLocation,
+        location: &LazyLocation,
         property_path: &LazyLocation,
         property_instance: &Value,
         property_name: &str,
@@ -774,13 +766,13 @@ impl SubschemaSubvalidator {
         let mapped = self.subvalidators.iter().map(|(node, subvalidator)| {
             let property_result = subvalidator.apply_property(
                 instance,
-                instance_path,
+                location,
                 property_path,
                 property_instance,
                 property_name,
             );
 
-            let instance_result = node.apply(instance, instance_path);
+            let instance_result = node.apply(instance, location);
 
             (property_result, instance_result)
         });
@@ -883,12 +875,12 @@ impl UnevaluatedSubvalidator {
         }
     }
 
-    fn validate_property<'instance>(
+    fn validate_property<'i>(
         &self,
         property_path: &LazyLocation,
-        property_instance: &'instance Value,
+        property_instance: &'i Value,
         _property_name: &str,
-    ) -> Option<ErrorIterator<'instance>> {
+    ) -> Option<ErrorIterator<'i>> {
         match &self.behavior {
             UnevaluatedBehavior::Allow => Some(no_error()),
             UnevaluatedBehavior::Deny => None,
@@ -1003,31 +995,31 @@ impl ConditionalSubvalidator {
             })
     }
 
-    fn validate_property<'instance>(
+    fn validate_property<'i>(
         &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
+        instance: &'i Value,
+        location: &LazyLocation,
         property_path: &LazyLocation,
-        property_instance: &'instance Value,
+        property_instance: &'i Value,
         property_name: &str,
-    ) -> Option<ErrorIterator<'instance>> {
+    ) -> Option<ErrorIterator<'i>> {
         self.node
             .as_ref()
             .and_then(|node| {
                 node.validate_property(
                     instance,
-                    instance_path,
+                    location,
                     property_path,
                     property_instance,
                     property_name,
                 )
             })
             .or_else(|| {
-                if self.condition.validate(instance, instance_path).count() == 0 {
+                if self.condition.validate(instance, location).count() == 0 {
                     self.success.as_ref().and_then(|success| {
                         success.validate_property(
                             instance,
-                            instance_path,
+                            location,
                             property_path,
                             property_instance,
                             property_name,
@@ -1037,7 +1029,7 @@ impl ConditionalSubvalidator {
                     self.failure.as_ref().and_then(|failure| {
                         failure.validate_property(
                             instance,
-                            instance_path,
+                            location,
                             property_path,
                             property_instance,
                             property_name,
@@ -1050,7 +1042,7 @@ impl ConditionalSubvalidator {
     fn apply_property<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &LazyLocation,
+        location: &LazyLocation,
         property_path: &LazyLocation,
         property_instance: &Value,
         property_name: &str,
@@ -1060,19 +1052,19 @@ impl ConditionalSubvalidator {
             .and_then(|node| {
                 node.apply_property(
                     instance,
-                    instance_path,
+                    location,
                     property_path,
                     property_instance,
                     property_name,
                 )
             })
             .or_else(|| {
-                let partial = self.condition.apply(instance, instance_path);
+                let partial = self.condition.apply(instance, location);
                 if partial.is_valid() {
                     self.success.as_ref().and_then(|success| {
                         success.apply_property(
                             instance,
-                            instance_path,
+                            location,
                             property_path,
                             property_instance,
                             property_name,
@@ -1082,7 +1074,7 @@ impl ConditionalSubvalidator {
                     self.failure.as_ref().and_then(|failure| {
                         failure.apply_property(
                             instance,
-                            instance_path,
+                            location,
                             property_path,
                             property_instance,
                             property_name,
@@ -1145,14 +1137,14 @@ impl DependentSchemaSubvalidator {
             })
     }
 
-    fn validate_property<'instance>(
+    fn validate_property<'i>(
         &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
+        instance: &'i Value,
+        location: &LazyLocation,
         property_path: &LazyLocation,
-        property_instance: &'instance Value,
+        property_instance: &'i Value,
         property_name: &str,
-    ) -> Option<ErrorIterator<'instance>> {
+    ) -> Option<ErrorIterator<'i>> {
         self.nodes
             .iter()
             .find_map(|(dependent_property_name, node)| {
@@ -1161,7 +1153,7 @@ impl DependentSchemaSubvalidator {
                     .and_then(|node| {
                         node.validate_property(
                             instance,
-                            instance_path,
+                            location,
                             property_path,
                             property_instance,
                             property_name,
@@ -1173,7 +1165,7 @@ impl DependentSchemaSubvalidator {
     fn apply_property<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &LazyLocation,
+        location: &LazyLocation,
         property_path: &LazyLocation,
         property_instance: &Value,
         property_name: &str,
@@ -1186,7 +1178,7 @@ impl DependentSchemaSubvalidator {
                     .and_then(|node| {
                         node.apply_property(
                             instance,
-                            instance_path,
+                            location,
                             property_path,
                             property_instance,
                             property_name,
@@ -1255,17 +1247,17 @@ impl ReferenceSubvalidator {
             .is_valid_property(instance, property_instance, property_name)
     }
 
-    fn validate_property<'instance>(
+    fn validate_property<'i>(
         &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
+        instance: &'i Value,
+        location: &LazyLocation,
         property_path: &LazyLocation,
-        property_instance: &'instance Value,
+        property_instance: &'i Value,
         property_name: &str,
-    ) -> Option<ErrorIterator<'instance>> {
+    ) -> Option<ErrorIterator<'i>> {
         self.node.validate_property(
             instance,
-            instance_path,
+            location,
             property_path,
             property_instance,
             property_name,
@@ -1275,14 +1267,14 @@ impl ReferenceSubvalidator {
     fn apply_property<'a>(
         &'a self,
         instance: &Value,
-        instance_path: &LazyLocation,
+        location: &LazyLocation,
         property_path: &LazyLocation,
         property_instance: &Value,
         property_name: &str,
     ) -> Option<BasicOutput<'a>> {
         self.node.apply_property(
             instance,
-            instance_path,
+            location,
             property_path,
             property_instance,
             property_name,

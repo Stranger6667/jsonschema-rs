@@ -62,17 +62,13 @@ impl Validate for MultipleTypesValidator {
             Value::String(_) => self.types.contains_type(PrimitiveType::String),
         }
     }
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::multiple_type_error(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 self.types,
             ))
@@ -100,17 +96,13 @@ impl Validate for IntegerTypeValidator {
         }
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 PrimitiveType::Integer,
             ))

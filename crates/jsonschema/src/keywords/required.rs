@@ -45,18 +45,14 @@ impl Validate for RequiredValidator {
         }
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for property_name in &self.required {
                 if !item.contains_key(property_name) {
                     errors.push(ValidationError::required(
                         self.location.clone(),
-                        instance_path.into(),
+                        location.into(),
                         instance,
                         // Value enum is needed for proper string escaping
                         Value::String(property_name.clone()),
@@ -87,15 +83,11 @@ impl SingleItemRequiredValidator {
 }
 
 impl Validate for SingleItemRequiredValidator {
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if !self.is_valid(instance) {
             return error(ValidationError::required(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 // Value enum is needed for proper string escaping
                 Value::String(self.value.clone()),

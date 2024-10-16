@@ -432,16 +432,16 @@ impl ValidationOptions {
     /// struct MyCustomValidator;
     ///
     /// impl Keyword for MyCustomValidator {
-    ///     fn validate<'instance>(
+    ///     fn validate<'i>(
     ///         &self,
-    ///         instance: &'instance Value,
-    ///         instance_path: &LazyLocation,
-    ///     ) -> ErrorIterator<'instance> {
+    ///         instance: &'i Value,
+    ///         location: &LazyLocation,
+    ///     ) -> ErrorIterator<'i> {
     ///         // ... validate instance ...
     ///         if !instance.is_object() {
     ///             let error = ValidationError::custom(
     ///                 Location::new(),
-    ///                 instance_path.into(),
+    ///                 location.into(),
     ///                 instance,
     ///                 "Boom!",
     ///             );

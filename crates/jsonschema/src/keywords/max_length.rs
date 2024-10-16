@@ -48,16 +48,12 @@ impl Validate for MaxLengthValidator {
         true
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::String(item) = instance {
             if (bytecount::num_chars(item.as_bytes()) as u64) > self.limit {
                 return error(ValidationError::max_length(
                     self.location.clone(),
-                    instance_path.into(),
+                    location.into(),
                     instance,
                     self.limit,
                 ));

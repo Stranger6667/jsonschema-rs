@@ -48,16 +48,12 @@ impl Validate for MaxPropertiesValidator {
         true
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             if (item.len() as u64) > self.limit {
                 return error(ValidationError::max_properties(
                     self.location.clone(),
-                    instance_path.into(),
+                    location.into(),
                     instance,
                     self.limit,
                 ));

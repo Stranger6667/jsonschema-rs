@@ -58,11 +58,7 @@ impl Validate for PatternPropertiesValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
                 .patterns
@@ -71,7 +67,7 @@ impl Validate for PatternPropertiesValidator {
                     item.iter()
                         .filter(move |(key, _)| re.is_match(key).unwrap_or(false))
                         .flat_map(move |(key, value)| {
-                            let instance_path = instance_path.push(key.as_str());
+                            let instance_path = location.push(key.as_str());
                             node.validate(value, &instance_path)
                         })
                 })
@@ -82,18 +78,14 @@ impl Validate for PatternPropertiesValidator {
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             let mut matched_propnames = Vec::with_capacity(item.len());
             let mut sub_results = BasicOutput::default();
             for (pattern, node) in &self.patterns {
                 for (key, value) in item {
                     if pattern.is_match(key).unwrap_or(false) {
-                        let path = instance_path.push(key.as_str());
+                        let path = location.push(key.as_str());
                         matched_propnames.push(key.clone());
                         sub_results += node.apply_rooted(value, &path);
                     }
@@ -153,17 +145,13 @@ impl Validate for SingleValuePatternPropertiesValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = item
                 .iter()
                 .filter(move |(key, _)| self.pattern.is_match(key).unwrap_or(false))
                 .flat_map(move |(key, value)| {
-                    let instance_path = instance_path.push(key.as_str());
+                    let instance_path = location.push(key.as_str());
                     self.node.validate(value, &instance_path)
                 })
                 .collect();
@@ -173,17 +161,13 @@ impl Validate for SingleValuePatternPropertiesValidator {
         }
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         if let Value::Object(item) = instance {
             let mut matched_propnames = Vec::with_capacity(item.len());
             let mut outputs = BasicOutput::default();
             for (key, value) in item {
                 if self.pattern.is_match(key).unwrap_or(false) {
-                    let path = instance_path.push(key.as_str());
+                    let path = location.push(key.as_str());
                     matched_propnames.push(key.clone());
                     outputs += self.node.apply_rooted(value, &path);
                 }

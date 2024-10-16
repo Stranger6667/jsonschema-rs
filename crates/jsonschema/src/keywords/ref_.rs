@@ -116,19 +116,11 @@ impl Validate for LazyRefValidator {
     fn is_valid(&self, instance: &Value) -> bool {
         self.lazy_compile().is_valid(instance)
     }
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
-        self.lazy_compile().validate(instance, instance_path)
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+        self.lazy_compile().validate(instance, location)
     }
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
-        self.lazy_compile().apply(instance, instance_path)
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+        self.lazy_compile().apply(instance, location)
     }
 }
 
@@ -140,24 +132,16 @@ impl Validate for RefValidator {
         }
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         match self {
-            RefValidator::Default { inner } => inner.validate(instance, instance_path),
-            RefValidator::Lazy(lazy) => lazy.validate(instance, instance_path),
+            RefValidator::Default { inner } => inner.validate(instance, location),
+            RefValidator::Lazy(lazy) => lazy.validate(instance, location),
         }
     }
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         match self {
-            RefValidator::Default { inner } => inner.apply(instance, instance_path),
-            RefValidator::Lazy(lazy) => lazy.apply(instance, instance_path),
+            RefValidator::Default { inner } => inner.apply(instance, location),
+            RefValidator::Lazy(lazy) => lazy.apply(instance, location),
         }
     }
 }

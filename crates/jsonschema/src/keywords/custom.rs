@@ -23,12 +23,8 @@ impl Display for CustomKeyword {
 }
 
 impl Validate for CustomKeyword {
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
-        self.inner.validate(instance, instance_path)
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+        self.inner.validate(instance, location)
     }
 
     fn is_valid(&self, instance: &Value) -> bool {
@@ -44,11 +40,7 @@ pub trait Keyword: Send + Sync {
     /// easily or efficiently expressed in JSON schema.
     ///
     /// The custom validation is applied in addition to the JSON schema validation.
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance>;
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i>;
     /// Validate instance and return a boolean result.
     ///
     /// Could be potentilly faster than [`Keyword::validate`] method.

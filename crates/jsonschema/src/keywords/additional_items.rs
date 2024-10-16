@@ -40,17 +40,13 @@ impl Validate for AdditionalItemsObjectValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = items
                 .iter()
                 .enumerate()
                 .skip(self.items_count)
-                .flat_map(|(idx, item)| self.node.validate(item, &instance_path.push(idx)))
+                .flat_map(|(idx, item)| self.node.validate(item, &location.push(idx)))
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -82,16 +78,12 @@ impl Validate for AdditionalItemsBooleanValidator {
         true
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             if items.len() > self.items_count {
                 return error(ValidationError::additional_items(
                     self.location.clone(),
-                    instance_path.into(),
+                    location.into(),
                     instance,
                     self.items_count,
                 ));

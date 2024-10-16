@@ -64,17 +64,13 @@ impl Validate for MultipleTypesValidator {
             Value::String(_) => self.types.contains_type(PrimitiveType::String),
         }
     }
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::multiple_type_error(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 self.types,
             ))
@@ -97,17 +93,13 @@ impl Validate for NullTypeValidator {
     fn is_valid(&self, instance: &Value) -> bool {
         instance.is_null()
     }
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 PrimitiveType::Null,
             ))
@@ -130,17 +122,13 @@ impl Validate for BooleanTypeValidator {
     fn is_valid(&self, instance: &Value) -> bool {
         instance.is_boolean()
     }
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 PrimitiveType::Boolean,
             ))
@@ -164,17 +152,13 @@ impl Validate for StringTypeValidator {
         instance.is_string()
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 PrimitiveType::String,
             ))
@@ -198,17 +182,13 @@ impl Validate for ArrayTypeValidator {
         instance.is_array()
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 PrimitiveType::Array,
             ))
@@ -231,17 +211,13 @@ impl Validate for ObjectTypeValidator {
     fn is_valid(&self, instance: &Value) -> bool {
         instance.is_object()
     }
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 PrimitiveType::Object,
             ))
@@ -264,17 +240,13 @@ impl Validate for NumberTypeValidator {
     fn is_valid(&self, instance: &Value) -> bool {
         instance.is_number()
     }
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 PrimitiveType::Number,
             ))
@@ -301,17 +273,13 @@ impl Validate for IntegerTypeValidator {
             false
         }
     }
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
             error(ValidationError::single_type_error(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 PrimitiveType::Integer,
             ))

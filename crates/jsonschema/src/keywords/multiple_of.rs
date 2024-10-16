@@ -45,15 +45,11 @@ impl Validate for MultipleOfFloatValidator {
         }
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if !self.is_valid(instance) {
             return error(ValidationError::multiple_of(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 self.multiple_of,
             ));
@@ -89,15 +85,11 @@ impl Validate for MultipleOfIntegerValidator {
         }
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if !self.is_valid(instance) {
             return error(ValidationError::multiple_of(
                 self.location.clone(),
-                instance_path.into(),
+                location.into(),
                 instance,
                 self.multiple_of,
             ));

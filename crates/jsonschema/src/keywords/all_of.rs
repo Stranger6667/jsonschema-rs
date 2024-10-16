@@ -38,27 +38,19 @@ impl Validate for AllOfValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         let errors: Vec<_> = self
             .schemas
             .iter()
-            .flat_map(move |node| node.validate(instance, instance_path))
+            .flat_map(move |node| node.validate(instance, location))
             .collect();
         Box::new(errors.into_iter())
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
         self.schemas
             .iter()
-            .map(move |node| node.apply_rooted(instance, instance_path))
+            .map(move |node| node.apply_rooted(instance, location))
             .sum::<BasicOutput<'_>>()
             .into()
     }
@@ -83,20 +75,12 @@ impl Validate for SingleValueAllOfValidator {
         self.node.is_valid(instance)
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
-        self.node.validate(instance, instance_path)
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+        self.node.validate(instance, location)
     }
 
-    fn apply<'a>(
-        &'a self,
-        instance: &Value,
-        instance_path: &LazyLocation,
-    ) -> PartialApplication<'a> {
-        self.node.apply_rooted(instance, instance_path).into()
+    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+        self.node.apply_rooted(instance, location).into()
     }
 }
 

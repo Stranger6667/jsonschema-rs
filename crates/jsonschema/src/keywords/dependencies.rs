@@ -60,17 +60,13 @@ impl Validate for DependenciesValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
                 .dependencies
                 .iter()
                 .filter(|(property, _)| item.contains_key(property))
-                .flat_map(move |(_, node)| node.validate(instance, instance_path))
+                .flat_map(move |(_, node)| node.validate(instance, location))
                 .collect();
             // TODO. custom error message for "required" case
             Box::new(errors.into_iter())
@@ -139,17 +135,13 @@ impl Validate for DependentRequiredValidator {
             true
         }
     }
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
                 .dependencies
                 .iter()
                 .filter(|(property, _)| item.contains_key(property))
-                .flat_map(move |(_, node)| node.validate(instance, instance_path))
+                .flat_map(move |(_, node)| node.validate(instance, location))
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -194,17 +186,13 @@ impl Validate for DependentSchemasValidator {
             true
         }
     }
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
                 .dependencies
                 .iter()
                 .filter(|(property, _)| item.contains_key(property))
-                .flat_map(move |(_, node)| node.validate(instance, instance_path))
+                .flat_map(move |(_, node)| node.validate(instance, location))
                 .collect();
             Box::new(errors.into_iter())
         } else {

@@ -43,18 +43,14 @@ impl Validate for ContentMediaTypeValidator {
         }
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::String(item) = instance {
             if (self.func)(item) {
                 no_error()
             } else {
                 error(ValidationError::content_media_type(
                     self.location.clone(),
-                    instance_path.into(),
+                    location.into(),
                     instance,
                     &self.media_type,
                 ))
@@ -96,18 +92,14 @@ impl Validate for ContentEncodingValidator {
         }
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::String(item) = instance {
             if (self.func)(item) {
                 no_error()
             } else {
                 error(ValidationError::content_encoding(
                     self.location.clone(),
-                    instance_path.into(),
+                    location.into(),
                     instance,
                     &self.encoding,
                 ))
@@ -159,16 +151,12 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
         }
     }
 
-    fn validate<'instance>(
-        &self,
-        instance: &'instance Value,
-        instance_path: &LazyLocation,
-    ) -> ErrorIterator<'instance> {
+    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
         if let Value::String(item) = instance {
             match (self.converter)(item) {
                 Ok(None) => error(ValidationError::content_encoding(
                     self.location.join("contentEncoding"),
-                    instance_path.into(),
+                    location.into(),
                     instance,
                     &self.encoding,
                 )),
@@ -178,7 +166,7 @@ impl Validate for ContentMediaTypeAndEncodingValidator {
                     } else {
                         error(ValidationError::content_media_type(
                             self.location.join("contentMediaType"),
-                            instance_path.into(),
+                            location.into(),
                             instance,
                             &self.media_type,
                         ))
