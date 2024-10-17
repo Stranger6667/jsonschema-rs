@@ -288,9 +288,6 @@ pub(crate) fn get_for_draft(draft: Draft, keyword: &str) -> Option<(Keyword, Com
             BuiltinKeyword::DependentSchemas.into(),
             dependencies::compile_dependent_schemas,
         )),
-        (Draft::Draft201909 | Draft::Draft202012, "prefixItems") => {
-            Some((BuiltinKeyword::PrefixItems.into(), prefix_items::compile))
-        }
         (Draft::Draft201909 | Draft::Draft202012, "unevaluatedItems") => Some((
             BuiltinKeyword::UnevaluatedItems.into(),
             unevaluated_items::compile,
@@ -300,6 +297,9 @@ pub(crate) fn get_for_draft(draft: Draft, keyword: &str) -> Option<(Keyword, Com
             unevaluated_properties::compile,
         )),
         // Draft 2020-12 specific
+        (Draft::Draft202012, "prefixItems") => {
+            Some((BuiltinKeyword::PrefixItems.into(), prefix_items::compile))
+        }
         (Draft::Draft202012, "$dynamicRef") => {
             Some((BuiltinKeyword::DynamicRef.into(), ref_::compile_dynamic_ref))
         }
