@@ -12,7 +12,7 @@ use crate::{
     Keyword, SchemaResolver, ValidationError, Validator,
 };
 use ahash::AHashMap;
-use referencing::{Draft, Resource, Retrieve};
+use referencing::{uri, Draft, Resource, Retrieve};
 use serde_json::Value;
 use std::{borrow::Cow, fmt, sync::Arc};
 
@@ -64,11 +64,25 @@ impl ValidationOptions {
         // Preference:
         //  - Explicitly set
         //  - Autodetected
-        //  - Default for enum
+        //  - Default
         if let Some(draft) = self.draft {
             draft
         } else {
-            Draft::default().detect(contents).unwrap_or_default()
+            let default = Draft::default();
+            match default.detect(contents) {
+                Ok(draft) => draft,
+                Err(referencing::Error::UnknownSpecification { specification }) => {
+                    // Try to retrieve the specification and detect its draft
+                    if let Ok(Ok(retrieved)) = uri::from_str(&specification)
+                        .map(|uri| self.retriever.retrieve(&uri.borrow()))
+                    {
+                        default.detect(&retrieved).unwrap_or_default()
+                    } else {
+                        default
+                    }
+                }
+                _ => default,
+            }
         }
     }
     /// Build a JSON Schema validator using the current options.

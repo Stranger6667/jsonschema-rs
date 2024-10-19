@@ -11,7 +11,7 @@ use crate::{
     ValidationError, ValidationOptions,
 };
 use once_cell::sync::OnceCell;
-use referencing::{Draft, List, Registry, Resource, Uri};
+use referencing::{Draft, List, Registry, Resource, Uri, VocabularySet};
 use serde_json::{Map, Value};
 
 pub(crate) enum RefValidator {
@@ -38,13 +38,16 @@ impl RefValidator {
                 base_uri,
                 scopes,
                 location,
+                vocabularies: ctx.vocabularies().clone(),
                 draft: ctx.draft(),
                 inner: OnceCell::default(),
             })))
         } else {
             let (contents, resolver, draft) = ctx.lookup(reference)?.into_inner();
+            let vocabularies = ctx.registry.find_vocabularies(draft, contents);
             let resource_ref = draft.create_resource_ref(contents);
-            let ctx = ctx.with_resolver_and_draft(resolver, resource_ref.draft(), location);
+            let ctx =
+                ctx.with_resolver_and_draft(resolver, resource_ref.draft(), vocabularies, location);
             let inner =
                 compiler::compile_with(&ctx, resource_ref).map_err(|err| err.into_owned())?;
             Ok(Box::new(RefValidator::Default { inner }))
@@ -65,6 +68,7 @@ pub(crate) struct LazyRefValidator {
     registry: Arc<Registry>,
     scopes: List<Uri<String>>,
     base_uri: Arc<Uri<String>>,
+    vocabularies: VocabularySet,
     location: Location,
     draft: Draft,
     inner: OnceCell<SchemaNode>,
@@ -87,6 +91,7 @@ impl LazyRefValidator {
             registry: Arc::clone(&ctx.registry),
             base_uri,
             scopes,
+            vocabularies: ctx.vocabularies().clone(),
             location: ctx.location().join("$recursiveRef"),
             draft: ctx.draft(),
             inner: OnceCell::default(),
@@ -102,6 +107,7 @@ impl LazyRefValidator {
                 Arc::clone(&self.config),
                 Arc::clone(&self.registry),
                 Rc::new(resolver),
+                self.vocabularies.clone(),
                 self.draft,
                 self.location.clone(),
             );

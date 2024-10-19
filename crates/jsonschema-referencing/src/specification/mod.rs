@@ -7,7 +7,11 @@ mod draft7;
 mod ids;
 mod subresources;
 
-use crate::{anchors, Anchor, Error, Resolver, Resource, ResourceRef, Segments};
+use crate::{
+    anchors,
+    vocabularies::{VocabularySet, DRAFT_2019_09_VOCABULARIES, DRAFT_2020_12_VOCABULARIES},
+    Anchor, Error, Resolver, Resource, ResourceRef, Segments,
+};
 
 /// JSON Schema specification versions.
 #[non_exhaustive]
@@ -169,6 +173,14 @@ impl Draft {
             "$dynamicAnchor" | "$dynamicRef" if *self == Draft::Draft202012 => true,
 
             _ => false,
+        }
+    }
+
+    pub(crate) fn default_vocabularies(self) -> VocabularySet {
+        match self {
+            Draft::Draft4 | Draft::Draft6 | Draft::Draft7 => VocabularySet::new(),
+            Draft::Draft201909 => VocabularySet::from_known(DRAFT_2019_09_VOCABULARIES),
+            Draft::Draft202012 => VocabularySet::from_known(DRAFT_2020_12_VOCABULARIES),
         }
     }
 }
