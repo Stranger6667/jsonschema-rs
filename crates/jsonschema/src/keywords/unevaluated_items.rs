@@ -14,7 +14,7 @@ use super::CompilationResult;
 
 pub(crate) trait ItemsFilter: Send + Sync + Sized + 'static {
     fn new<'a>(
-        ctx: &compiler::Context<'_>,
+        ctx: &'a compiler::Context<'a>,
         parent: &'a Map<String, Value>,
     ) -> Result<Self, ValidationError<'a>>;
     fn unevaluated(&self) -> Option<&SchemaNode>;
@@ -37,7 +37,7 @@ pub(crate) struct UnevaluatedItemsValidator<F: ItemsFilter> {
 impl<F: ItemsFilter> UnevaluatedItemsValidator<F> {
     #[inline]
     pub(crate) fn compile<'a>(
-        ctx: &compiler::Context,
+        ctx: &'a compiler::Context,
         parent: &'a Map<String, Value>,
     ) -> CompilationResult<'a> {
         Ok(Box::new(UnevaluatedItemsValidator {
@@ -93,6 +93,7 @@ impl<F: ItemsFilter> Validate for UnevaluatedItemsValidator<F> {
 struct Draft2019ItemsFilter {
     unevaluated: Option<SchemaNode>,
     contains: Option<SchemaNode>,
+    ref_: Option<Box<Self>>,
     items: Option<usize>,
     conditional: Option<Box<ConditionalFilter<Self>>>,
     all_of: Option<CombinatorFilter<Self>>,
@@ -102,9 +103,18 @@ struct Draft2019ItemsFilter {
 
 impl ItemsFilter for Draft2019ItemsFilter {
     fn new<'a>(
-        ctx: &compiler::Context<'_>,
+        ctx: &'a compiler::Context<'_>,
         parent: &'a Map<String, Value>,
     ) -> Result<Self, ValidationError<'a>> {
+        let mut ref_ = None;
+
+        if let Some(Value::String(reference)) = parent.get("$ref") {
+            let resolved = ctx.lookup(reference)?;
+            if let Value::Object(subschema) = resolved.contents() {
+                ref_ = Some(Box::new(Self::new(ctx, subschema)?));
+            }
+        }
+
         let mut conditional = None;
 
         if let Some(subschema) = parent.get("if") {
@@ -162,6 +172,7 @@ impl ItemsFilter for Draft2019ItemsFilter {
         Ok(Draft2019ItemsFilter {
             unevaluated,
             contains,
+            ref_,
             items,
             conditional,
             all_of,
@@ -178,6 +189,11 @@ impl ItemsFilter for Draft2019ItemsFilter {
                 *idx = true;
             }
         }
+
+        if let Some(ref_) = &self.ref_ {
+            ref_.mark_evaluated_indexes(instance, indexes);
+        }
+
         if let Some(conditional) = &self.conditional {
             conditional.mark_evaluated_indexes(instance, indexes);
         }
@@ -237,6 +253,7 @@ impl ItemsFilter for Draft2019ItemsFilter {
 struct DefaultItemsFilter {
     unevaluated: Option<SchemaNode>,
     contains: Option<SchemaNode>,
+    ref_: Option<Box<Self>>,
     items: bool,
     prefix_items: Option<usize>,
     conditional: Option<Box<ConditionalFilter<Self>>>,
@@ -247,24 +264,33 @@ struct DefaultItemsFilter {
 
 impl ItemsFilter for DefaultItemsFilter {
     fn new<'a>(
-        ctx: &compiler::Context<'_>,
+        ctx: &'a compiler::Context<'a>,
         parent: &'a Map<String, Value>,
     ) -> Result<DefaultItemsFilter, ValidationError<'a>> {
+        let mut ref_ = None;
+
+        if let Some(Value::String(reference)) = parent.get("$ref") {
+            let resolved = ctx.lookup(reference)?;
+            if let Value::Object(subschema) = resolved.contents() {
+                ref_ = Some(Box::new(Self::new(ctx, subschema)?));
+            }
+        }
+
         let mut conditional = None;
 
         if let Some(subschema) = parent.get("if") {
             if let Value::Object(if_parent) = subschema {
                 let mut then_ = None;
                 if let Some(Value::Object(subschema)) = parent.get("then") {
-                    then_ = Some(DefaultItemsFilter::new(ctx, subschema)?);
+                    then_ = Some(Self::new(ctx, subschema)?);
                 }
                 let mut else_ = None;
                 if let Some(Value::Object(subschema)) = parent.get("else") {
-                    else_ = Some(DefaultItemsFilter::new(ctx, subschema)?);
+                    else_ = Some(Self::new(ctx, subschema)?);
                 }
                 conditional = Some(Box::new(ConditionalFilter {
                     condition: compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
-                    if_: DefaultItemsFilter::new(ctx, if_parent)?,
+                    if_: Self::new(ctx, if_parent)?,
                     then_,
                     else_,
                 }));
@@ -301,6 +327,7 @@ impl ItemsFilter for DefaultItemsFilter {
         Ok(DefaultItemsFilter {
             unevaluated,
             contains,
+            ref_,
             items: parent.contains_key("items"),
             prefix_items,
             conditional,
@@ -320,6 +347,11 @@ impl ItemsFilter for DefaultItemsFilter {
             }
             return;
         }
+
+        if let Some(ref_) = &self.ref_ {
+            ref_.mark_evaluated_indexes(instance, indexes);
+        }
+
         if let Some(limit) = self.prefix_items {
             for idx in indexes.iter_mut().take(limit) {
                 *idx = true;
@@ -395,7 +427,7 @@ impl<F: ItemsFilter> CombinatorFilter<F> {
 
 impl<F: ItemsFilter> CombinatorFilter<F> {
     fn new<'a>(
-        ctx: &compiler::Context,
+        ctx: &'a compiler::Context,
         subschemas: &'a [Value],
     ) -> Result<CombinatorFilter<F>, ValidationError<'a>> {
         let mut buffer = Vec::with_capacity(subschemas.len());
@@ -432,7 +464,7 @@ impl<F: ItemsFilter> ConditionalFilter<F> {
 }
 
 pub(crate) fn compile<'a>(
-    ctx: &compiler::Context,
+    ctx: &'a compiler::Context,
     parent: &'a Map<String, Value>,
     schema: &'a Value,
 ) -> Option<CompilationResult<'a>> {
