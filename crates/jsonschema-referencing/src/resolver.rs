@@ -221,7 +221,7 @@ impl<'r> Resolved<'r> {
     }
     /// Resolved contents.
     #[must_use]
-    pub fn contents(&self) -> &Value {
+    pub fn contents(&self) -> &'r Value {
         self.contents
     }
     /// Resolver used to resolve this contents.

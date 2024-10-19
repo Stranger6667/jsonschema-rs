@@ -18,16 +18,12 @@ mod tests {
         "draft4::optional::bignum::integer::a_negative_bignum_is_an_integer",
         "draft2019-09::optional::ref_of_unknown_keyword::reference_internals_of_known_non_applicator",
         "draft2019-09::r#ref::ref_with_recursive_anchor",
-        "draft2019-09::unevaluated_items::unevaluated_items_before_ref::with_no_unevaluated_items_8",
         "draft2019-09::unevaluated_items::unevaluated_items_with_recursive_ref::with_no_unevaluated_items_9",
-        "draft2019-09::unevaluated_items::unevaluated_items_with_ref::with_no_unevaluated_items_7",
         "draft2019-09::unevaluated_properties::unevaluated_properties_with_recursive_ref",
         "draft2019-09::vocabulary::schema_that_uses_custom_metaschema_with_with_no_validation_vocabulary",
         "draft2020-12::optional::ref_of_unknown_keyword::reference_internals_of_known_non_applicator",
         "draft2020-12::unevaluated_properties::unevaluated_properties_with_dynamic_ref",
-        "draft2020-12::unevaluated_items::unevaluated_items_before_ref::with_no_unevaluated_items_18",
         "draft2020-12::unevaluated_items::unevaluated_items_with_dynamic_ref::with_no_unevaluated_items_19",
-        "draft2020-12::unevaluated_items::unevaluated_items_with_ref::with_no_unevaluated_items_17",
         "draft2020-12::vocabulary",
     ]
 )]
@@ -58,74 +54,78 @@ mod tests {
             if let Err(mut errors_iterator) = result {
                 let first_error = errors_iterator.next();
                 assert!(
-                first_error.is_none(),
-                "Test case should not have validation errors:\nGroup: {}\nTest case: {}\nSchema: {}\nInstance: {}\nError: {:?}",
-                test.case,
-                test.description,
-                test.schema,
-                test.data,
-                first_error,
-            );
+                    first_error.is_none(),
+                    "Test case should not have validation errors:\nGroup: {}\nTest case: {}\nSchema: {}\nInstance: {}\nError: {:?}",
+                    test.case,
+                    test.description,
+                    pretty_json(&test.schema),
+                    pretty_json(&test.data),
+                    first_error.map(|err| err.to_string()),
+                );
             }
             assert!(
                 validator.is_valid(&test.data),
                 "Test case should be valid:\nCase: {}\nTest: {}\nSchema: {}\nInstance: {}",
                 test.case,
                 test.description,
-                test.schema,
-                test.data,
+                pretty_json(&test.schema),
+                pretty_json(&test.data),
             );
             let output = validator.apply(&test.data).basic();
             assert!(
-            output.is_valid(),
-            "Test case should be valid via basic output:\nCase: {}\nTest: {}\nSchema: {}\nInstance: {}\nError: {:?}",
-            test.case,
-            test.description,
-            test.schema,
-            test.data,
-            output
-        );
+                output.is_valid(),
+                "Test case should be valid via basic output:\nCase: {}\nTest: {}\nSchema: {}\nInstance: {}\nError: {:?}",
+                test.case,
+                test.description,
+                pretty_json(&test.schema),
+                pretty_json(&test.data),
+                output
+            );
         } else {
             assert!(
-            result.is_err(),
-            "Test case should have validation errors:\nCase: {}\nTest: {}\nSchema: {}\nInstance: {}",
-            test.case,
-            test.description,
-            test.schema,
-            test.data,
-        );
+                result.is_err(),
+                "Test case should have validation errors:\nCase: {}\nTest: {}\nSchema: {}\nInstance: {}",
+                test.case,
+                test.description,
+                pretty_json(&test.schema),
+                pretty_json(&test.data),
+            );
             let errors = result.unwrap_err();
             for error in errors {
                 let pointer = error.instance_path.as_str();
                 assert_eq!(
-                test.data.pointer(pointer), Some(&*error.instance),
-                "Expected error instance did not match actual error instance:\nCase: {}\nTest: {}\nSchema: {}\nInstance: {}\nExpected pointer: {:#?}\nActual pointer: {:#?}",
-                test.case,
-                test.description,
-                test.schema,
-                test.data,
-                &*error.instance,
-                &pointer,
-            );
+                    test.data.pointer(pointer), Some(&*error.instance),
+                    "Expected error instance did not match actual error instance:\nCase: {}\nTest: {}\nSchema: {}\nInstance: {}\nExpected pointer: {:#?}\nActual pointer: {:#?}",
+                    test.case,
+                    test.description,
+                    pretty_json(&test.schema),
+                    pretty_json(&test.data),
+                    &*error.instance,
+                    &pointer,
+                );
             }
             assert!(
                 !validator.is_valid(&test.data),
                 "Test case should be invalid:\nCase: {}\nTest: {}\nSchema: {}\nInstance: {}",
                 test.case,
                 test.description,
-                test.schema,
-                test.data,
+                pretty_json(&test.schema),
+                pretty_json(&test.data),
             );
             let output = validator.apply(&test.data).basic();
             assert!(
-            !output.is_valid(),
-            "Test case should be invalid via basic output:\nCase: {}\nTest: {}\nSchema: {}\nInstance: {}",
-            test.case,
-            test.description,
-            test.schema,
-            test.data,
-        );
+                !output.is_valid(),
+                "Test case should be invalid via basic output:\nCase: {}\nTest: {}\nSchema: {}\nInstance: {}",
+                test.case,
+                test.description,
+                pretty_json(&test.schema),
+                pretty_json(&test.data),
+            );
         }
+    }
+
+    fn pretty_json(v: &serde_json::Value) -> String {
+        serde_json::to_string_pretty(v).expect("Failed to format JSON")
     }
 
     #[test]

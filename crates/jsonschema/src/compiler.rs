@@ -100,7 +100,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub(crate) fn lookup(&self, reference: &str) -> Result<Resolved<'_>, referencing::Error> {
+    pub(crate) fn lookup(&'a self, reference: &str) -> Result<Resolved<'a>, referencing::Error> {
         self.resolver.lookup(reference)
     }
 

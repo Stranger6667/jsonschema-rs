@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Support `$ref` in `unevaluatedItems`.
+
 ### Changed
 
 - Ignore `prefixItems` under Draft 2019-09 as it was introduced in Draft 2020-12.

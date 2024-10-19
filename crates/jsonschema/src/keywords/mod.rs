@@ -49,7 +49,7 @@ pub(crate) type CompilationResult<'a> = Result<BoxedValidator, error::Validation
 pub(crate) type BoxedValidator = Box<dyn Validate + Send + Sync>;
 
 type CompileFunc<'a> =
-    fn(&compiler::Context, &'a Map<String, Value>, &'a Value) -> Option<CompilationResult<'a>>;
+    fn(&'a compiler::Context, &'a Map<String, Value>, &'a Value) -> Option<CompilationResult<'a>>;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Keyword {
