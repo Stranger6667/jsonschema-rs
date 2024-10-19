@@ -94,6 +94,7 @@ struct Draft2019ItemsFilter {
     unevaluated: Option<SchemaNode>,
     contains: Option<SchemaNode>,
     ref_: Option<Box<Self>>,
+    recursive_ref: Option<Box<Self>>,
     items: Option<usize>,
     conditional: Option<Box<ConditionalFilter<Self>>>,
     all_of: Option<CombinatorFilter<Self>>,
@@ -112,6 +113,14 @@ impl ItemsFilter for Draft2019ItemsFilter {
             let resolved = ctx.lookup(reference)?;
             if let Value::Object(subschema) = resolved.contents() {
                 ref_ = Some(Box::new(Self::new(ctx, subschema)?));
+            }
+        }
+        let mut recursive_ref = None;
+
+        if parent.contains_key("$recursiveRef") {
+            let resolved = ctx.lookup_recursive_reference()?;
+            if let Value::Object(subschema) = resolved.contents() {
+                recursive_ref = Some(Box::new(Self::new(ctx, subschema)?));
             }
         }
 
@@ -173,6 +182,7 @@ impl ItemsFilter for Draft2019ItemsFilter {
             unevaluated,
             contains,
             ref_,
+            recursive_ref,
             items,
             conditional,
             all_of,
@@ -192,6 +202,10 @@ impl ItemsFilter for Draft2019ItemsFilter {
 
         if let Some(ref_) = &self.ref_ {
             ref_.mark_evaluated_indexes(instance, indexes);
+        }
+
+        if let Some(recursive_ref) = &self.recursive_ref {
+            recursive_ref.mark_evaluated_indexes(instance, indexes);
         }
 
         if let Some(conditional) = &self.conditional {
@@ -254,6 +268,7 @@ struct DefaultItemsFilter {
     unevaluated: Option<SchemaNode>,
     contains: Option<SchemaNode>,
     ref_: Option<Box<Self>>,
+    dynamic_ref: Option<Box<Self>>,
     items: bool,
     prefix_items: Option<usize>,
     conditional: Option<Box<ConditionalFilter<Self>>>,
@@ -273,6 +288,15 @@ impl ItemsFilter for DefaultItemsFilter {
             let resolved = ctx.lookup(reference)?;
             if let Value::Object(subschema) = resolved.contents() {
                 ref_ = Some(Box::new(Self::new(ctx, subschema)?));
+            }
+        }
+
+        let mut dynamic_ref = None;
+
+        if let Some(Value::String(reference)) = parent.get("$dynamicRef") {
+            let resolved = ctx.lookup(reference)?;
+            if let Value::Object(subschema) = resolved.contents() {
+                dynamic_ref = Some(Box::new(Self::new(ctx, subschema)?));
             }
         }
 
@@ -328,6 +352,7 @@ impl ItemsFilter for DefaultItemsFilter {
             unevaluated,
             contains,
             ref_,
+            dynamic_ref,
             items: parent.contains_key("items"),
             prefix_items,
             conditional,
@@ -350,6 +375,10 @@ impl ItemsFilter for DefaultItemsFilter {
 
         if let Some(ref_) = &self.ref_ {
             ref_.mark_evaluated_indexes(instance, indexes);
+        }
+
+        if let Some(dynamic_ref) = &self.dynamic_ref {
+            dynamic_ref.mark_evaluated_indexes(instance, indexes);
         }
 
         if let Some(limit) = self.prefix_items {

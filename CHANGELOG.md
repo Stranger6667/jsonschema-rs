@@ -4,7 +4,7 @@
 
 ### Added
 
-- Support `$ref` in `unevaluatedItems`.
+- Support `$ref`, `$recursiveRef`, and `$dynamicRef` in `unevaluatedItems`. [#287](https://github.com/Stranger6667/jsonschema-rs/issues/287)
 
 ### Changed
 

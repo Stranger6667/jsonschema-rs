@@ -55,14 +55,8 @@ NOT_SUPPORTED_CASES = {
     "4": ("bignum.json",),
     "6": ("bignum.json",),
     "7": ("bignum.json",),
-    "2019-09": ("bignum.json", "unevaluatedItems.json", "vocabulary.json", "ref.json", "unevaluatedProperties.json"),
-    "2020-12": (
-        "bignum.json",
-        "unevaluatedItems.json",
-        "vocabulary.json",
-        "cross-draft.json",
-        "unevaluatedProperties.json",
-    ),
+    "2019-09": ("bignum.json", "vocabulary.json", "ref.json", "unevaluatedProperties.json"),
+    "2020-12": ("bignum.json", "vocabulary.json", "unevaluatedProperties.json"),
 }
 
 
