@@ -18,9 +18,7 @@ mod tests {
         "draft4::optional::bignum::integer::a_negative_bignum_is_an_integer",
         "draft2019-09::r#ref::ref_with_recursive_anchor",
         "draft2019-09::unevaluated_properties::unevaluated_properties_with_recursive_ref",
-        "draft2019-09::vocabulary::schema_that_uses_custom_metaschema_with_with_no_validation_vocabulary",
         "draft2020-12::unevaluated_properties::unevaluated_properties_with_dynamic_ref",
-        "draft2020-12::vocabulary::schema_that_uses_custom_metaschema_with_with_no_validation_vocabulary",
     ]
 )]
     fn test_suite(test: Test) {

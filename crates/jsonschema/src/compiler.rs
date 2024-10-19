@@ -18,7 +18,7 @@ use ahash::{AHashMap, AHashSet};
 use once_cell::sync::Lazy;
 use referencing::{
     uri, Draft, List, Registry, Resolved, Resolver, Resource, ResourceRef, Retrieve, Uri,
-    SPECIFICATIONS,
+    Vocabulary, VocabularySet, SPECIFICATIONS,
 };
 use serde_json::Value;
 use std::{cell::RefCell, rc::Rc, sync::Arc};
@@ -36,6 +36,7 @@ pub(crate) struct Context<'a> {
     config: Arc<ValidationOptions>,
     pub(crate) registry: Arc<Registry>,
     resolver: Rc<Resolver<'a>>,
+    vocabularies: VocabularySet,
     location: Location,
     pub(crate) draft: Draft,
     seen: Rc<RefCell<AHashSet<Arc<Uri<String>>>>>,
@@ -46,6 +47,7 @@ impl<'a> Context<'a> {
         config: Arc<ValidationOptions>,
         registry: Arc<Registry>,
         resolver: Rc<Resolver<'a>>,
+        vocabularies: VocabularySet,
         draft: Draft,
         location: Location,
     ) -> Self {
@@ -54,6 +56,7 @@ impl<'a> Context<'a> {
             registry,
             resolver,
             location,
+            vocabularies,
             draft,
             seen: Rc::new(RefCell::new(AHashSet::new())),
         }
@@ -75,6 +78,7 @@ impl<'a> Context<'a> {
             config: Arc::clone(&self.config),
             registry: Arc::clone(&self.registry),
             resolver: Rc::new(resolver),
+            vocabularies: self.vocabularies.clone(),
             draft: resource.draft(),
             location: self.location.clone(),
             seen: Rc::clone(&self.seen),
@@ -94,6 +98,7 @@ impl<'a> Context<'a> {
             config: Arc::clone(&self.config),
             registry: Arc::clone(&self.registry),
             resolver: Rc::clone(&self.resolver),
+            vocabularies: self.vocabularies.clone(),
             location,
             draft: self.draft,
             seen: Rc::clone(&self.seen),
@@ -137,6 +142,7 @@ impl<'a> Context<'a> {
         &'a self,
         resolver: Resolver<'a>,
         draft: Draft,
+        vocabularies: VocabularySet,
         location: Location,
     ) -> Context<'a> {
         Context {
@@ -144,6 +150,7 @@ impl<'a> Context<'a> {
             registry: Arc::clone(&self.registry),
             resolver: Rc::new(resolver),
             draft,
+            vocabularies,
             location,
             seen: Rc::clone(&self.seen),
         }
@@ -226,6 +233,18 @@ impl<'a> Context<'a> {
     pub(crate) fn location(&self) -> &Location {
         &self.location
     }
+
+    pub(crate) fn vocabularies(&self) -> &VocabularySet {
+        &self.vocabularies
+    }
+
+    pub(crate) fn has_vocabulary(&self, vocabulary: &Vocabulary) -> bool {
+        if self.draft() < Draft::Draft201909 || vocabulary == &Vocabulary::Core {
+            true
+        } else {
+            self.vocabularies.contains(vocabulary)
+        }
+    }
 }
 
 const EXPECT_MESSAGE: &str = "Invalid meta-schema";
@@ -283,7 +302,6 @@ pub(crate) fn build_validator(
     for (uri, resource) in config.store.drain() {
         // Deprecated `store` has no mention of specification, under which these resources
         // should be interpreted. Therefore use the same logic as for the root resource
-        //
         let draft = if let Some(draft) = explicit_draft {
             draft
         } else {
@@ -310,6 +328,7 @@ pub(crate) fn build_validator(
         &*retriever,
         draft,
     )?);
+    let vocabularies = registry.find_vocabularies(draft, schema);
     let resolver = Rc::new(registry.try_resolver(&base_uri)?);
 
     let config = Arc::new(config);
@@ -317,6 +336,7 @@ pub(crate) fn build_validator(
         Arc::clone(&config),
         Arc::clone(&registry),
         resolver,
+        vocabularies,
         draft,
         Location::new(),
     );
@@ -403,9 +423,8 @@ pub(crate) fn compile_with<'a>(
                     let validator = CustomKeyword::new(factory.init(schema, value, path)?);
                     let validator: BoxedValidator = Box::new(validator);
                     validators.push((Keyword::custom(keyword), validator));
-                } else if let Some((keyword, validator)) =
-                    keywords::get_for_draft(ctx.draft(), keyword)
-                        .and_then(|(keyword, f)| f(ctx, schema, value).map(|v| (keyword, v)))
+                } else if let Some((keyword, validator)) = keywords::get_for_draft(ctx, keyword)
+                    .and_then(|(keyword, f)| f(ctx, schema, value).map(|v| (keyword, v)))
                 {
                     validators.push((keyword, validator.map_err(|err| err.into_owned())?));
                 } else if !ctx.is_known_keyword(keyword) {

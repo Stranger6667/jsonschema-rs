@@ -40,7 +40,7 @@ pub(crate) mod unevaluated_properties;
 pub(crate) mod unique_items;
 use core::fmt;
 
-use referencing::Draft;
+use referencing::{Draft, Vocabulary};
 use serde_json::{Map, Value};
 
 use crate::{compiler, error, validator::Validate};
@@ -174,47 +174,88 @@ impl fmt::Display for Keyword {
     }
 }
 
-pub(crate) fn get_for_draft(draft: Draft, keyword: &str) -> Option<(Keyword, CompileFunc)> {
-    match (draft, keyword) {
+pub(crate) fn get_for_draft<'a>(
+    ctx: &compiler::Context<'a>,
+    keyword: &'a str,
+) -> Option<(Keyword, CompileFunc<'a>)> {
+    match (ctx.draft(), keyword) {
         // Keywords common to all drafts
         (_, "$ref") => Some((BuiltinKeyword::Ref.into(), ref_::compile_ref)),
-        (_, "additionalItems") => Some((
+        (_, "additionalItems") if ctx.has_vocabulary(&Vocabulary::Applicator) => Some((
             BuiltinKeyword::AdditionalItems.into(),
             additional_items::compile,
         )),
-        (_, "additionalProperties") => Some((
+        (_, "additionalProperties") if ctx.has_vocabulary(&Vocabulary::Applicator) => Some((
             BuiltinKeyword::AdditionalProperties.into(),
             additional_properties::compile,
         )),
-        (_, "allOf") => Some((BuiltinKeyword::AllOf.into(), all_of::compile)),
-        (_, "anyOf") => Some((BuiltinKeyword::AnyOf.into(), any_of::compile)),
-        (_, "dependencies") => Some((BuiltinKeyword::Dependencies.into(), dependencies::compile)),
-        (_, "enum") => Some((BuiltinKeyword::Enum.into(), enum_::compile)),
+        (_, "allOf") if ctx.has_vocabulary(&Vocabulary::Applicator) => {
+            Some((BuiltinKeyword::AllOf.into(), all_of::compile))
+        }
+        (_, "anyOf") if ctx.has_vocabulary(&Vocabulary::Applicator) => {
+            Some((BuiltinKeyword::AnyOf.into(), any_of::compile))
+        }
+        (_, "dependencies") if ctx.has_vocabulary(&Vocabulary::Applicator) => {
+            Some((BuiltinKeyword::Dependencies.into(), dependencies::compile))
+        }
+        (_, "enum") if ctx.has_vocabulary(&Vocabulary::Validation) => {
+            Some((BuiltinKeyword::Enum.into(), enum_::compile))
+        }
+        (Draft::Draft201909, "format") if ctx.has_vocabulary(&Vocabulary::Format) => {
+            Some((BuiltinKeyword::Format.into(), format::compile))
+        }
+        (Draft::Draft202012, "format") if ctx.has_vocabulary(&Vocabulary::FormatAnnotation) => {
+            Some((BuiltinKeyword::Format.into(), format::compile))
+        }
         (_, "format") => Some((BuiltinKeyword::Format.into(), format::compile)),
-        (_, "items") => Some((BuiltinKeyword::Items.into(), items::compile)),
-        (_, "maxItems") => Some((BuiltinKeyword::MaxItems.into(), max_items::compile)),
-        (_, "maxLength") => Some((BuiltinKeyword::MaxLength.into(), max_length::compile)),
-        (_, "maxProperties") => Some((
+        (_, "items") if ctx.has_vocabulary(&Vocabulary::Applicator) => {
+            Some((BuiltinKeyword::Items.into(), items::compile))
+        }
+        (_, "maxItems") if ctx.has_vocabulary(&Vocabulary::Validation) => {
+            Some((BuiltinKeyword::MaxItems.into(), max_items::compile))
+        }
+        (_, "maxLength") if ctx.has_vocabulary(&Vocabulary::Validation) => {
+            Some((BuiltinKeyword::MaxLength.into(), max_length::compile))
+        }
+        (_, "maxProperties") if ctx.has_vocabulary(&Vocabulary::Validation) => Some((
             BuiltinKeyword::MaxProperties.into(),
             max_properties::compile,
         )),
-        (_, "minItems") => Some((BuiltinKeyword::MinItems.into(), min_items::compile)),
-        (_, "minLength") => Some((BuiltinKeyword::MinLength.into(), min_length::compile)),
-        (_, "minProperties") => Some((
+        (_, "minItems") if ctx.has_vocabulary(&Vocabulary::Validation) => {
+            Some((BuiltinKeyword::MinItems.into(), min_items::compile))
+        }
+        (_, "minLength") if ctx.has_vocabulary(&Vocabulary::Validation) => {
+            Some((BuiltinKeyword::MinLength.into(), min_length::compile))
+        }
+        (_, "minProperties") if ctx.has_vocabulary(&Vocabulary::Validation) => Some((
             BuiltinKeyword::MinProperties.into(),
             min_properties::compile,
         )),
-        (_, "multipleOf") => Some((BuiltinKeyword::MultipleOf.into(), multiple_of::compile)),
-        (_, "not") => Some((BuiltinKeyword::Not.into(), not::compile)),
-        (_, "oneOf") => Some((BuiltinKeyword::OneOf.into(), one_of::compile)),
-        (_, "pattern") => Some((BuiltinKeyword::Pattern.into(), pattern::compile)),
-        (_, "patternProperties") => Some((
+        (_, "multipleOf") if ctx.has_vocabulary(&Vocabulary::Validation) => {
+            Some((BuiltinKeyword::MultipleOf.into(), multiple_of::compile))
+        }
+        (_, "not") if ctx.has_vocabulary(&Vocabulary::Applicator) => {
+            Some((BuiltinKeyword::Not.into(), not::compile))
+        }
+        (_, "oneOf") if ctx.has_vocabulary(&Vocabulary::Applicator) => {
+            Some((BuiltinKeyword::OneOf.into(), one_of::compile))
+        }
+        (_, "pattern") if ctx.has_vocabulary(&Vocabulary::Validation) => {
+            Some((BuiltinKeyword::Pattern.into(), pattern::compile))
+        }
+        (_, "patternProperties") if ctx.has_vocabulary(&Vocabulary::Applicator) => Some((
             BuiltinKeyword::PatternProperties.into(),
             pattern_properties::compile,
         )),
-        (_, "properties") => Some((BuiltinKeyword::Properties.into(), properties::compile)),
-        (_, "required") => Some((BuiltinKeyword::Required.into(), required::compile)),
-        (_, "uniqueItems") => Some((BuiltinKeyword::UniqueItems.into(), unique_items::compile)),
+        (_, "properties") if ctx.has_vocabulary(&Vocabulary::Applicator) => {
+            Some((BuiltinKeyword::Properties.into(), properties::compile))
+        }
+        (_, "required") if ctx.has_vocabulary(&Vocabulary::Validation) => {
+            Some((BuiltinKeyword::Required.into(), required::compile))
+        }
+        (_, "uniqueItems") if ctx.has_vocabulary(&Vocabulary::Validation) => {
+            Some((BuiltinKeyword::UniqueItems.into(), unique_items::compile))
+        }
         // Draft 4 specific
         (Draft::Draft4, "maximum") => Some((
             BuiltinKeyword::Maximum.into(),
@@ -228,40 +269,50 @@ pub(crate) fn get_for_draft(draft: Draft, keyword: &str) -> Option<(Keyword, Com
             Some((BuiltinKeyword::Type.into(), legacy::type_draft_4::compile))
         }
         // Draft 6 and later
-        (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "const") => {
+        (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "const")
+            if ctx.has_vocabulary(&Vocabulary::Validation) =>
+        {
             Some((BuiltinKeyword::Const.into(), const_::compile))
         }
-        (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "contains") => {
+        (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "contains")
+            if ctx.has_vocabulary(&Vocabulary::Applicator) =>
+        {
             Some((BuiltinKeyword::Contains.into(), contains::compile))
         }
         (
             Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012,
             "exclusiveMaximum",
-        ) => Some((
+        ) if ctx.has_vocabulary(&Vocabulary::Validation) => Some((
             BuiltinKeyword::ExclusiveMaximum.into(),
             exclusive_maximum::compile,
         )),
         (
             Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012,
             "exclusiveMinimum",
-        ) => Some((
+        ) if ctx.has_vocabulary(&Vocabulary::Validation) => Some((
             BuiltinKeyword::ExclusiveMinimum.into(),
             exclusive_minimum::compile,
         )),
-        (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "maximum") => {
+        (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "maximum")
+            if ctx.has_vocabulary(&Vocabulary::Validation) =>
+        {
             Some((BuiltinKeyword::Maximum.into(), maximum::compile))
         }
-        (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "minimum") => {
+        (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "minimum")
+            if ctx.has_vocabulary(&Vocabulary::Validation) =>
+        {
             Some((BuiltinKeyword::Minimum.into(), minimum::compile))
         }
         (
             Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012,
             "propertyNames",
-        ) => Some((
+        ) if ctx.has_vocabulary(&Vocabulary::Applicator) => Some((
             BuiltinKeyword::PropertyNames.into(),
             property_names::compile,
         )),
-        (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "type") => {
+        (Draft::Draft6 | Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "type")
+            if ctx.has_vocabulary(&Vocabulary::Validation) =>
+        {
             Some((BuiltinKeyword::Type.into(), type_::compile))
         }
         (Draft::Draft6 | Draft::Draft7, "contentMediaType") => Some((
@@ -272,7 +323,9 @@ pub(crate) fn get_for_draft(draft: Draft, keyword: &str) -> Option<(Keyword, Com
             BuiltinKeyword::ContentEncoding.into(),
             content::compile_content_encoding,
         )),
-        (Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "if") => {
+        (Draft::Draft7 | Draft::Draft201909 | Draft::Draft202012, "if")
+            if ctx.has_vocabulary(&Vocabulary::Applicator) =>
+        {
             Some((BuiltinKeyword::If.into(), if_::compile))
         }
         // Draft 2019-09 specific
@@ -280,24 +333,54 @@ pub(crate) fn get_for_draft(draft: Draft, keyword: &str) -> Option<(Keyword, Com
             BuiltinKeyword::RecursiveRef.into(),
             ref_::compile_recursive_ref,
         )),
-        (Draft::Draft201909 | Draft::Draft202012, "dependentRequired") => Some((
-            BuiltinKeyword::DependentRequired.into(),
-            dependencies::compile_dependent_required,
-        )),
-        (Draft::Draft201909 | Draft::Draft202012, "dependentSchemas") => Some((
-            BuiltinKeyword::DependentSchemas.into(),
-            dependencies::compile_dependent_schemas,
-        )),
-        (Draft::Draft201909 | Draft::Draft202012, "unevaluatedItems") => Some((
-            BuiltinKeyword::UnevaluatedItems.into(),
-            unevaluated_items::compile,
-        )),
-        (Draft::Draft201909 | Draft::Draft202012, "unevaluatedProperties") => Some((
-            BuiltinKeyword::UnevaluatedProperties.into(),
-            unevaluated_properties::compile,
-        )),
+        (Draft::Draft201909 | Draft::Draft202012, "dependentRequired")
+            if ctx.has_vocabulary(&Vocabulary::Validation) =>
+        {
+            Some((
+                BuiltinKeyword::DependentRequired.into(),
+                dependencies::compile_dependent_required,
+            ))
+        }
+        (Draft::Draft201909 | Draft::Draft202012, "dependentSchemas")
+            if ctx.has_vocabulary(&Vocabulary::Applicator) =>
+        {
+            Some((
+                BuiltinKeyword::DependentSchemas.into(),
+                dependencies::compile_dependent_schemas,
+            ))
+        }
+        (Draft::Draft201909, "unevaluatedItems") if ctx.has_vocabulary(&Vocabulary::Applicator) => {
+            Some((
+                BuiltinKeyword::UnevaluatedItems.into(),
+                unevaluated_items::compile,
+            ))
+        }
+        (Draft::Draft202012, "unevaluatedItems")
+            if ctx.has_vocabulary(&Vocabulary::Unevaluated) =>
+        {
+            Some((
+                BuiltinKeyword::UnevaluatedItems.into(),
+                unevaluated_items::compile,
+            ))
+        }
+        (Draft::Draft201909, "unevaluatedProperties")
+            if ctx.has_vocabulary(&Vocabulary::Applicator) =>
+        {
+            Some((
+                BuiltinKeyword::UnevaluatedProperties.into(),
+                unevaluated_properties::compile,
+            ))
+        }
+        (Draft::Draft202012, "unevaluatedProperties")
+            if ctx.has_vocabulary(&Vocabulary::Unevaluated) =>
+        {
+            Some((
+                BuiltinKeyword::UnevaluatedProperties.into(),
+                unevaluated_properties::compile,
+            ))
+        }
         // Draft 2020-12 specific
-        (Draft::Draft202012, "prefixItems") => {
+        (Draft::Draft202012, "prefixItems") if ctx.has_vocabulary(&Vocabulary::Applicator) => {
             Some((BuiltinKeyword::PrefixItems.into(), prefix_items::compile))
         }
         (Draft::Draft202012, "$dynamicRef") => {

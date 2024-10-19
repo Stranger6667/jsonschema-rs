@@ -55,7 +55,6 @@ impl Resource {
     pub(crate) fn anchors(&self) -> impl Iterator<Item = Anchor> + '_ {
         self.draft.anchors(&self.contents)
     }
-
     pub(crate) fn pointer<'r>(
         &'r self,
         pointer: &str,
@@ -118,7 +117,7 @@ pub struct ResourceRef<'a> {
 impl<'a> ResourceRef<'a> {
     /// Create a new resource reference.
     #[must_use]
-    pub fn new(contents: &'a Value, draft: Draft) -> Self {
+    pub(crate) fn new(contents: &'a Value, draft: Draft) -> Self {
         ResourceRef { contents, draft }
     }
     /// Resource identifier.

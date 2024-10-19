@@ -12,6 +12,7 @@ mod retriever;
 mod segments;
 mod specification;
 pub mod uri;
+mod vocabularies;
 
 pub(crate) use anchors::Anchor;
 pub use error::{Error, UriError};
@@ -23,3 +24,4 @@ pub use resource::{Resource, ResourceRef};
 pub use retriever::{DefaultRetriever, Retrieve};
 pub(crate) use segments::Segments;
 pub use specification::Draft;
+pub use vocabularies::{Vocabulary, VocabularySet};

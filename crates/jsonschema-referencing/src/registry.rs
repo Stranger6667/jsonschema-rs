@@ -13,7 +13,9 @@ use serde_json::Value;
 use crate::{
     anchors::{AnchorKey, AnchorKeyRef},
     list::List,
-    meta, uri, Anchor, DefaultRetriever, Draft, Error, Resolver, Resource, Retrieve,
+    meta, uri,
+    vocabularies::{self, VocabularySet},
+    Anchor, DefaultRetriever, Draft, Error, Resolver, Resource, Retrieve,
 };
 
 type ResourceMap = AHashMap<Uri<String>, Arc<Resource>>;
@@ -316,6 +318,24 @@ impl Registry {
             Ok(new)
         }
     }
+    #[must_use]
+    pub fn find_vocabularies(&self, draft: Draft, contents: &Value) -> VocabularySet {
+        match draft.detect(contents) {
+            Ok(draft) => draft.default_vocabularies(),
+            Err(Error::UnknownSpecification { specification }) => {
+                // Try to lookup the specification and find enabled vocabularies
+                if let Ok(Some(resource)) =
+                    uri::from_str(&specification).map(|uri| self.resources.get(&uri))
+                {
+                    if let Ok(Some(vocabularies)) = vocabularies::find(resource.contents()) {
+                        return vocabularies;
+                    }
+                }
+                draft.default_vocabularies()
+            }
+            _ => unreachable!(),
+        }
+    }
 }
 
 fn process_resources(
@@ -357,7 +377,7 @@ fn process_resources(
             }
 
             // Collect references to external resources in this resource
-            collect_external_references(&base, resource.contents(), &mut external, &mut seen)?;
+            collect_external_resources(&base, resource.contents(), &mut external, &mut seen)?;
 
             // Process subresources
             for subresource in resource.subresources() {
@@ -365,14 +385,14 @@ fn process_resources(
                 // Collect references to external resources at this level
                 if let Some(sub_id) = subresource.id() {
                     let base = uri::resolve_against(&base.borrow(), sub_id)?;
-                    collect_external_references(
+                    collect_external_resources(
                         &base,
                         subresource.contents(),
                         &mut external,
                         &mut seen,
                     )?;
                 } else {
-                    collect_external_references(
+                    collect_external_resources(
                         &base,
                         subresource.contents(),
                         &mut external,
@@ -404,7 +424,7 @@ fn process_resources(
     Ok(())
 }
 
-fn collect_external_references(
+fn collect_external_resources(
     base: &Uri<String>,
     contents: &Value,
     collected: &mut AHashSet<Uri<String>>,
@@ -413,21 +433,29 @@ fn collect_external_references(
     if base.scheme().as_str() == "urn" {
         return Ok(());
     }
-    if let Some(reference) = contents.get("$ref").and_then(Value::as_str) {
-        if reference.starts_with('#') {
-            // Not an external reference
-            return Ok(());
+    for key in ["$ref", "$schema"] {
+        if let Some(reference) = contents.get(key).and_then(Value::as_str) {
+            if reference.starts_with('#')
+                || reference.starts_with("https://json-schema.org/draft/2020-12/")
+                || reference.starts_with("https://json-schema.org/draft/2019-09/")
+                || reference.starts_with("http://json-schema.org/draft-07/")
+                || reference.starts_with("http://json-schema.org/draft-06/")
+                || reference.starts_with("http://json-schema.org/draft-04/")
+            {
+                // Not an external resource
+                return Ok(());
+            }
+            let mut hasher = AHasher::default();
+            (base.as_str(), reference).hash(&mut hasher);
+            let hash = hasher.finish();
+            if !seen.insert(hash) {
+                // Reference has already been seen
+                return Ok(());
+            }
+            let mut resolved = uri::resolve_against(&base.borrow(), reference)?;
+            resolved.set_fragment(None);
+            collected.insert(resolved);
         }
-        let mut hasher = AHasher::default();
-        (base.as_str(), reference).hash(&mut hasher);
-        let hash = hasher.finish();
-        if !seen.insert(hash) {
-            // Reference has already been seen
-            return Ok(());
-        }
-        let mut resolved = uri::resolve_against(&base.borrow(), reference)?;
-        resolved.set_fragment(None);
-        collected.insert(resolved);
     }
     Ok(())
 }
