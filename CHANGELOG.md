@@ -5,6 +5,7 @@
 ### Added
 
 - Support `$ref`, `$recursiveRef`, and `$dynamicRef` in `unevaluatedItems`. [#287](https://github.com/Stranger6667/jsonschema-rs/issues/287)
+- Support for `$vocabulary`. [#263](https://github.com/Stranger6667/jsonschema-rs/issues/263)
 
 ### Changed
 
