@@ -13,8 +13,13 @@ use std::hash::{Hash, Hasher};
 
 // Based on implementation proposed by Sven Marnach:
 // https://stackoverflow.com/questions/60882381/what-is-the-fastest-correct-way-to-detect-that-there-are-no-duplicates-in-a-json
-#[derive(PartialEq)]
 pub(crate) struct HashedValue<'a>(&'a Value);
+
+impl PartialEq for HashedValue<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        equal(self.0, other.0)
+    }
+}
 
 impl Eq for HashedValue<'_> {}
 
@@ -24,12 +29,12 @@ impl Hash for HashedValue<'_> {
             Value::Null => state.write_u32(3_221_225_473), // chosen randomly
             Value::Bool(ref item) => item.hash(state),
             Value::Number(ref item) => {
-                if let Some(number) = item.as_u64() {
+                if let Some(number) = item.as_f64() {
+                    number.to_bits().hash(state)
+                } else if let Some(number) = item.as_u64() {
                     number.hash(state);
                 } else if let Some(number) = item.as_i64() {
                     number.hash(state);
-                } else if let Some(number) = item.as_f64() {
-                    number.to_bits().hash(state)
                 }
             }
             Value::String(ref item) => item.hash(state),
@@ -165,6 +170,8 @@ mod tests {
     #[test_case(&[json!(1), json!(1)] => false; "two non-unique elements")]
     #[test_case(&[json!(1), json!(2), json!(3)] => true; "three unique elements")]
     #[test_case(&[json!(1), json!(2), json!(1)] => false; "three non-unique elements")]
+    #[test_case(&[json!(1), json!(2), json!(3), json!(4), json!(5), json!(6), json!(7), json!(8), json!(9), json!(10), json!(11), json!(12), json!(13), json!(14), json!(15), json!(1.0)] => false; "positive numbers with fractions")]
+    #[test_case(&[json!(-1), json!(-2), json!(-3), json!(-4), json!(-5), json!(-6), json!(-7), json!(-8), json!(-9), json!(-10), json!(-11), json!(-12), json!(-13), json!(-14), json!(-15), json!(-1.0)] => false; "negative numbers with fractions")]
     #[test_case(&[json!(1), json!("string"), json!(true), json!(null), json!({"key": "value"}), json!([1, 2, 3])] => true; "mixed types")]
     #[test_case(&[json!({"a": 1, "b": 1}), json!({"a": 1, "b": 2}), json!({"a": 1, "b": 3})] => true; "complex objects unique")]
     #[test_case(&[json!({"a": 1, "b": 2}), json!({"b": 2, "a": 1}), json!({"a": 1, "b": 2})] => false; "complex objects non-unique")]

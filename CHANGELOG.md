@@ -11,6 +11,10 @@
 
 - Ignore `prefixItems` under Draft 2019-09 as it was introduced in Draft 2020-12.
 
+### Fixed
+
+- Numbers with zero fraction incorrectly handled in `uniqueItems`.
+
 ### Performance
 
 - Speedup `apply`.
