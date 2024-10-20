@@ -47,7 +47,7 @@ assert validator.is_valid(instance)
 
 ### Supported drafts
 
-Compliance levels vary across drafts, with newer versions having some unimplemented keywords.
+The following drafts are supported:
 
 - [![Draft 2020-12](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Frust-jsonschema%2Fcompliance%2Fdraft2020-12.json)](https://bowtie.report/#/implementations/rust-jsonschema)
 - [![Draft 2019-09](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Frust-jsonschema%2Fcompliance%2Fdraft2019-09.json)](https://bowtie.report/#/implementations/rust-jsonschema)
@@ -55,7 +55,7 @@ Compliance levels vary across drafts, with newer versions having some unimplemen
 - [![Draft 6](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Frust-jsonschema%2Fcompliance%2Fdraft6.json)](https://bowtie.report/#/implementations/rust-jsonschema)
 - [![Draft 4](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Frust-jsonschema%2Fcompliance%2Fdraft4.json)](https://bowtie.report/#/implementations/rust-jsonschema)
 
-You can check the current status on the [Bowtie Report](https://bowtie.report/#/implementations/rust-jsonschema).
+There are a few known bugs, you can check the current status on the [Bowtie Report](https://bowtie.report/#/implementations/rust-jsonschema).
 
 ## Limitations
 
