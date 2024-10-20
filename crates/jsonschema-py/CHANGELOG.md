@@ -15,10 +15,6 @@
 
 - Numbers with zero fraction incorrectly handled in `uniqueItems`.
 
-### Performance
-
-- Speedup `apply`.
-
 ## [0.23.0] - 2024-10-12
 
 ### Added
