@@ -1,11 +1,14 @@
+use std::sync::Arc;
+
 use crate::{
     compiler,
     error::{no_error, ErrorIterator, ValidationError},
     node::SchemaNode,
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
 };
+use referencing::List;
 use serde_json::{Map, Value};
 
 use super::CompilationResult;
@@ -44,14 +47,18 @@ impl Validate for PrefixItemsValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = self
                 .schemas
                 .iter()
                 .zip(items.iter())
                 .enumerate()
-                .flat_map(|(idx, (n, i))| n.validate(i, &location.push(idx)))
+                .flat_map(|(idx, (n, i))| n.validate(i, location.push_front(Arc::new(idx.into()))))
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -59,7 +66,11 @@ impl Validate for PrefixItemsValidator {
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         if let Value::Array(items) = instance {
             if !items.is_empty() {
                 let validate_total = self.schemas.len();
@@ -67,8 +78,8 @@ impl Validate for PrefixItemsValidator {
                 let mut max_index_applied = 0;
                 for (idx, (schema_node, item)) in self.schemas.iter().zip(items.iter()).enumerate()
                 {
-                    let path = location.push(idx);
-                    results.push(schema_node.apply_rooted(item, &path));
+                    let path = location.push_front(Arc::new(idx.into()));
+                    results.push(schema_node.apply_rooted(item, path));
                     max_index_applied = idx;
                 }
                 // Per draft 2020-12 section https://json-schema.org/draft/2020-12/json-schema-core.html#rfc.section.10.3.1.1

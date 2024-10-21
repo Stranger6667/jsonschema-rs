@@ -3,10 +3,11 @@ use crate::{
     error::{no_error, ErrorIterator, ValidationError},
     keywords::{required, unique_items, CompilationResult},
     node::SchemaNode,
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
+use referencing::List;
 use serde_json::{Map, Value};
 
 pub(crate) struct DependenciesValidator {
@@ -60,13 +61,17 @@ impl Validate for DependenciesValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
                 .dependencies
                 .iter()
                 .filter(|(property, _)| item.contains_key(property))
-                .flat_map(move |(_, node)| node.validate(instance, location))
+                .flat_map(move |(_, node)| node.validate(instance, location.clone()))
                 .collect();
             // TODO. custom error message for "required" case
             Box::new(errors.into_iter())
@@ -135,13 +140,17 @@ impl Validate for DependentRequiredValidator {
             true
         }
     }
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
                 .dependencies
                 .iter()
                 .filter(|(property, _)| item.contains_key(property))
-                .flat_map(move |(_, node)| node.validate(instance, location))
+                .flat_map(move |(_, node)| node.validate(instance, location.clone()))
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -186,13 +195,17 @@ impl Validate for DependentSchemasValidator {
             true
         }
     }
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
                 .dependencies
                 .iter()
                 .filter(|(property, _)| item.contains_key(property))
-                .flat_map(move |(_, node)| node.validate(instance, location))
+                .flat_map(move |(_, node)| node.validate(instance, location.clone()))
                 .collect();
             Box::new(errors.into_iter())
         } else {

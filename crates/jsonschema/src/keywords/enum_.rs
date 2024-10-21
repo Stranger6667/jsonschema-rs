@@ -2,10 +2,11 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers, CompilationResult},
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
 };
+use referencing::List;
 use serde_json::{Map, Value};
 
 #[derive(Debug)]
@@ -38,7 +39,11 @@ impl EnumValidator {
 }
 
 impl Validate for EnumValidator {
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
@@ -86,7 +91,11 @@ impl SingleValueEnumValidator {
 }
 
 impl Validate for SingleValueEnumValidator {
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {

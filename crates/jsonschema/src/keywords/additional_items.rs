@@ -1,12 +1,15 @@
+use std::sync::Arc;
+
 use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{boolean::FalseValidator, CompilationResult},
     node::SchemaNode,
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
     validator::Validate,
 };
+use referencing::List;
 use serde_json::{Map, Value};
 
 pub(crate) struct AdditionalItemsObjectValidator {
@@ -40,13 +43,20 @@ impl Validate for AdditionalItemsObjectValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             let errors: Vec<_> = items
                 .iter()
                 .enumerate()
                 .skip(self.items_count)
-                .flat_map(|(idx, item)| self.node.validate(item, &location.push(idx)))
+                .flat_map(|(idx, item)| {
+                    self.node
+                        .validate(item, location.push_front(Arc::new(idx.into())))
+                })
                 .collect();
             Box::new(errors.into_iter())
         } else {
@@ -78,7 +88,11 @@ impl Validate for AdditionalItemsBooleanValidator {
         true
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             if items.len() > self.items_count {
                 return error(ValidationError::additional_items(

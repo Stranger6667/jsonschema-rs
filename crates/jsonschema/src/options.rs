@@ -449,7 +449,7 @@ impl ValidationOptions {
     ///     fn validate<'i>(
     ///         &self,
     ///         instance: &'i Value,
-    ///         location: &LazyLocation,
+    ///         location: List<LocationSegment<'i>>,
     ///     ) -> ErrorIterator<'i> {
     ///         // ... validate instance ...
     ///         if !instance.is_object() {

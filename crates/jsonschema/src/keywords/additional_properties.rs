@@ -6,17 +6,19 @@
 //!   - `patternProperties`
 //!
 //! Each valid combination of these keywords has a validator here.
+use std::sync::Arc;
+
 use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     node::SchemaNode,
     output::{Annotations, BasicOutput, OutputUnit},
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     properties::*,
     validator::{PartialApplication, Validate},
 };
-use referencing::Uri;
+use referencing::{List, Uri};
 use serde_json::{Map, Value};
 
 macro_rules! is_valid {
@@ -56,8 +58,8 @@ macro_rules! is_valid_patterns {
 
 macro_rules! validate {
     ($node:expr, $value:ident, $instance_path:expr, $property_name:expr) => {{
-        let instance_path = $instance_path.push($property_name.as_str());
-        $node.validate($value, &instance_path)
+        let instance_path = $instance_path.push_front(Arc::new($property_name.as_str().into()));
+        $node.validate($value, instance_path)
     }};
 }
 
@@ -98,7 +100,11 @@ impl Validate for AdditionalPropertiesValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = item
                 .iter()
@@ -110,13 +116,17 @@ impl Validate for AdditionalPropertiesValidator {
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         if let Value::Object(item) = instance {
             let mut matched_props = Vec::with_capacity(item.len());
             let mut output = BasicOutput::default();
             for (name, value) in item {
-                let path = location.push(name.as_str());
-                output += self.node.apply_rooted(value, &path);
+                let path = location.push_front(Arc::new(name.as_str().into()));
+                output += self.node.apply_rooted(value, path);
                 matched_props.push(name.clone());
             }
             let mut result: PartialApplication = output.into();
@@ -159,7 +169,11 @@ impl Validate for AdditionalPropertiesFalseValidator {
         }
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             if let Some((_, value)) = item.iter().next() {
                 return error(ValidationError::false_schema(
@@ -228,7 +242,11 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
         }
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             let mut unexpected = vec![];
@@ -255,14 +273,18 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyFalseV
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         if let Value::Object(item) = instance {
             let mut unexpected = Vec::with_capacity(item.len());
             let mut output = BasicOutput::default();
             for (property, value) in item {
                 if let Some((_name, node)) = self.properties.get_key_validator(property) {
-                    let path = location.push(property.as_str());
-                    output += node.apply_rooted(value, &path);
+                    let path = location.push_front(Arc::new(property.as_str().into()));
+                    output += node.apply_rooted(value, path);
                 } else {
                     unexpected.push(property.clone())
                 }
@@ -356,7 +378,11 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValida
         }
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Object(map) = instance {
             let mut errors = vec![];
             for (property, value) in map {
@@ -374,18 +400,22 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesNotEmptyValida
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         if let Value::Object(map) = instance {
             let mut matched_propnames = Vec::with_capacity(map.len());
             let mut output = BasicOutput::default();
             for (property, value) in map {
-                let path = location.push(property.as_str());
+                let path = location.push_front(Arc::new(property.as_str().into()));
                 if let Some((_name, property_validators)) =
                     self.properties.get_key_validator(property)
                 {
-                    output += property_validators.apply_rooted(value, &path);
+                    output += property_validators.apply_rooted(value, path.clone());
                 } else {
-                    output += self.node.apply_rooted(value, &path);
+                    output += self.node.apply_rooted(value, path.clone());
                     matched_propnames.push(property.clone());
                 }
             }
@@ -466,7 +496,11 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
         true
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for (property, value) in item {
@@ -490,24 +524,28 @@ impl Validate for AdditionalPropertiesWithPatternsValidator {
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         if let Value::Object(item) = instance {
             let mut output = BasicOutput::default();
             let mut pattern_matched_propnames = Vec::with_capacity(item.len());
             let mut additional_matched_propnames = Vec::with_capacity(item.len());
             for (property, value) in item {
-                let path = location.push(property.as_str());
+                let path = location.push_front(Arc::new(property.as_str().into()));
                 let mut has_match = false;
                 for (pattern, node) in &self.patterns {
                     if pattern.is_match(property).unwrap_or(false) {
                         has_match = true;
                         pattern_matched_propnames.push(property.clone());
-                        output += node.apply_rooted(value, &path)
+                        output += node.apply_rooted(value, path.clone());
                     }
                 }
                 if !has_match {
                     additional_matched_propnames.push(property.clone());
-                    output += self.node.apply_rooted(value, &path)
+                    output += self.node.apply_rooted(value, path.clone());
                 }
             }
             if !pattern_matched_propnames.is_empty() {
@@ -582,7 +620,11 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
         true
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             let mut unexpected = vec![];
@@ -615,19 +657,23 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         if let Value::Object(item) = instance {
             let mut output = BasicOutput::default();
             let mut unexpected = Vec::with_capacity(item.len());
             let mut pattern_matched_props = Vec::with_capacity(item.len());
             for (property, value) in item {
-                let path = location.push(property.as_str());
+                let path = location.push_front(Arc::new(property.as_str().into()));
                 let mut has_match = false;
                 for (pattern, node) in &self.patterns {
                     if pattern.is_match(property).unwrap_or(false) {
                         has_match = true;
                         pattern_matched_props.push(property.clone());
-                        output += node.apply_rooted(value, &path);
+                        output += node.apply_rooted(value, path.clone());
                     }
                 }
                 if !has_match {
@@ -637,7 +683,7 @@ impl Validate for AdditionalPropertiesWithPatternsFalseValidator {
             if !pattern_matched_props.is_empty() {
                 output += OutputUnit::<Annotations<'_>>::annotations(
                     self.pattern_keyword_path.clone(),
-                    location.into(),
+                    location.clone().into(),
                     self.pattern_keyword_absolute_location.clone(),
                     Value::from(pattern_matched_props).into(),
                 )
@@ -766,7 +812,11 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
         }
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for (property, value) in item {
@@ -800,17 +850,21 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         if let Value::Object(item) = instance {
             let mut output = BasicOutput::default();
             let mut additional_matches = Vec::with_capacity(item.len());
             for (property, value) in item {
-                let path = location.push(property.as_str());
+                let path = location.push_front(Arc::new(property.as_str().into()));
                 if let Some((_name, node)) = self.properties.get_key_validator(property) {
-                    output += node.apply_rooted(value, &path);
+                    output += node.apply_rooted(value, path.clone());
                     for (pattern, node) in &self.patterns {
                         if pattern.is_match(property).unwrap_or(false) {
-                            output += node.apply_rooted(value, &path);
+                            output += node.apply_rooted(value, path.clone());
                         }
                     }
                 } else {
@@ -818,12 +872,12 @@ impl<M: PropertiesValidatorsMap> Validate for AdditionalPropertiesWithPatternsNo
                     for (pattern, node) in &self.patterns {
                         if pattern.is_match(property).unwrap_or(false) {
                             has_match = true;
-                            output += node.apply_rooted(value, &path);
+                            output += node.apply_rooted(value, path.clone());
                         }
                     }
                     if !has_match {
                         additional_matches.push(property.clone());
-                        output += self.node.apply_rooted(value, &path);
+                        output += self.node.apply_rooted(value, path);
                     }
                 }
             }
@@ -928,7 +982,11 @@ impl<M: PropertiesValidatorsMap> Validate
         true
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             let mut unexpected = vec![];
@@ -972,18 +1030,22 @@ impl<M: PropertiesValidatorsMap> Validate
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         if let Value::Object(item) = instance {
             let mut output = BasicOutput::default();
             let mut unexpected = vec![];
             // No properties are allowed, except ones defined in `properties` or `patternProperties`
             for (property, value) in item {
-                let path = location.push(property.as_str());
+                let path = location.push_front(Arc::new(property.as_str().into()));
                 if let Some((_name, node)) = self.properties.get_key_validator(property) {
-                    output += node.apply_rooted(value, &path);
+                    output += node.apply_rooted(value, path.clone());
                     for (pattern, node) in &self.patterns {
                         if pattern.is_match(property).unwrap_or(false) {
-                            output += node.apply_rooted(value, &path);
+                            output += node.apply_rooted(value, path.clone());
                         }
                     }
                 } else {
@@ -991,7 +1053,7 @@ impl<M: PropertiesValidatorsMap> Validate
                     for (pattern, node) in &self.patterns {
                         if pattern.is_match(property).unwrap_or(false) {
                             has_match = true;
-                            output += node.apply_rooted(value, &path);
+                            output += node.apply_rooted(value, path.clone());
                         }
                     }
                     if !has_match {

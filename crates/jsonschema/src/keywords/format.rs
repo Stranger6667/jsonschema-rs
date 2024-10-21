@@ -8,6 +8,7 @@ use std::{
 use email_address::EmailAddress;
 use fancy_regex::Regex;
 use once_cell::sync::Lazy;
+use referencing::List;
 use serde_json::{Map, Value};
 use uuid_simd::{parse_hyphenated, Out};
 
@@ -15,7 +16,7 @@ use crate::{
     compiler, ecma,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     primitive_type::PrimitiveType,
     validator::Validate,
     Draft,
@@ -639,7 +640,7 @@ macro_rules! format_validators {
                 fn validate<'i>(
                     &self,
                     instance: &'i Value,
-                    location: &LazyLocation,
+                    location: List<LocationSegment<'i>>,
                 ) -> ErrorIterator<'i> {
                     if let Value::String(_item) = instance {
                         if !self.is_valid(instance) {
@@ -712,7 +713,11 @@ impl CustomFormatValidator {
 }
 
 impl Validate for CustomFormatValidator {
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if !self.is_valid(instance) {
             return error(ValidationError::format(
                 self.location.clone(),

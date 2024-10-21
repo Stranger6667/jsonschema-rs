@@ -1,12 +1,15 @@
+use std::sync::Arc;
+
 use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     node::SchemaNode,
-    paths::LazyLocation,
+    paths::LocationSegment,
     validator::{PartialApplication, Validate},
     Draft,
 };
+use referencing::List;
 use serde_json::{Map, Value};
 
 use super::helpers::map_get_u64;
@@ -34,7 +37,11 @@ impl Validate for ContainsValidator {
         }
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             if items.iter().any(|i| self.node.is_valid(i)) {
                 return no_error();
@@ -49,13 +56,17 @@ impl Validate for ContainsValidator {
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         if let Value::Array(items) = instance {
             let mut results = Vec::with_capacity(items.len());
             let mut indices = Vec::new();
             for (idx, item) in items.iter().enumerate() {
-                let path = location.push(idx);
-                let result = self.node.apply_rooted(item, &path);
+                let path = location.push_front(Arc::new(idx.into()));
+                let result = self.node.apply_rooted(item, path);
                 if result.is_valid() {
                     indices.push(idx);
                     results.push(result);
@@ -107,7 +118,11 @@ impl MinContainsValidator {
 }
 
 impl Validate for MinContainsValidator {
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             // From docs:
             //   An array instance is valid against "minContains" if the number of elements
@@ -188,7 +203,11 @@ impl MaxContainsValidator {
 }
 
 impl Validate for MaxContainsValidator {
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             // From docs:
             //   An array instance is valid against "maxContains" if the number of elements
@@ -279,7 +298,11 @@ impl MinMaxContainsValidator {
 }
 
 impl Validate for MinMaxContainsValidator {
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             let mut matches = 0;
             for item in items {

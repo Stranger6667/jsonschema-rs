@@ -3,9 +3,11 @@ use crate::{
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     node::SchemaNode,
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     validator::{PartialApplication, Validate},
+    BasicOutput,
 };
+use referencing::List;
 use serde_json::{Map, Value};
 
 pub(crate) struct PropertyNamesObjectValidator {
@@ -35,41 +37,46 @@ impl Validate for PropertyNamesObjectValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Object(item) = &instance {
-            let errors: Vec<_> = item
-                .keys()
-                .flat_map(move |key| {
-                    let wrapper = Value::String(key.to_string());
-                    let errors: Vec<_> = self
-                        .node
-                        .validate(&wrapper, location)
-                        .map(|error| {
-                            ValidationError::property_names(
-                                error.schema_path.clone(),
-                                location.into(),
-                                instance,
-                                error.into_owned(),
-                            )
-                        })
-                        .collect();
-                    errors.into_iter()
-                })
-                .collect();
-            Box::new(errors.into_iter())
+            Box::new(item.keys().flat_map(move |key| {
+                let wrapper = Value::String(key.to_string());
+                let location = location.clone();
+                let errors: Vec<_> = self
+                    .node
+                    .validate(&wrapper, location.clone())
+                    .map(move |error| {
+                        ValidationError::property_names(
+                            error.schema_path.clone(),
+                            location.clone().into(),
+                            instance,
+                            error.into_owned(),
+                        )
+                    })
+                    .collect();
+                errors.into_iter()
+            }))
         } else {
             no_error()
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         if let Value::Object(item) = instance {
-            item.keys()
-                .map(|key| {
-                    let wrapper = Value::String(key.to_string());
-                    self.node.apply_rooted(&wrapper, location)
-                })
-                .collect()
+            let mut output = BasicOutput::default();
+            for key in item.keys() {
+                let wrapper = Value::String(key.to_string());
+                output += self.node.apply_rooted(&wrapper, location.clone());
+            }
+            output.into()
         } else {
             PartialApplication::valid_empty()
         }
@@ -98,7 +105,11 @@ impl Validate for PropertyNamesBooleanValidator {
         true
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {

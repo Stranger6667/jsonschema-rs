@@ -2,13 +2,13 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers::equal, CompilationResult},
-    paths::Location,
+    paths::{Location, LocationSegment},
     validator::Validate,
 };
 use ahash::{AHashSet, AHasher};
+use referencing::List;
 use serde_json::{Map, Value};
 
-use crate::paths::LazyLocation;
 use std::hash::{Hash, Hasher};
 
 // Based on implementation proposed by Sven Marnach:
@@ -117,7 +117,11 @@ impl Validate for UniqueItemsValidator {
         true
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {

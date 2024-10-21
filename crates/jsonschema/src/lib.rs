@@ -298,7 +298,7 @@
 //!     fn validate<'i>(
 //!         &self,
 //!         instance: &'i Value,
-//!         location: &LazyLocation,
+//!         location: List<LocationSegment<'i>>,
 //!     ) -> ErrorIterator<'i> {
 //!         if let Value::Number(n) = instance {
 //!             if n.as_u64().map_or(false, |n| n % 2 == 0) {
@@ -382,7 +382,7 @@
 //! #     fn validate<'i>(
 //! #         &self,
 //! #         instance: &'i Value,
-//! #         location: &LazyLocation,
+//! #         location: List<LocationSegment<'i>>,
 //! #     ) -> ErrorIterator<'i> {
 //! #         Box::new(None.into_iter())
 //! #     }

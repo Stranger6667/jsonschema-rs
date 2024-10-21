@@ -5,7 +5,7 @@ use crate::{
     error::ErrorIterator,
     keywords::CompilationResult,
     node::SchemaNode,
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
     ValidationError, ValidationOptions,
@@ -122,10 +122,18 @@ impl Validate for LazyRefValidator {
     fn is_valid(&self, instance: &Value) -> bool {
         self.lazy_compile().is_valid(instance)
     }
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         self.lazy_compile().validate(instance, location)
     }
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         self.lazy_compile().apply(instance, location)
     }
 }
@@ -138,13 +146,21 @@ impl Validate for RefValidator {
         }
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         match self {
             RefValidator::Default { inner } => inner.validate(instance, location),
             RefValidator::Lazy(lazy) => lazy.validate(instance, location),
         }
     }
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         match self {
             RefValidator::Default { inner } => inner.apply(instance, location),
             RefValidator::Lazy(lazy) => lazy.apply(instance, location),

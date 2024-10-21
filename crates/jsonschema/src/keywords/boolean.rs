@@ -1,10 +1,11 @@
-use crate::paths::{LazyLocation, Location};
+use crate::paths::{Location, LocationSegment};
 
 use crate::{
     error::{error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     validator::Validate,
 };
+use referencing::List;
 use serde_json::Value;
 
 pub(crate) struct FalseValidator {
@@ -21,7 +22,11 @@ impl Validate for FalseValidator {
         false
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         error(ValidationError::false_schema(
             self.location.clone(),
             location.into(),

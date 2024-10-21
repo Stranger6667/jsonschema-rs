@@ -1,15 +1,18 @@
+use std::sync::Arc;
+
 use crate::{
     compiler,
     error::{no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     node::SchemaNode,
     output::BasicOutput,
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     primitive_type::PrimitiveType,
     properties::*,
     validator::{PartialApplication, Validate},
 };
 use ahash::AHashMap;
+use referencing::List;
 use serde_json::{Map, Value};
 
 /// A validator for unevaluated properties.
@@ -185,29 +188,33 @@ impl UnevaluatedPropertiesValidator {
     }
 
     fn validate_property<'i>(
-        &self,
+        &'i self,
         instance: &'i Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
+        location: List<LocationSegment<'i>>,
+        property_path: List<LocationSegment<'i>>,
         property_instance: &'i Value,
         property_name: &str,
     ) -> Option<ErrorIterator<'i>> {
         self.properties
             .as_ref()
             .and_then(|prop_map| {
-                prop_map.validate_property(property_path, property_instance, property_name)
+                prop_map.validate_property(property_path.clone(), property_instance, property_name)
             })
             .or_else(|| {
                 self.patterns.as_ref().and_then(|patterns| {
-                    patterns.validate_property(property_path, property_instance, property_name)
+                    patterns.validate_property(
+                        property_path.clone(),
+                        property_instance,
+                        property_name,
+                    )
                 })
             })
             .or_else(|| {
                 self.conditional.as_ref().and_then(|conditional| {
                     conditional.validate_property(
                         instance,
-                        location,
-                        property_path,
+                        location.clone(),
+                        property_path.clone(),
                         property_instance,
                         property_name,
                     )
@@ -217,8 +224,8 @@ impl UnevaluatedPropertiesValidator {
                 self.dependent.as_ref().and_then(|dependent| {
                     dependent.validate_property(
                         instance,
-                        location,
-                        property_path,
+                        location.clone(),
+                        property_path.clone(),
                         property_instance,
                         property_name,
                     )
@@ -228,8 +235,8 @@ impl UnevaluatedPropertiesValidator {
                 self.reference.as_ref().and_then(|reference| {
                     reference.validate_property(
                         instance,
-                        location,
-                        property_path,
+                        location.clone(),
+                        property_path.clone(),
                         property_instance,
                         property_name,
                     )
@@ -240,8 +247,8 @@ impl UnevaluatedPropertiesValidator {
                     subschemas.iter().find_map(|subschema| {
                         subschema.validate_property(
                             instance,
-                            location,
-                            property_path,
+                            location.clone(),
+                            property_path.clone(),
                             property_instance,
                             property_name,
                         )
@@ -250,7 +257,11 @@ impl UnevaluatedPropertiesValidator {
             })
             .or_else(|| {
                 self.additional.as_ref().and_then(|additional| {
-                    additional.validate_property(property_path, property_instance, property_name)
+                    additional.validate_property(
+                        property_path.clone(),
+                        property_instance,
+                        property_name,
+                    )
                 })
             })
             .or_else(|| {
@@ -259,30 +270,30 @@ impl UnevaluatedPropertiesValidator {
             })
     }
 
-    fn apply_property<'a>(
-        &'a self,
-        instance: &Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
-        property_instance: &Value,
+    fn apply_property<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+        property_path: List<LocationSegment<'i>>,
+        property_instance: &'i Value,
         property_name: &str,
-    ) -> Option<BasicOutput<'a>> {
+    ) -> Option<BasicOutput<'i>> {
         self.properties
             .as_ref()
             .and_then(|prop_map| {
-                prop_map.apply_property(property_path, property_instance, property_name)
+                prop_map.apply_property(property_path.clone(), property_instance, property_name)
             })
             .or_else(|| {
                 self.patterns.as_ref().and_then(|patterns| {
-                    patterns.apply_property(property_path, property_instance, property_name)
+                    patterns.apply_property(property_path.clone(), property_instance, property_name)
                 })
             })
             .or_else(|| {
                 self.conditional.as_ref().and_then(|conditional| {
                     conditional.apply_property(
                         instance,
-                        location,
-                        property_path,
+                        location.clone(),
+                        property_path.clone(),
                         property_instance,
                         property_name,
                     )
@@ -292,8 +303,8 @@ impl UnevaluatedPropertiesValidator {
                 self.dependent.as_ref().and_then(|dependent| {
                     dependent.apply_property(
                         instance,
-                        location,
-                        property_path,
+                        location.clone(),
+                        property_path.clone(),
                         property_instance,
                         property_name,
                     )
@@ -303,8 +314,8 @@ impl UnevaluatedPropertiesValidator {
                 self.reference.as_ref().and_then(|reference| {
                     reference.apply_property(
                         instance,
-                        location,
-                        property_path,
+                        location.clone(),
+                        property_path.clone(),
                         property_instance,
                         property_name,
                     )
@@ -315,8 +326,8 @@ impl UnevaluatedPropertiesValidator {
                     subschemas.iter().find_map(|subschema| {
                         subschema.apply_property(
                             instance,
-                            location,
-                            property_path,
+                            location.clone(),
+                            property_path.clone(),
                             property_instance,
                             property_name,
                         )
@@ -325,7 +336,11 @@ impl UnevaluatedPropertiesValidator {
             })
             .or_else(|| {
                 self.additional.as_ref().and_then(|additional| {
-                    additional.apply_property(property_path, property_instance, property_name)
+                    additional.apply_property(
+                        property_path.clone(),
+                        property_instance,
+                        property_name,
+                    )
                 })
             })
             .or_else(|| {
@@ -347,17 +362,21 @@ impl Validate for UnevaluatedPropertiesValidator {
         }
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Object(props) = instance {
             let mut errors = vec![];
             let mut unevaluated = vec![];
 
             for (property_name, property_instance) in props {
-                let property_path = location.push(property_name.as_str());
+                let property_path = location.push_front(Arc::new(property_name.as_str().into()));
                 let maybe_property_errors = self.validate_property(
                     instance,
-                    location,
-                    &property_path,
+                    location.clone(),
+                    property_path,
                     property_instance,
                     property_name,
                 );
@@ -385,17 +404,21 @@ impl Validate for UnevaluatedPropertiesValidator {
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         if let Value::Object(props) = instance {
             let mut output = BasicOutput::default();
             let mut unevaluated = vec![];
 
             for (property_name, property_instance) in props {
-                let property_path = location.push(property_name.as_str());
+                let property_path = location.push_front(Arc::new(property_name.as_str().into()));
                 let maybe_property_output = self.apply_property(
                     instance,
-                    location,
-                    &property_path,
+                    location.clone(),
+                    property_path,
                     property_instance,
                     property_name,
                 );
@@ -452,8 +475,8 @@ impl PropertySubvalidator {
     }
 
     fn validate_property<'i>(
-        &self,
-        property_path: &LazyLocation,
+        &'i self,
+        property_path: List<LocationSegment<'i>>,
         property_instance: &'i Value,
         property_name: &str,
     ) -> Option<ErrorIterator<'i>> {
@@ -462,12 +485,12 @@ impl PropertySubvalidator {
             .map(|(_, node)| node.validate(property_instance, property_path))
     }
 
-    fn apply_property<'a>(
-        &'a self,
-        property_path: &LazyLocation,
-        property_instance: &Value,
+    fn apply_property<'i>(
+        &'i self,
+        property_path: List<LocationSegment<'i>>,
+        property_instance: &'i Value,
         property_name: &str,
-    ) -> Option<BasicOutput<'a>> {
+    ) -> Option<BasicOutput<'i>> {
         self.prop_map
             .get_key_validator(property_name)
             .map(|(_, node)| node.apply_rooted(property_instance, property_path))
@@ -509,8 +532,8 @@ impl PatternSubvalidator {
     }
 
     fn validate_property<'i>(
-        &self,
-        property_path: &LazyLocation,
+        &'i self,
+        property_path: List<LocationSegment<'i>>,
         property_instance: &'i Value,
         property_name: &str,
     ) -> Option<ErrorIterator<'i>> {
@@ -521,19 +544,19 @@ impl PatternSubvalidator {
             if pattern.is_match(property_name).unwrap_or(false) {
                 had_match = true;
 
-                errors.extend(node.validate(property_instance, property_path));
+                errors.extend(node.validate(property_instance, property_path.clone()));
             }
         }
 
         had_match.then(|| boxed_errors(errors))
     }
 
-    fn apply_property<'a>(
-        &'a self,
-        property_path: &LazyLocation,
-        property_instance: &Value,
+    fn apply_property<'i>(
+        &'i self,
+        property_path: List<LocationSegment<'i>>,
+        property_instance: &'i Value,
         property_name: &str,
-    ) -> Option<BasicOutput<'a>> {
+    ) -> Option<BasicOutput<'i>> {
         let mut had_match = false;
         let mut output = BasicOutput::default();
 
@@ -541,7 +564,7 @@ impl PatternSubvalidator {
             if pattern.is_match(property_name).unwrap_or(false) {
                 had_match = true;
 
-                let pattern_output = node.apply_rooted(property_instance, property_path);
+                let pattern_output = node.apply_rooted(property_instance, property_path.clone());
                 output += pattern_output;
             }
         }
@@ -674,10 +697,10 @@ impl SubschemaSubvalidator {
     }
 
     fn validate_property<'i>(
-        &self,
+        &'i self,
         instance: &'i Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
+        location: List<LocationSegment<'i>>,
+        property_path: List<LocationSegment<'i>>,
         property_instance: &'i Value,
         property_name: &str,
     ) -> Option<ErrorIterator<'i>> {
@@ -685,14 +708,16 @@ impl SubschemaSubvalidator {
             let property_result = subvalidator
                 .validate_property(
                     instance,
-                    location,
-                    property_path,
+                    location.clone(),
+                    property_path.clone(),
                     property_instance,
                     property_name,
                 )
                 .map(|errs| errs.collect::<Vec<_>>());
 
-            let instance_result = node.validate(instance, location).collect::<Vec<_>>();
+            let instance_result = node
+                .validate(instance, location.clone())
+                .collect::<Vec<_>>();
 
             (property_result, instance_result)
         });
@@ -755,24 +780,24 @@ impl SubschemaSubvalidator {
         }
     }
 
-    fn apply_property<'a>(
-        &'a self,
-        instance: &Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
-        property_instance: &Value,
+    fn apply_property<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+        property_path: List<LocationSegment<'i>>,
+        property_instance: &'i Value,
         property_name: &str,
-    ) -> Option<BasicOutput<'a>> {
+    ) -> Option<BasicOutput<'i>> {
         let mapped = self.subvalidators.iter().map(|(node, subvalidator)| {
             let property_result = subvalidator.apply_property(
                 instance,
-                location,
-                property_path,
+                location.clone(),
+                property_path.clone(),
                 property_instance,
                 property_name,
             );
 
-            let instance_result = node.apply(instance, location);
+            let instance_result = node.apply(instance, location.clone());
 
             (property_result, instance_result)
         });
@@ -876,8 +901,8 @@ impl UnevaluatedSubvalidator {
     }
 
     fn validate_property<'i>(
-        &self,
-        property_path: &LazyLocation,
+        &'i self,
+        property_path: List<LocationSegment<'i>>,
         property_instance: &'i Value,
         _property_name: &str,
     ) -> Option<ErrorIterator<'i>> {
@@ -890,12 +915,12 @@ impl UnevaluatedSubvalidator {
         }
     }
 
-    fn apply_property<'a>(
-        &'a self,
-        property_path: &LazyLocation,
-        property_instance: &Value,
+    fn apply_property<'i>(
+        &'i self,
+        property_path: List<LocationSegment<'i>>,
+        property_instance: &'i Value,
         _property_name: &str,
-    ) -> Option<BasicOutput<'a>> {
+    ) -> Option<BasicOutput<'i>> {
         match &self.behavior {
             UnevaluatedBehavior::Allow => Some(BasicOutput::default()),
             UnevaluatedBehavior::Deny => None,
@@ -996,10 +1021,10 @@ impl ConditionalSubvalidator {
     }
 
     fn validate_property<'i>(
-        &self,
+        &'i self,
         instance: &'i Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
+        location: List<LocationSegment<'i>>,
+        property_path: List<LocationSegment<'i>>,
         property_instance: &'i Value,
         property_name: &str,
     ) -> Option<ErrorIterator<'i>> {
@@ -1008,14 +1033,14 @@ impl ConditionalSubvalidator {
             .and_then(|node| {
                 node.validate_property(
                     instance,
-                    location,
-                    property_path,
+                    location.clone(),
+                    property_path.clone(),
                     property_instance,
                     property_name,
                 )
             })
             .or_else(|| {
-                if self.condition.validate(instance, location).count() == 0 {
+                if self.condition.validate(instance, location.clone()).count() == 0 {
                     self.success.as_ref().and_then(|success| {
                         success.validate_property(
                             instance,
@@ -1039,33 +1064,33 @@ impl ConditionalSubvalidator {
             })
     }
 
-    fn apply_property<'a>(
-        &'a self,
-        instance: &Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
-        property_instance: &Value,
+    fn apply_property<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+        property_path: List<LocationSegment<'i>>,
+        property_instance: &'i Value,
         property_name: &str,
-    ) -> Option<BasicOutput<'a>> {
+    ) -> Option<BasicOutput<'i>> {
         self.node
             .as_ref()
             .and_then(|node| {
                 node.apply_property(
                     instance,
-                    location,
-                    property_path,
+                    location.clone(),
+                    property_path.clone(),
                     property_instance,
                     property_name,
                 )
             })
             .or_else(|| {
-                let partial = self.condition.apply(instance, location);
+                let partial = self.condition.apply(instance, location.clone());
                 if partial.is_valid() {
                     self.success.as_ref().and_then(|success| {
                         success.apply_property(
                             instance,
-                            location,
-                            property_path,
+                            location.clone(),
+                            property_path.clone(),
                             property_instance,
                             property_name,
                         )
@@ -1138,10 +1163,10 @@ impl DependentSchemaSubvalidator {
     }
 
     fn validate_property<'i>(
-        &self,
+        &'i self,
         instance: &'i Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
+        location: List<LocationSegment<'i>>,
+        property_path: List<LocationSegment<'i>>,
         property_instance: &'i Value,
         property_name: &str,
     ) -> Option<ErrorIterator<'i>> {
@@ -1153,8 +1178,8 @@ impl DependentSchemaSubvalidator {
                     .and_then(|node| {
                         node.validate_property(
                             instance,
-                            location,
-                            property_path,
+                            location.clone(),
+                            property_path.clone(),
                             property_instance,
                             property_name,
                         )
@@ -1162,14 +1187,14 @@ impl DependentSchemaSubvalidator {
             })
     }
 
-    fn apply_property<'a>(
-        &'a self,
-        instance: &Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
-        property_instance: &Value,
+    fn apply_property<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+        property_path: List<LocationSegment<'i>>,
+        property_instance: &'i Value,
         property_name: &str,
-    ) -> Option<BasicOutput<'a>> {
+    ) -> Option<BasicOutput<'i>> {
         self.nodes
             .iter()
             .find_map(|(dependent_property_name, node)| {
@@ -1178,8 +1203,8 @@ impl DependentSchemaSubvalidator {
                     .and_then(|node| {
                         node.apply_property(
                             instance,
-                            location,
-                            property_path,
+                            location.clone(),
+                            property_path.clone(),
                             property_instance,
                             property_name,
                         )
@@ -1248,10 +1273,10 @@ impl ReferenceSubvalidator {
     }
 
     fn validate_property<'i>(
-        &self,
+        &'i self,
         instance: &'i Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
+        location: List<LocationSegment<'i>>,
+        property_path: List<LocationSegment<'i>>,
         property_instance: &'i Value,
         property_name: &str,
     ) -> Option<ErrorIterator<'i>> {
@@ -1264,14 +1289,14 @@ impl ReferenceSubvalidator {
         )
     }
 
-    fn apply_property<'a>(
-        &'a self,
-        instance: &Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
-        property_instance: &Value,
+    fn apply_property<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+        property_path: List<LocationSegment<'i>>,
+        property_instance: &'i Value,
         property_name: &str,
-    ) -> Option<BasicOutput<'a>> {
+    ) -> Option<BasicOutput<'i>> {
         self.node.apply_property(
             instance,
             location,

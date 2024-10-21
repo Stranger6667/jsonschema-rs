@@ -2,10 +2,11 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     node::SchemaNode,
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
 };
+use referencing::List;
 use serde_json::{Map, Value};
 
 use super::CompilationResult;
@@ -46,7 +47,11 @@ impl Validate for AnyOfValidator {
         self.schemas.iter().any(|s| s.is_valid(instance))
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
@@ -58,11 +63,15 @@ impl Validate for AnyOfValidator {
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         let mut successes = Vec::new();
         let mut failures = Vec::new();
         for node in &self.schemas {
-            let result = node.apply_rooted(instance, location);
+            let result = node.apply_rooted(instance, location.clone());
             if result.is_valid() {
                 successes.push(result);
             } else {

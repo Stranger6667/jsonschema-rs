@@ -2,9 +2,10 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers::fail_on_non_positive_integer, CompilationResult},
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     validator::Validate,
 };
+use referencing::List;
 use serde_json::{Map, Value};
 
 pub(crate) struct MaxPropertiesValidator {
@@ -48,7 +49,11 @@ impl Validate for MaxPropertiesValidator {
         true
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             if (item.len() as u64) > self.limit {
                 return error(ValidationError::max_properties(

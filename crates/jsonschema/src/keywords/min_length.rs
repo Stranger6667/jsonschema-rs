@@ -2,9 +2,10 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers::fail_on_non_positive_integer, CompilationResult},
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     validator::Validate,
 };
+use referencing::List;
 use serde_json::{Map, Value};
 
 pub(crate) struct MinLengthValidator {
@@ -48,7 +49,11 @@ impl Validate for MinLengthValidator {
         true
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::String(item) = instance {
             if (bytecount::num_chars(item.as_bytes()) as u64) < self.limit {
                 return error(ValidationError::min_length(

@@ -1,6 +1,8 @@
 //! Facilities for working with paths within schemas or validated instances.
 use std::{fmt, sync::Arc};
 
+use referencing::List;
+
 use crate::keywords::Keyword;
 
 #[deprecated(
@@ -65,6 +67,43 @@ impl<'a, 'b> LazyLocation<'a, 'b> {
             segment: segment.into(),
             parent: Some(self),
         }
+    }
+}
+
+impl<'a> From<List<LocationSegment<'a>>> for Location {
+    fn from(value: List<LocationSegment<'a>>) -> Self {
+        let mut capacity = 0;
+        let mut string_capacity = 0;
+        for segment in value.iter() {
+            capacity += 1;
+            string_capacity += match segment {
+                LocationSegment::Property(property) => property.len() + 1,
+                LocationSegment::Index(idx) => idx.checked_ilog10().unwrap_or(0) as usize + 2,
+            };
+        }
+
+        let mut buffer = String::with_capacity(string_capacity);
+
+        let mut segments = Vec::with_capacity(capacity);
+
+        for segment in value.iter() {
+            segments.push(segment);
+        }
+
+        for segment in segments.iter().rev() {
+            buffer.push('/');
+            match segment {
+                LocationSegment::Property(property) => {
+                    write_escaped_str(&mut buffer, property);
+                }
+                LocationSegment::Index(idx) => {
+                    let mut itoa_buffer = itoa::Buffer::new();
+                    buffer.push_str(itoa_buffer.format(*idx));
+                }
+            }
+        }
+
+        Location(Arc::new(buffer))
     }
 }
 

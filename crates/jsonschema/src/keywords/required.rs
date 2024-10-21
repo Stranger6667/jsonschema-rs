@@ -2,10 +2,11 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
+use referencing::List;
 use serde_json::{Map, Value};
 
 pub(crate) struct RequiredValidator {
@@ -45,14 +46,18 @@ impl Validate for RequiredValidator {
         }
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let mut errors = vec![];
             for property_name in &self.required {
                 if !item.contains_key(property_name) {
                     errors.push(ValidationError::required(
                         self.location.clone(),
-                        location.into(),
+                        location.clone().into(),
                         instance,
                         // Value enum is needed for proper string escaping
                         Value::String(property_name.clone()),
@@ -83,7 +88,11 @@ impl SingleItemRequiredValidator {
 }
 
 impl Validate for SingleItemRequiredValidator {
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if !self.is_valid(instance) {
             return error(ValidationError::required(
                 self.location.clone(),

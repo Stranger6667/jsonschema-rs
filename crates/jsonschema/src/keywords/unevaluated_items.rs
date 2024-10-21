@@ -1,11 +1,11 @@
-use referencing::Draft;
+use referencing::{Draft, List};
 use serde_json::{Map, Value};
 
 use crate::{
     compiler,
     error::no_error,
     node::SchemaNode,
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     validator::Validate,
     ErrorIterator, ValidationError,
 };
@@ -63,7 +63,11 @@ impl<F: ItemsFilter> Validate for UnevaluatedItemsValidator<F> {
         true
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
             // NOTE: It could be a packed bitset instead
             let mut indexes = vec![false; items.len()];

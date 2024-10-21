@@ -1,8 +1,9 @@
 use crate::{
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     validator::Validate,
     ErrorIterator, ValidationError,
 };
+use referencing::List;
 use serde_json::{Map, Value};
 use std::fmt::{Display, Formatter};
 
@@ -23,7 +24,11 @@ impl Display for CustomKeyword {
 }
 
 impl Validate for CustomKeyword {
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         self.inner.validate(instance, location)
     }
 
@@ -40,7 +45,11 @@ pub trait Keyword: Send + Sync {
     /// easily or efficiently expressed in JSON schema.
     ///
     /// The custom validation is applied in addition to the JSON schema validation.
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i>;
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i>;
     /// Validate instance and return a boolean result.
     ///
     /// Could be potentilly faster than [`Keyword::validate`] method.

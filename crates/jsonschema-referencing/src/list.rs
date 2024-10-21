@@ -26,7 +26,7 @@ impl<T> Drop for List<T> {
 }
 
 impl<T> List<T> {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self { head: None }
     }
     #[must_use]

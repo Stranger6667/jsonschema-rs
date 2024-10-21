@@ -5,9 +5,10 @@ use crate::{
     error::ErrorIterator,
     node::SchemaNode,
     output::{Annotations, ErrorDescription, Output, OutputUnit},
-    paths::LazyLocation,
+    paths::LocationSegment,
     Draft, ValidationError, ValidationOptions,
 };
+use referencing::List;
 use serde_json::Value;
 use std::{collections::VecDeque, sync::Arc};
 
@@ -26,7 +27,11 @@ use std::{collections::VecDeque, sync::Arc};
 /// `is_valid`. `apply` is only necessary for validators which compose other validators. See the
 /// documentation for `apply` for more information.
 pub(crate) trait Validate: Send + Sync {
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i>;
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i>;
     // The same as above, but does not construct ErrorIterator.
     // It is faster for cases when the result is not needed (like anyOf), since errors are
     // not constructed
@@ -75,7 +80,11 @@ pub(crate) trait Validate: Send + Sync {
     ///
     /// `BasicOutput` also implements `Sum<BasicOutput>` and `FromIterator<BasicOutput<'a>> for PartialApplication<'a>`
     /// so you can use `sum()` and `collect()` in simple cases.
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         let errors: Vec<ErrorDescription> = self
             .validate(instance, location)
             .map(ErrorDescription::from)
@@ -213,8 +222,7 @@ impl Validator {
     /// Run validation against `instance` and return an iterator over [`ValidationError`] in the error case.
     #[inline]
     pub fn validate<'i>(&'i self, instance: &'i Value) -> Result<(), ErrorIterator<'i>> {
-        let instance_path = LazyLocation::new();
-        let mut errors = self.root.validate(instance, &instance_path).peekable();
+        let mut errors = self.root.validate(instance, List::new()).peekable();
         if errors.peek().is_none() {
             Ok(())
         } else {
@@ -292,13 +300,14 @@ mod tests {
     use crate::{
         error::{self, no_error, ValidationError},
         keywords::custom::Keyword,
-        paths::{LazyLocation, Location},
+        paths::{LazyLocation, Location, LocationSegment},
         primitive_type::PrimitiveType,
         ErrorIterator, Validator,
     };
     use fancy_regex::Regex;
     use num_cmp::NumCmp;
     use once_cell::sync::Lazy;
+    use referencing::List;
     use serde_json::{json, Map, Value};
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -370,14 +379,14 @@ mod tests {
             fn validate<'i>(
                 &self,
                 instance: &'i Value,
-                location: &LazyLocation,
+                location: List<LocationSegment<'i>>,
             ) -> ErrorIterator<'i> {
                 let mut errors = vec![];
                 for key in instance.as_object().unwrap().keys() {
                     if !key.is_ascii() {
                         let error = ValidationError::custom(
                             Location::new(),
-                            location.into(),
+                            location.clone().into(),
                             instance,
                             "Key is not ASCII",
                         );
@@ -466,7 +475,7 @@ mod tests {
             fn validate<'i>(
                 &self,
                 instance: &'i Value,
-                location: &LazyLocation,
+                location: List<LocationSegment<'i>>,
             ) -> ErrorIterator<'i> {
                 if self.is_valid(instance) {
                     no_error()

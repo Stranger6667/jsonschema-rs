@@ -13,10 +13,10 @@ use std::{
 
 use crate::{paths::Location, validator::PartialApplication, ValidationError};
 use ahash::AHashMap;
-use referencing::Uri;
+use referencing::{List, Uri};
 use serde::ser::SerializeMap;
 
-use crate::{node::SchemaNode, paths::LazyLocation, Validator};
+use crate::{node::SchemaNode, Validator};
 
 /// The output format resulting from the application of a schema. This can be
 /// converted into various representations based on the definitions in
@@ -30,7 +30,7 @@ pub struct Output<'a, 'b> {
     instance: &'b serde_json::Value,
 }
 
-impl<'a, 'b> Output<'a, 'b> {
+impl<'a, 'b: 'a> Output<'a, 'b> {
     pub(crate) const fn new<'c, 'd>(
         schema: &'c Validator,
         root_node: &'c SchemaNode,
@@ -102,8 +102,7 @@ impl<'a, 'b> Output<'a, 'b> {
     /// ```
     #[must_use]
     pub fn basic(&self) -> BasicOutput<'a> {
-        self.root_node
-            .apply_rooted(self.instance, &LazyLocation::new())
+        self.root_node.apply_rooted(self.instance, List::new())
     }
 }
 

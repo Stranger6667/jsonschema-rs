@@ -4,10 +4,11 @@ use crate::{
     keywords::CompilationResult,
     node::SchemaNode,
     output::BasicOutput,
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
 };
+use referencing::List;
 use serde_json::{Map, Value};
 
 pub(crate) struct OneOfValidator {
@@ -68,7 +69,11 @@ impl Validate for OneOfValidator {
         let first_valid_idx = self.get_first_valid(instance);
         first_valid_idx.map_or(false, |idx| !self.are_others_valid(instance, idx))
     }
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         let first_valid_idx = self.get_first_valid(instance);
         if let Some(idx) = first_valid_idx {
             if self.are_others_valid(instance, idx) {
@@ -87,11 +92,15 @@ impl Validate for OneOfValidator {
             ))
         }
     }
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         let mut failures = Vec::new();
         let mut successes = Vec::new();
         for node in &self.schemas {
-            match node.apply_rooted(instance, location) {
+            match node.apply_rooted(instance, location.clone()) {
                 output @ BasicOutput::Valid(..) => successes.push(output),
                 output @ BasicOutput::Invalid(..) => failures.push(output),
             };

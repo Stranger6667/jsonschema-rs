@@ -3,10 +3,11 @@ use crate::{
     error::{ErrorIterator, ValidationError},
     node::SchemaNode,
     output::BasicOutput,
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
 };
+use referencing::List;
 use serde_json::{Map, Value};
 
 use super::CompilationResult;
@@ -38,19 +39,27 @@ impl Validate for AllOfValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         let errors: Vec<_> = self
             .schemas
             .iter()
-            .flat_map(move |node| node.validate(instance, location))
+            .flat_map(move |node| node.validate(instance, location.clone()))
             .collect();
         Box::new(errors.into_iter())
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         self.schemas
             .iter()
-            .map(move |node| node.apply_rooted(instance, location))
+            .map(move |node| node.apply_rooted(instance, location.clone()))
             .sum::<BasicOutput<'_>>()
             .into()
     }
@@ -75,11 +84,19 @@ impl Validate for SingleValueAllOfValidator {
         self.node.is_valid(instance)
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         self.node.validate(instance, location)
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         self.node.apply_rooted(instance, location).into()
     }
 }

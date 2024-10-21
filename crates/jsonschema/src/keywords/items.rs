@@ -1,11 +1,14 @@
+use std::sync::Arc;
+
 use crate::{
     compiler,
     error::{no_error, ErrorIterator},
     keywords::CompilationResult,
     node::SchemaNode,
-    paths::LazyLocation,
+    paths::LocationSegment,
     validator::{PartialApplication, Validate},
 };
+use referencing::List;
 use serde_json::{Map, Value};
 
 pub(crate) struct ItemsArrayValidator {
@@ -40,15 +43,17 @@ impl Validate for ItemsArrayValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
-            let errors: Vec<_> = items
-                .iter()
-                .zip(self.items.iter())
-                .enumerate()
-                .flat_map(move |(idx, (item, node))| node.validate(item, &location.push(idx)))
-                .collect();
-            Box::new(errors.into_iter())
+            Box::new(items.iter().zip(self.items.iter()).enumerate().flat_map(
+                move |(idx, (item, node))| {
+                    node.validate(item, location.push_front(Arc::new(idx.into())))
+                },
+            ))
         } else {
             no_error()
         }
@@ -77,25 +82,31 @@ impl Validate for ItemsObjectValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
-            let errors: Vec<_> = items
-                .iter()
-                .enumerate()
-                .flat_map(move |(idx, item)| self.node.validate(item, &location.push(idx)))
-                .collect();
-            Box::new(errors.into_iter())
+            Box::new(items.iter().enumerate().flat_map(move |(idx, item)| {
+                self.node
+                    .validate(item, location.push_front(Arc::new(idx.into())))
+            }))
         } else {
             no_error()
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         if let Value::Array(items) = instance {
             let mut results = Vec::with_capacity(items.len());
             for (idx, item) in items.iter().enumerate() {
-                let path = location.push(idx);
-                results.push(self.node.apply_rooted(item, &path));
+                let path = location.push_front(Arc::new(idx.into()));
+                results.push(self.node.apply_rooted(item, path));
             }
             let mut output: PartialApplication = results.into_iter().collect();
             // Per draft 2020-12 section https://json-schema.org/draft/2020-12/json-schema-core.html#rfc.section.10.3.1.2
@@ -146,29 +157,35 @@ impl Validate for ItemsObjectSkipPrefixValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Array(items) = instance {
-            let errors: Vec<_> = items
-                .iter()
-                .skip(self.skip_prefix)
-                .enumerate()
-                .flat_map(move |(idx, item)| {
-                    self.node
-                        .validate(item, &location.push(idx + self.skip_prefix))
-                })
-                .collect();
-            Box::new(errors.into_iter())
+            Box::new(items.iter().skip(self.skip_prefix).enumerate().flat_map(
+                move |(idx, item)| {
+                    self.node.validate(
+                        item,
+                        location.push_front(Arc::new((idx + self.skip_prefix).into())),
+                    )
+                },
+            ))
         } else {
             no_error()
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         if let Value::Array(items) = instance {
             let mut results = Vec::with_capacity(items.len().saturating_sub(self.skip_prefix));
             for (idx, item) in items.iter().enumerate().skip(self.skip_prefix) {
-                let path = location.push(idx);
-                results.push(self.node.apply_rooted(item, &path));
+                let path = location.push_front(Arc::new(idx.into()));
+                results.push(self.node.apply_rooted(item, path));
             }
             let mut output: PartialApplication = results.into_iter().collect();
             // Per draft 2020-12 section https://json-schema.org/draft/2020-12/json-schema-core.html#rfc.section.10.3.1.2

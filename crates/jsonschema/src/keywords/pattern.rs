@@ -2,12 +2,13 @@ use crate::{
     compiler, ecma,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
 use ahash::AHashMap;
 use once_cell::sync::Lazy;
+use referencing::List;
 use serde_json::{Map, Value};
 
 use std::{collections::VecDeque, sync::Mutex};
@@ -108,7 +109,11 @@ impl PatternValidator {
 }
 
 impl Validate for PatternValidator {
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::String(item) = instance {
             match self.pattern.is_match(item) {
                 Ok(is_match) => {

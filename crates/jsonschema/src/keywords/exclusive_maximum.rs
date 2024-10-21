@@ -2,11 +2,12 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
 use num_cmp::NumCmp;
+use referencing::List;
 use serde_json::{Map, Value};
 
 pub(crate) struct ExclusiveMaximumU64Validator {
@@ -31,7 +32,7 @@ macro_rules! validate {
             fn validate<'i>(
                 &self,
                 instance: &'i Value,
-                location: &LazyLocation,
+                location: List<LocationSegment<'i>>,
             ) -> ErrorIterator<'i> {
                 if self.is_valid(instance) {
                     no_error()
@@ -82,7 +83,11 @@ impl Validate for ExclusiveMaximumF64Validator {
         }
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {

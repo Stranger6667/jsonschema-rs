@@ -2,11 +2,12 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     primitive_type::PrimitiveType,
     validator::Validate,
 };
 use fraction::{BigFraction, BigUint};
+use referencing::List;
 use serde_json::{Map, Value};
 
 pub(crate) struct MultipleOfFloatValidator {
@@ -45,7 +46,11 @@ impl Validate for MultipleOfFloatValidator {
         }
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if !self.is_valid(instance) {
             return error(ValidationError::multiple_of(
                 self.location.clone(),
@@ -85,7 +90,11 @@ impl Validate for MultipleOfIntegerValidator {
         }
     }
 
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if !self.is_valid(instance) {
             return error(ValidationError::multiple_of(
                 self.location.clone(),

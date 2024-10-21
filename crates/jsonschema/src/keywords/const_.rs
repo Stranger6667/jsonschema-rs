@@ -2,12 +2,12 @@ use crate::{
     compiler,
     error::{error, no_error, ErrorIterator, ValidationError},
     keywords::{helpers, CompilationResult},
-    paths::Location,
+    paths::{Location, LocationSegment},
     validator::Validate,
 };
+use referencing::List;
 use serde_json::{Map, Number, Value};
 
-use crate::paths::LazyLocation;
 
 struct ConstArrayValidator {
     value: Vec<Value>,
@@ -24,7 +24,11 @@ impl ConstArrayValidator {
 }
 impl Validate for ConstArrayValidator {
     #[inline]
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
@@ -59,7 +63,11 @@ impl ConstBooleanValidator {
 }
 impl Validate for ConstBooleanValidator {
     #[inline]
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
@@ -93,7 +101,11 @@ impl ConstNullValidator {
 }
 impl Validate for ConstNullValidator {
     #[inline]
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
@@ -132,7 +144,11 @@ impl ConstNumberValidator {
 }
 
 impl Validate for ConstNumberValidator {
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
@@ -170,7 +186,11 @@ impl ConstObjectValidator {
 }
 
 impl Validate for ConstObjectValidator {
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {
@@ -208,7 +228,11 @@ impl ConstStringValidator {
 }
 
 impl Validate for ConstStringValidator {
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if self.is_valid(instance) {
             no_error()
         } else {

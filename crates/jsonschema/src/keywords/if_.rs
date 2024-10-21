@@ -3,9 +3,10 @@ use crate::{
     error::{no_error, ErrorIterator},
     keywords::CompilationResult,
     node::SchemaNode,
-    paths::LazyLocation,
+    paths::LocationSegment,
     validator::{PartialApplication, Validate},
 };
+use referencing::List;
 use serde_json::{Map, Value};
 
 pub(crate) struct IfThenValidator {
@@ -43,7 +44,11 @@ impl Validate for IfThenValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if self.schema.is_valid(instance) {
             let errors: Vec<_> = self.then_schema.validate(instance, location).collect();
             Box::new(errors.into_iter())
@@ -52,8 +57,12 @@ impl Validate for IfThenValidator {
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
-        let mut if_result = self.schema.apply_rooted(instance, location);
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
+        let mut if_result = self.schema.apply_rooted(instance, location.clone());
         if if_result.is_valid() {
             let then_result = self.then_schema.apply_rooted(instance, location);
             if_result += then_result;
@@ -99,7 +108,11 @@ impl Validate for IfElseValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if self.schema.is_valid(instance) {
             no_error()
         } else {
@@ -108,8 +121,12 @@ impl Validate for IfElseValidator {
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
-        let if_result = self.schema.apply_rooted(instance, location);
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
+        let if_result = self.schema.apply_rooted(instance, location.clone());
         if if_result.is_valid() {
             if_result.into()
         } else {
@@ -159,7 +176,11 @@ impl Validate for IfThenElseValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if self.schema.is_valid(instance) {
             let errors: Vec<_> = self.then_schema.validate(instance, location).collect();
             Box::new(errors.into_iter())
@@ -169,8 +190,12 @@ impl Validate for IfThenElseValidator {
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
-        let mut if_result = self.schema.apply_rooted(instance, location);
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
+        let mut if_result = self.schema.apply_rooted(instance, location.clone());
         if if_result.is_valid() {
             if_result += self.then_schema.apply_rooted(instance, location);
             if_result.into()

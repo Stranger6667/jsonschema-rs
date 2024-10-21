@@ -1,13 +1,16 @@
+use std::sync::Arc;
+
 use crate::{
     compiler,
     error::{no_error, ErrorIterator, ValidationError},
     keywords::CompilationResult,
     node::SchemaNode,
     output::BasicOutput,
-    paths::{LazyLocation, Location},
+    paths::{Location, LocationSegment},
     primitive_type::PrimitiveType,
     validator::{PartialApplication, Validate},
 };
+use referencing::List;
 use serde_json::{Map, Value};
 
 pub(crate) struct PropertiesValidator {
@@ -53,16 +56,20 @@ impl Validate for PropertiesValidator {
     }
 
     #[allow(clippy::needless_collect)]
-    fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
+    fn validate<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> ErrorIterator<'i> {
         if let Value::Object(item) = instance {
             let errors: Vec<_> = self
                 .properties
                 .iter()
-                .flat_map(move |(name, node)| {
+                .flat_map(|(name, node)| {
                     let option = item.get(name);
-                    option.into_iter().flat_map(move |item| {
-                        let instance_path = location.push(name.as_str());
-                        node.validate(item, &instance_path)
+                    option.into_iter().flat_map(|item| {
+                        let location = location.push_front(Arc::new(name.as_str().into()));
+                        node.validate(item, location)
                     })
                 })
                 .collect();
@@ -72,15 +79,19 @@ impl Validate for PropertiesValidator {
         }
     }
 
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
+    fn apply<'i>(
+        &'i self,
+        instance: &'i Value,
+        location: List<LocationSegment<'i>>,
+    ) -> PartialApplication<'i> {
         if let Value::Object(props) = instance {
             let mut result = BasicOutput::default();
             let mut matched_props = Vec::with_capacity(props.len());
             for (prop_name, node) in &self.properties {
                 if let Some(prop) = props.get(prop_name) {
-                    let path = location.push(prop_name.as_str());
+                    let location = location.push_front(Arc::new(prop_name.as_str().into()));
                     matched_props.push(prop_name.clone());
-                    result += node.apply_rooted(prop, &path);
+                    result += node.apply_rooted(prop, location);
                 }
             }
             let mut application: PartialApplication = result.into();
