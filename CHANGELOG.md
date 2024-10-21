@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Infinite recursion in some cases. [#146](https://github.com/Stranger6667/jsonschema-rs/issues/146)
+
 ## [0.24.1] - 2024-10-21
 
 ### Fixed

@@ -403,14 +403,19 @@ pub(crate) fn compile_with<'a>(
                             }
                         })
                         .collect();
-                    let validator = keywords::ref_::compile_ref(ctx, schema, reference)
-                        .expect("Missing `$ref` implementation")?;
-                    let validators = vec![(BuiltinKeyword::Ref.into(), validator)];
-                    return Ok(SchemaNode::from_keywords(
-                        ctx,
-                        validators,
-                        Some(annotations),
-                    ));
+                    return if let Some(validator) =
+                        keywords::ref_::compile_ref(ctx, schema, reference)
+                    {
+                        let validators = vec![(BuiltinKeyword::Ref.into(), validator?)];
+                        Ok(SchemaNode::from_keywords(
+                            ctx,
+                            validators,
+                            Some(annotations),
+                        ))
+                    } else {
+                        // Infinite reference to the same location
+                        Ok(SchemaNode::from_boolean(ctx, None))
+                    };
                 }
             }
 

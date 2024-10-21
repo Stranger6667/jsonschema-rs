@@ -26,32 +26,56 @@ impl RefValidator {
         reference: &str,
         is_recursive: bool,
         keyword: &str,
-    ) -> CompilationResult<'a> {
+    ) -> Option<CompilationResult<'a>> {
         let location = ctx.location().join(keyword);
-        if let Some((base_uri, scopes, resource)) =
-            ctx.lookup_maybe_recursive(reference, is_recursive)?
-        {
-            Ok(Box::new(RefValidator::Lazy(LazyRefValidator {
-                resource,
-                config: Arc::clone(ctx.config()),
-                registry: Arc::clone(&ctx.registry),
-                base_uri,
-                scopes,
-                location,
-                vocabularies: ctx.vocabularies().clone(),
-                draft: ctx.draft(),
-                inner: OnceCell::default(),
-            })))
-        } else {
-            let (contents, resolver, draft) = ctx.lookup(reference)?.into_inner();
-            let vocabularies = ctx.registry.find_vocabularies(draft, contents);
-            let resource_ref = draft.create_resource_ref(contents);
-            let ctx =
-                ctx.with_resolver_and_draft(resolver, resource_ref.draft(), vocabularies, location);
-            let inner =
-                compiler::compile_with(&ctx, resource_ref).map_err(|err| err.into_owned())?;
-            Ok(Box::new(RefValidator::Default { inner }))
-        }
+        Some(
+            if let Some((base_uri, scopes, resource)) = {
+                match ctx.lookup_maybe_recursive(reference, is_recursive) {
+                    Ok(resolved) => resolved,
+                    Err(error) => return Some(Err(error)),
+                }
+            } {
+                // NOTE: A better approach would be to compare the absolute locations
+                if let Value::Object(contents) = resource.contents() {
+                    if let Some(Some(resolved)) = contents.get(keyword).map(Value::as_str) {
+                        if resolved == reference {
+                            return None;
+                        }
+                    }
+                }
+                Ok(Box::new(RefValidator::Lazy(LazyRefValidator {
+                    resource,
+                    config: Arc::clone(ctx.config()),
+                    registry: Arc::clone(&ctx.registry),
+                    base_uri,
+                    scopes,
+                    location,
+                    vocabularies: ctx.vocabularies().clone(),
+                    draft: ctx.draft(),
+                    inner: OnceCell::default(),
+                })))
+            } else {
+                let (contents, resolver, draft) = match ctx.lookup(reference) {
+                    Ok(resolved) => resolved.into_inner(),
+                    Err(error) => return Some(Err(error.into())),
+                };
+                let vocabularies = ctx.registry.find_vocabularies(draft, contents);
+                let resource_ref = draft.create_resource_ref(contents);
+                let ctx = ctx.with_resolver_and_draft(
+                    resolver,
+                    resource_ref.draft(),
+                    vocabularies,
+                    location,
+                );
+                let inner = match compiler::compile_with(&ctx, resource_ref)
+                    .map_err(|err| err.into_owned())
+                {
+                    Ok(inner) => inner,
+                    Err(error) => return Some(Err(error)),
+                };
+                Ok(Box::new(RefValidator::Default { inner }))
+            },
+        )
     }
 }
 
@@ -172,12 +196,11 @@ pub(crate) fn compile_impl<'a>(
         .get("$recursiveAnchor")
         .and_then(Value::as_bool)
         .unwrap_or_default();
-    Some(
-        schema
-            .as_str()
-            .ok_or_else(|| invalid_reference(ctx, schema))
-            .and_then(|reference| RefValidator::compile(ctx, reference, is_recursive, keyword)),
-    )
+    if let Some(reference) = schema.as_str() {
+        RefValidator::compile(ctx, reference, is_recursive, keyword)
+    } else {
+        Some(Err(invalid_reference(ctx, schema)))
+    }
 }
 
 #[inline]
@@ -385,9 +408,9 @@ mod tests {
         instance: serde_json::Value,
         expected_locations: Vec<(&str, &str)>,
     ) {
-        let schema = crate::validator_for(&schema).unwrap();
+        let validator = crate::validator_for(&schema).unwrap();
 
-        let crate::BasicOutput::Valid(output) = schema.apply(&instance).basic() else {
+        let crate::BasicOutput::Valid(output) = validator.apply(&instance).basic() else {
             panic!("Should pass validation");
         };
 
@@ -448,5 +471,11 @@ mod tests {
 
         assert!(validator.is_valid(&json!(2)));
         assert!(!validator.is_valid(&json!("")));
+    }
+
+    #[test]
+    fn test_infinite_loop() {
+        let validator = crate::validator_for(&json!({"$ref": "#"})).expect("Invalid schema");
+        assert!(validator.is_valid(&json!(42)));
     }
 }
