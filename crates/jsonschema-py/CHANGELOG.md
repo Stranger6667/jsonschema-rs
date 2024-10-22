@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.24.1] - 2024-10-22
+
 ### Fixed
 
 - Incomplete external reference resolution.
@@ -509,7 +511,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.24.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.24.1...HEAD
+[0.24.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.24.0...python-v0.24.1
 [0.24.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.23.0...python-v0.24.0
 [0.23.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.22.3...python-v0.23.0
 [0.22.3]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.22.2...python-v0.22.3
