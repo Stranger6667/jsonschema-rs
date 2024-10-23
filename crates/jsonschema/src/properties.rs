@@ -9,13 +9,6 @@ pub(crate) type PatternedValidators = Vec<(Regex, SchemaNode)>;
 
 /// A value that can look up property validators by name.
 pub(crate) trait PropertiesValidatorsMap: Send + Sync {
-    fn from_map<'a>(
-        ctx: &compiler::Context,
-        map: &'a Map<String, Value>,
-    ) -> Result<Self, ValidationError<'a>>
-    where
-        Self: Sized;
-
     fn get_validator(&self, property: &str) -> Option<&SchemaNode>;
     fn get_key_validator(&self, property: &str) -> Option<(&String, &SchemaNode)>;
 }
@@ -31,16 +24,6 @@ pub(crate) type SmallValidatorsMap = Vec<(String, SchemaNode)>;
 pub(crate) type BigValidatorsMap = AHashMap<String, SchemaNode>;
 
 impl PropertiesValidatorsMap for SmallValidatorsMap {
-    fn from_map<'a>(
-        ctx: &compiler::Context,
-        map: &'a Map<String, Value>,
-    ) -> Result<Self, ValidationError<'a>>
-    where
-        Self: Sized,
-    {
-        compile_small_map(ctx, map)
-    }
-
     #[inline]
     fn get_validator(&self, property: &str) -> Option<&SchemaNode> {
         for (prop, node) in self {
@@ -62,16 +45,6 @@ impl PropertiesValidatorsMap for SmallValidatorsMap {
 }
 
 impl PropertiesValidatorsMap for BigValidatorsMap {
-    fn from_map<'a>(
-        ctx: &compiler::Context,
-        map: &'a Map<String, Value>,
-    ) -> Result<Self, ValidationError<'a>>
-    where
-        Self: Sized,
-    {
-        compile_big_map(ctx, map)
-    }
-
     #[inline]
     fn get_validator(&self, property: &str) -> Option<&SchemaNode> {
         self.get(property)

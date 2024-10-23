@@ -1099,6 +1099,7 @@ pub(crate) mod tests_util {
         )
     }
 
+    #[track_caller]
     pub(crate) fn is_valid_with(validator: &Validator, instance: &Value) {
         if let Err(mut errors) = validator.validate(instance) {
             let first = errors.next().expect("Errors iterator is empty");
