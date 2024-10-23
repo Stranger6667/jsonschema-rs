@@ -16,7 +16,6 @@ mod tests {
     xfail = [
         "draft4::optional::bignum::integer::a_bignum_is_an_integer",
         "draft4::optional::bignum::integer::a_negative_bignum_is_an_integer",
-        "draft2019-09::r#ref::ref_with_recursive_anchor::extra_items_allowed_for_inner_arrays",
         "draft2019-09::unevaluated_properties::unevaluated_properties_with_recursive_ref::with_no_unevaluated_properties_10",
         "draft2020-12::unevaluated_properties::unevaluated_properties_with_dynamic_ref::with_no_unevaluated_properties_21",
     ]

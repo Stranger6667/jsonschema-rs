@@ -5,6 +5,7 @@
 ### Fixed
 
 - Infinite recursion in some cases. [#146](https://github.com/Stranger6667/jsonschema-rs/issues/146)
+- `$ref` interaction with `$recursiveAnchor` in Draft 2019-09.
 
 ## [0.24.1] - 2024-10-21
 
