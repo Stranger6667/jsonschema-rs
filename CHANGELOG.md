@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.24.2] - 2024-10-24
+
 ### Fixed
 
 - Infinite recursion in some cases. [#146](https://github.com/Stranger6667/jsonschema-rs/issues/146)
@@ -685,7 +687,8 @@ Old names are retained for backward compatibility but will be removed in a futur
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.24.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.24.2...HEAD
+[0.24.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.24.1...rust-v0.24.2
 [0.24.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.24.0...rust-v0.24.1
 [0.24.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.23.0...rust-v0.24.0
 [0.23.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.22.3...rust-v0.23.0
