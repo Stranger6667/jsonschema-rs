@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.24.2] - 2024-10-24
+
 ### Fixed
 
 - Infinite recursion in some cases. [#146](https://github.com/Stranger6667/jsonschema-rs/issues/146)
@@ -517,7 +519,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.24.1...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.24.2...HEAD
+[0.24.2]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.24.1...python-v0.24.2
 [0.24.1]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.24.0...python-v0.24.1
 [0.24.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.23.0...python-v0.24.0
 [0.23.0]: https://github.com/Stranger6667/jsonschema-rs/compare/python-v0.22.3...python-v0.23.0
