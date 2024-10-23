@@ -48,7 +48,7 @@ See more usage examples in the [documentation](https://docs.rs/jsonschema).
 
 ## Highlights
 
-- 📚 Support for popular JSON Schema drafts
+- 📚 Full support for popular JSON Schema drafts
 - 🔧 Custom keywords and format validators
 - 🌐 Remote reference fetching (network/file)
 - 🎨 `Basic` output style as per JSON Schema spec
@@ -66,7 +66,7 @@ The following drafts are supported:
 - [![Draft 6](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Frust-jsonschema%2Fcompliance%2Fdraft6.json)](https://bowtie.report/#/implementations/rust-jsonschema)
 - [![Draft 4](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Frust-jsonschema%2Fcompliance%2Fdraft4.json)](https://bowtie.report/#/implementations/rust-jsonschema)
 
-There are a few known bugs, you can check the current status on the [Bowtie Report](https://bowtie.report/#/implementations/rust-jsonschema).
+You can check the current status on the [Bowtie Report](https://bowtie.report/#/implementations/rust-jsonschema).
 
 ## Notable Users
 
