@@ -207,11 +207,7 @@ impl<'a> Context<'a> {
         reference: &str,
         is_recursive: bool,
     ) -> Result<Option<ResolverComponents>, ValidationError<'static>> {
-        let resolved = if reference == "#" {
-            // Known & simple recursive reference
-            // It may also use some additional logic from the `$recursiveAnchor` keyword
-            self.resolver.lookup_recursive_ref()?
-        } else if self.is_circular_reference(reference)? {
+        let resolved = if self.is_circular_reference(reference)? {
             // Otherwise we need to manually check whether this location has already been explored
             self.resolver.lookup(reference)?
         } else {
