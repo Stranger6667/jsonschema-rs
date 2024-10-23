@@ -1,1337 +1,705 @@
-use crate::{
-    compiler,
-    error::{no_error, ErrorIterator, ValidationError},
-    keywords::CompilationResult,
-    node::SchemaNode,
-    output::BasicOutput,
-    paths::{LazyLocation, Location},
-    primitive_type::PrimitiveType,
-    properties::*,
-    validator::{PartialApplication, Validate},
-};
-use ahash::AHashMap;
+use std::{rc::Rc, sync::Arc};
+
+use ahash::AHashSet;
+use fancy_regex::Regex;
+use once_cell::sync::OnceCell;
+use referencing::{Draft, List, Registry, Resource, Uri, VocabularySet};
 use serde_json::{Map, Value};
 
-/// A validator for unevaluated properties.
-///
-/// In contrast to `additionalProperties`, which can only be used for properties defined in a schema
-/// of type `object`, `unevaluatedProperties` can "see through" advanced validation features like
-/// subschema validation (`allOf`, `oneOf`, `anyOf`), conditional validation (`if`/`then`/`else`),
-/// dependent schemas (`dependentSchemas`), and schema references (`$ref`), which allows applying
-/// `additionalProperties`-like behavior to schemas which use the aforementioned advanced validation
-/// keywords.
-#[derive(Debug)]
-struct UnevaluatedPropertiesValidator {
-    location: Location,
-    unevaluated: UnevaluatedSubvalidator,
-    additional: Option<UnevaluatedSubvalidator>,
-    properties: Option<PropertySubvalidator>,
-    patterns: Option<PatternSubvalidator>,
-    conditional: Option<Box<ConditionalSubvalidator>>,
-    dependent: Option<DependentSchemaSubvalidator>,
-    reference: Option<ReferenceSubvalidator>,
-    subschemas: Option<Vec<SubschemaSubvalidator>>,
-}
+use crate::{
+    compiler, ecma,
+    error::no_error,
+    node::SchemaNode,
+    paths::{LazyLocation, Location},
+    validator::Validate,
+    ErrorIterator, ValidationError, ValidationOptions,
+};
 
-impl UnevaluatedPropertiesValidator {
-    fn compile<'a>(
-        ctx: &compiler::Context,
+use super::CompilationResult;
+
+pub(crate) trait PropertiesFilter: Send + Sync + Sized + 'static {
+    fn new<'a>(
+        ctx: &'a compiler::Context<'a>,
         parent: &'a Map<String, Value>,
-        schema: &'a Value,
-    ) -> Result<Self, ValidationError<'a>> {
-        let unevaluated = UnevaluatedSubvalidator::from_value(
-            schema,
-            &ctx.new_at_location("unevaluatedProperties"),
-        )?;
+    ) -> Result<Self, ValidationError<'a>>;
+    fn unevaluated(&self) -> Option<&SchemaNode>;
 
-        let additional = parent
-            .get("additionalProperties")
-            .map(|additional_properties| {
-                UnevaluatedSubvalidator::from_value(
-                    additional_properties,
-                    &ctx.new_at_location("additionalProperties"),
-                )
-            })
-            .transpose()?;
-
-        let properties = parent
-            .get("properties")
-            .map(|properties| PropertySubvalidator::from_value(ctx, properties))
-            .transpose()?;
-        let patterns = parent
-            .get("patternProperties")
-            .map(|pattern_properties| PatternSubvalidator::from_value(ctx, pattern_properties))
-            .transpose()?;
-
-        let conditional = parent
-            .get("if")
-            .map(|condition| {
-                let success = parent.get("then");
-                let failure = parent.get("else");
-
-                ConditionalSubvalidator::from_values(ctx, schema, condition, success, failure)
-                    .map(Box::new)
-            })
-            .transpose()?;
-
-        let dependent = parent
-            .get("dependentSchemas")
-            .map(|dependent_schemas| {
-                DependentSchemaSubvalidator::from_value(ctx, schema, dependent_schemas)
-            })
-            .transpose()?;
-
-        let reference = parent
-            .get("$ref")
-            .map(|reference| ReferenceSubvalidator::from_value(ctx, schema, reference))
-            .transpose()?
-            .flatten();
-
-        let mut subschema_validators = vec![];
-        if let Some(Value::Array(subschemas)) = parent.get("allOf") {
-            let validator = SubschemaSubvalidator::from_values(
-                schema,
-                subschemas,
-                SubschemaBehavior::All,
-                ctx,
-            )?;
-            subschema_validators.push(validator);
-        }
-
-        if let Some(Value::Array(subschemas)) = parent.get("anyOf") {
-            let validator = SubschemaSubvalidator::from_values(
-                schema,
-                subschemas,
-                SubschemaBehavior::Any,
-                ctx,
-            )?;
-            subschema_validators.push(validator);
-        }
-
-        if let Some(Value::Array(subschemas)) = parent.get("oneOf") {
-            let validator = SubschemaSubvalidator::from_values(
-                schema,
-                subschemas,
-                SubschemaBehavior::One,
-                ctx,
-            )?;
-            subschema_validators.push(validator);
-        }
-
-        let subschemas = if subschema_validators.is_empty() {
-            None
-        } else {
-            Some(subschema_validators)
-        };
-
-        Ok(Self {
-            location: ctx.location().clone(),
-            unevaluated,
-            additional,
-            properties,
-            patterns,
-            conditional,
-            dependent,
-            reference,
-            subschemas,
-        })
-    }
-
-    fn is_valid_property(
-        &self,
-        instance: &Value,
-        property_instance: &Value,
-        property_name: &str,
-    ) -> Option<bool> {
-        self.properties
+    fn is_valid(&self, instance: &Value) -> bool {
+        self.unevaluated()
             .as_ref()
-            .and_then(|prop_map| prop_map.is_valid_property(property_instance, property_name))
-            .or_else(|| {
-                self.patterns.as_ref().and_then(|patterns| {
-                    patterns.is_valid_property(property_instance, property_name)
-                })
-            })
-            .or_else(|| {
-                self.conditional.as_ref().and_then(|conditional| {
-                    conditional.is_valid_property(instance, property_instance, property_name)
-                })
-            })
-            .or_else(|| {
-                self.dependent.as_ref().and_then(|dependent| {
-                    dependent.is_valid_property(instance, property_instance, property_name)
-                })
-            })
-            .or_else(|| {
-                self.reference.as_ref().and_then(|reference| {
-                    reference.is_valid_property(instance, property_instance, property_name)
-                })
-            })
-            .or_else(|| {
-                self.subschemas.as_ref().and_then(|subschemas| {
-                    subschemas.iter().find_map(|subschema| {
-                        subschema.is_valid_property(instance, property_instance, property_name)
-                    })
-                })
-            })
-            .or_else(|| {
-                self.additional.as_ref().and_then(|additional| {
-                    additional.is_valid_property(property_instance, property_name)
-                })
-            })
-            .or_else(|| {
-                self.unevaluated
-                    .is_valid_property(property_instance, property_name)
-            })
+            .map(|u| u.is_valid(instance))
+            .unwrap_or(false)
     }
 
-    fn validate_property<'i>(
+    fn mark_evaluated_properties<'i>(
         &self,
         instance: &'i Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
-        property_instance: &'i Value,
-        property_name: &str,
-    ) -> Option<ErrorIterator<'i>> {
-        self.properties
-            .as_ref()
-            .and_then(|prop_map| {
-                prop_map.validate_property(property_path, property_instance, property_name)
-            })
-            .or_else(|| {
-                self.patterns.as_ref().and_then(|patterns| {
-                    patterns.validate_property(property_path, property_instance, property_name)
-                })
-            })
-            .or_else(|| {
-                self.conditional.as_ref().and_then(|conditional| {
-                    conditional.validate_property(
-                        instance,
-                        location,
-                        property_path,
-                        property_instance,
-                        property_name,
-                    )
-                })
-            })
-            .or_else(|| {
-                self.dependent.as_ref().and_then(|dependent| {
-                    dependent.validate_property(
-                        instance,
-                        location,
-                        property_path,
-                        property_instance,
-                        property_name,
-                    )
-                })
-            })
-            .or_else(|| {
-                self.reference.as_ref().and_then(|reference| {
-                    reference.validate_property(
-                        instance,
-                        location,
-                        property_path,
-                        property_instance,
-                        property_name,
-                    )
-                })
-            })
-            .or_else(|| {
-                self.subschemas.as_ref().and_then(|subschemas| {
-                    subschemas.iter().find_map(|subschema| {
-                        subschema.validate_property(
-                            instance,
-                            location,
-                            property_path,
-                            property_instance,
-                            property_name,
-                        )
-                    })
-                })
-            })
-            .or_else(|| {
-                self.additional.as_ref().and_then(|additional| {
-                    additional.validate_property(property_path, property_instance, property_name)
-                })
-            })
-            .or_else(|| {
-                self.unevaluated
-                    .validate_property(property_path, property_instance, property_name)
-            })
-    }
+        properties: &mut AHashSet<&'i String>,
+    );
+}
 
-    fn apply_property<'a>(
-        &'a self,
-        instance: &Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
-        property_instance: &Value,
-        property_name: &str,
-    ) -> Option<BasicOutput<'a>> {
-        self.properties
-            .as_ref()
-            .and_then(|prop_map| {
-                prop_map.apply_property(property_path, property_instance, property_name)
-            })
-            .or_else(|| {
-                self.patterns.as_ref().and_then(|patterns| {
-                    patterns.apply_property(property_path, property_instance, property_name)
-                })
-            })
-            .or_else(|| {
-                self.conditional.as_ref().and_then(|conditional| {
-                    conditional.apply_property(
-                        instance,
-                        location,
-                        property_path,
-                        property_instance,
-                        property_name,
-                    )
-                })
-            })
-            .or_else(|| {
-                self.dependent.as_ref().and_then(|dependent| {
-                    dependent.apply_property(
-                        instance,
-                        location,
-                        property_path,
-                        property_instance,
-                        property_name,
-                    )
-                })
-            })
-            .or_else(|| {
-                self.reference.as_ref().and_then(|reference| {
-                    reference.apply_property(
-                        instance,
-                        location,
-                        property_path,
-                        property_instance,
-                        property_name,
-                    )
-                })
-            })
-            .or_else(|| {
-                self.subschemas.as_ref().and_then(|subschemas| {
-                    subschemas.iter().find_map(|subschema| {
-                        subschema.apply_property(
-                            instance,
-                            location,
-                            property_path,
-                            property_instance,
-                            property_name,
-                        )
-                    })
-                })
-            })
-            .or_else(|| {
-                self.additional.as_ref().and_then(|additional| {
-                    additional.apply_property(property_path, property_instance, property_name)
-                })
-            })
-            .or_else(|| {
-                self.unevaluated
-                    .apply_property(property_path, property_instance, property_name)
-            })
+pub(crate) struct UnevaluatedPropertiesValidator<F: PropertiesFilter> {
+    location: Location,
+    filter: F,
+}
+
+impl<F: PropertiesFilter> UnevaluatedPropertiesValidator<F> {
+    #[inline]
+    pub(crate) fn compile<'a>(
+        ctx: &'a compiler::Context,
+        parent: &'a Map<String, Value>,
+    ) -> CompilationResult<'a> {
+        Ok(Box::new(UnevaluatedPropertiesValidator {
+            location: ctx.location().join("unevaluatedProperties"),
+            filter: F::new(ctx, parent)?,
+        }))
     }
 }
 
-impl Validate for UnevaluatedPropertiesValidator {
+impl<F: PropertiesFilter> Validate for UnevaluatedPropertiesValidator<F> {
     fn is_valid(&self, instance: &Value) -> bool {
-        if let Value::Object(props) = instance {
-            props.iter().all(|(property_name, property_instance)| {
-                self.is_valid_property(instance, property_instance, property_name)
-                    .unwrap_or(false)
-            })
-        } else {
-            true
+        if let Value::Object(properties) = instance {
+            let mut evaluated = AHashSet::new();
+            self.filter
+                .mark_evaluated_properties(instance, &mut evaluated);
+
+            for (property, value) in properties {
+                if !evaluated.contains(property) && !self.filter.is_valid(value) {
+                    return false;
+                }
+            }
         }
+        true
     }
 
     fn validate<'i>(&self, instance: &'i Value, location: &LazyLocation) -> ErrorIterator<'i> {
-        if let Value::Object(props) = instance {
-            let mut errors = vec![];
+        if let Value::Object(properties) = instance {
+            let mut evaluated = AHashSet::new();
+            self.filter
+                .mark_evaluated_properties(instance, &mut evaluated);
+
             let mut unevaluated = vec![];
-
-            for (property_name, property_instance) in props {
-                let property_path = location.push(property_name.as_str());
-                let maybe_property_errors = self.validate_property(
-                    instance,
-                    location,
-                    &property_path,
-                    property_instance,
-                    property_name,
-                );
-
-                match maybe_property_errors {
-                    Some(property_errors) => errors.extend(property_errors),
-                    None => {
-                        unevaluated.push(property_name.to_string());
-                    }
+            for (property, value) in properties {
+                if !evaluated.contains(property) && !self.filter.is_valid(value) {
+                    unevaluated.push(property.clone());
                 }
             }
-
             if !unevaluated.is_empty() {
-                errors.push(ValidationError::unevaluated_properties(
-                    self.location.clone(),
-                    location.into(),
-                    instance,
-                    unevaluated,
-                ));
-            }
-
-            Box::new(errors.into_iter())
-        } else {
-            no_error()
-        }
-    }
-
-    fn apply<'a>(&'a self, instance: &Value, location: &LazyLocation) -> PartialApplication<'a> {
-        if let Value::Object(props) = instance {
-            let mut output = BasicOutput::default();
-            let mut unevaluated = vec![];
-
-            for (property_name, property_instance) in props {
-                let property_path = location.push(property_name.as_str());
-                let maybe_property_output = self.apply_property(
-                    instance,
-                    location,
-                    &property_path,
-                    property_instance,
-                    property_name,
-                );
-
-                match maybe_property_output {
-                    Some(property_output) => output += property_output,
-                    None => {
-                        unevaluated.push(property_name.to_string());
-                    }
-                }
-            }
-
-            let mut result: PartialApplication = output.into();
-            if !unevaluated.is_empty() {
-                result.mark_errored(
-                    ValidationError::unevaluated_properties(
+                return Box::new(
+                    vec![ValidationError::unevaluated_properties(
                         self.location.clone(),
                         location.into(),
                         instance,
                         unevaluated,
-                    )
-                    .into(),
-                )
-            }
-            result
-        } else {
-            PartialApplication::valid_empty()
-        }
-    }
-}
-
-/// A subvalidator for properties.
-#[derive(Debug)]
-struct PropertySubvalidator {
-    prop_map: SmallValidatorsMap,
-}
-
-impl PropertySubvalidator {
-    fn from_value<'a>(
-        ctx: &compiler::Context,
-        properties: &'a Value,
-    ) -> Result<Self, ValidationError<'a>> {
-        properties
-            .as_object()
-            .ok_or_else(ValidationError::null_schema)
-            .and_then(|props| SmallValidatorsMap::from_map(ctx, props))
-            .map(|prop_map| Self { prop_map })
-    }
-
-    fn is_valid_property(&self, property_instance: &Value, property_name: &str) -> Option<bool> {
-        self.prop_map
-            .get_validator(property_name)
-            .map(|node| node.is_valid(property_instance))
-    }
-
-    fn validate_property<'i>(
-        &self,
-        property_path: &LazyLocation,
-        property_instance: &'i Value,
-        property_name: &str,
-    ) -> Option<ErrorIterator<'i>> {
-        self.prop_map
-            .get_key_validator(property_name)
-            .map(|(_, node)| node.validate(property_instance, property_path))
-    }
-
-    fn apply_property<'a>(
-        &'a self,
-        property_path: &LazyLocation,
-        property_instance: &Value,
-        property_name: &str,
-    ) -> Option<BasicOutput<'a>> {
-        self.prop_map
-            .get_key_validator(property_name)
-            .map(|(_, node)| node.apply_rooted(property_instance, property_path))
-    }
-}
-
-/// A subvalidator for pattern properties.
-#[derive(Debug)]
-struct PatternSubvalidator {
-    patterns: PatternedValidators,
-}
-
-impl PatternSubvalidator {
-    fn from_value<'a>(
-        ctx: &compiler::Context,
-        properties: &'a Value,
-    ) -> Result<Self, ValidationError<'a>> {
-        properties
-            .as_object()
-            .ok_or_else(ValidationError::null_schema)
-            .and_then(|props| compile_patterns(ctx, props))
-            .map(|patterns| Self { patterns })
-    }
-
-    fn is_valid_property(&self, property_instance: &Value, property_name: &str) -> Option<bool> {
-        let mut had_match = false;
-
-        for (pattern, node) in &self.patterns {
-            if pattern.is_match(property_name).unwrap_or(false) {
-                had_match = true;
-
-                if !node.is_valid(property_instance) {
-                    return Some(false);
-                }
+                    )]
+                    .into_iter(),
+                );
             }
         }
-
-        had_match.then_some(true)
-    }
-
-    fn validate_property<'i>(
-        &self,
-        property_path: &LazyLocation,
-        property_instance: &'i Value,
-        property_name: &str,
-    ) -> Option<ErrorIterator<'i>> {
-        let mut had_match = false;
-        let mut errors = vec![];
-
-        for (pattern, node) in &self.patterns {
-            if pattern.is_match(property_name).unwrap_or(false) {
-                had_match = true;
-
-                errors.extend(node.validate(property_instance, property_path));
-            }
-        }
-
-        had_match.then(|| boxed_errors(errors))
-    }
-
-    fn apply_property<'a>(
-        &'a self,
-        property_path: &LazyLocation,
-        property_instance: &Value,
-        property_name: &str,
-    ) -> Option<BasicOutput<'a>> {
-        let mut had_match = false;
-        let mut output = BasicOutput::default();
-
-        for (pattern, node) in &self.patterns {
-            if pattern.is_match(property_name).unwrap_or(false) {
-                had_match = true;
-
-                let pattern_output = node.apply_rooted(property_instance, property_path);
-                output += pattern_output;
-            }
-        }
-
-        had_match.then_some(output)
+        no_error()
     }
 }
 
-/// Subschema validator behavior.
-#[derive(Debug)]
-enum SubschemaBehavior {
-    /// Properties must be valid for all subschemas that would evaluate them.
-    All,
-
-    /// Properties must be valid for exactly one subschema that would evaluate them.
-    One,
-
-    /// Properties must be valid for at least one subschema that would evaluate them.
-    Any,
+struct Draft2019PropertiesFilter {
+    unevaluated: Option<SchemaNode>,
+    additional: Option<SchemaNode>,
+    properties: Vec<(String, SchemaNode)>,
+    dependent: Vec<(String, Self)>,
+    pattern_properties: Vec<(fancy_regex::Regex, SchemaNode)>,
+    ref_: Option<Box<Self>>,
+    recursive_ref: Option<LazyRecursiveRef>,
+    conditional: Option<Box<ConditionalFilter<Self>>>,
+    all_of: Option<CombinatorFilter<Self>>,
+    any_of: Option<CombinatorFilter<Self>>,
+    one_of: Option<CombinatorFilter<Self>>,
 }
 
-impl SubschemaBehavior {
-    const fn as_str(&self) -> &'static str {
-        match self {
-            SubschemaBehavior::All => "allOf",
-            SubschemaBehavior::One => "oneOf",
-            SubschemaBehavior::Any => "anyOf",
-        }
-    }
+struct LazyRecursiveRef {
+    resource: Resource,
+    config: Arc<ValidationOptions>,
+    registry: Arc<Registry>,
+    scopes: List<Uri<String>>,
+    base_uri: Arc<Uri<String>>,
+    vocabularies: VocabularySet,
+    location: Location,
+    draft: Draft,
+    inner: OnceCell<Box<Draft2019PropertiesFilter>>,
 }
 
-/// A subvalidator for subschema validation such as `allOf`, `oneOf`, and `anyOf`.
-#[derive(Debug)]
-struct SubschemaSubvalidator {
-    behavior: SubschemaBehavior,
-    subvalidators: Vec<(SchemaNode, UnevaluatedPropertiesValidator)>,
-}
-
-impl SubschemaSubvalidator {
-    fn from_values<'a>(
-        parent: &'a Value,
-        values: &'a [Value],
-        behavior: SubschemaBehavior,
-        ctx: &compiler::Context,
-    ) -> Result<Self, ValidationError<'a>> {
-        let mut subvalidators = vec![];
-        let keyword_context = ctx.new_at_location(behavior.as_str());
-
-        for (i, value) in values.iter().enumerate() {
-            if let Value::Object(subschema) = value {
-                let ctx = keyword_context.new_at_location(i);
-
-                let node = compiler::compile(&ctx, ctx.as_resource_ref(value))?;
-                let subvalidator = UnevaluatedPropertiesValidator::compile(
-                    &ctx,
-                    subschema,
-                    get_transitive_unevaluated_props_schema(subschema, parent),
-                )?;
-
-                subvalidators.push((node, subvalidator));
-            }
+impl LazyRecursiveRef {
+    fn new<'a>(ctx: &compiler::Context) -> Result<Self, ValidationError<'a>> {
+        let scopes = ctx.scopes();
+        let resolved = ctx.lookup_recursive_reference()?;
+        let resource = ctx.draft().create_resource(resolved.contents().clone());
+        let resolver = resolved.resolver();
+        let mut base_uri = resolver.base_uri();
+        if let Some(id) = resource.id() {
+            base_uri = resolver.resolve_against(&base_uri.borrow(), id)?;
         }
 
-        Ok(Self {
-            behavior,
-            subvalidators,
+        Ok(LazyRecursiveRef {
+            resource,
+            config: Arc::clone(ctx.config()),
+            registry: Arc::clone(&ctx.registry),
+            base_uri,
+            scopes,
+            vocabularies: ctx.vocabularies().clone(),
+            location: ctx.location().clone(),
+            draft: ctx.draft(),
+            inner: OnceCell::default(),
         })
     }
 
-    fn is_valid_property(
-        &self,
-        instance: &Value,
-        property_instance: &Value,
-        property_name: &str,
-    ) -> Option<bool> {
-        let mapped = self.subvalidators.iter().map(|(node, subvalidator)| {
-            (
-                subvalidator.is_valid_property(instance, property_instance, property_name),
-                node.is_valid(instance),
-            )
-        });
+    fn get_or_init(&self) -> &Draft2019PropertiesFilter {
+        self.inner.get_or_init(|| {
+            let resolver = self
+                .registry
+                .resolver_from_raw_parts(self.base_uri.clone(), self.scopes.clone());
 
-        match self.behavior {
-            // The instance must be valid against _all_ subschemas, and the property must be
-            // evaluated by at least one subschema.
-            SubschemaBehavior::All => {
-                let results = mapped.collect::<Vec<_>>();
-                let all_subschemas_valid =
-                    results.iter().all(|(_, instance_valid)| *instance_valid);
-                if all_subschemas_valid {
-                    // We only need to find the first valid evaluation because we know if that
-                    // all subschemas were valid against the instance that there can't actually
-                    // be any subschemas where the property was evaluated but invalid.
-                    results
-                        .iter()
-                        .find_map(|(property_result, _)| *property_result)
-                } else {
-                    None
-                }
-            }
-
-            // The instance must be valid against only _one_ subschema, and for that subschema, the
-            // property must be evaluated by it.
-            SubschemaBehavior::One => {
-                let mut evaluated_property = None;
-                for (property_result, instance_valid) in mapped {
-                    if instance_valid {
-                        if evaluated_property.is_some() {
-                            // We already found a subschema that the instance was valid against, and
-                            // had evaluated the property, which means this `oneOf` is not valid
-                            // overall, and so the property is not considered evaluated.
-                            return None;
-                        }
-
-                        evaluated_property = property_result;
-                    }
-                }
-
-                evaluated_property
-            }
-
-            // The instance must be valid against _at least_ one subschema, and for that subschema,
-            // the property must be evaluated by it.
-            SubschemaBehavior::Any => mapped
-                .filter_map(|(property_result, instance_valid)| {
-                    instance_valid.then_some(property_result).flatten()
-                })
-                .find(|x| *x),
-        }
-    }
-
-    fn validate_property<'i>(
-        &self,
-        instance: &'i Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
-        property_instance: &'i Value,
-        property_name: &str,
-    ) -> Option<ErrorIterator<'i>> {
-        let mapped = self.subvalidators.iter().map(|(node, subvalidator)| {
-            let property_result = subvalidator
-                .validate_property(
-                    instance,
-                    location,
-                    property_path,
-                    property_instance,
-                    property_name,
-                )
-                .map(|errs| errs.collect::<Vec<_>>());
-
-            let instance_result = node.validate(instance, location).collect::<Vec<_>>();
-
-            (property_result, instance_result)
-        });
-
-        match self.behavior {
-            // The instance must be valid against _all_ subschemas, and the property must be
-            // evaluated by at least one subschema. We group the errors for the property itself
-            // across all subschemas, though.
-            SubschemaBehavior::All => {
-                let results = mapped.collect::<Vec<_>>();
-                let all_subschemas_valid = results
-                    .iter()
-                    .all(|(_, instance_errors)| instance_errors.is_empty());
-                all_subschemas_valid
-                    .then(|| {
-                        results
-                            .into_iter()
-                            .filter_map(|(property_errors, _)| property_errors)
-                            .reduce(|mut previous, current| {
-                                previous.extend(current);
-                                previous
-                            })
-                            .map(boxed_errors)
-                    })
-                    .flatten()
-            }
-
-            // The instance must be valid against only _one_ subschema, and for that subschema, the
-            // property must be evaluated by it.
-            SubschemaBehavior::One => {
-                let mut evaluated_property_errors = None;
-                for (property_errors, instance_errors) in mapped {
-                    if instance_errors.is_empty() {
-                        if evaluated_property_errors.is_some() {
-                            // We already found a subschema that the instance was valid against, and
-                            // had evaluated the property, which means this `oneOf` is not valid
-                            // overall, and so the property is not considered evaluated.
-                            return None;
-                        }
-
-                        evaluated_property_errors = property_errors.map(boxed_errors);
-                    }
-                }
-
-                evaluated_property_errors
-            }
-
-            // The instance must be valid against _at least_ one subschema, and for that subschema,
-            // the property must be evaluated by it.
-            SubschemaBehavior::Any => mapped
-                .filter_map(|(property_errors, instance_errors)| {
-                    instance_errors
-                        .is_empty()
-                        .then_some(property_errors)
-                        .flatten()
-                })
-                .filter(|x| x.is_empty())
-                .map(boxed_errors)
-                .next(),
-        }
-    }
-
-    fn apply_property<'a>(
-        &'a self,
-        instance: &Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
-        property_instance: &Value,
-        property_name: &str,
-    ) -> Option<BasicOutput<'a>> {
-        let mapped = self.subvalidators.iter().map(|(node, subvalidator)| {
-            let property_result = subvalidator.apply_property(
-                instance,
-                location,
-                property_path,
-                property_instance,
-                property_name,
+            let ctx = compiler::Context::new(
+                Arc::clone(&self.config),
+                Arc::clone(&self.registry),
+                Rc::new(resolver),
+                self.vocabularies.clone(),
+                self.draft,
+                self.location.clone(),
             );
 
-            let instance_result = node.apply(instance, location);
-
-            (property_result, instance_result)
-        });
-
-        match self.behavior {
-            // The instance must be valid against _all_ subschemas, and the property must be
-            // evaluated by at least one subschema. We group the errors for the property itself
-            // across all subschemas, though.
-            SubschemaBehavior::All => {
-                let results = mapped.collect::<Vec<_>>();
-                let all_subschemas_valid = results
-                    .iter()
-                    .all(|(_, instance_output)| instance_output.is_valid());
-                all_subschemas_valid
-                    .then(|| {
-                        results
-                            .into_iter()
-                            .filter_map(|(property_output, _)| property_output)
-                            .reduce(|mut previous, current| {
-                                previous += current;
-                                previous
-                            })
-                    })
-                    .flatten()
-            }
-
-            // The instance must be valid against only _one_ subschema, and for that subschema, the
-            // property must be evaluated by it.
-            SubschemaBehavior::One => {
-                let mut evaluated_property_output = None;
-                for (property_output, instance_output) in mapped {
-                    if instance_output.is_valid() {
-                        if evaluated_property_output.is_some() {
-                            // We already found a subschema that the instance was valid against, and
-                            // had evaluated the property, which means this `oneOf` is not valid
-                            // overall, and so the property is not considered evaluated.
-                            return None;
-                        }
-
-                        evaluated_property_output = property_output;
-                    }
-                }
-
-                evaluated_property_output
-            }
-
-            // The instance must be valid against _at least_ one subschema, and for that subschema,
-            // the property must be evaluated by it.
-            SubschemaBehavior::Any => mapped
-                .filter_map(|(property_output, instance_output)| {
-                    instance_output
-                        .is_valid()
-                        .then_some(property_output)
-                        .flatten()
-                })
-                .find(|x| x.is_valid()),
-        }
+            Box::new(
+                Draft2019PropertiesFilter::new(
+                    &ctx,
+                    self.resource
+                        .contents()
+                        .as_object()
+                        .expect("Invalid schema"),
+                )
+                .expect("Invalid schema during lazy compilation"),
+            )
+        })
     }
 }
 
-/// Unevaluated properties behavior.
-#[derive(Debug)]
-enum UnevaluatedBehavior {
-    /// Unevaluated properties are allowed, regardless of instance value.
-    Allow,
-
-    /// Unevaluated properties are not allowed, regardless of instance value.
-    Deny,
-
-    /// Unevaluated properties are allowed, so long as the instance is valid against the given
-    /// schema.
-    IfValid(SchemaNode),
-}
-
-/// A subvalidator for unevaluated properties.
-#[derive(Debug)]
-struct UnevaluatedSubvalidator {
-    behavior: UnevaluatedBehavior,
-}
-
-impl UnevaluatedSubvalidator {
-    fn from_value<'a>(
-        value: &'a Value,
-        ctx: &compiler::Context,
+impl PropertiesFilter for Draft2019PropertiesFilter {
+    fn new<'a>(
+        ctx: &'a compiler::Context<'_>,
+        parent: &'a Map<String, Value>,
     ) -> Result<Self, ValidationError<'a>> {
-        let behavior = match value {
-            Value::Bool(false) => UnevaluatedBehavior::Deny,
-            Value::Bool(true) => UnevaluatedBehavior::Allow,
-            _ => UnevaluatedBehavior::IfValid(compiler::compile(ctx, ctx.as_resource_ref(value))?),
+        let mut ref_ = None;
+
+        if let Some(Value::String(reference)) = parent.get("$ref") {
+            let resolved = ctx.lookup(reference)?;
+            if let Value::Object(subschema) = resolved.contents() {
+                ref_ = Some(Box::new(Self::new(ctx, subschema)?));
+            }
+        }
+
+        let mut recursive_ref = None;
+        if parent.contains_key("$recursiveRef") {
+            recursive_ref = Some(LazyRecursiveRef::new(ctx)?);
+        }
+
+        let mut conditional = None;
+
+        if let Some(subschema) = parent.get("if") {
+            if let Value::Object(if_parent) = subschema {
+                let mut then_ = None;
+                if let Some(Value::Object(subschema)) = parent.get("then") {
+                    then_ = Some(Self::new(ctx, subschema)?);
+                }
+                let mut else_ = None;
+                if let Some(Value::Object(subschema)) = parent.get("else") {
+                    else_ = Some(Self::new(ctx, subschema)?);
+                }
+                conditional = Some(Box::new(ConditionalFilter {
+                    condition: compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
+                    if_: Self::new(ctx, if_parent)?,
+                    then_,
+                    else_,
+                }));
+            }
+        }
+
+        let mut properties = Vec::new();
+        if let Some(Value::Object(map)) = parent.get("properties") {
+            for (property, subschema) in map {
+                properties.push((
+                    property.clone(),
+                    compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
+                ));
+            }
+        }
+
+        let mut dependent = Vec::new();
+        if let Some(Value::Object(map)) = parent.get("dependentSchemas") {
+            for (property, subschema) in map {
+                if let Value::Object(subschema) = subschema {
+                    dependent.push((property.clone(), Self::new(ctx, subschema)?));
+                }
+            }
+        }
+
+        let mut additional = None;
+        if let Some(subschema) = parent.get("additionalProperties") {
+            additional = Some(compiler::compile(ctx, ctx.as_resource_ref(subschema))?);
+        }
+
+        let mut pattern_properties = Vec::new();
+        if let Some(Value::Object(patterns)) = parent.get("patternProperties") {
+            for (pattern, schema) in patterns {
+                pattern_properties.push((
+                    match ecma::to_rust_regex(pattern).map(|pattern| Regex::new(&pattern)) {
+                        Ok(Ok(r)) => r,
+                        _ => {
+                            return Err(ValidationError::format(
+                                Location::new(),
+                                ctx.location().clone(),
+                                schema,
+                                "regex",
+                            ))
+                        }
+                    },
+                    compiler::compile(ctx, ctx.as_resource_ref(schema))?,
+                ));
+            }
+        }
+
+        let mut unevaluated = None;
+        if let Some(subschema) = parent.get("unevaluatedProperties") {
+            unevaluated = Some(compiler::compile(ctx, ctx.as_resource_ref(subschema))?);
         };
 
-        Ok(Self { behavior })
-    }
+        let mut all_of = None;
+        if let Some(Some(subschemas)) = parent.get("allOf").map(Value::as_array) {
+            all_of = Some(CombinatorFilter::new(ctx, subschemas)?);
+        };
+        let mut any_of = None;
+        if let Some(Some(subschemas)) = parent.get("anyOf").map(Value::as_array) {
+            any_of = Some(CombinatorFilter::new(ctx, subschemas)?);
+        };
 
-    fn is_valid_property(&self, property_instance: &Value, _property_name: &str) -> Option<bool> {
-        match &self.behavior {
-            UnevaluatedBehavior::Allow => Some(true),
-            UnevaluatedBehavior::Deny => None,
-            UnevaluatedBehavior::IfValid(node) => Some(node.is_valid(property_instance)),
-        }
-    }
+        let mut one_of = None;
+        if let Some(Some(subschemas)) = parent.get("oneOf").map(Value::as_array) {
+            one_of = Some(CombinatorFilter::new(ctx, subschemas)?);
+        };
 
-    fn validate_property<'i>(
-        &self,
-        property_path: &LazyLocation,
-        property_instance: &'i Value,
-        _property_name: &str,
-    ) -> Option<ErrorIterator<'i>> {
-        match &self.behavior {
-            UnevaluatedBehavior::Allow => Some(no_error()),
-            UnevaluatedBehavior::Deny => None,
-            UnevaluatedBehavior::IfValid(node) => {
-                Some(node.validate(property_instance, property_path))
-            }
-        }
-    }
-
-    fn apply_property<'a>(
-        &'a self,
-        property_path: &LazyLocation,
-        property_instance: &Value,
-        _property_name: &str,
-    ) -> Option<BasicOutput<'a>> {
-        match &self.behavior {
-            UnevaluatedBehavior::Allow => Some(BasicOutput::default()),
-            UnevaluatedBehavior::Deny => None,
-            UnevaluatedBehavior::IfValid(node) => {
-                Some(node.apply_rooted(property_instance, property_path))
-            }
-        }
-    }
-}
-
-/// A subvalidator for any conditional subschemas.
-///
-/// This subvalidator handles any subschemas specified via `if`, and handles both the `then` case
-/// (`success`) and `else` case (`failure`).
-#[derive(Debug)]
-struct ConditionalSubvalidator {
-    // Validator created from the `if` schema to actually validate the given instance and
-    // determine whether or not to check the `then` or `else` schemas, if defined.
-    condition: SchemaNode,
-
-    // Validator for checking if the `if` schema evaluates a particular property.
-    node: Option<UnevaluatedPropertiesValidator>,
-
-    success: Option<UnevaluatedPropertiesValidator>,
-    failure: Option<UnevaluatedPropertiesValidator>,
-}
-
-impl ConditionalSubvalidator {
-    fn from_values<'a>(
-        ctx: &compiler::Context,
-        parent: &'a Value,
-        schema: &'a Value,
-        success: Option<&'a Value>,
-        failure: Option<&'a Value>,
-    ) -> Result<Self, ValidationError<'a>> {
-        let if_context = ctx.new_at_location("if");
-        compiler::compile(&if_context, if_context.as_resource_ref(schema)).and_then(|condition| {
-            let node = schema
-                .as_object()
-                .map(|node_schema| {
-                    UnevaluatedPropertiesValidator::compile(
-                        &if_context,
-                        node_schema,
-                        get_transitive_unevaluated_props_schema(node_schema, parent),
-                    )
-                })
-                .transpose()?;
-            let success = success
-                .and_then(|value| value.as_object())
-                .map(|success_schema| {
-                    UnevaluatedPropertiesValidator::compile(
-                        &ctx.new_at_location("then"),
-                        success_schema,
-                        get_transitive_unevaluated_props_schema(success_schema, parent),
-                    )
-                })
-                .transpose()?;
-            let failure = failure
-                .and_then(|value| value.as_object())
-                .map(|failure_schema| {
-                    UnevaluatedPropertiesValidator::compile(
-                        &ctx.new_at_location("else"),
-                        failure_schema,
-                        get_transitive_unevaluated_props_schema(failure_schema, parent),
-                    )
-                })
-                .transpose()?;
-
-            Ok(Self {
-                condition,
-                node,
-                success,
-                failure,
-            })
+        Ok(Draft2019PropertiesFilter {
+            unevaluated,
+            properties,
+            dependent,
+            additional,
+            pattern_properties,
+            ref_,
+            recursive_ref,
+            conditional,
+            all_of,
+            any_of,
+            one_of,
         })
     }
 
-    fn is_valid_property(
-        &self,
-        instance: &Value,
-        property_instance: &Value,
-        property_name: &str,
-    ) -> Option<bool> {
-        self.node
-            .as_ref()
-            .and_then(|node| node.is_valid_property(instance, property_instance, property_name))
-            .or_else(|| {
-                if self.condition.is_valid(instance) {
-                    self.success.as_ref().and_then(|success| {
-                        success.is_valid_property(instance, property_instance, property_name)
-                    })
-                } else {
-                    self.failure.as_ref().and_then(|failure| {
-                        failure.is_valid_property(instance, property_instance, property_name)
-                    })
-                }
-            })
-    }
-
-    fn validate_property<'i>(
+    fn mark_evaluated_properties<'i>(
         &self,
         instance: &'i Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
-        property_instance: &'i Value,
-        property_name: &str,
-    ) -> Option<ErrorIterator<'i>> {
-        self.node
-            .as_ref()
-            .and_then(|node| {
-                node.validate_property(
-                    instance,
-                    location,
-                    property_path,
-                    property_instance,
-                    property_name,
-                )
-            })
-            .or_else(|| {
-                if self.condition.validate(instance, location).count() == 0 {
-                    self.success.as_ref().and_then(|success| {
-                        success.validate_property(
-                            instance,
-                            location,
-                            property_path,
-                            property_instance,
-                            property_name,
-                        )
-                    })
-                } else {
-                    self.failure.as_ref().and_then(|failure| {
-                        failure.validate_property(
-                            instance,
-                            location,
-                            property_path,
-                            property_instance,
-                            property_name,
-                        )
-                    })
+        properties: &mut AHashSet<&'i String>,
+    ) {
+        if let Some(ref_) = &self.ref_ {
+            ref_.mark_evaluated_properties(instance, properties);
+        }
+
+        if let Some(recursive_ref) = &self.recursive_ref {
+            recursive_ref
+                .get_or_init()
+                .mark_evaluated_properties(instance, properties);
+        }
+
+        if let Value::Object(obj) = instance {
+            for (property, value) in obj {
+                for (p, node) in &self.properties {
+                    if property == p && node.is_valid(value) {
+                        properties.insert(property);
+                        continue;
+                    }
                 }
-            })
+                if let Some(additional) = self.additional.as_ref() {
+                    if additional.is_valid(value) {
+                        properties.insert(property);
+                        continue;
+                    }
+                }
+                if let Some(unevaluated) = self.unevaluated.as_ref() {
+                    if unevaluated.is_valid(value) {
+                        properties.insert(property);
+                        continue;
+                    }
+                }
+                for (pattern, _) in &self.pattern_properties {
+                    if pattern.is_match(property).unwrap() {
+                        properties.insert(property);
+                    }
+                }
+            }
+            for (property, subschema) in &self.dependent {
+                if !obj.contains_key(property) {
+                    continue;
+                }
+                subschema.mark_evaluated_properties(instance, properties);
+            }
+        }
+
+        if let Some(conditional) = &self.conditional {
+            conditional.mark_evaluated_properties(instance, properties);
+        }
+
+        if let Some(combinator) = &self.all_of {
+            if combinator
+                .subschemas
+                .iter()
+                .all(|(v, _)| v.is_valid(instance))
+            {
+                combinator.mark_evaluated_properties(instance, properties);
+            }
+        }
+
+        if let Some(combinator) = &self.any_of {
+            if combinator
+                .subschemas
+                .iter()
+                .any(|(v, _)| v.is_valid(instance))
+            {
+                combinator.mark_evaluated_properties(instance, properties);
+            }
+        }
+
+        if let Some(combinator) = &self.one_of {
+            let result = combinator
+                .subschemas
+                .iter()
+                .map(|(v, _)| v.is_valid(instance))
+                .collect::<Vec<_>>();
+            if result.iter().filter(|v| **v).count() == 1 {
+                for ((_, subschema), is_valid) in combinator.subschemas.iter().zip(result) {
+                    if is_valid {
+                        subschema.mark_evaluated_properties(instance, properties);
+                        break;
+                    }
+                }
+            }
+        }
     }
 
-    fn apply_property<'a>(
-        &'a self,
-        instance: &Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
-        property_instance: &Value,
-        property_name: &str,
-    ) -> Option<BasicOutput<'a>> {
-        self.node
-            .as_ref()
-            .and_then(|node| {
-                node.apply_property(
-                    instance,
-                    location,
-                    property_path,
-                    property_instance,
-                    property_name,
-                )
-            })
-            .or_else(|| {
-                let partial = self.condition.apply(instance, location);
-                if partial.is_valid() {
-                    self.success.as_ref().and_then(|success| {
-                        success.apply_property(
-                            instance,
-                            location,
-                            property_path,
-                            property_instance,
-                            property_name,
-                        )
-                    })
-                } else {
-                    self.failure.as_ref().and_then(|failure| {
-                        failure.apply_property(
-                            instance,
-                            location,
-                            property_path,
-                            property_instance,
-                            property_name,
-                        )
-                    })
-                }
-            })
+    fn unevaluated(&self) -> Option<&SchemaNode> {
+        self.unevaluated.as_ref()
     }
 }
 
-/// A subvalidator for dependent schemas.
-#[derive(Debug)]
-struct DependentSchemaSubvalidator {
-    nodes: AHashMap<String, UnevaluatedPropertiesValidator>,
+struct DefaultPropertiesFilter {
+    unevaluated: Option<SchemaNode>,
+    additional: Option<SchemaNode>,
+    properties: Vec<(String, SchemaNode)>,
+    dependent: Vec<(String, Self)>,
+    pattern_properties: Vec<(fancy_regex::Regex, SchemaNode)>,
+    ref_: Option<Box<Self>>,
+    dynamic_ref: Option<Box<Self>>,
+    conditional: Option<Box<ConditionalFilter<Self>>>,
+    all_of: Option<CombinatorFilter<Self>>,
+    any_of: Option<CombinatorFilter<Self>>,
+    one_of: Option<CombinatorFilter<Self>>,
 }
 
-impl DependentSchemaSubvalidator {
-    fn from_value<'a>(
-        ctx: &compiler::Context,
-        parent: &'a Value,
-        value: &'a Value,
+impl PropertiesFilter for DefaultPropertiesFilter {
+    fn new<'a>(
+        ctx: &'a compiler::Context<'_>,
+        parent: &'a Map<String, Value>,
     ) -> Result<Self, ValidationError<'a>> {
-        let ctx = ctx.new_at_location("dependentSchemas");
-        let schemas = value
-            .as_object()
-            .ok_or_else(|| unexpected_type(&ctx, value, PrimitiveType::Object))?;
-        let mut nodes = AHashMap::new();
+        let mut ref_ = None;
 
-        for (dependent_property_name, dependent_schema) in schemas {
-            let dependent_schema = dependent_schema
-                .as_object()
-                .ok_or_else(ValidationError::null_schema)?;
-
-            let ctx = ctx.new_at_location(dependent_property_name.as_str());
-            let node = UnevaluatedPropertiesValidator::compile(
-                &ctx,
-                dependent_schema,
-                get_transitive_unevaluated_props_schema(dependent_schema, parent),
-            )?;
-            nodes.insert(dependent_property_name.to_string(), node);
-        }
-
-        Ok(Self { nodes })
-    }
-
-    fn is_valid_property(
-        &self,
-        instance: &Value,
-        property_instance: &Value,
-        property_name: &str,
-    ) -> Option<bool> {
-        self.nodes
-            .iter()
-            .find_map(|(dependent_property_name, node)| {
-                value_has_object_key(instance, dependent_property_name)
-                    .then_some(node)
-                    .and_then(|node| {
-                        node.is_valid_property(instance, property_instance, property_name)
-                    })
-            })
-    }
-
-    fn validate_property<'i>(
-        &self,
-        instance: &'i Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
-        property_instance: &'i Value,
-        property_name: &str,
-    ) -> Option<ErrorIterator<'i>> {
-        self.nodes
-            .iter()
-            .find_map(|(dependent_property_name, node)| {
-                value_has_object_key(instance, dependent_property_name)
-                    .then_some(node)
-                    .and_then(|node| {
-                        node.validate_property(
-                            instance,
-                            location,
-                            property_path,
-                            property_instance,
-                            property_name,
-                        )
-                    })
-            })
-    }
-
-    fn apply_property<'a>(
-        &'a self,
-        instance: &Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
-        property_instance: &Value,
-        property_name: &str,
-    ) -> Option<BasicOutput<'a>> {
-        self.nodes
-            .iter()
-            .find_map(|(dependent_property_name, node)| {
-                value_has_object_key(instance, dependent_property_name)
-                    .then_some(node)
-                    .and_then(|node| {
-                        node.apply_property(
-                            instance,
-                            location,
-                            property_path,
-                            property_instance,
-                            property_name,
-                        )
-                    })
-            })
-    }
-}
-
-/// A subvalidator for a top-level schema reference. (`$ref`)
-#[derive(Debug)]
-struct ReferenceSubvalidator {
-    node: Box<UnevaluatedPropertiesValidator>,
-}
-
-impl ReferenceSubvalidator {
-    fn from_value_impl<'a>(
-        ctx: &compiler::Context,
-        parent: &'a Value,
-        contents: &Value,
-    ) -> Result<Option<Self>, ValidationError<'a>> {
-        contents
-            .as_object()
-            .map(|schema| {
-                UnevaluatedPropertiesValidator::compile(
-                    ctx,
-                    schema,
-                    get_transitive_unevaluated_props_schema(schema, parent),
-                )
-                .map(|validator| ReferenceSubvalidator {
-                    node: Box::new(validator),
-                })
-                .map_err(|e| e.into_owned())
-            })
-            .transpose()
-    }
-    fn from_value<'a>(
-        ctx: &compiler::Context,
-        parent: &'a Value,
-        value: &'a Value,
-    ) -> Result<Option<Self>, ValidationError<'a>> {
-        let kctx = ctx.new_at_location("$ref");
-        let reference = value
-            .as_str()
-            .ok_or_else(|| unexpected_type(&kctx, value, PrimitiveType::String))?;
-
-        let is_recursive = parent
-            .get("$recursiveAnchor")
-            .and_then(Value::as_bool)
-            .unwrap_or_default();
-        if let Some((_, _, resource)) = ctx.lookup_maybe_recursive(reference, is_recursive)? {
-            Self::from_value_impl(ctx, parent, resource.contents())
-        } else {
+        if let Some(Value::String(reference)) = parent.get("$ref") {
             let resolved = ctx.lookup(reference)?;
-            Self::from_value_impl(ctx, parent, resolved.contents())
+            if let Value::Object(subschema) = resolved.contents() {
+                ref_ = Some(Box::new(Self::new(ctx, subschema)?));
+            }
+        }
+
+        let mut dynamic_ref = None;
+
+        if let Some(Value::String(reference)) = parent.get("$dynamicRef") {
+            let resolved = ctx.lookup(reference)?;
+            if let Value::Object(subschema) = resolved.contents() {
+                dynamic_ref = Some(Box::new(Self::new(ctx, subschema)?));
+            }
+        }
+
+        let mut conditional = None;
+
+        if let Some(subschema) = parent.get("if") {
+            if let Value::Object(if_parent) = subschema {
+                let mut then_ = None;
+                if let Some(Value::Object(subschema)) = parent.get("then") {
+                    then_ = Some(Self::new(ctx, subschema)?);
+                }
+                let mut else_ = None;
+                if let Some(Value::Object(subschema)) = parent.get("else") {
+                    else_ = Some(Self::new(ctx, subschema)?);
+                }
+                conditional = Some(Box::new(ConditionalFilter {
+                    condition: compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
+                    if_: Self::new(ctx, if_parent)?,
+                    then_,
+                    else_,
+                }));
+            }
+        }
+
+        let mut properties = Vec::new();
+        if let Some(Value::Object(map)) = parent.get("properties") {
+            for (property, subschema) in map {
+                properties.push((
+                    property.clone(),
+                    compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
+                ));
+            }
+        }
+
+        let mut dependent = Vec::new();
+        if let Some(Value::Object(map)) = parent.get("dependentSchemas") {
+            for (property, subschema) in map {
+                if let Value::Object(subschema) = subschema {
+                    dependent.push((property.clone(), Self::new(ctx, subschema)?));
+                }
+            }
+        }
+
+        let mut additional = None;
+        if let Some(subschema) = parent.get("additionalProperties") {
+            additional = Some(compiler::compile(ctx, ctx.as_resource_ref(subschema))?);
+        }
+
+        let mut pattern_properties = Vec::new();
+        if let Some(Value::Object(patterns)) = parent.get("patternProperties") {
+            for (pattern, schema) in patterns {
+                pattern_properties.push((
+                    match ecma::to_rust_regex(pattern).map(|pattern| Regex::new(&pattern)) {
+                        Ok(Ok(r)) => r,
+                        _ => {
+                            return Err(ValidationError::format(
+                                Location::new(),
+                                ctx.location().clone(),
+                                schema,
+                                "regex",
+                            ))
+                        }
+                    },
+                    compiler::compile(ctx, ctx.as_resource_ref(schema))?,
+                ));
+            }
+        }
+
+        let mut unevaluated = None;
+        if let Some(subschema) = parent.get("unevaluatedProperties") {
+            unevaluated = Some(compiler::compile(ctx, ctx.as_resource_ref(subschema))?);
+        };
+
+        let mut all_of = None;
+        if let Some(Some(subschemas)) = parent.get("allOf").map(Value::as_array) {
+            all_of = Some(CombinatorFilter::new(ctx, subschemas)?);
+        };
+        let mut any_of = None;
+        if let Some(Some(subschemas)) = parent.get("anyOf").map(Value::as_array) {
+            any_of = Some(CombinatorFilter::new(ctx, subschemas)?);
+        };
+
+        let mut one_of = None;
+        if let Some(Some(subschemas)) = parent.get("oneOf").map(Value::as_array) {
+            one_of = Some(CombinatorFilter::new(ctx, subschemas)?);
+        };
+
+        Ok(DefaultPropertiesFilter {
+            unevaluated,
+            properties,
+            dependent,
+            additional,
+            pattern_properties,
+            ref_,
+            dynamic_ref,
+            conditional,
+            all_of,
+            any_of,
+            one_of,
+        })
+    }
+
+    fn mark_evaluated_properties<'i>(
+        &self,
+        instance: &'i Value,
+        properties: &mut AHashSet<&'i String>,
+    ) {
+        if let Some(ref_) = &self.ref_ {
+            ref_.mark_evaluated_properties(instance, properties);
+        }
+
+        if let Some(recursive_ref) = &self.dynamic_ref {
+            recursive_ref.mark_evaluated_properties(instance, properties);
+        }
+
+        if let Value::Object(obj) = instance {
+            for (property, value) in obj {
+                for (p, node) in &self.properties {
+                    if property == p && node.is_valid(value) {
+                        properties.insert(property);
+                        continue;
+                    }
+                }
+                if let Some(additional) = self.additional.as_ref() {
+                    if additional.is_valid(value) {
+                        properties.insert(property);
+                        continue;
+                    }
+                }
+                if let Some(unevaluated) = self.unevaluated.as_ref() {
+                    if unevaluated.is_valid(value) {
+                        properties.insert(property);
+                        continue;
+                    }
+                }
+                for (pattern, _) in &self.pattern_properties {
+                    if pattern.is_match(property).unwrap() {
+                        properties.insert(property);
+                    }
+                }
+            }
+            for (property, subschema) in &self.dependent {
+                if !obj.contains_key(property) {
+                    continue;
+                }
+                subschema.mark_evaluated_properties(instance, properties);
+            }
+        }
+
+        if let Some(conditional) = &self.conditional {
+            conditional.mark_evaluated_properties(instance, properties);
+        }
+
+        if let Some(combinator) = &self.all_of {
+            if combinator
+                .subschemas
+                .iter()
+                .all(|(v, _)| v.is_valid(instance))
+            {
+                combinator.mark_evaluated_properties(instance, properties);
+            }
+        }
+
+        if let Some(combinator) = &self.any_of {
+            if combinator
+                .subschemas
+                .iter()
+                .any(|(v, _)| v.is_valid(instance))
+            {
+                combinator.mark_evaluated_properties(instance, properties);
+            }
+        }
+
+        if let Some(combinator) = &self.one_of {
+            let result = combinator
+                .subschemas
+                .iter()
+                .map(|(v, _)| v.is_valid(instance))
+                .collect::<Vec<_>>();
+            if result.iter().filter(|v| **v).count() == 1 {
+                for ((_, subschema), is_valid) in combinator.subschemas.iter().zip(result) {
+                    if is_valid {
+                        subschema.mark_evaluated_properties(instance, properties);
+                        break;
+                    }
+                }
+            }
         }
     }
 
-    fn is_valid_property(
-        &self,
-        instance: &Value,
-        property_instance: &Value,
-        property_name: &str,
-    ) -> Option<bool> {
-        self.node
-            .is_valid_property(instance, property_instance, property_name)
+    fn unevaluated(&self) -> Option<&SchemaNode> {
+        self.unevaluated.as_ref()
     }
+}
 
-    fn validate_property<'i>(
+struct CombinatorFilter<F> {
+    subschemas: Vec<(SchemaNode, F)>,
+}
+
+impl<F: PropertiesFilter> CombinatorFilter<F> {
+    fn mark_evaluated_properties<'i>(
         &self,
         instance: &'i Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
-        property_instance: &'i Value,
-        property_name: &str,
-    ) -> Option<ErrorIterator<'i>> {
-        self.node.validate_property(
-            instance,
-            location,
-            property_path,
-            property_instance,
-            property_name,
-        )
-    }
-
-    fn apply_property<'a>(
-        &'a self,
-        instance: &Value,
-        location: &LazyLocation,
-        property_path: &LazyLocation,
-        property_instance: &Value,
-        property_name: &str,
-    ) -> Option<BasicOutput<'a>> {
-        self.node.apply_property(
-            instance,
-            location,
-            property_path,
-            property_instance,
-            property_name,
-        )
+        properties: &mut AHashSet<&'i String>,
+    ) {
+        for (_, subschema) in &self.subschemas {
+            subschema.mark_evaluated_properties(instance, properties);
+        }
     }
 }
 
-fn value_has_object_key(value: &Value, key: &str) -> bool {
-    match value {
-        Value::Object(map) => map.contains_key(key),
-        _ => false,
+impl<F: PropertiesFilter> CombinatorFilter<F> {
+    fn new<'a>(
+        ctx: &'a compiler::Context,
+        subschemas: &'a [Value],
+    ) -> Result<CombinatorFilter<F>, ValidationError<'a>> {
+        let mut buffer = Vec::with_capacity(subschemas.len());
+        for subschema in subschemas {
+            if let Value::Object(parent) = subschema {
+                buffer.push((
+                    compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
+                    F::new(ctx, parent)?,
+                ));
+            }
+        }
+        Ok(CombinatorFilter { subschemas: buffer })
     }
 }
 
-fn get_transitive_unevaluated_props_schema<'a>(
-    leaf: &'a Map<String, Value>,
-    parent: &'a Value,
-) -> &'a Value {
-    // We first try and if the leaf schema has `unevaluatedProperties` defined, and if so, we use
-    // that. Otherwise, we fallback to the parent schema value, which is the value of
-    // `unevaluatedProperties` as defined at the level of the schema right where `leaf_schema`
-    // lives.
-    leaf.get("unevaluatedProperties").unwrap_or(parent)
+struct ConditionalFilter<F> {
+    condition: SchemaNode,
+    if_: F,
+    then_: Option<F>,
+    else_: Option<F>,
+}
+
+impl<F: PropertiesFilter> ConditionalFilter<F> {
+    fn mark_evaluated_properties<'i>(
+        &self,
+        instance: &'i Value,
+        properties: &mut AHashSet<&'i String>,
+    ) {
+        if self.condition.is_valid(instance) {
+            self.if_.mark_evaluated_properties(instance, properties);
+            if let Some(then_) = &self.then_ {
+                then_.mark_evaluated_properties(instance, properties);
+            }
+        } else if let Some(else_) = &self.else_ {
+            else_.mark_evaluated_properties(instance, properties);
+        }
+    }
 }
 
 pub(crate) fn compile<'a>(
-    ctx: &compiler::Context,
+    ctx: &'a compiler::Context,
     parent: &'a Map<String, Value>,
     schema: &'a Value,
 ) -> Option<CompilationResult<'a>> {
-    // Nothing to validate if `unevaluatedProperties` is set to `true`, which is the default:
-    if let Value::Bool(true) = schema {
-        return None;
+    match schema.as_bool() {
+        Some(true) => None,
+        _ => {
+            if ctx.draft() == Draft::Draft201909 {
+                Some(
+                    UnevaluatedPropertiesValidator::<Draft2019PropertiesFilter>::compile(
+                        ctx, parent,
+                    ),
+                )
+            } else {
+                Some(
+                    UnevaluatedPropertiesValidator::<DefaultPropertiesFilter>::compile(ctx, parent),
+                )
+            }
+        }
     }
-
-    match UnevaluatedPropertiesValidator::compile(ctx, parent, schema) {
-        Ok(validator) => Some(Ok(Box::new(validator))),
-        Err(e) => Some(Err(e)),
-    }
-}
-
-fn boxed_errors<'a>(errors: Vec<ValidationError<'a>>) -> ErrorIterator<'a> {
-    let boxed_errors: ErrorIterator<'a> = Box::new(errors.into_iter());
-    boxed_errors
-}
-
-fn unexpected_type<'a>(
-    ctx: &compiler::Context,
-    instance: &'a Value,
-    expected_type: PrimitiveType,
-) -> ValidationError<'a> {
-    ValidationError::single_type_error(
-        Location::new(),
-        ctx.location().clone(),
-        instance,
-        expected_type,
-    )
 }
 
 #[cfg(test)]
