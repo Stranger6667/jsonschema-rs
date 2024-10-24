@@ -44,7 +44,7 @@ $ jsonschema-cli schema.json -i instance.json
 
 See more usage examples in the [documentation](https://docs.rs/jsonschema).
 
-> ⚠️ **Upgrading from pre-0.20.0?** Check our [Migration Guide](https://github.com/Stranger6667/jsonschema-rs/blob/master/MIGRATION.md) for key changes.
+> ⚠️ **Upgrading from older versions?** Check our [Migration Guide](https://github.com/Stranger6667/jsonschema-rs/blob/master/MIGRATION.md) for key changes.
 
 ## Highlights
 
