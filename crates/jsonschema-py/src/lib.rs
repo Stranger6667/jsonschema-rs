@@ -1,5 +1,3 @@
-#![allow(clippy::upper_case_acronyms)]
-
 use std::{
     any::Any,
     cell::RefCell,
@@ -265,7 +263,7 @@ fn to_error_message(error: &jsonschema::ValidationError<'_>) -> String {
     message
 }
 
-/// is_valid(schema, instance, draft=None, with_meta_schemas=False, formats=None, validate_formats=None, ignore_unknown_formats=True)
+/// is_valid(schema, instance, draft=None, formats=None, validate_formats=None, ignore_unknown_formats=True)
 ///
 /// A shortcut for validating the input instance against the schema.
 ///
@@ -276,13 +274,12 @@ fn to_error_message(error: &jsonschema::ValidationError<'_>) -> String {
 /// instead.
 #[pyfunction]
 #[allow(unused_variables, clippy::too_many_arguments)]
-#[pyo3(signature = (schema, instance, draft=None, with_meta_schemas=false, formats=None, validate_formats=None, ignore_unknown_formats=true))]
+#[pyo3(signature = (schema, instance, draft=None, formats=None, validate_formats=None, ignore_unknown_formats=true))]
 fn is_valid(
     py: Python<'_>,
     schema: &Bound<'_, PyAny>,
     instance: &Bound<'_, PyAny>,
     draft: Option<u8>,
-    with_meta_schemas: Option<bool>,
     formats: Option<&Bound<'_, PyDict>>,
     validate_formats: Option<bool>,
     ignore_unknown_formats: Option<bool>,
@@ -299,7 +296,7 @@ fn is_valid(
     }
 }
 
-/// validate(schema, instance, draft=None, with_meta_schemas=False, formats=None, validate_formats=None, ignore_unknown_formats=True)
+/// validate(schema, instance, draft=None, formats=None, validate_formats=None, ignore_unknown_formats=True)
 ///
 /// Validate the input instance and raise `ValidationError` in the error case
 ///
@@ -312,13 +309,12 @@ fn is_valid(
 /// instead.
 #[pyfunction]
 #[allow(unused_variables, clippy::too_many_arguments)]
-#[pyo3(signature = (schema, instance, draft=None, with_meta_schemas=false, formats=None, validate_formats=None, ignore_unknown_formats=true))]
+#[pyo3(signature = (schema, instance, draft=None, formats=None, validate_formats=None, ignore_unknown_formats=true))]
 fn validate(
     py: Python<'_>,
     schema: &Bound<'_, PyAny>,
     instance: &Bound<'_, PyAny>,
     draft: Option<u8>,
-    with_meta_schemas: Option<bool>,
     formats: Option<&Bound<'_, PyDict>>,
     validate_formats: Option<bool>,
     ignore_unknown_formats: Option<bool>,
@@ -331,7 +327,7 @@ fn validate(
     }
 }
 
-/// iter_errors(schema, instance, draft=None, with_meta_schemas=False, formats=None, validate_formats=None, ignore_unknown_formats=True)
+/// iter_errors(schema, instance, draft=None, formats=None, validate_formats=None, ignore_unknown_formats=True)
 ///
 /// Iterate the validation errors of the input instance
 ///
@@ -343,13 +339,12 @@ fn validate(
 /// instead.
 #[pyfunction]
 #[allow(unused_variables, clippy::too_many_arguments)]
-#[pyo3(signature = (schema, instance, draft=None, with_meta_schemas=false, formats=None, validate_formats=None, ignore_unknown_formats=true))]
+#[pyo3(signature = (schema, instance, draft=None, formats=None, validate_formats=None, ignore_unknown_formats=true))]
 fn iter_errors(
     py: Python<'_>,
     schema: &Bound<'_, PyAny>,
     instance: &Bound<'_, PyAny>,
     draft: Option<u8>,
-    with_meta_schemas: Option<bool>,
     formats: Option<&Bound<'_, PyDict>>,
     validate_formats: Option<bool>,
     ignore_unknown_formats: Option<bool>,
@@ -360,21 +355,6 @@ fn iter_errors(
         Ok(validator) => iter_on_error(py, &validator, instance),
         Err(error) => Err(into_py_err(py, error)?),
     }
-}
-
-/// JSONSchema(schema, draft=None, with_meta_schemas=False)
-///
-/// A JSON Schema validator.
-///
-///     >>> validator = JSONSchema({"minimum": 5})
-///     >>> validator.is_valid(3)
-///     False
-///
-/// By default Draft 7 will be used for compilation.
-#[pyclass(module = "jsonschema_rs")]
-struct JSONSchema {
-    validator: jsonschema::Validator,
-    repr: String,
 }
 
 const SCHEMA_LENGTH_LIMIT: usize = 32;
@@ -536,128 +516,6 @@ impl Validator {
             _ => "Unknown",
         };
         format!("<{draft}Validator: {}>", self.repr)
-    }
-}
-
-#[pymethods]
-impl JSONSchema {
-    #[new]
-    #[allow(unused_variables)]
-    #[pyo3(signature = (schema, draft=None, with_meta_schemas=false, formats=None, validate_formats=None, ignore_unknown_formats=true))]
-    fn new(
-        py: Python<'_>,
-        schema: &Bound<'_, PyAny>,
-        draft: Option<u8>,
-        with_meta_schemas: Option<bool>,
-        formats: Option<&Bound<'_, PyDict>>,
-        validate_formats: Option<bool>,
-        ignore_unknown_formats: Option<bool>,
-    ) -> PyResult<Self> {
-        let options = make_options(draft, formats, validate_formats, ignore_unknown_formats)?;
-        let raw_schema = ser::to_value(schema)?;
-        match options.build(&raw_schema) {
-            Ok(validator) => Ok(JSONSchema {
-                validator,
-                repr: get_schema_repr(&raw_schema),
-            }),
-            Err(error) => Err(into_py_err(py, error)?),
-        }
-    }
-    /// from_str(string, draft=None, with_meta_schemas=False, formats=None, validate_formats=None, ignore_unknown_formats=True)
-    ///
-    /// Create `JSONSchema` from a serialized JSON string.
-    ///
-    ///     >>> validator = JSONSchema.from_str('{"minimum": 5}')
-    ///
-    /// Use it if you have your schema as a string and want to utilize Rust JSON parsing.
-    #[classmethod]
-    #[allow(unused_variables, clippy::too_many_arguments)]
-    #[pyo3(signature = (string, draft=None, with_meta_schemas=false, formats=None, validate_formats=None, ignore_unknown_formats=true))]
-    fn from_str(
-        _: &Bound<'_, PyType>,
-        py: Python<'_>,
-        string: &Bound<'_, PyAny>,
-        draft: Option<u8>,
-        with_meta_schemas: Option<bool>,
-        formats: Option<&Bound<'_, PyDict>>,
-        validate_formats: Option<bool>,
-        ignore_unknown_formats: Option<bool>,
-    ) -> PyResult<Self> {
-        let obj_ptr = string.as_ptr();
-        let object_type = unsafe { pyo3::ffi::Py_TYPE(obj_ptr) };
-        if unsafe { object_type != types::STR_TYPE } {
-            let type_name =
-                unsafe { std::ffi::CStr::from_ptr((*object_type).tp_name).to_string_lossy() };
-            Err(PyValueError::new_err(format!(
-                "Expected string, got {}",
-                type_name
-            )))
-        } else {
-            let mut str_size: pyo3::ffi::Py_ssize_t = 0;
-            let ptr = unsafe { PyUnicode_AsUTF8AndSize(obj_ptr, &mut str_size) };
-            let slice = unsafe { std::slice::from_raw_parts(ptr.cast::<u8>(), str_size as usize) };
-            let raw_schema = serde_json::from_slice(slice)
-                .map_err(|error| PyValueError::new_err(format!("Invalid string: {}", error)))?;
-            let options = make_options(draft, formats, validate_formats, ignore_unknown_formats)?;
-            match options.build(&raw_schema) {
-                Ok(validator) => Ok(JSONSchema {
-                    validator,
-                    repr: get_schema_repr(&raw_schema),
-                }),
-                Err(error) => Err(into_py_err(py, error)?),
-            }
-        }
-    }
-
-    /// is_valid(instance)
-    ///
-    /// Perform fast validation against the schema.
-    ///
-    ///     >>> validator = JSONSchema({"minimum": 5})
-    ///     >>> validator.is_valid(3)
-    ///     False
-    ///
-    /// The output is a boolean value, that indicates whether the instance is valid or not.
-    #[pyo3(text_signature = "(instance)")]
-    fn is_valid(&self, instance: &Bound<'_, PyAny>) -> PyResult<bool> {
-        let instance = ser::to_value(instance)?;
-        panic::catch_unwind(AssertUnwindSafe(|| Ok(self.validator.is_valid(&instance))))
-            .map_err(handle_format_checked_panic)?
-    }
-
-    /// validate(instance)
-    ///
-    /// Validate the input instance and raise `ValidationError` in the error case
-    ///
-    ///     >>> validator = JSONSchema({"minimum": 5})
-    ///     >>> validator.validate(3)
-    ///     ...
-    ///     ValidationError: 3 is less than the minimum of 5
-    ///
-    /// If the input instance is invalid, only the first occurred error is raised.
-    #[pyo3(text_signature = "(instance)")]
-    fn validate(&self, py: Python<'_>, instance: &Bound<'_, PyAny>) -> PyResult<()> {
-        raise_on_error(py, &self.validator, instance)
-    }
-
-    /// iter_errors(instance)
-    ///
-    /// Iterate the validation errors of the input instance
-    ///
-    ///     >>> validator = JSONSchema({"minimum": 5})
-    ///     >>> next(validator.iter_errors(3))
-    ///     ...
-    ///     ValidationError: 3 is less than the minimum of 5
-    #[pyo3(text_signature = "(instance)")]
-    fn iter_errors(
-        &self,
-        py: Python<'_>,
-        instance: &Bound<'_, PyAny>,
-    ) -> PyResult<ValidationErrorIter> {
-        iter_on_error(py, &self.validator, instance)
-    }
-    fn __repr__(&self) -> String {
-        format!("<JSONSchema: {}>", self.repr)
     }
 }
 
@@ -856,7 +714,6 @@ fn jsonschema_rs(py: Python<'_>, module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_wrapped(wrap_pyfunction!(validate))?;
     module.add_wrapped(wrap_pyfunction!(iter_errors))?;
     module.add_wrapped(wrap_pyfunction!(validator_for))?;
-    module.add_class::<JSONSchema>()?;
     module.add_class::<Draft4Validator>()?;
     module.add_class::<Draft6Validator>()?;
     module.add_class::<Draft7Validator>()?;

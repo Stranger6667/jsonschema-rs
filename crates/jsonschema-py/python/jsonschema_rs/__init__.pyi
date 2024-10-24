@@ -32,30 +32,6 @@ def iter_errors(
     ignore_unknown_formats: bool = True,
 ) -> Iterator[ValidationError]: ...
 
-class JSONSchema:
-    def __init__(
-        self,
-        schema: _SchemaT,
-        draft: int | None = None,
-        with_meta_schemas: bool | None = None,
-        formats: dict[str, _FormatFunc] | None = None,
-        validate_formats: bool | None = None,
-        ignore_unknown_formats: bool = True,
-    ) -> None: ...
-    @classmethod
-    def from_str(
-        cls,
-        schema: str,
-        draft: int | None = None,
-        with_meta_schemas: bool | None = None,
-        formats: dict[str, _FormatFunc] | None = None,
-        validate_formats: bool | None = None,
-        ignore_unknown_formats: bool = True,
-    ) -> "JSONSchema": ...
-    def is_valid(self, instance: Any) -> bool: ...
-    def validate(self, instance: Any) -> None: ...
-    def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
-
 class ValidationError(ValueError):
     message: str
     schema_path: list[str | int]
