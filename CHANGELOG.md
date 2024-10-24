@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Infinite recursion when using mutually recursive `$ref` in `unevaluatedProperties`.
+
 ## [0.24.2] - 2024-10-24
 
 ### Fixed
