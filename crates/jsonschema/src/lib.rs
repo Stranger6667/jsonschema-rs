@@ -482,7 +482,7 @@ pub use error::{ErrorIterator, ValidationError};
 pub use keywords::custom::Keyword;
 pub use options::ValidationOptions;
 pub use output::BasicOutput;
-pub use referencing::{Draft, Resource, Retrieve, Uri};
+pub use referencing::{Draft, Error as ReferencingError, Resource, Retrieve, Uri};
 pub use validator::Validator;
 
 use serde_json::Value;

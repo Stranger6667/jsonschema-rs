@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Re-export `referencing::Error` as `ReferencingError`. [#614](https://github.com/Stranger6667/jsonschema-rs/issues/614)
+
 ## [0.25.0] - 2024-10-24
 
 **Important:** This release removes deprecated old APIs. See the [Migration Guide](MIGRATION.md) for details on transitioning to the new API.
