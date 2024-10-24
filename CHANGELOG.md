@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.24.3] - 2024-10-24
+
 ### Fixed
 
 - Infinite recursion when using mutually recursive `$ref` in `unevaluatedProperties`.
@@ -691,7 +693,8 @@ Old names are retained for backward compatibility but will be removed in a futur
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.24.2...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.24.3...HEAD
+[0.24.3]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.24.2...rust-v0.24.3
 [0.24.2]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.24.1...rust-v0.24.2
 [0.24.1]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.24.0...rust-v0.24.1
 [0.24.0]: https://github.com/Stranger6667/jsonschema-rs/compare/rust-v0.23.0...rust-v0.24.0
