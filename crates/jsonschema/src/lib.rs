@@ -45,12 +45,9 @@
 //!
 //! // Iterate over all errors
 //! let instance = json!(42);
-//! let result = validator.validate(&instance);
-//! if let Err(errors) = result {
-//!     for error in errors {
-//!         eprintln!("Error: {}", error);
-//!         eprintln!("Location: {}", error.instance_path);
-//!     }
+//! for error in validator.iter_errors(&instance) {
+//!     eprintln!("Error: {}", error);
+//!     eprintln!("Location: {}", error.instance_path);
 //! }
 //! # Ok(())
 //! # }
@@ -284,7 +281,7 @@
 //! ```rust
 //! use jsonschema::{
 //!     paths::{LazyLocation, Location},
-//!     ErrorIterator, Keyword, ValidationError,
+//!     Keyword, ValidationError,
 //! };
 //! use serde_json::{json, Map, Value};
 //! use std::iter::once;
@@ -297,27 +294,25 @@
 //!         &self,
 //!         instance: &'i Value,
 //!         location: &LazyLocation,
-//!     ) -> ErrorIterator<'i> {
+//!     ) -> Result<(), ValidationError<'i>> {
 //!         if let Value::Number(n) = instance {
 //!             if n.as_u64().map_or(false, |n| n % 2 == 0) {
-//!                 Box::new(None.into_iter())
+//!                 Ok(())
 //!             } else {
-//!                 let error = ValidationError::custom(
+//!                 return Err(ValidationError::custom(
 //!                     Location::new(),
 //!                     location.into(),
 //!                     instance,
 //!                     "Number must be even",
-//!                 );
-//!                 Box::new(once(error))
+//!                 ));
 //!             }
 //!         } else {
-//!             let error = ValidationError::custom(
+//!             Err(ValidationError::custom(
 //!                 Location::new(),
 //!                 location.into(),
 //!                 instance,
 //!                 "Value must be a number",
-//!             );
-//!             Box::new(once(error))
+//!             ))
 //!         }
 //!     }
 //!
@@ -369,7 +364,7 @@
 //! ```rust
 //! # use jsonschema::{
 //! #     paths::LazyLocation,
-//! #     ErrorIterator, Keyword, ValidationError,
+//! #     Keyword, ValidationError,
 //! # };
 //! # use serde_json::{json, Map, Value};
 //! # use std::iter::once;
@@ -381,8 +376,8 @@
 //! #         &self,
 //! #         instance: &'i Value,
 //! #         location: &LazyLocation,
-//! #     ) -> ErrorIterator<'i> {
-//! #         Box::new(None.into_iter())
+//! #     ) -> Result<(), ValidationError<'i>> {
+//! #         Ok(())
 //! #     }
 //! #
 //! #     fn is_valid(&self, instance: &Value) -> bool {
@@ -1046,6 +1041,11 @@ pub(crate) mod tests_util {
             instance
         );
         assert!(
+            validator.iter_errors(instance).next().is_some(),
+            "{} should not be valid (via validate)",
+            instance
+        );
+        assert!(
             !validator.apply(instance).basic().is_valid(),
             "{} should not be valid (via apply)",
             instance
@@ -1075,8 +1075,7 @@ pub(crate) mod tests_util {
         assert_eq!(
             crate::validator_for(schema)
                 .expect("Should be a valid schema")
-                .validate(instance)
-                .expect_err(format!("{} should not be valid", instance).as_str())
+                .iter_errors(instance)
                 .map(|e| e.to_string())
                 .collect::<Vec<String>>(),
             errors
@@ -1085,8 +1084,7 @@ pub(crate) mod tests_util {
 
     #[track_caller]
     pub(crate) fn is_valid_with(validator: &Validator, instance: &Value) {
-        if let Err(mut errors) = validator.validate(instance) {
-            let first = errors.next().expect("Errors iterator is empty");
+        if let Some(first) = validator.iter_errors(instance).next() {
             panic!(
                 "{} should be valid (via validate). Error: {} at {}",
                 instance, first, first.instance_path
@@ -1094,6 +1092,11 @@ pub(crate) mod tests_util {
         }
         assert!(
             validator.is_valid(instance),
+            "{} should be valid (via is_valid)",
+            instance
+        );
+        assert!(
+            validator.validate(instance).is_ok(),
             "{} should be valid (via is_valid)",
             instance
         );
@@ -1128,8 +1131,6 @@ pub(crate) mod tests_util {
         let err = validator
             .validate(instance)
             .expect_err("Should be an error")
-            .next()
-            .expect("Should be an error")
             .into_owned();
         err
     }
@@ -1143,9 +1144,7 @@ pub(crate) mod tests_util {
     #[track_caller]
     pub(crate) fn assert_locations(schema: &Value, instance: &Value, expected: &[&str]) {
         let validator = crate::validator_for(schema).unwrap();
-        let errors = validator
-            .validate(instance)
-            .expect_err("Should be an error");
+        let errors = validator.iter_errors(instance);
         for (error, location) in errors.zip(expected) {
             assert_eq!(error.schema_path.as_str(), *location)
         }
