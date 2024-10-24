@@ -38,11 +38,9 @@ pub struct ValidationError<'a> {
 /// let schema = json!({"maxLength": 5});
 /// let instance = json!("foo");
 /// if let Ok(validator) = jsonschema::validator_for(&schema) {
-///     let result = validator.validate(&instance);
-///     if let Err(errors) = result {
-///         for error in errors {
-///             println!("Validation error: {}", error)
-///         }
+///     let errors = validator.iter_errors(&instance);
+///     for error in errors {
+///         println!("Validation error: {}", error)
 ///     }
 /// }
 /// ```
@@ -1068,7 +1066,7 @@ mod tests {
             }
         );
         let validator = crate::validator_for(&schema).unwrap();
-        let mut result = validator.validate(instance).expect_err("error iterator");
+        let mut result = validator.iter_errors(instance);
         let error = result.next().expect("validation error");
 
         assert!(result.next().is_none());
@@ -1109,7 +1107,7 @@ mod tests {
             }
         );
         let validator = crate::validator_for(&schema).unwrap();
-        let mut result = validator.validate(instance).expect_err("error iterator");
+        let mut result = validator.iter_errors(instance);
         let error = result.next().expect("validation error");
 
         assert!(result.next().is_none());
@@ -1134,7 +1132,7 @@ mod tests {
             }
         );
         let validator = crate::validator_for(&schema).unwrap();
-        let mut result = validator.validate(instance).expect_err("error iterator");
+        let mut result = validator.iter_errors(instance);
         let error = result.next().expect("validation error");
 
         assert!(result.next().is_none());
@@ -1156,7 +1154,7 @@ mod tests {
             }
         );
         let validator = crate::validator_for(&schema).unwrap();
-        let mut result = validator.validate(instance).expect_err("error iterator");
+        let mut result = validator.iter_errors(instance);
         let error = result.next().expect("validation error");
 
         assert!(result.next().is_none());
