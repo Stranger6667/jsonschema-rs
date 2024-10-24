@@ -137,7 +137,7 @@ impl<F: PropertiesFilter> ReferenceFilter<F> {
 }
 
 struct LazyReference<T> {
-    resource: Resource,
+    resource: Arc<Resource>,
     config: Arc<ValidationOptions>,
     registry: Arc<Registry>,
     scopes: List<Uri<String>>,
@@ -152,7 +152,7 @@ impl<T: PropertiesFilter> LazyReference<T> {
     fn new<'a>(ctx: &compiler::Context) -> Result<Self, ValidationError<'a>> {
         let scopes = ctx.scopes();
         let resolved = ctx.lookup_recursive_reference()?;
-        let resource = ctx.draft().create_resource(resolved.contents().clone());
+        let resource = resolved.to_shared();
         let resolver = resolved.resolver();
         let mut base_uri = resolver.base_uri();
         if let Some(id) = resource.id() {
@@ -205,13 +205,15 @@ impl PropertiesFilter for Draft2019PropertiesFilter {
     fn new<'a>(
         ctx: &'a compiler::Context<'_>,
         parent: &'a Map<String, Value>,
-    ) -> Result<Self, ValidationError<'a>> {
+    ) -> Result<Self, ValidationError<'static>> {
         let mut ref_ = None;
 
         if let Some(Value::String(reference)) = parent.get("$ref") {
             let resolved = ctx.lookup(reference)?;
             if let Value::Object(subschema) = resolved.contents() {
-                ref_ = Some(Box::new(Self::new(ctx, subschema)?));
+                ref_ = Some(Box::new(
+                    Self::new(ctx, subschema).map_err(|e| e.into_owned())?,
+                ));
             }
         }
 
@@ -226,15 +228,16 @@ impl PropertiesFilter for Draft2019PropertiesFilter {
             if let Value::Object(if_parent) = subschema {
                 let mut then_ = None;
                 if let Some(Value::Object(subschema)) = parent.get("then") {
-                    then_ = Some(Self::new(ctx, subschema)?);
+                    then_ = Some(Self::new(ctx, subschema).map_err(|e| e.into_owned())?);
                 }
                 let mut else_ = None;
                 if let Some(Value::Object(subschema)) = parent.get("else") {
-                    else_ = Some(Self::new(ctx, subschema)?);
+                    else_ = Some(Self::new(ctx, subschema).map_err(|e| e.into_owned())?);
                 }
                 conditional = Some(Box::new(ConditionalFilter {
-                    condition: compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
-                    if_: Self::new(ctx, if_parent)?,
+                    condition: compiler::compile(ctx, ctx.as_resource_ref(subschema))
+                        .map_err(|e| e.into_owned())?,
+                    if_: Self::new(ctx, if_parent).map_err(|e| e.into_owned())?,
                     then_,
                     else_,
                 }));
@@ -246,7 +249,8 @@ impl PropertiesFilter for Draft2019PropertiesFilter {
             for (property, subschema) in map {
                 properties.push((
                     property.clone(),
-                    compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
+                    compiler::compile(ctx, ctx.as_resource_ref(subschema))
+                        .map_err(|e| e.into_owned())?,
                 ));
             }
         }
@@ -255,14 +259,20 @@ impl PropertiesFilter for Draft2019PropertiesFilter {
         if let Some(Value::Object(map)) = parent.get("dependentSchemas") {
             for (property, subschema) in map {
                 if let Value::Object(subschema) = subschema {
-                    dependent.push((property.clone(), Self::new(ctx, subschema)?));
+                    dependent.push((
+                        property.clone(),
+                        Self::new(ctx, subschema).map_err(|e| e.into_owned())?,
+                    ));
                 }
             }
         }
 
         let mut additional = None;
         if let Some(subschema) = parent.get("additionalProperties") {
-            additional = Some(compiler::compile(ctx, ctx.as_resource_ref(subschema))?);
+            additional = Some(
+                compiler::compile(ctx, ctx.as_resource_ref(subschema))
+                    .map_err(|e| e.into_owned())?,
+            );
         }
 
         let mut pattern_properties = Vec::new();
@@ -277,31 +287,36 @@ impl PropertiesFilter for Draft2019PropertiesFilter {
                                 ctx.location().clone(),
                                 schema,
                                 "regex",
-                            ))
+                            )
+                            .into_owned())
                         }
                     },
-                    compiler::compile(ctx, ctx.as_resource_ref(schema))?,
+                    compiler::compile(ctx, ctx.as_resource_ref(schema))
+                        .map_err(|e| e.into_owned())?,
                 ));
             }
         }
 
         let mut unevaluated = None;
         if let Some(subschema) = parent.get("unevaluatedProperties") {
-            unevaluated = Some(compiler::compile(ctx, ctx.as_resource_ref(subschema))?);
+            unevaluated = Some(
+                compiler::compile(ctx, ctx.as_resource_ref(subschema))
+                    .map_err(|e| e.into_owned())?,
+            );
         };
 
         let mut all_of = None;
         if let Some(Some(subschemas)) = parent.get("allOf").map(Value::as_array) {
-            all_of = Some(CombinatorFilter::new(ctx, subschemas)?);
+            all_of = Some(CombinatorFilter::new(ctx, subschemas).map_err(|e| e.into_owned())?);
         };
         let mut any_of = None;
         if let Some(Some(subschemas)) = parent.get("anyOf").map(Value::as_array) {
-            any_of = Some(CombinatorFilter::new(ctx, subschemas)?);
+            any_of = Some(CombinatorFilter::new(ctx, subschemas).map_err(|e| e.into_owned())?);
         };
 
         let mut one_of = None;
         if let Some(Some(subschemas)) = parent.get("oneOf").map(Value::as_array) {
-            one_of = Some(CombinatorFilter::new(ctx, subschemas)?);
+            one_of = Some(CombinatorFilter::new(ctx, subschemas).map_err(|e| e.into_owned())?);
         };
 
         Ok(Draft2019PropertiesFilter {
@@ -432,14 +447,14 @@ impl PropertiesFilter for DefaultPropertiesFilter {
     fn new<'a>(
         ctx: &'a compiler::Context<'_>,
         parent: &'a Map<String, Value>,
-    ) -> Result<Self, ValidationError<'a>> {
+    ) -> Result<Self, ValidationError<'static>> {
         let mut ref_ = None;
 
         if let Some(Value::String(reference)) = parent.get("$ref") {
             if ctx.is_circular_reference(reference)? {
                 let scopes = ctx.scopes();
                 let resolved = ctx.lookup(reference)?;
-                let resource = ctx.draft().create_resource(resolved.contents().clone());
+                let resource = resolved.to_shared();
                 let resolver = resolved.resolver();
                 let mut base_uri = resolver.base_uri();
                 if let Some(id) = resource.id() {
@@ -461,9 +476,9 @@ impl PropertiesFilter for DefaultPropertiesFilter {
                 ctx.mark_seen(reference)?;
                 let resolved = ctx.lookup(reference)?;
                 if let Value::Object(subschema) = resolved.contents() {
-                    ref_ = Some(ReferenceFilter::Default(Box::new(Self::new(
-                        ctx, subschema,
-                    )?)));
+                    ref_ = Some(ReferenceFilter::Default(Box::new(
+                        Self::new(ctx, subschema).map_err(|e| e.into_owned())?,
+                    )));
                 }
             };
         }
@@ -473,7 +488,9 @@ impl PropertiesFilter for DefaultPropertiesFilter {
         if let Some(Value::String(reference)) = parent.get("$dynamicRef") {
             let resolved = ctx.lookup(reference)?;
             if let Value::Object(subschema) = resolved.contents() {
-                dynamic_ref = Some(Box::new(Self::new(ctx, subschema)?));
+                dynamic_ref = Some(Box::new(
+                    Self::new(ctx, subschema).map_err(|e| e.into_owned())?,
+                ));
             }
         }
 
@@ -483,15 +500,16 @@ impl PropertiesFilter for DefaultPropertiesFilter {
             if let Value::Object(if_parent) = subschema {
                 let mut then_ = None;
                 if let Some(Value::Object(subschema)) = parent.get("then") {
-                    then_ = Some(Self::new(ctx, subschema)?);
+                    then_ = Some(Self::new(ctx, subschema).map_err(|e| e.into_owned())?);
                 }
                 let mut else_ = None;
                 if let Some(Value::Object(subschema)) = parent.get("else") {
-                    else_ = Some(Self::new(ctx, subschema)?);
+                    else_ = Some(Self::new(ctx, subschema).map_err(|e| e.into_owned())?);
                 }
                 conditional = Some(Box::new(ConditionalFilter {
-                    condition: compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
-                    if_: Self::new(ctx, if_parent)?,
+                    condition: compiler::compile(ctx, ctx.as_resource_ref(subschema))
+                        .map_err(|e| e.into_owned())?,
+                    if_: Self::new(ctx, if_parent).map_err(|e| e.into_owned())?,
                     then_,
                     else_,
                 }));
@@ -503,7 +521,8 @@ impl PropertiesFilter for DefaultPropertiesFilter {
             for (property, subschema) in map {
                 properties.push((
                     property.clone(),
-                    compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
+                    compiler::compile(ctx, ctx.as_resource_ref(subschema))
+                        .map_err(|e| e.into_owned())?,
                 ));
             }
         }
@@ -512,14 +531,20 @@ impl PropertiesFilter for DefaultPropertiesFilter {
         if let Some(Value::Object(map)) = parent.get("dependentSchemas") {
             for (property, subschema) in map {
                 if let Value::Object(subschema) = subschema {
-                    dependent.push((property.clone(), Self::new(ctx, subschema)?));
+                    dependent.push((
+                        property.clone(),
+                        Self::new(ctx, subschema).map_err(|e| e.into_owned())?,
+                    ));
                 }
             }
         }
 
         let mut additional = None;
         if let Some(subschema) = parent.get("additionalProperties") {
-            additional = Some(compiler::compile(ctx, ctx.as_resource_ref(subschema))?);
+            additional = Some(
+                compiler::compile(ctx, ctx.as_resource_ref(subschema))
+                    .map_err(|e| e.into_owned())?,
+            );
         }
 
         let mut pattern_properties = Vec::new();
@@ -534,31 +559,36 @@ impl PropertiesFilter for DefaultPropertiesFilter {
                                 ctx.location().clone(),
                                 schema,
                                 "regex",
-                            ))
+                            )
+                            .into_owned())
                         }
                     },
-                    compiler::compile(ctx, ctx.as_resource_ref(schema))?,
+                    compiler::compile(ctx, ctx.as_resource_ref(schema))
+                        .map_err(|e| e.into_owned())?,
                 ));
             }
         }
 
         let mut unevaluated = None;
         if let Some(subschema) = parent.get("unevaluatedProperties") {
-            unevaluated = Some(compiler::compile(ctx, ctx.as_resource_ref(subschema))?);
+            unevaluated = Some(
+                compiler::compile(ctx, ctx.as_resource_ref(subschema))
+                    .map_err(|e| e.into_owned())?,
+            );
         };
 
         let mut all_of = None;
         if let Some(Some(subschemas)) = parent.get("allOf").map(Value::as_array) {
-            all_of = Some(CombinatorFilter::new(ctx, subschemas)?);
+            all_of = Some(CombinatorFilter::new(ctx, subschemas).map_err(|e| e.into_owned())?);
         };
         let mut any_of = None;
         if let Some(Some(subschemas)) = parent.get("anyOf").map(Value::as_array) {
-            any_of = Some(CombinatorFilter::new(ctx, subschemas)?);
+            any_of = Some(CombinatorFilter::new(ctx, subschemas).map_err(|e| e.into_owned())?);
         };
 
         let mut one_of = None;
         if let Some(Some(subschemas)) = parent.get("oneOf").map(Value::as_array) {
-            one_of = Some(CombinatorFilter::new(ctx, subschemas)?);
+            one_of = Some(CombinatorFilter::new(ctx, subschemas).map_err(|e| e.into_owned())?);
         };
 
         Ok(DefaultPropertiesFilter {

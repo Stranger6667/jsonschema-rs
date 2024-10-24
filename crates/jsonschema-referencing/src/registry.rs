@@ -258,7 +258,10 @@ impl Registry {
     ) -> Resolver {
         Resolver::from_parts(self, base_uri, scopes)
     }
-    pub(crate) fn get_or_retrieve<'r>(&'r self, uri: &Uri<String>) -> Result<&'r Resource, Error> {
+    pub(crate) fn get_or_retrieve<'r>(
+        &'r self,
+        uri: &Uri<String>,
+    ) -> Result<&'r Arc<Resource>, Error> {
         if let Some(resource) = self.resources.get(uri) {
             Ok(resource)
         } else {

@@ -55,12 +55,12 @@ impl RefValidator {
                     inner: OnceCell::default(),
                 })))
             } else {
-                let (contents, resolver, draft) = match ctx.lookup(reference) {
+                let (resource, resolver, draft) = match ctx.lookup(reference) {
                     Ok(resolved) => resolved.into_inner(),
                     Err(error) => return Some(Err(error.into())),
                 };
-                let vocabularies = ctx.registry.find_vocabularies(draft, contents);
-                let resource_ref = draft.create_resource_ref(contents);
+                let vocabularies = ctx.registry.find_vocabularies(draft, resource.contents());
+                let resource_ref = draft.create_resource_ref(resource.contents());
                 let ctx = ctx.with_resolver_and_draft(
                     resolver,
                     resource_ref.draft(),
@@ -87,7 +87,7 @@ impl RefValidator {
 /// representation for the validation tree may allow building cycles easier and
 /// lazy evaluation won't be needed.
 pub(crate) struct LazyRefValidator {
-    resource: Resource,
+    resource: Arc<Resource>,
     config: Arc<ValidationOptions>,
     registry: Arc<Registry>,
     scopes: List<Uri<String>>,
@@ -103,7 +103,7 @@ impl LazyRefValidator {
     pub(crate) fn compile<'a>(ctx: &compiler::Context) -> CompilationResult<'a> {
         let scopes = ctx.scopes();
         let resolved = ctx.lookup_recursive_reference()?;
-        let resource = ctx.draft().create_resource(resolved.contents().clone());
+        let resource = resolved.to_shared();
         let resolver = resolved.resolver();
         let mut base_uri = resolver.base_uri();
         if let Some(id) = resource.id() {
@@ -137,7 +137,7 @@ impl LazyRefValidator {
             );
             // INVARIANT: This schema was already used during compilation before detecting a
             // reference cycle that lead to building this validator.
-            compiler::compile(&ctx, self.resource.as_ref()).expect("Invalid schema")
+            compiler::compile(&ctx, self.resource.as_ref().as_ref()).expect("Invalid schema")
         })
     }
 }

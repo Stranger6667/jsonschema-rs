@@ -4,7 +4,7 @@ use std::sync::Arc;
 use fluent_uri::Uri;
 use serde_json::Value;
 
-use crate::{list::List, Draft, Error, Registry, ResourceRef};
+use crate::{list::List, Draft, Error, Registry, Resource, ResourceRef};
 
 /// A reference resolver.
 ///
@@ -102,11 +102,7 @@ impl<'r> Resolver<'r> {
         }
 
         let resolver = self.evolve(uri);
-        Ok(Resolved::new(
-            retrieved.contents(),
-            resolver,
-            retrieved.draft(),
-        ))
+        Ok(Resolved::new_shared(retrieved, resolver, retrieved.draft()))
     }
     /// Resolve a recursive reference.
     ///
@@ -122,7 +118,7 @@ impl<'r> Resolver<'r> {
     pub fn lookup_recursive_ref(&self) -> Result<Resolved<'r>, Error> {
         let mut resolved = self.lookup("#")?;
 
-        if let Value::Object(obj) = resolved.contents {
+        if let Value::Object(obj) = resolved.contents() {
             if obj
                 .get("$recursiveAnchor")
                 .and_then(Value::as_bool)
@@ -131,7 +127,7 @@ impl<'r> Resolver<'r> {
                 for uri in &self.dynamic_scope() {
                     let next_resolved = self.lookup(uri.as_str())?;
 
-                    match next_resolved.contents {
+                    match next_resolved.contents() {
                         Value::Object(next_obj) => {
                             if !next_obj
                                 .get("$recursiveAnchor")
@@ -203,39 +199,87 @@ impl<'r> Resolver<'r> {
 
 /// A reference resolved to its contents by a [`Resolver`].
 #[derive(Debug)]
-pub struct Resolved<'r> {
-    /// The contents of the resolved reference.
-    contents: &'r Value,
-    /// The resolver that resolved this reference, which can be used for further resolutions.
-    resolver: Resolver<'r>,
-    draft: Draft,
+pub enum Resolved<'r> {
+    Ref {
+        /// The contents of the resolved reference.
+        contents: &'r Value,
+        /// The resolver that resolved this reference, which can be used for further resolutions.
+        resolver: Resolver<'r>,
+        draft: Draft,
+    },
+    Shared {
+        resource: Arc<Resource>,
+        resolver: Resolver<'r>,
+        draft: Draft,
+    },
 }
 
 impl<'r> Resolved<'r> {
-    pub(crate) fn new(contents: &'r Value, resolver: Resolver<'r>, draft: Draft) -> Self {
-        Self {
+    pub(crate) fn new_ref(contents: &'r Value, resolver: Resolver<'r>, draft: Draft) -> Self {
+        Self::Ref {
             contents,
+            resolver,
+            draft,
+        }
+    }
+    pub(crate) fn new_shared(
+        resource: &Arc<Resource>,
+        resolver: Resolver<'r>,
+        draft: Draft,
+    ) -> Self {
+        Self::Shared {
+            resource: Arc::clone(resource),
             resolver,
             draft,
         }
     }
     /// Resolved contents.
     #[must_use]
-    pub fn contents(&self) -> &'r Value {
-        self.contents
+    pub fn contents(&'r self) -> &'r Value {
+        match self {
+            Resolved::Ref { contents, .. } => contents,
+            Resolved::Shared { resource, .. } => resource.contents(),
+        }
+    }
+    #[must_use]
+    pub fn to_shared(&self) -> Arc<Resource> {
+        match self {
+            Resolved::Ref {
+                contents, draft, ..
+            } => Arc::new(draft.create_resource((*contents).clone())),
+            Resolved::Shared { resource, .. } => Arc::clone(resource),
+        }
     }
     /// Resolver used to resolve this contents.
     #[must_use]
     pub fn resolver(&self) -> &Resolver<'r> {
-        &self.resolver
+        match self {
+            Resolved::Ref { resolver, .. } | Resolved::Shared { resolver, .. } => resolver,
+        }
     }
-
     #[must_use]
     pub fn draft(&self) -> Draft {
-        self.draft
+        match self {
+            Resolved::Ref { draft, .. } | Resolved::Shared { draft, .. } => *draft,
+        }
     }
     #[must_use]
-    pub fn into_inner(self) -> (&'r Value, Resolver<'r>, Draft) {
-        (self.contents, self.resolver, self.draft)
+    pub fn into_inner(self) -> (Arc<Resource>, Resolver<'r>, Draft) {
+        match self {
+            Resolved::Ref {
+                contents,
+                resolver,
+                draft,
+            } => (
+                Arc::new(draft.create_resource(contents.clone())),
+                resolver,
+                draft,
+            ),
+            Resolved::Shared {
+                resource,
+                resolver,
+                draft,
+            } => (resource, resolver, draft),
+        }
     }
 }

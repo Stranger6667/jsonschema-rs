@@ -33,11 +33,9 @@ impl Anchor {
     /// Get the resource for this anchor.
     pub(crate) fn resolve<'r>(&'r self, resolver: Resolver<'r>) -> Result<Resolved<'r>, Error> {
         match self {
-            Anchor::Default { resource, .. } => Ok(Resolved::new(
-                resource.contents(),
-                resolver,
-                resource.draft(),
-            )),
+            Anchor::Default { resource, .. } => {
+                Ok(Resolved::new_shared(resource, resolver, resource.draft()))
+            }
             Anchor::Dynamic { name, resource, .. } => {
                 let mut last = resource;
                 for uri in &resolver.dynamic_scope() {
@@ -51,8 +49,8 @@ impl Anchor {
                         Err(err) => return Err(err),
                     }
                 }
-                Ok(Resolved::new(
-                    last.contents(),
+                Ok(Resolved::new_shared(
+                    last,
                     resolver.in_subresource((**last).as_ref())?,
                     last.draft(),
                 ))

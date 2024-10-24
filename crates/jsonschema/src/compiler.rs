@@ -25,7 +25,7 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 const DEFAULT_SCHEME: &str = "json-schema";
 pub(crate) const DEFAULT_ROOT_URL: &str = "json-schema:///";
 type BaseUri = Uri<String>;
-type ResolverComponents = (Arc<BaseUri>, List<BaseUri>, Resource);
+type ResolverComponents = (Arc<BaseUri>, List<BaseUri>, Arc<Resource>);
 
 /// Container for information required to build a tree.
 ///
@@ -216,7 +216,7 @@ impl<'a> Context<'a> {
             }
             return Ok(None);
         };
-        let resource = self.draft().create_resource(resolved.contents().clone());
+        let resource = resolved.to_shared();
         let mut base_uri = resolved.resolver().base_uri().to_owned();
         let scopes = resolved.resolver().dynamic_scope();
         if let Some(id) = resource.id() {
