@@ -1086,9 +1086,9 @@ mod tests {
     ) {
         let schema = json!(
             {
-                "additionalItems": additional_items,
+                "items": additional_items,
                 "type": "array",
-                "items": [
+                "prefixItems": [
                     {
                         "type": "string"
                     },
@@ -1097,7 +1097,7 @@ mod tests {
                         "properties": {
                             "foo": {
                                 "type": "array",
-                                "items": [
+                                "prefixItems": [
                                     {
                                         "type": "string"
                                     }

@@ -22,11 +22,11 @@ pub enum Draft {
     /// JSON Schema Draft 6
     Draft6,
     /// JSON Schema Draft 7
-    #[default]
     Draft7,
     /// JSON Schema Draft 2019-09
     Draft201909,
     /// JSON Schema Draft 2020-12
+    #[default]
     Draft202012,
 }
 

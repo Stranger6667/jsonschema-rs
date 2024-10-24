@@ -4,6 +4,10 @@
 
 **Important:** This release removes deprecated old APIs. See the [Migration Guide](MIGRATION.md) for details on transitioning to the new API.
 
+### Changed
+
+- **BREAKING**: Default to Draft 2020-12.
+
 ### Removed
 
 - Deprecated `draft201909`, `draft202012`, and `cli` features.

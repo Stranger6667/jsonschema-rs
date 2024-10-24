@@ -430,6 +430,7 @@
 //! let validator = jsonschema::options()
 //!     .with_format("ends-with-42", ends_with_42)
 //!     .with_format("ends-with-43", |s| s.ends_with("43!"))
+//!     .should_validate_formats(true)
 //!     .build(&schema)?;
 //!
 //! // Step 4: Validate instances
@@ -569,6 +570,7 @@ pub fn validator_for(schema: &Value) -> Result<Validator, ValidationError<'stati
 /// let schema = json!({"type": "string", "format": "custom"});
 /// let validator = jsonschema::options()
 ///     .with_format("custom", |value| value.len() == 3)
+///     .should_validate_formats(true)
 ///     .build(&schema)?;
 ///
 /// assert!(validator.is_valid(&json!("abc")));
@@ -1031,6 +1033,7 @@ pub(crate) mod tests_util {
     use crate::ValidationError;
     use serde_json::Value;
 
+    #[track_caller]
     pub(crate) fn is_not_valid_with(validator: &Validator, instance: &Value) {
         assert!(
             !validator.is_valid(instance),
@@ -1049,13 +1052,22 @@ pub(crate) mod tests_util {
         );
     }
 
+    #[track_caller]
     pub(crate) fn is_not_valid(schema: &Value, instance: &Value) {
-        let validator = crate::validator_for(schema).unwrap();
+        let validator = crate::options()
+            .should_validate_formats(true)
+            .build(schema)
+            .expect("Invalid schema");
         is_not_valid_with(&validator, instance)
     }
 
+    #[track_caller]
     pub(crate) fn is_not_valid_with_draft(draft: crate::Draft, schema: &Value, instance: &Value) {
-        let validator = crate::options().with_draft(draft).build(schema).unwrap();
+        let validator = crate::options()
+            .should_validate_formats(true)
+            .with_draft(draft)
+            .build(schema)
+            .expect("Invalid schema");
         is_not_valid_with(&validator, instance)
     }
 
@@ -1094,7 +1106,10 @@ pub(crate) mod tests_util {
 
     #[track_caller]
     pub(crate) fn is_valid(schema: &Value, instance: &Value) {
-        let validator = crate::validator_for(schema).unwrap();
+        let validator = crate::options()
+            .should_validate_formats(true)
+            .build(schema)
+            .expect("Invalid schema");
         is_valid_with(&validator, instance);
     }
 
@@ -1106,7 +1121,10 @@ pub(crate) mod tests_util {
 
     #[track_caller]
     pub(crate) fn validate(schema: &Value, instance: &Value) -> ValidationError<'static> {
-        let validator = crate::validator_for(schema).unwrap();
+        let validator = crate::options()
+            .should_validate_formats(true)
+            .build(schema)
+            .expect("Invalid schema");
         let err = validator
             .validate(instance)
             .expect_err("Should be an error")

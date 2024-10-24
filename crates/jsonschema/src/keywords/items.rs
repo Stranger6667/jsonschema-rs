@@ -213,7 +213,7 @@ mod tests {
 
     #[test_case(&json!({"items": false}), &json!([1]), "/items")]
     #[test_case(&json!({"items": {"type": "string"}}), &json!([1]), "/items/type")]
-    #[test_case(&json!({"items": [{"type": "string"}]}), &json!([1]), "/items/0/type")]
+    #[test_case(&json!({"prefixItems": [{"type": "string"}]}), &json!([1]), "/prefixItems/0/type")]
     fn location(schema: &Value, instance: &Value, expected: &str) {
         tests_util::assert_schema_location(schema, instance, expected)
     }

@@ -61,7 +61,7 @@ def test_invalid_type(func):
 
 
 def test_repr():
-    assert repr(validator_for({"minimum": 5})) == '<Draft7Validator: {"minimum":5}>'
+    assert repr(validator_for({"minimum": 5})) == '<Draft202012Validator: {"minimum":5}>'
 
 
 @pytest.mark.parametrize(
@@ -128,8 +128,8 @@ def test_recursive_list():
 
 def test_paths():
     with pytest.raises(ValidationError) as exc:
-        validate({"items": [{"type": "string"}]}, [1])
-    assert exc.value.schema_path == ["items", 0, "type"]
+        validate({"prefixItems": [{"type": "string"}]}, [1])
+    assert exc.value.schema_path == ["prefixItems", 0, "type"]
     assert exc.value.instance_path == [0]
     assert exc.value.message == '1 is not of type "string"'
 
@@ -276,7 +276,9 @@ def test_custom_format():
     def is_currency(value):
         return len(value) == 3 and value.isascii()
 
-    validator = validator_for({"type": "string", "format": "currency"}, formats={"currency": is_currency})
+    validator = validator_for(
+        {"type": "string", "format": "currency"}, formats={"currency": is_currency}, validate_formats=True
+    )
     assert validator.is_valid("USD")
     assert not validator.is_valid(42)
     assert not validator.is_valid("invalid")
@@ -293,7 +295,7 @@ def test_custom_format_with_exception():
 
     schema = {"type": "string", "format": "currency"}
     formats = {"currency": is_currency}
-    validator = validator_for(schema, formats=formats)
+    validator = validator_for(schema, formats=formats, validate_formats=True)
     with pytest.raises(ValueError, match="Invalid currency"):
         validator.is_valid("USD")
     with pytest.raises(ValueError, match="Invalid currency"):
@@ -302,11 +304,11 @@ def test_custom_format_with_exception():
         for _ in validator.iter_errors("USD"):
             pass
     with pytest.raises(ValueError, match="Invalid currency"):
-        is_valid(schema, "USD", formats=formats)
+        is_valid(schema, "USD", formats=formats, validate_formats=True)
     with pytest.raises(ValueError, match="Invalid currency"):
-        validate(schema, "USD", formats=formats)
+        validate(schema, "USD", formats=formats, validate_formats=True)
     with pytest.raises(ValueError, match="Invalid currency"):
-        for _ in iter_errors(schema, "USD", formats=formats):
+        for _ in iter_errors(schema, "USD", formats=formats, validate_formats=True):
             pass
 
 
