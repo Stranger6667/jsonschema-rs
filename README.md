@@ -52,7 +52,7 @@ See more usage examples in the [documentation](https://docs.rs/jsonschema).
 - 🔧 Custom keywords and format validators
 - 🌐 Remote reference fetching (network/file)
 - 🎨 `Basic` output style as per JSON Schema spec
-- 🔗 Bindings for [Python](https://github.com/Stranger6667/jsonschema-rs/tree/master/crates/jsonschema-py), [Ruby](https://github.com/driv3r/rusty_json_schema), and [JavaScript](https://github.com/ahungrynoob/jsonschema)
+- 🔗 Bindings for [Python](https://github.com/Stranger6667/jsonschema-rs/tree/master/crates/jsonschema-py)
 - 🚀 WebAssembly support
 - 💻 Command Line Interface
 
