@@ -160,16 +160,6 @@ pub struct Validator {
     pub(crate) config: Arc<ValidationOptions>,
 }
 
-/// This function exists solely to trigger a deprecation warning if any
-/// deprecated features are enabled.
-#[deprecated(
-    since = "0.19.0",
-    note = "The features 'draft201909', 'draft202012', and 'cli' are deprecated and will be removed in a future version."
-)]
-#[allow(dead_code)]
-#[cfg(any(feature = "draft201909", feature = "draft202012", feature = "cli"))]
-fn deprecated_features_used() {}
-
 impl Validator {
     /// Create a default [`ValidationOptions`] for configuring JSON Schema validation.
     ///
@@ -186,20 +176,11 @@ impl Validator {
     /// ```
     #[must_use]
     pub fn options() -> ValidationOptions {
-        #[cfg(any(feature = "draft201909", feature = "draft202012", feature = "cli"))]
-        deprecated_features_used();
         ValidationOptions::default()
     }
     /// Create a validator using the default options.
     pub fn new(schema: &Value) -> Result<Validator, ValidationError<'static>> {
         Self::options().build(schema)
-    }
-    /// Create a validator using the default options.
-    ///
-    /// **DEPRECATED**: Use [`Validator::new`] instead.
-    #[deprecated(since = "0.20.0", note = "Use `Validator::new` instead")]
-    pub fn compile(schema: &Value) -> Result<Validator, ValidationError<'static>> {
-        Self::new(schema)
     }
     /// Run validation against `instance` and return an iterator over [`ValidationError`] in the error case.
     #[inline]

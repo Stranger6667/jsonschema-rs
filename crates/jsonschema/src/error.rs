@@ -99,8 +99,6 @@ pub enum ValidationErrorKind {
     JSONParse { error: serde_json::Error },
     /// `ref` value is not valid.
     InvalidReference { reference: String },
-    /// Invalid URL, e.g. invalid port number or IP address
-    InvalidURL { error: url::ParseError },
     /// Too many items in an array.
     MaxItems { limit: u64 },
     /// Value is too large.
@@ -439,14 +437,6 @@ impl<'a> ValidationError<'a> {
             schema_path: Location::new(),
         }
     }
-    pub(crate) fn invalid_url(error: url::ParseError) -> ValidationError<'a> {
-        ValidationError {
-            instance_path: Location::new(),
-            instance: Cow::Owned(Value::Null),
-            kind: ValidationErrorKind::InvalidURL { error },
-            schema_path: Location::new(),
-        }
-    }
     pub(crate) const fn max_items(
         location: Location,
         instance_path: Location,
@@ -782,12 +772,6 @@ impl From<Utf8Error> for ValidationError<'_> {
         ValidationError::utf8(err)
     }
 }
-impl From<url::ParseError> for ValidationError<'_> {
-    #[inline]
-    fn from(err: url::ParseError) -> Self {
-        ValidationError::invalid_url(err)
-    }
-}
 
 /// Textual representation of various validation errors.
 impl fmt::Display for ValidationError<'_> {
@@ -799,7 +783,6 @@ impl fmt::Display for ValidationError<'_> {
             ValidationErrorKind::JSONParse { error } => error.fmt(f),
             ValidationErrorKind::Referencing(error) => error.fmt(f),
             ValidationErrorKind::FileNotFound { error } => error.fmt(f),
-            ValidationErrorKind::InvalidURL { error } => error.fmt(f),
             ValidationErrorKind::BacktrackLimitExceeded { error } => error.fmt(f),
             ValidationErrorKind::Format { format } => {
                 write!(f, r#"{} is not a "{}""#, self.instance, format)
