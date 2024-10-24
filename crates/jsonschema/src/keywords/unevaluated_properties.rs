@@ -107,14 +107,36 @@ struct Draft2019PropertiesFilter {
     dependent: Vec<(String, Self)>,
     pattern_properties: Vec<(fancy_regex::Regex, SchemaNode)>,
     ref_: Option<Box<Self>>,
-    recursive_ref: Option<LazyRecursiveRef>,
+    recursive_ref: Option<LazyReference<Self>>,
     conditional: Option<Box<ConditionalFilter<Self>>>,
     all_of: Option<CombinatorFilter<Self>>,
     any_of: Option<CombinatorFilter<Self>>,
     one_of: Option<CombinatorFilter<Self>>,
 }
 
-struct LazyRecursiveRef {
+enum ReferenceFilter<T> {
+    Recursive(LazyReference<T>),
+    Default(Box<T>),
+}
+
+impl<F: PropertiesFilter> ReferenceFilter<F> {
+    fn mark_evaluated_properties<'i>(
+        &self,
+        instance: &'i Value,
+        properties: &mut AHashSet<&'i String>,
+    ) {
+        match self {
+            ReferenceFilter::Recursive(filter) => filter
+                .get_or_init()
+                .mark_evaluated_properties(instance, properties),
+            ReferenceFilter::Default(filter) => {
+                filter.mark_evaluated_properties(instance, properties)
+            }
+        }
+    }
+}
+
+struct LazyReference<T> {
     resource: Resource,
     config: Arc<ValidationOptions>,
     registry: Arc<Registry>,
@@ -123,10 +145,10 @@ struct LazyRecursiveRef {
     vocabularies: VocabularySet,
     location: Location,
     draft: Draft,
-    inner: OnceCell<Box<Draft2019PropertiesFilter>>,
+    inner: OnceCell<Box<T>>,
 }
 
-impl LazyRecursiveRef {
+impl<T: PropertiesFilter> LazyReference<T> {
     fn new<'a>(ctx: &compiler::Context) -> Result<Self, ValidationError<'a>> {
         let scopes = ctx.scopes();
         let resolved = ctx.lookup_recursive_reference()?;
@@ -137,7 +159,7 @@ impl LazyRecursiveRef {
             base_uri = resolver.resolve_against(&base_uri.borrow(), id)?;
         }
 
-        Ok(LazyRecursiveRef {
+        Ok(LazyReference {
             resource,
             config: Arc::clone(ctx.config()),
             registry: Arc::clone(&ctx.registry),
@@ -150,7 +172,7 @@ impl LazyRecursiveRef {
         })
     }
 
-    fn get_or_init(&self) -> &Draft2019PropertiesFilter {
+    fn get_or_init(&self) -> &T {
         self.inner.get_or_init(|| {
             let resolver = self
                 .registry
@@ -166,7 +188,7 @@ impl LazyRecursiveRef {
             );
 
             Box::new(
-                Draft2019PropertiesFilter::new(
+                T::new(
                     &ctx,
                     self.resource
                         .contents()
@@ -195,7 +217,7 @@ impl PropertiesFilter for Draft2019PropertiesFilter {
 
         let mut recursive_ref = None;
         if parent.contains_key("$recursiveRef") {
-            recursive_ref = Some(LazyRecursiveRef::new(ctx)?);
+            recursive_ref = Some(LazyReference::new(ctx)?);
         }
 
         let mut conditional = None;
@@ -398,7 +420,7 @@ struct DefaultPropertiesFilter {
     properties: Vec<(String, SchemaNode)>,
     dependent: Vec<(String, Self)>,
     pattern_properties: Vec<(fancy_regex::Regex, SchemaNode)>,
-    ref_: Option<Box<Self>>,
+    ref_: Option<ReferenceFilter<Self>>,
     dynamic_ref: Option<Box<Self>>,
     conditional: Option<Box<ConditionalFilter<Self>>>,
     all_of: Option<CombinatorFilter<Self>>,
@@ -414,10 +436,36 @@ impl PropertiesFilter for DefaultPropertiesFilter {
         let mut ref_ = None;
 
         if let Some(Value::String(reference)) = parent.get("$ref") {
-            let resolved = ctx.lookup(reference)?;
-            if let Value::Object(subschema) = resolved.contents() {
-                ref_ = Some(Box::new(Self::new(ctx, subschema)?));
-            }
+            if ctx.is_circular_reference(reference)? {
+                let scopes = ctx.scopes();
+                let resolved = ctx.lookup(reference)?;
+                let resource = ctx.draft().create_resource(resolved.contents().clone());
+                let resolver = resolved.resolver();
+                let mut base_uri = resolver.base_uri();
+                if let Some(id) = resource.id() {
+                    base_uri = resolver.resolve_against(&base_uri.borrow(), id)?;
+                }
+
+                ref_ = Some(ReferenceFilter::Recursive(LazyReference {
+                    resource,
+                    config: Arc::clone(ctx.config()),
+                    registry: Arc::clone(&ctx.registry),
+                    base_uri,
+                    scopes,
+                    vocabularies: ctx.vocabularies().clone(),
+                    location: ctx.location().clone(),
+                    draft: ctx.draft(),
+                    inner: OnceCell::default(),
+                }));
+            } else {
+                ctx.mark_seen(reference)?;
+                let resolved = ctx.lookup(reference)?;
+                if let Value::Object(subschema) = resolved.contents() {
+                    ref_ = Some(ReferenceFilter::Default(Box::new(Self::new(
+                        ctx, subschema,
+                    )?)));
+                }
+            };
         }
 
         let mut dynamic_ref = None;
@@ -829,6 +877,7 @@ mod tests {
     fn test_unevaluated_properties_with_recursion() {
         // See GH-420
         let schema = json!({
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "allOf": [
             {
               "$ref": "#/$defs/1_1"

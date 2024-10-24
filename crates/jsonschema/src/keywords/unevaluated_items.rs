@@ -512,3 +512,83 @@ pub(crate) fn compile<'a>(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    #[test]
+    fn test_unevaluated_items_with_recursion() {
+        let schema = json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "allOf": [
+                {
+                    "$ref": "#/$defs/array_1"
+                }
+            ],
+            "unevaluatedItems": false,
+            "$defs": {
+                "array_1": {
+                    "type": "array",
+                    "prefixItems": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "allOf": [
+                                {
+                                    "$ref": "#/$defs/array_2"
+                                }
+                            ],
+                            "type": "array",
+                            "unevaluatedItems": false
+                        }
+                    ]
+                },
+                "array_2": {
+                    "type": "array",
+                    "prefixItems": [
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "allOf": [
+                                {
+                                    "$ref": "#/$defs/array_1"
+                                }
+                            ],
+                            "type": "array",
+                            "unevaluatedItems": false
+                        }
+                    ]
+                }
+            }
+        });
+
+        let validator = crate::validator_for(&schema).expect("Schema should compile");
+
+        // This instance should fail validation because the nested array has an unevaluated item
+        let instance = json!([
+            "string",
+            [
+                42,
+                [
+                    "string",
+                    [
+                        42,
+                        "unexpected" // This item should cause validation to fail
+                    ]
+                ]
+            ]
+        ]);
+
+        assert!(!validator.is_valid(&instance));
+        assert!(validator.validate(&instance).is_err());
+
+        // This instance should pass validation as all items are evaluated
+        let valid_instance = json!(["string", [42, ["string", [42]]]]);
+
+        assert!(validator.is_valid(&valid_instance));
+        assert!(validator.validate(&valid_instance).is_ok());
+    }
+}
