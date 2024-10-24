@@ -37,7 +37,7 @@ for error in validator.iter_errors(instance):
 assert validator.is_valid(instance)
 ```
 
-> ⚠️ **Upgrading from pre-0.20.0?** Check our [Migration Guide](https://github.com/Stranger6667/jsonschema-rs/blob/master/crates/jsonschema-py/MIGRATION.md) for key changes.
+> ⚠️ **Upgrading from older versions?** Check our [Migration Guide](https://github.com/Stranger6667/jsonschema-rs/blob/master/crates/jsonschema-py/MIGRATION.md) for key changes.
 
 ## Highlights
 
