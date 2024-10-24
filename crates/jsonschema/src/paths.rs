@@ -3,17 +3,6 @@ use std::{fmt, sync::Arc};
 
 use crate::keywords::Keyword;
 
-#[deprecated(
-    since = "0.23.0",
-    note = "Use `jsonschema::paths::LocationSegment` instead. This alias will be removed in a future release."
-)]
-pub type PathChunkRef<'a> = LocationSegment<'a>;
-#[deprecated(
-    since = "0.23.0",
-    note = "Use `jsonschema::paths::LazyLocation` instead. This alias will be removed in a future release."
-)]
-pub type JsonPointerNode<'a, 'b> = LazyLocation<'a, 'b>;
-
 /// A location segment.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum LocationSegment<'a> {

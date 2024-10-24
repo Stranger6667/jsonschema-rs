@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+**Important:** This release removes deprecated old APIs. See the [Migration Guide](MIGRATION.md) for details on transitioning to the new API.
+
+### Removed
+
+- Deprecated `draft201909`, `draft202012`, and `cli` features.
+- Deprecated `CompilationOptions`, `JSONSchema`, `PathChunkRef`, `JsonPointerNode`, and `SchemaResolverError` aliases.
+- Deprecated `jsonschema::compile`, `Validator::compile`, `ValidationOptions::compile`, `ValidationOptions::with_resolver`, `ValidationOptions::with_meta_schemas`, `ValidationOptions::with_document` functions.
+- Deprecated `SchemaResolver` trait.
+
 ## [0.24.3] - 2024-10-24
 
 ### Fixed

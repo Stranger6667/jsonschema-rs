@@ -178,10 +178,8 @@
 //! ```rust
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! use std::{collections::HashMap, sync::Arc};
-//! use anyhow::anyhow;
 //! use jsonschema::{Retrieve, Uri};
 //! use serde_json::{json, Value};
-//! use url::Url;
 //!
 //! struct InMemoryRetriever {
 //!     schemas: HashMap<String, Value>,
@@ -484,8 +482,6 @@ pub use keywords::custom::Keyword;
 pub use options::ValidationOptions;
 pub use output::BasicOutput;
 pub use referencing::{Draft, Resource, Retrieve, Uri};
-#[allow(deprecated)]
-pub use retriever::{SchemaResolver, SchemaResolverError};
 pub use validator::Validator;
 
 use serde_json::Value;
@@ -495,20 +491,6 @@ use serde_json::Value;
     any(feature = "resolve-http", feature = "resolve-file")
 ))]
 compile_error!("Features 'resolve-http' and 'resolve-file' are not supported on WASM.");
-
-// Backward-compatibility
-#[deprecated(
-    since = "0.20.0",
-    note = "Use `ValidationOptions` instead. This type will be removed in a future release."
-)]
-/// Use [`ValidationOptions`] instead. This type will be removed in a future release.
-pub type CompilationOptions = ValidationOptions;
-#[deprecated(
-    since = "0.20.0",
-    note = "Use `Validator` instead. This type will be removed in a future release."
-)]
-/// Use [`Validator`] instead. This type will be removed in a future release.
-pub type JSONSchema = Validator;
 
 /// A shortcut for validating `instance` against `schema`. Draft is detected automatically.
 ///
@@ -531,16 +513,6 @@ pub fn is_valid(schema: &Value, instance: &Value) -> bool {
     validator_for(schema)
         .expect("Invalid schema")
         .is_valid(instance)
-}
-
-/// Create a validator for the input schema with automatic draft detection.
-///
-/// # Deprecated
-///
-/// This function is deprecated since version 0.20.0. Use [`validator_for`] instead.
-#[deprecated(since = "0.20.0", note = "Use `validator_for` instead")]
-pub fn compile(schema: &Value) -> Result<Validator, ValidationError<'static>> {
-    Validator::new(schema)
 }
 
 /// Create a validator for the input schema with automatic draft detection and default options.

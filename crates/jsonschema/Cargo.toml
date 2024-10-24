@@ -16,15 +16,9 @@ default = ["resolve-http", "resolve-file"]
 
 resolve-http = ["reqwest"]
 resolve-file = []
-# Deprecated in favor of `jsonschema-cli`
-cli = []
-# Deprecated: Drafts 2019-09 & 2020-12 are enabled by default
-draft201909 = []
-draft202012 = []
 
 [dependencies]
 ahash.workspace = true
-anyhow = "1.0"
 base64 = "0.22"
 bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
 email_address = "0.2.9"
@@ -45,7 +39,6 @@ reqwest = { version = "0.12", features = [
 referencing = { version = "0.24.3", path = "../jsonschema-referencing" }
 serde.workspace = true
 serde_json.workspace = true
-url.workspace = true
 uuid-simd = "0.8"
 
 [dev-dependencies]

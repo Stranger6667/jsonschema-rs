@@ -11,14 +11,13 @@ use crate::{
     options::ValidationOptions,
     paths::{Location, LocationSegment},
     primitive_type::{PrimitiveType, PrimitiveTypesBitMap},
-    retriever::RetrieverAdapter,
     ValidationError, Validator,
 };
 use ahash::{AHashMap, AHashSet};
 use once_cell::sync::Lazy;
 use referencing::{
-    uri, Draft, List, Registry, Resolved, Resolver, Resource, ResourceRef, Retrieve, Uri,
-    Vocabulary, VocabularySet, SPECIFICATIONS,
+    uri, Draft, List, Registry, Resolved, Resolver, Resource, ResourceRef, Uri, Vocabulary,
+    VocabularySet, SPECIFICATIONS,
 };
 use serde_json::Value;
 use std::{cell::RefCell, rc::Rc, sync::Arc};
@@ -292,31 +291,14 @@ pub(crate) fn build_validator(
     let base_uri = resource.id().unwrap_or(DEFAULT_ROOT_URL).to_string();
 
     // Prepare additional resources to use in resolving
-    let mut resources = Vec::with_capacity(1 + config.resources.len() + config.store.len());
+    let mut resources = Vec::with_capacity(1 + config.resources.len());
     resources.push((base_uri.clone(), resource));
-    let explicit_draft = config.draft;
-    for (uri, resource) in config.store.drain() {
-        // Deprecated `store` has no mention of specification, under which these resources
-        // should be interpreted. Therefore use the same logic as for the root resource
-        let draft = if let Some(draft) = explicit_draft {
-            draft
-        } else {
-            Draft::default().detect(&resource).unwrap_or_default()
-        };
-        resources.push((uri.to_string(), draft.create_resource((*resource).clone())));
-    }
     for (uri, resource) in config.resources.drain() {
         resources.push((uri, resource));
     }
 
     // Get retriever for external resources
-    let retriever = if let Some(resolver) = &config.external_resolver {
-        // Prefer the outdated `external_resolver` due to backward compatibility
-        let retriever: Arc<dyn Retrieve> = Arc::new(RetrieverAdapter::new(Arc::clone(resolver)));
-        retriever
-    } else {
-        Arc::clone(&config.retriever)
-    };
+    let retriever = Arc::clone(&config.retriever);
 
     // Build a registry & resolver needed for validator compilation
     let registry = Arc::new(SPECIFICATIONS.clone().try_with_resources_and_retriever(

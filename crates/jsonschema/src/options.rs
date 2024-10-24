@@ -1,4 +1,3 @@
-#![allow(deprecated)]
 use crate::{
     compiler,
     content_encoding::{
@@ -9,12 +8,12 @@ use crate::{
     keywords::{custom::KeywordFactory, format::Format},
     paths::Location,
     retriever::DefaultRetriever,
-    Keyword, SchemaResolver, ValidationError, Validator,
+    Keyword, ValidationError, Validator,
 };
 use ahash::AHashMap;
 use referencing::{uri, Draft, Resource, Retrieve};
 use serde_json::Value;
-use std::{borrow::Cow, fmt, sync::Arc};
+use std::{fmt, sync::Arc};
 
 /// Configuration options for JSON Schema validation.
 #[derive(Clone)]
@@ -25,10 +24,8 @@ pub struct ValidationOptions {
         AHashMap<&'static str, Option<(ContentEncodingCheckType, ContentEncodingConverterType)>>,
     /// Retriever for external resources
     pub(crate) retriever: Arc<dyn Retrieve>,
-    pub(crate) external_resolver: Option<Arc<dyn SchemaResolver>>, // DEPRECATED
     /// Additional resources that should be addressable during validation.
     pub(crate) resources: AHashMap<String, Resource>,
-    pub(crate) store: AHashMap<Cow<'static, str>, Arc<Value>>, // DEPRECATED
     formats: AHashMap<String, Arc<dyn Format>>,
     validate_formats: Option<bool>,
     pub(crate) validate_schema: bool,
@@ -43,9 +40,7 @@ impl Default for ValidationOptions {
             content_media_type_checks: AHashMap::default(),
             content_encoding_checks_and_converters: AHashMap::default(),
             retriever: Arc::new(DefaultRetriever),
-            external_resolver: None,
             resources: AHashMap::default(),
-            store: AHashMap::default(),
             formats: AHashMap::default(),
             validate_formats: None,
             validate_schema: true,
@@ -103,13 +98,6 @@ impl ValidationOptions {
     pub fn build(&self, schema: &Value) -> Result<Validator, ValidationError<'static>> {
         compiler::build_validator(self.clone(), schema)
     }
-    /// Build a JSON Schema validator using the current options.
-    ///
-    /// **DEPRECATED**: Use [`ValidationOptions::build`] instead.
-    #[deprecated(since = "0.20.0", note = "Use `ValidationOptions::build` instead")]
-    pub fn compile<'a>(&self, schema: &'a Value) -> Result<Validator, ValidationError<'a>> {
-        self.build(schema)
-    }
     /// Sets the JSON Schema draft version.
     ///
     /// ```rust
@@ -153,15 +141,6 @@ impl ValidationOptions {
     ) -> &mut Self {
         self.content_media_type_checks
             .insert(media_type, Some(media_type_check));
-        self
-    }
-    /// Set a custom resolver for external references.
-    #[deprecated(
-        since = "0.21.0",
-        note = "Use `ValidationOptions::with_retriever` instead"
-    )]
-    pub fn with_resolver(&mut self, resolver: impl SchemaResolver + 'static) -> &mut Self {
-        self.external_resolver = Some(Arc::new(resolver));
         self
     }
     /// Set a retriever to fetch external resources.
@@ -268,40 +247,6 @@ impl ValidationOptions {
     ) -> &mut Self {
         self.content_encoding_checks_and_converters
             .insert(content_encoding, None);
-        self
-    }
-    /// Add meta schemas for supported JSON Schema drafts.
-    /// It is helpful if your schema has references to JSON Schema meta-schemas:
-    ///
-    /// ```json
-    /// {
-    ///     "schema": {
-    ///         "multipleOf": {
-    ///             "$ref": "http://json-schema.org/draft-04/schema#/properties/multipleOf"
-    ///         },
-    ///         "maximum": {
-    ///             "$ref": "http://json-schema.org/draft-04/schema#/properties/maximum"
-    ///         }
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// The example above is taken from the Swagger 2.0 JSON schema.
-    #[inline]
-    #[deprecated(since = "0.19.0", note = "Meta schemas are now included by default")]
-    pub fn with_meta_schemas(&mut self) -> &mut Self {
-        self
-    }
-    /// Add a document to the store.
-    ///
-    /// Acts as a cache to avoid network calls for remote schemas referenced by `$ref`.
-    #[inline]
-    #[deprecated(
-        since = "0.21.0",
-        note = "Use `ValidationOptions::with_resource` instead"
-    )]
-    pub fn with_document(&mut self, id: String, document: Value) -> &mut Self {
-        self.store.insert(id.into(), Arc::new(document));
         self
     }
     /// Add a custom schema, allowing it to be referenced by the specified URI during validation.
@@ -524,20 +469,6 @@ impl fmt::Debug for ValidationOptions {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-
-    #[test]
-    fn test_with_document() {
-        let schema = json!({"$ref": "http://example.json/schema.json#/rule"});
-        let validator = crate::options()
-            .with_document(
-                "http://example.json/schema.json".to_string(),
-                json!({"rule": {"minLength": 5}}),
-            )
-            .build(&schema)
-            .expect("Valid schema");
-        assert!(!validator.is_valid(&json!("foo")));
-        assert!(validator.is_valid(&json!("foobar")));
-    }
 
     fn custom(s: &str) -> bool {
         s.ends_with("42!")
