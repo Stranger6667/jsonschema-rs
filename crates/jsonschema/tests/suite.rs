@@ -130,12 +130,15 @@ mod tests {
             for item in expected.as_array().expect("Is array") {
                 let suite_id = item["suite_id"].as_u64().expect("Is integer") as usize;
                 let schema = &data[suite_id]["schema"];
-                let validator = jsonschema::validator_for(schema).unwrap_or_else(|_| {
-                    panic!(
-                        "Valid schema. File: {}; Suite ID: {}; Schema: {}",
-                        filename, suite_id, schema
-                    )
-                });
+                let validator = jsonschema::options()
+                    .with_draft(Draft::Draft7)
+                    .build(schema)
+                    .unwrap_or_else(|_| {
+                        panic!(
+                            "Valid schema. File: {}; Suite ID: {}; Schema: {}",
+                            filename, suite_id, schema
+                        )
+                    });
                 for test_data in item["tests"].as_array().expect("Valid array") {
                     let test_id = test_data["id"].as_u64().expect("Is integer") as usize;
                     let mut instance_path = String::new();

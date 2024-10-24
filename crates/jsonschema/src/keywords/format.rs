@@ -902,6 +902,7 @@ mod tests {
     fn unknown_formats_should_not_be_ignored() {
         let schema = json!({ "format": "custom", "type": "string"});
         let validation_error = crate::options()
+            .should_validate_formats(true)
             .should_ignore_unknown_formats(false)
             .build(&schema)
             .expect_err("the validation error should be returned");

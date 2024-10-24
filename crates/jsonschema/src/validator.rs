@@ -517,6 +517,7 @@ mod tests {
             .with_format("currency", currency_format_checker)
             .with_keyword("minimum", custom_minimum_factory)
             .with_keyword("minimum-2", custom_minimum_factory)
+            .should_validate_formats(true)
             .build(&schema)
             .expect("Invalid schema");
 

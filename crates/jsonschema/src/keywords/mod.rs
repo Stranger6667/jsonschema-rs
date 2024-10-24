@@ -396,9 +396,9 @@ mod tests {
     use serde_json::{json, Value};
     use test_case::test_case;
 
-    #[test_case(&json!({"items": [{}], "additionalItems": {"type": "integer"}}), &json!([ null, 2, 3, "foo" ]), r#""foo" is not of type "integer""#)]
-    #[test_case(&json!({"items": [{}, {}, {}], "additionalItems": false}), &json!([ 1, 2, 3, 4 ]), r#"Additional items are not allowed (4 was unexpected)"#)]
-    #[test_case(&json!({"items": [{}, {}, {}], "additionalItems": false}), &json!([ 1, 2, 3, 4, 5 ]), r#"Additional items are not allowed (4, 5 were unexpected)"#)]
+    #[test_case(&json!({"prefixItems": [{}], "items": {"type": "integer"}}), &json!([ null, 2, 3, "foo" ]), r#""foo" is not of type "integer""#)]
+    #[test_case(&json!({"prefixItems": [{}, {}, {}], "items": false}), &json!([ 1, 2, 3, 4 ]), r#"False schema does not allow 4"#)]
+    #[test_case(&json!({"prefixItems": [{}, {}, {}], "items": false}), &json!([ 1, 2, 3, 4, 5 ]), r#"False schema does not allow 4"#)]
     #[test_case(&json!({"properties": {"foo": {}, "bar": {}}, "patternProperties": { "^v": {} }, "additionalProperties": false}), &json!({"foo" : 1, "bar" : 2, "quux" : "boom"}), r#"Additional properties are not allowed ('quux' was unexpected)"#)]
     #[test_case(&json!({"anyOf": [{"type": "integer"}, {"minimum": 2}]}), &json!(1.5), r#"1.5 is not valid under any of the schemas listed in the 'anyOf' keyword"#)]
     #[test_case(&json!({"const": 2}), &json!(5), r#"2 was expected"#)]
@@ -430,7 +430,10 @@ mod tests {
     #[test_case(&json!({"type": ["integer", "string"]}), &json!(null), r#"null is not of types "integer", "string""#)]
     #[test_case(&json!({"uniqueItems": true}), &json!([1, 1]), r#"[1,1] has non-unique elements"#)]
     fn error_message(schema: &Value, instance: &Value, expected: &str) {
-        let validator = crate::validator_for(schema).unwrap();
+        let validator = crate::options()
+            .should_validate_formats(true)
+            .build(schema)
+            .expect("Invalid schema");
         let errors: Vec<_> = validator
             .validate(instance)
             .expect_err(&format!(
@@ -450,8 +453,8 @@ mod tests {
     #[test_case(&json!({"additionalProperties": false, "properties": {"foo": {}}}))]
     #[test_case(&json!({"additionalProperties": false, "patternProperties": {"f.*o": {"type": "integer"}}}))]
     #[test_case(&json!({"additionalProperties": false, "properties": {"foo": {}}, "patternProperties": {"f.*o": {"type": "integer"}}}))]
-    #[test_case(&json!({"additionalItems": false, "items": [{"type": "string"}]}))]
-    #[test_case(&json!({"additionalItems": {"type": "integer"}, "items": [{"type": "string"}]}))]
+    #[test_case(&json!({"additionalItems": false, "prefixItems": [{"type": "string"}]}))]
+    #[test_case(&json!({"additionalItems": {"type": "integer"}, "prefixItems": [{"type": "string"}]}))]
     #[test_case(&json!({"contains": {"minimum": 5}}))]
     #[test_case(&json!({"contentMediaType": "application/json"}))]
     #[test_case(&json!({"contentEncoding": "base64"}))]
@@ -472,7 +475,11 @@ mod tests {
     #[test_case(&json!({"propertyNames": {"maxLength": 3}}))]
     fn is_valid_another_type(schema: &Value) {
         let instance = json!(null);
-        assert!(crate::is_valid(schema, &instance));
+        assert!(crate::options()
+            .should_validate_formats(true)
+            .build(schema)
+            .expect("Invalid schema")
+            .is_valid(&instance));
     }
     #[test_case(&json!({"additionalProperties": false}), &json!({}))]
     #[test_case(&json!({"additionalItems": false, "items": true}), &json!([]))]

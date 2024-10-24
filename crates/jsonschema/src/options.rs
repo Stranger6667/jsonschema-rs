@@ -479,6 +479,7 @@ mod tests {
         let schema = json!({"type": "string", "format": "custom"});
         let validator = crate::options()
             .with_format("custom", custom)
+            .should_validate_formats(true)
             .build(&schema)
             .expect("Valid schema");
         assert!(!validator.is_valid(&json!("foo")));

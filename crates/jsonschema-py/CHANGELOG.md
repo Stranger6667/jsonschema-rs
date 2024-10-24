@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING**: Default to Draft 2020-12.
+
 ## [0.24.3] - 2024-10-24
 
 ### Fixed

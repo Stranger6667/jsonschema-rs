@@ -265,7 +265,7 @@ pub(crate) fn compile_content_encoding<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests_util;
+    use referencing::Draft;
     use serde_json::{json, Value};
     use test_case::test_case;
 
@@ -274,6 +274,15 @@ mod tests {
     #[test_case(&json!({"contentMediaType": "application/json", "contentEncoding": "base64"}), &json!("ezp9Cg=="), "/contentMediaType")]
     #[test_case(&json!({"contentMediaType": "application/json", "contentEncoding": "base64"}), &json!("{}"), "/contentEncoding")]
     fn location(schema: &Value, instance: &Value, expected: &str) {
-        tests_util::assert_schema_location(schema, instance, expected)
+        let validator = crate::options()
+            .with_draft(Draft::Draft7)
+            .build(schema)
+            .expect("Invalid schema");
+        let error = validator
+            .validate(instance)
+            .expect_err("Should fail")
+            .next()
+            .expect("Should be non empty");
+        assert_eq!(error.schema_path.as_str(), expected);
     }
 }

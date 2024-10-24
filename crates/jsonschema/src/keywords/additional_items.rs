@@ -143,7 +143,7 @@ pub(crate) fn compile<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests_util;
+    use referencing::Draft;
     use serde_json::{json, Value};
     use test_case::test_case;
 
@@ -151,6 +151,15 @@ mod tests {
     #[test_case(&json!({"additionalItems": false, "items": [{}]}), &json!([1, 2]), "/additionalItems")]
     #[test_case(&json!({"additionalItems": {"type": "string"}, "items": [{}]}), &json!([1, 2]), "/additionalItems/type")]
     fn location(schema: &Value, instance: &Value, expected: &str) {
-        tests_util::assert_schema_location(schema, instance, expected)
+        let validator = crate::options()
+            .with_draft(Draft::Draft7)
+            .build(schema)
+            .expect("Invalid schema");
+        let error = validator
+            .validate(instance)
+            .expect_err("Should fail")
+            .next()
+            .expect("Should be non empty");
+        assert_eq!(error.schema_path.as_str(), expected);
     }
 }
