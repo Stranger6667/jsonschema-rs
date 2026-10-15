@@ -3625,5 +3625,53 @@
       {"data": {"b": true, "z": 1}, "valid": false},
       {"data": {}, "valid": false}
     ]
+  },
+  {
+    "description": "ir: alternatives disagreeing only on keys beside an unevaluatedItems read in place",
+    "schema": {"anyOf": [{"properties": {"c": {}}, "additionalProperties": {"type": "integer"}}, {"patternProperties": {"^c": {"type": "integer"}}}], "unevaluatedItems": false},
+    "expected": {"$schema": "https://json-schema.org/draft/2020-12/schema", "anyOf": [{"type": ["null", "boolean", "number", "string"]}, {"type": "object", "patternProperties": {"^c": {"type": "integer"}}}, {"type": "object", "properties": {"c": true}, "additionalProperties": {"type": "integer"}}, {"const": []}]},
+    "tests": [
+      {"data": {"c": 1}, "valid": true},
+      {"data": {"c": "x"}, "valid": true},
+      {"data": {"x": "s"}, "valid": true},
+      {"data": {"cx": "s", "d": "s"}, "valid": false},
+      {"data": [], "valid": true},
+      {"data": [1], "valid": false},
+      {"data": 1, "valid": true}
+    ]
+  },
+  {
+    "description": "ir: an unevaluatedProperties beside a local additionalProperties ignores a branch referring back to itself",
+    "schema": {"additionalProperties": false, "anyOf": [true, {"$ref": "#/$defs/d"}], "unevaluatedProperties": false, "$defs": {"d": {"type": "object", "oneOf": [{"$ref": "#/$defs/d"}, {"required": ["a"]}]}}},
+    "expected": {"$schema": "https://json-schema.org/draft/2020-12/schema", "anyOf": [{"type": ["null", "boolean", "number", "string", "array"]}, {"const": {}}]},
+    "tests": [
+      {"data": {}, "valid": true},
+      {"data": {"a": 1}, "valid": false},
+      {"data": [1], "valid": true},
+      {"data": 1, "valid": true}
+    ]
+  },
+  {
+    "description": "ir: an unevaluatedProperties beside a local additionalProperties splits no alternative",
+    "schema": {"additionalProperties": true, "anyOf": [{"$ref": "#/$defs/d"}, true], "unevaluatedProperties": {"type": "string"}, "$defs": {"d": {"else": {}}}},
+    "expected": {"$schema": "https://json-schema.org/draft/2020-12/schema"},
+    "tests": [
+      {"data": {}, "valid": true},
+      {"data": {"a": 1}, "valid": true},
+      {"data": [1], "valid": true},
+      {"data": 1, "valid": true}
+    ]
+  },
+  {
+    "description": "ir: alternatives a sibling allOf already reaches past need no case",
+    "schema": {"anyOf": [{"properties": {"a": {"type": "string"}}}, true], "allOf": [{"additionalProperties": {"type": "integer"}}], "unevaluatedProperties": false},
+    "expected": {"$schema": "https://json-schema.org/draft/2020-12/schema", "anyOf": [{"type": ["null", "boolean", "number", "string", "array"]}, {"type": "object", "additionalProperties": {"type": "integer"}}]},
+    "tests": [
+      {"data": {}, "valid": true},
+      {"data": {"a": 1}, "valid": true},
+      {"data": {"a": "s"}, "valid": false},
+      {"data": {"b": 1}, "valid": true},
+      {"data": [1], "valid": true}
+    ]
   }
 ]
