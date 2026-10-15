@@ -9,6 +9,9 @@ use std::{
     time::Duration,
 };
 
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+
 use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use jsonschema::{
     json::{Node, SerdeJson},
@@ -1172,6 +1175,32 @@ fn fail_with_usage(message: &str) -> ExitCode {
     ExitCode::from(EXIT_USAGE)
 }
 
+/// Print `json` to stdout, or replace `path` with it so a failed write leaves the old file intact.
+fn emit(path: Option<&Path>, json: &str) -> Result<(), String> {
+    let Some(path) = path else {
+        out!("{json}");
+        return Ok(());
+    };
+    let dir = match path.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => parent,
+        _ => Path::new("."),
+    };
+    let write = || -> std::io::Result<()> {
+        let mut builder = tempfile::Builder::new();
+        // The default is 0600; `fs::write` gives 0666 minus the umask
+        #[cfg(unix)]
+        builder.permissions(fs::Permissions::from_mode(0o666));
+        let mut file = builder.tempfile_in(dir)?;
+        if let Ok(metadata) = fs::metadata(path) {
+            file.as_file().set_permissions(metadata.permissions())?;
+        }
+        file.write_all(json.as_bytes())?;
+        file.persist(path)?;
+        Ok(())
+    };
+    write().map_err(|error| format!("{}: {error}", path.display()))
+}
+
 fn run_validate(args: ValidateArgs) -> ExitCode {
     let ValidateArgs {
         schema,
@@ -1262,15 +1291,8 @@ fn run_bundle(args: BundleArgs) -> ExitCode {
                 Ok(s) => s,
                 Err(error) => return fail_with_error(error),
             };
-            match output {
-                Some(path) => {
-                    if let Err(error) = std::fs::write(&path, &json) {
-                        return fail_with_error(format!("{}: {error}", path.display()));
-                    }
-                }
-                None => {
-                    out!("{json}");
-                }
+            if let Err(error) = emit(output.as_deref(), &json) {
+                return fail_with_error(error);
             }
             ExitCode::SUCCESS
         }
@@ -1313,15 +1335,8 @@ fn run_dereference(args: DereferenceArgs) -> ExitCode {
                 Ok(s) => s,
                 Err(error) => return fail_with_error(error),
             };
-            match output {
-                Some(path) => {
-                    if let Err(error) = std::fs::write(&path, &json) {
-                        return fail_with_error(format!("{}: {error}", path.display()));
-                    }
-                }
-                None => {
-                    out!("{json}");
-                }
+            if let Err(error) = emit(output.as_deref(), &json) {
+                return fail_with_error(error);
             }
             ExitCode::SUCCESS
         }
@@ -1395,13 +1410,8 @@ fn run_canonicalize(args: CanonicalizeArgs) -> ExitCode {
         Ok(json) => json,
         Err(error) => return fail_with_error(error),
     };
-    match output {
-        Some(path) => {
-            if let Err(error) = std::fs::write(&path, &json) {
-                return fail_with_error(format!("{}: {error}", path.display()));
-            }
-        }
-        None => out!("{json}"),
+    if let Err(error) = emit(output.as_deref(), &json) {
+        return fail_with_error(error);
     }
     ExitCode::SUCCESS
 }
