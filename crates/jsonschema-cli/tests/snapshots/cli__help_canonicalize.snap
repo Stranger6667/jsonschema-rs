@@ -14,5 +14,5 @@ Options:
   -d, --draft <DRAFT>     Which JSON Schema draft to enforce (else auto-detected from $schema) [possible values: 4, 6, 7, 2019, 2020]
       --assert-format     Turn ON format validation
       --no-assert-format  Turn OFF format validation
-  -o, --output <OUTPUT>   Write canonical output to FILE instead of stdout
+  -o, --output <FILE>     Write canonical output to FILE instead of stdout
   -h, --help              Print help

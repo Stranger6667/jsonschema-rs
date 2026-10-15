@@ -205,12 +205,8 @@ struct HttpArgs {
     )]
     cacert: Option<PathBuf>,
 
-    /// Refuse to fetch references that are not already registered.
-    #[arg(
-        long = "offline",
-        action = ArgAction::SetTrue,
-        help = "Refuse to fetch references outside --resource"
-    )]
+    /// Refuse to fetch remote references.
+    #[arg(long = "offline", action = ArgAction::SetTrue)]
     offline: bool,
 }
 
@@ -263,13 +259,13 @@ impl FormatAssertionArgs {
 
 #[derive(Args)]
 struct ValidateArgs {
-    /// The JSON Schema to validate with (i.e. schema.json). When omitted, each instance's own
+    /// The JSON Schema to validate with (e.g. schema.json). When omitted, each instance's own
     /// `$schema` property names the schema to validate it against.
     #[arg(value_parser)]
     schema: Option<PathBuf>,
 
-    /// A path to a JSON instance (i.e. filename.json) to validate. May be specified multiple times or with multiple values after a single flag (e.g. `-i a.json b.json`).
-    #[arg(short = 'i', long = "instance", num_args = 1..)]
+    /// A path to a JSON instance (e.g. filename.json) to validate. May be specified multiple times or with multiple values after a single flag (e.g. `-i a.json b.json`).
+    #[arg(short = 'i', long = "instance", value_name = "FILE", num_args = 1..)]
     instances: Option<Vec<PathBuf>>,
 
     /// Which JSON Schema draft to enforce.
@@ -292,13 +288,8 @@ struct ValidateArgs {
     )]
     vocabularies: Vec<String>,
 
-    /// Select the output format (text, flag, list, hierarchical). All modes emit newline-delimited JSON records.
-    #[arg(
-        long = "output",
-        value_enum,
-        default_value_t = Output::Text,
-        help = "Select output style: text (default), flag, list, hierarchical"
-    )]
+    /// Output style.
+    #[arg(long = "output", value_enum, default_value_t = Output::Text)]
     output: Output,
 
     /// Only output validation failures, suppress successful validations.
@@ -315,12 +306,12 @@ struct BundleArgs {
     #[arg(value_parser)]
     schema: PathBuf,
 
-    /// Register an external schema resource: URI=FILE (may be repeated).
-    #[arg(long = "resource", value_parser = parse_resource_pair)]
+    /// Register an external schema resource (may be repeated).
+    #[arg(long = "resource", value_name = "URI=FILE", value_parser = parse_resource_pair)]
     resources: Vec<(String, PathBuf)>,
 
     /// Write bundled output to FILE instead of stdout.
-    #[arg(short = 'o', long = "output")]
+    #[arg(short = 'o', long = "output", value_name = "FILE")]
     output: Option<PathBuf>,
 
     #[command(flatten)]
@@ -333,12 +324,12 @@ struct DereferenceArgs {
     #[arg(value_parser)]
     schema: PathBuf,
 
-    /// Register an external schema resource: URI=FILE (may be repeated).
-    #[arg(long = "resource", value_parser = parse_resource_pair)]
+    /// Register an external schema resource (may be repeated).
+    #[arg(long = "resource", value_name = "URI=FILE", value_parser = parse_resource_pair)]
     resources: Vec<(String, PathBuf)>,
 
     /// Write dereferenced output to FILE instead of stdout.
-    #[arg(short = 'o', long = "output")]
+    #[arg(short = 'o', long = "output", value_name = "FILE")]
     output: Option<PathBuf>,
 
     #[command(flatten)]
@@ -364,7 +355,7 @@ struct CanonicalizeArgs {
     format: FormatAssertionArgs,
 
     /// Write canonical output to FILE instead of stdout.
-    #[arg(short = 'o', long = "output")]
+    #[arg(short = 'o', long = "output", value_name = "FILE")]
     output: Option<PathBuf>,
 }
 
