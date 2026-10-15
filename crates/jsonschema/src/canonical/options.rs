@@ -789,6 +789,19 @@ mod tests {
                 "$defs": {"Dead": {"allOf": [{"type": "string"}, {"type": "integer"}]}},
                 "properties": {"a": {"$ref": "#/$defs/Dead"}}
             }),
+            // Two bodies on one cycle, so reading either one reaches a body pointing back at it.
+            json!({
+                "$defs": {
+                    "Policy": {"properties": {"package": {"$ref": "#/$defs/Package"}}},
+                    "Package": {"properties": {"policies": {"items": {"$ref": "#/$defs/Policy"}}}}
+                },
+                "properties": {"policy": {"$ref": "#/$defs/Policy"}}
+            }),
+            // A body pointing back at the document's own root.
+            json!({
+                "$defs": {"Wrapper": {"properties": {"back": {"$ref": "#"}}}},
+                "properties": {"wrapper": {"$ref": "#/$defs/Wrapper"}}
+            }),
         ]
     }
 
@@ -849,6 +862,40 @@ mod tests {
                     .canonicalize_at(&pointer)
                     .map(|s| s.to_json_schema());
                 assert_eq!(first.ok(), again.ok(), "{pointer} of {document}");
+            }
+        }
+    }
+
+    #[test]
+    fn a_selection_reads_the_same_after_two_other_selections() {
+        for document in documents() {
+            let pointers = every_pointer(&document);
+            let fresh: Vec<_> = pointers
+                .iter()
+                .map(|pointer| {
+                    unseeded(&document)
+                        .canonicalize_at(pointer)
+                        .map(|s| s.to_json_schema())
+                        .ok()
+                })
+                .collect();
+            // Two reads before, so the second can store bodies the first one left out.
+            for first in &pointers {
+                for second in &pointers {
+                    let seeded = options().prepare(&document).expect("prepares");
+                    let _ = seeded.canonicalize_at(first);
+                    let _ = seeded.canonicalize_at(second);
+                    for (pointer, right) in pointers.iter().zip(&fresh) {
+                        let left = seeded
+                            .canonicalize_at(pointer)
+                            .map(|s| s.to_json_schema())
+                            .ok();
+                        assert_eq!(
+                            &left, right,
+                            "{pointer} after {first} and {second} of {document}"
+                        );
+                    }
+                }
             }
         }
     }

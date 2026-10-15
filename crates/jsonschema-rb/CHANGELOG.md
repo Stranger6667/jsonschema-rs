@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Canonicalizing several subschemas of one prepared document, where a `$ref` in a later output could point at another subschema.
+
 ## [0.58.6] - 2026-10-06
 
 ### Fixed
