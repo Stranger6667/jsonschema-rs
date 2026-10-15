@@ -274,6 +274,9 @@ Structured modes emit newline-delimited JSON records:
 {"output":"list","schema":"schema.json","instance":"instance.json","payload":{...}}
 ```
 
+The top-level record keys are stable: new releases may add keys, but never remove, rename, or
+change the meaning of an existing one. Ignore unknown keys when parsing.
+
 ## Exit Codes
 
 - `0` — all instances valid (or no instances provided)
