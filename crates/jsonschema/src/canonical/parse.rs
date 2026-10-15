@@ -2160,8 +2160,10 @@ fn finite_pattern_keys(pattern: &str) -> Option<Vec<Arc<str>>> {
 }
 
 /// Whether an in-place applicator sits here that no cover reads. `anyOf`/`oneOf` are absent because
-/// the cover handles them, taking their branches only when those agree; `dependentSchemas` and
-/// `if`/`then`/`else` are absent because [`split_conditionals`] spreads them over their cases first.
+/// the cover takes their branches where those agree and [`split_conditionals`] spreads them over
+/// their cases otherwise, as it does `dependentSchemas` and `if`/`then`/`else`. `allOf` is absent:
+/// every branch must pass, so [`property_cover`] can read its contribution off the document. `not`
+/// is absent too: it succeeds only when its subschema fails, and a failure annotates nothing.
 fn has_unresolved_applicator(map: &Map<String, Value>) -> bool {
     map.keys().any(|key| {
         matches!(
@@ -2201,8 +2203,16 @@ struct IfThenElse {
 
 #[derive(Clone)]
 enum Conditional {
-    Dependency { key: String, consequent: Value },
+    Dependency {
+        key: String,
+        consequent: Value,
+    },
     Condition(IfThenElse),
+    /// An `anyOf` or `oneOf` whose branches reach different keys or indices.
+    Alternatives {
+        exclusive: bool,
+        branches: Vec<Value>,
+    },
 }
 
 /// The key and constant an `if` of the shape `{"properties": {K: {"const": c}}, "required": [K]}`
@@ -2279,16 +2289,14 @@ impl Covers {
     }
 }
 
-/// Whether `body` running leaves the evaluated keys and indices exactly as they were.
-///
-/// A body carrying conditionals of its own has no cover to read, so it never answers yes.
-fn reaches_nothing_new(
+/// The keys and indices `body` evaluates with nothing inside it split; `None` where the instance
+/// decides them, as under a conditional of its own.
+fn body_covers(
     body: &Value,
-    base: &Covers,
     ctx: &CanonicalizationContext,
     resolver: &Resolver<'_>,
     walk: &mut ReferenceWalk,
-) -> Result<bool, CanonicalizationError> {
+) -> Result<Option<(PropertyCover, ItemCover)>, CanonicalizationError> {
     let hoisted = walk.hoisted;
     walk.hoisted = false;
     let mut property = PropertyCover::default();
@@ -2300,10 +2308,24 @@ fn reaches_nothing_new(
     };
     walk.hoisted = hoisted;
     if properties?.is_none() || items?.is_none() {
-        return Ok(false);
+        return Ok(None);
     }
     property.normalize();
-    Ok(base.already_reaches(&property, &item))
+    Ok(Some((property, item)))
+}
+
+/// Whether `body` running leaves the evaluated keys and indices exactly as they were.
+///
+/// A body carrying conditionals of its own has no cover to read, so it never answers yes.
+fn reaches_nothing_new(
+    body: &Value,
+    base: &Covers,
+    ctx: &CanonicalizationContext,
+    resolver: &Resolver<'_>,
+    walk: &mut ReferenceWalk,
+) -> Result<bool, CanonicalizationError> {
+    Ok(body_covers(body, ctx, resolver, walk)?
+        .is_some_and(|(property, item)| base.already_reaches(&property, &item)))
 }
 
 /// The conditionals on `map`, its `allOf` branches and its `$ref` target, recursively; `scoped`
@@ -2380,6 +2402,43 @@ fn applied_conditionals(
                 otherwise: map.get("else").cloned(),
             }));
         }
+    }
+    for (keyword, exclusive) in [("anyOf", false), ("oneOf", true)] {
+        let Some(Value::Array(branches)) = map.get(keyword) else {
+            continue;
+        };
+        let mut covers = Vec::with_capacity(branches.len());
+        for branch in branches {
+            covers.push(body_covers(branch, ctx, resolver, walk)?);
+        }
+        // Branches reaching the same keys and indices leave the covers to read them in place.
+        let agreeing =
+            covers.iter().all(Option::is_some) && covers.windows(2).all(|pair| pair[0] == pair[1]);
+        // Branches reaching no further than the node cannot change which keys count as evaluated.
+        let neutral = covers.iter().all(|cover| {
+            cover
+                .as_ref()
+                .is_some_and(|(property, item)| base.already_reaches(property, item))
+        });
+        if agreeing || neutral {
+            skipped.any |= !agreeing;
+            if node_level {
+                let mut kept = Map::new();
+                kept.insert(keyword.to_string(), Value::Array(branches.clone()));
+                skipped.carried.push(Value::Object(kept));
+            }
+            continue;
+        }
+        if !branches
+            .iter()
+            .all(|branch| hoistable(branch, scoped, ctx.draft()))
+        {
+            return Ok(None);
+        }
+        out.push(Conditional::Alternatives {
+            exclusive,
+            branches: branches.clone(),
+        });
     }
     if let Some(Value::Array(branches)) = map.get("allOf") {
         for branch in branches {
@@ -2560,7 +2619,9 @@ fn expand_cases(
                     {
                         members.push(other);
                     }
-                    other @ (Conditional::Dependency { .. } | Conditional::Condition(_)) => {
+                    other @ (Conditional::Dependency { .. }
+                    | Conditional::Condition(_)
+                    | Conditional::Alternatives { .. }) => {
                         rest.push(other);
                     }
                 }
@@ -2645,11 +2706,60 @@ fn expand_cases(
             nested.extend(pending);
             expand_cases(other, nested, ctx, resolver, walk, base, skipped, out)
         }
+        Conditional::Alternatives {
+            exclusive,
+            branches,
+        } => {
+            let count = branches.len();
+            // Any non-empty set of `anyOf` branches can pass, each one case.
+            if !exclusive
+                && u32::try_from(count)
+                    .ok()
+                    .and_then(|bits| 1usize.checked_shl(bits))
+                    .is_none_or(|sets| sets - 1 > CONDITIONAL_CASE_BUDGET)
+            {
+                ctx.note_outgrew_cases();
+                return Ok(None);
+            }
+            let mut ran = Vec::with_capacity(count);
+            for branch in &branches {
+                let Some(body) = run_once(Some(branch), ctx, resolver, walk, base, skipped)? else {
+                    return Ok(None);
+                };
+                ran.push(body);
+            }
+            // One case per set of branches that pass: those ran, and the rest fail outright. A
+            // `oneOf` set is the index of its only branch, an `anyOf` set a bit mask.
+            let (sets, passes): (std::ops::Range<usize>, fn(usize, usize) -> bool) = if exclusive {
+                (0..count, |set, index| set == index)
+            } else {
+                (1..1 << count, |set, index| (set >> index) & 1 == 1)
+            };
+            for set in sets {
+                let mut passed = case.clone();
+                let mut nested = Vec::new();
+                for (index, (branch, body)) in branches.iter().zip(&ran).enumerate() {
+                    if passes(set, index) {
+                        body.add_to(&mut passed, &mut nested);
+                    } else {
+                        passed.push(json!({"not": branch}));
+                    }
+                }
+                nested.extend(pending.iter().map(Conditional::clone));
+                let Some(()) =
+                    expand_cases(passed, nested, ctx, resolver, walk, base, skipped, out)?
+                else {
+                    return Ok(None);
+                };
+            }
+            Ok(Some(()))
+        }
     }
 }
 
-/// An `unevaluated*` beside a conditional, or above one through `allOf` or `$ref`, splits into one
-/// variant per case, each carrying the subschemas that ran as `allOf` branches for the covers.
+/// An `unevaluated*` beside a conditional or an alternative whose branches disagree, or above one
+/// through `allOf` or `$ref`, splits into one variant per case, each carrying the subschemas that
+/// ran as `allOf` branches for the covers.
 /// ```text
 /// e.g.  {"dependentSchemas": {"a": {"properties": {"b": {}}}}, "unevaluatedProperties": false}
 ///       =>  anyOf: [{"allOf": [{"not": {"type": "object", "required": ["a"]}}],
@@ -2748,6 +2858,8 @@ fn split_conditionals(
     for (key, value) in map {
         match key.as_str() {
             "dependentSchemas" | "if" | "then" | "else" | "allOf" => split += 1,
+            // Split into cases or carried back; one that is not a list stays for the parse to reject.
+            "anyOf" | "oneOf" if value.is_array() => split += 1,
             "$id" | "id" | "$schema" | "$anchor" | "$dynamicAnchor" | "$recursiveAnchor"
             | "$vocabulary" | "$defs" | "definitions" => {
                 wrapper.insert(key.clone(), value.clone());
@@ -2774,18 +2886,6 @@ fn split_conditionals(
         })
         .collect();
     Ok(Split::Variants { wrapper, variants })
-}
-
-/// In-place applicators whose annotations depend on which branch the instance matched. `allOf` is
-/// absent: every branch must pass, so [`property_cover`] can read its contribution off the document.
-/// `not` is absent too: it succeeds only when its subschema fails, and a failure annotates nothing.
-fn has_instance_dependent_applicator(map: &Map<String, Value>) -> bool {
-    map.keys().any(|key| {
-        matches!(
-            key.as_str(),
-            "$dynamicRef" | "$recursiveRef" | "anyOf" | "dependencies" | "oneOf"
-        )
-    })
 }
 
 /// The covers read past a conditional only once it was split into cases.
@@ -2936,7 +3036,7 @@ fn property_cover_in_scope(
     walk: &mut ReferenceWalk,
     cover: &mut PropertyCover,
 ) -> Result<Option<()>, CanonicalizationError> {
-    if has_instance_dependent_applicator(map) || (!walk.hoisted && has_conditional(map)) {
+    if has_unresolved_applicator(map) || (!walk.hoisted && has_conditional(map)) {
         return Ok(None);
     }
     // `additionalProperties` is never rewritten, so its presence is a stable "reaches everything".
@@ -2971,6 +3071,59 @@ fn property_cover_in_scope(
         else {
             return Ok(None);
         };
+    }
+    alternative_property_cover(map, ctx, resolver, walk, cover)
+}
+
+/// The keys every branch of an alternative reaches, where they agree; otherwise which branch
+/// matched decides what is left over. Nothing under a branch was split, so its conditionals decline.
+fn agreed_property_cover(
+    branches: &[Value],
+    ctx: &CanonicalizationContext,
+    resolver: &Resolver<'_>,
+    walk: &mut ReferenceWalk,
+) -> Result<Option<PropertyCover>, CanonicalizationError> {
+    let hoisted = walk.hoisted;
+    walk.hoisted = false;
+    let result = (|| {
+        let mut agreed: Option<PropertyCover> = None;
+        for branch in branches {
+            let mut reached = PropertyCover::default();
+            let Some(()) = property_cover(branch, ctx, resolver, walk, &mut reached)? else {
+                return Ok(None);
+            };
+            reached.normalize();
+            match &agreed {
+                Some(first) if *first != reached => return Ok(None),
+                Some(_) => {}
+                None => agreed = Some(reached),
+            }
+        }
+        Ok(Some(agreed.unwrap_or_default()))
+    })();
+    walk.hoisted = hoisted;
+    result
+}
+
+/// Fold the alternatives on `map` into `cover`. Branches that disagree are read only once the
+/// alternative was split into cases, or found to reach no further than the node, so a hoisted walk
+/// skips them.
+fn alternative_property_cover(
+    map: &Map<String, Value>,
+    ctx: &CanonicalizationContext,
+    resolver: &Resolver<'_>,
+    walk: &mut ReferenceWalk,
+    cover: &mut PropertyCover,
+) -> Result<Option<()>, CanonicalizationError> {
+    for keyword in ["anyOf", "oneOf"] {
+        let Some(Value::Array(branches)) = map.get(keyword) else {
+            continue;
+        };
+        match agreed_property_cover(branches, ctx, resolver, walk)? {
+            Some(agreed) => cover.absorb(agreed),
+            None if walk.hoisted => {}
+            None => return Ok(None),
+        }
     }
     Ok(Some(()))
 }
@@ -3050,7 +3203,7 @@ fn item_cover_in_scope(
     walk: &mut ReferenceWalk,
     cover: &mut ItemCover,
 ) -> Result<Option<()>, CanonicalizationError> {
-    if has_instance_dependent_applicator(map) || (!walk.hoisted && has_conditional(map)) {
+    if has_unresolved_applicator(map) || (!walk.hoisted && has_conditional(map)) {
         return Ok(None);
     }
     // `contains` marks the indexes it matches, which no prefix length expresses.
@@ -3100,6 +3253,57 @@ fn item_cover_in_scope(
             return Ok(None);
         };
     }
+    alternative_item_cover(map, draft, ctx, resolver, walk, cover)
+}
+
+/// The item-cover twin of [`agreed_property_cover`].
+fn agreed_item_cover(
+    branches: &[Value],
+    draft: Draft,
+    ctx: &CanonicalizationContext,
+    resolver: &Resolver<'_>,
+    walk: &mut ReferenceWalk,
+) -> Result<Option<ItemCover>, CanonicalizationError> {
+    let hoisted = walk.hoisted;
+    walk.hoisted = false;
+    let result = (|| {
+        let mut agreed: Option<ItemCover> = None;
+        for branch in branches {
+            let mut reached = ItemCover::default();
+            let Some(()) = item_cover(branch, draft, ctx, resolver, walk, &mut reached)? else {
+                return Ok(None);
+            };
+            match &agreed {
+                Some(first) if *first != reached => return Ok(None),
+                Some(_) => {}
+                None => agreed = Some(reached),
+            }
+        }
+        Ok(Some(agreed.unwrap_or_default()))
+    })();
+    walk.hoisted = hoisted;
+    result
+}
+
+/// The item-cover twin of [`alternative_property_cover`].
+fn alternative_item_cover(
+    map: &Map<String, Value>,
+    draft: Draft,
+    ctx: &CanonicalizationContext,
+    resolver: &Resolver<'_>,
+    walk: &mut ReferenceWalk,
+    cover: &mut ItemCover,
+) -> Result<Option<()>, CanonicalizationError> {
+    for keyword in ["anyOf", "oneOf"] {
+        let Some(Value::Array(branches)) = map.get(keyword) else {
+            continue;
+        };
+        match agreed_item_cover(branches, draft, ctx, resolver, walk)? {
+            Some(agreed) => cover.absorb(&agreed),
+            None if walk.hoisted => {}
+            None => return Ok(None),
+        }
+    }
     Ok(Some(()))
 }
 
@@ -3141,31 +3345,9 @@ fn sibling_property_cover(
             };
         }
     }
-    // Under an alternative nothing was split, so its conditionals still decline.
-    let hoisted = walk.hoisted;
-    walk.hoisted = false;
-    for keyword in ["anyOf", "oneOf"] {
-        let Some(Value::Array(branches)) = map.get(keyword) else {
-            continue;
-        };
-        let mut agreed: Option<PropertyCover> = None;
-        for branch in branches {
-            let mut reached = PropertyCover::default();
-            let Some(()) = property_cover(branch, ctx, resolver, walk, &mut reached)? else {
-                return Ok(None);
-            };
-            reached.normalize();
-            match &agreed {
-                Some(first) if *first != reached => return Ok(None),
-                Some(_) => {}
-                None => agreed = Some(reached),
-            }
-        }
-        if let Some(agreed) = agreed {
-            cover.absorb(agreed);
-        }
-    }
-    walk.hoisted = hoisted;
+    let Some(()) = alternative_property_cover(map, ctx, resolver, walk, &mut cover)? else {
+        return Ok(None);
+    };
     Ok(Some(cover))
 }
 
@@ -3193,30 +3375,9 @@ fn sibling_item_cover(
             };
         }
     }
-    // Under an alternative nothing was split, so its conditionals still decline.
-    let hoisted = walk.hoisted;
-    walk.hoisted = false;
-    for keyword in ["anyOf", "oneOf"] {
-        let Some(Value::Array(branches)) = map.get(keyword) else {
-            continue;
-        };
-        let mut agreed: Option<ItemCover> = None;
-        for branch in branches {
-            let mut reached = ItemCover::default();
-            let Some(()) = item_cover(branch, draft, ctx, resolver, walk, &mut reached)? else {
-                return Ok(None);
-            };
-            match &agreed {
-                Some(first) if *first != reached => return Ok(None),
-                Some(_) => {}
-                None => agreed = Some(reached),
-            }
-        }
-        if let Some(agreed) = &agreed {
-            cover.absorb(agreed);
-        }
-    }
-    walk.hoisted = hoisted;
+    let Some(()) = alternative_item_cover(map, draft, ctx, resolver, walk, &mut cover)? else {
+        return Ok(None);
+    };
     Ok(Some(cover))
 }
 

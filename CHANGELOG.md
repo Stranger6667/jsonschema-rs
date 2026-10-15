@@ -20,6 +20,7 @@
 - **CLI**: `jsonschema bundle`, `jsonschema dereference` and `jsonschema canonicalize` truncating the `--output` file when the write fails partway.
 - **CLI**: `jsonschema validate --help` describing `--offline` in terms of `--resource`, which `validate` does not accept.
 - Canonicalizing several subschemas of one prepared document, where a `$ref` in a later output could point at another subschema.
+- `canonicalize` leaving `unevaluatedProperties` or `unevaluatedItems` beside `anyOf` or `oneOf` raw.
 
 ## [0.58.6] - 2026-10-06
 
