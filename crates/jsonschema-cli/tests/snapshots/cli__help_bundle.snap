@@ -1,0 +1,20 @@
+---
+source: crates/jsonschema-cli/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+Bundle a JSON Schema into a Compound Schema Document
+
+Usage: jsonschema-cli bundle [OPTIONS] <SCHEMA>
+
+Arguments:
+  <SCHEMA>  Path to the root JSON Schema file to bundle
+
+Options:
+      --resource <RESOURCES>       Register an external schema resource: URI=FILE (may be repeated)
+  -o, --output <OUTPUT>            Write bundled output to FILE instead of stdout
+      --connect-timeout <SECONDS>  Timeout for establishing connections (in seconds)
+      --timeout <SECONDS>          Total timeout for HTTP requests (in seconds)
+  -k, --insecure                   Skip TLS certificate verification (dangerous!)
+      --cacert <FILE>              Path to a custom CA certificate file (PEM format)
+      --offline                    Refuse to fetch references outside --resource
+  -h, --help                       Print help
