@@ -5,6 +5,7 @@
 ### Fixed
 
 - Canonicalizing several subschemas of one prepared document, where a `$ref` in a later output could point at another subschema.
+- `canonicalize` leaving `unevaluatedProperties` or `unevaluatedItems` beside `anyOf` or `oneOf` raw.
 
 ## [0.58.6] - 2026-10-06
 

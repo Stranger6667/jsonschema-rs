@@ -439,31 +439,20 @@
     }
   },
   {
-    "description": "raw: an allOf branch whose own applicator is instance-dependent stays unmodeled",
+    "description": "ir: an allOf branch alternative every object matches closes over the union of its keys",
     "schema": {"allOf": [{"anyOf": [{"properties": {"a": {}}}, {"properties": {"b": {}}}]}], "unevaluatedProperties": false},
-    "kind": "raw",
     "tests": [
       {"data": {"a": 1}, "valid": true},
-      {"data": {"c": 1}, "valid": false}
+      {"data": {"a": 1, "b": 1}, "valid": true},
+      {"data": {"c": 1}, "valid": false},
+      {"data": 1, "valid": true}
     ],
     "expected": {
-      "allOf": [
-        {
-          "anyOf": [
-            {
-              "properties": {
-                "a": {}
-              }
-            },
-            {
-              "properties": {
-                "b": {}
-              }
-            }
-          ]
-        }
-      ],
-      "unevaluatedProperties": false
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {"type": ["null", "boolean", "number", "string", "array"]},
+        {"type": "object", "propertyNames": {"enum": ["a", "b"]}}
+      ]
     }
   },
   {
@@ -1291,7 +1280,7 @@
     }
   },
   {
-    "description": "raw: alternatives naming different keys leave the evaluated set to the instance",
+    "description": "ir: alternatives naming different keys split by which of them pass",
     "schema": {
       "type": "object",
       "anyOf": [
@@ -1300,38 +1289,21 @@
       ],
       "unevaluatedProperties": false
     },
-    "kind": "raw",
     "tests": [
       {"data": {"a": 1}, "valid": true},
       {"data": {"b": 1}, "valid": true},
       {"data": {"a": 1, "b": 1}, "valid": true},
-      {"data": {"c": 1}, "valid": false}
+      {"data": {"a": 1, "b": "x"}, "valid": false},
+      {"data": {"c": 1}, "valid": false},
+      {"data": {}, "valid": false}
     ],
     "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "anyOf": [
-        {
-          "properties": {
-            "a": {
-              "type": "integer"
-            }
-          },
-          "required": [
-            "a"
-          ]
-        },
-        {
-          "properties": {
-            "b": {
-              "type": "integer"
-            }
-          },
-          "required": [
-            "b"
-          ]
-        }
-      ],
-      "type": "object",
-      "unevaluatedProperties": false
+        {"type": "object", "required": ["a"], "properties": {"a": {"type": "integer"}}, "propertyNames": {"const": "a"}},
+        {"type": "object", "required": ["a", "b"], "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}}, "propertyNames": {"enum": ["a", "b"]}},
+        {"type": "object", "required": ["b"], "properties": {"b": {"type": "integer"}}, "propertyNames": {"const": "b"}}
+      ]
     }
   },
   {
@@ -1373,7 +1345,7 @@
     }
   },
   {
-    "description": "raw: alternatives with different tuple lengths leave the evaluated indexes to the instance",
+    "description": "ir: alternatives with different tuple lengths split by which of them pass",
     "schema": {
       "type": "array",
       "anyOf": [
@@ -1382,36 +1354,19 @@
       ],
       "unevaluatedItems": false
     },
-    "kind": "raw",
     "tests": [
       {"data": [1], "valid": true},
       {"data": [1, 2], "valid": true},
-      {"data": [1, 2, 3], "valid": false}
+      {"data": [1, "x"], "valid": false},
+      {"data": [1, 2, 3], "valid": false},
+      {"data": [], "valid": false}
     ],
     "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "anyOf": [
-        {
-          "minItems": 1,
-          "prefixItems": [
-            {
-              "type": "integer"
-            }
-          ]
-        },
-        {
-          "minItems": 2,
-          "prefixItems": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "integer"
-            }
-          ]
-        }
-      ],
-      "type": "array",
-      "unevaluatedItems": false
+        {"type": "array", "prefixItems": [{"type": "integer"}], "minItems": 1, "maxItems": 1},
+        {"type": "array", "prefixItems": [{"type": "integer"}, {"type": "integer"}], "minItems": 2, "maxItems": 2}
+      ]
     }
   },
   {
@@ -1891,16 +1846,36 @@
     }
   },
   {
-    "description": "raw: a oneOf branch with an instance-dependent applicator beside unevaluatedProperties stays unmodeled",
+    "description": "ir: a conditional inside a oneOf branch is read past once the branch ran as a case, beside unevaluatedProperties",
     "schema": {"oneOf": [{"if": {}}], "unevaluatedProperties": false},
-    "kind": "raw",
-    "expected": {"oneOf": [{"if": {}}], "unevaluatedProperties": false}
+    "tests": [
+      {"data": {}, "valid": true},
+      {"data": {"a": 1}, "valid": false},
+      {"data": 1, "valid": true}
+    ],
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {"type": ["null", "boolean", "number", "string", "array"]},
+        {"const": {}}
+      ]
+    }
   },
   {
-    "description": "raw: a oneOf branch with an instance-dependent applicator beside unevaluatedItems stays unmodeled",
+    "description": "ir: a conditional inside a oneOf branch is read past once the branch ran as a case, beside unevaluatedItems",
     "schema": {"oneOf": [{"if": {}}], "unevaluatedItems": false},
-    "kind": "raw",
-    "expected": {"oneOf": [{"if": {}}], "unevaluatedItems": false}
+    "tests": [
+      {"data": [], "valid": true},
+      {"data": [1], "valid": false},
+      {"data": 1, "valid": true}
+    ],
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {"type": ["null", "boolean", "number", "string", "object"]},
+        {"const": []}
+      ]
+    }
   },
   {
     "description": "ir: a $ref target resolving to true contributes nothing to the properties cover",
@@ -2957,6 +2932,698 @@
     "tests": [
       {"data": {}, "valid": true},
       {"data": {"a": 1}, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: oneOf branches naming different keys split into one case per branch",
+    "schema": {
+      "oneOf": [
+        {"type": "object", "properties": {"b": {"type": "boolean"}}, "required": ["b"]},
+        {"type": "object", "properties": {"c": {"type": "string"}}, "required": ["c"]}
+      ],
+      "unevaluatedProperties": false
+    },
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {"type": "object", "required": ["b"], "properties": {"b": {"type": "boolean"}}, "propertyNames": {"const": "b"}},
+        {"type": "object", "required": ["c"], "properties": {"c": {"type": "string"}}, "propertyNames": {"const": "c"}}
+      ]
+    },
+    "tests": [
+      {"data": {"b": true}, "valid": true},
+      {"data": {"c": "x"}, "valid": true},
+      {"data": {"b": true, "c": "x"}, "valid": false},
+      {"data": {"b": true, "c": 1}, "valid": false},
+      {"data": {"b": 1}, "valid": false},
+      {"data": {}, "valid": false},
+      {"data": {"b": true, "d": 1}, "valid": false},
+      {"data": 1, "valid": false},
+      {"data": "x", "valid": false},
+      {"data": null, "valid": false},
+      {"data": [], "valid": false}
+    ]
+  },
+  {
+    "description": "ir: anyOf branches naming different keys split into one case per passing set",
+    "schema": {
+      "anyOf": [
+        {"type": "object", "properties": {"b": {"type": "boolean"}}, "required": ["b"]},
+        {"type": "object", "properties": {"c": {"type": "string"}}, "required": ["c"]}
+      ],
+      "unevaluatedProperties": false
+    },
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {"type": "object", "required": ["b"], "properties": {"b": {"type": "boolean"}}, "propertyNames": {"const": "b"}},
+        {"type": "object", "required": ["b", "c"], "properties": {"b": {"type": "boolean"}, "c": {"type": "string"}}, "propertyNames": {"enum": ["b", "c"]}},
+        {"type": "object", "required": ["c"], "properties": {"c": {"type": "string"}}, "propertyNames": {"const": "c"}}
+      ]
+    },
+    "tests": [
+      {"data": {"b": true}, "valid": true},
+      {"data": {"c": "x"}, "valid": true},
+      {"data": {"b": true, "c": "x"}, "valid": true},
+      {"data": {"b": true, "c": 1}, "valid": false},
+      {"data": {"b": 1, "c": "x"}, "valid": false},
+      {"data": {}, "valid": false},
+      {"data": {"d": 1}, "valid": false},
+      {"data": {"b": true, "d": 1}, "valid": false},
+      {"data": 1, "valid": false},
+      {"data": "x", "valid": false},
+      {"data": null, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: a oneOf inside an allOf branch splits like a sibling one",
+    "schemas": [
+      {
+        "allOf": [
+          {"type": "object", "properties": {"a": {"type": "integer"}}, "required": ["a"]},
+          {"oneOf": [
+            {"type": "object", "properties": {"b": {"type": "boolean"}}, "required": ["b"]},
+            {"type": "object", "properties": {"c": {"type": "string"}}, "required": ["c"]}
+          ]}
+        ],
+        "unevaluatedProperties": false
+      },
+      {
+        "allOf": [{"type": "object", "properties": {"a": {"type": "integer"}}, "required": ["a"]}],
+        "oneOf": [
+          {"type": "object", "properties": {"b": {"type": "boolean"}}, "required": ["b"]},
+          {"type": "object", "properties": {"c": {"type": "string"}}, "required": ["c"]}
+        ],
+        "unevaluatedProperties": false
+      }
+    ],
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {"type": "object", "required": ["a", "b"], "properties": {"a": {"type": "integer"}, "b": {"type": "boolean"}}, "propertyNames": {"enum": ["a", "b"]}},
+        {"type": "object", "required": ["a", "c"], "properties": {"a": {"type": "integer"}, "c": {"type": "string"}}, "propertyNames": {"enum": ["a", "c"]}}
+      ]
+    },
+    "tests": [
+      {"data": {"a": 1, "b": true}, "valid": true},
+      {"data": {"a": 1, "c": "x"}, "valid": true},
+      {"data": {"a": 1, "b": true, "c": "x"}, "valid": false},
+      {"data": {"b": true}, "valid": false},
+      {"data": {"a": 1}, "valid": false},
+      {"data": {"a": 1, "b": true, "d": 1}, "valid": false},
+      {"data": {"a": "s", "b": true}, "valid": false},
+      {"data": 1, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: an anyOf inside an allOf branch splits like a sibling one",
+    "schemas": [
+      {
+        "allOf": [
+          {"type": "object", "properties": {"a": {"type": "integer"}}, "required": ["a"]},
+          {"anyOf": [
+            {"type": "object", "properties": {"b": {"type": "boolean"}}, "required": ["b"]},
+            {"type": "object", "properties": {"c": {"type": "string"}}, "required": ["c"]}
+          ]}
+        ],
+        "unevaluatedProperties": false
+      },
+      {
+        "allOf": [{"type": "object", "properties": {"a": {"type": "integer"}}, "required": ["a"]}],
+        "anyOf": [
+          {"type": "object", "properties": {"b": {"type": "boolean"}}, "required": ["b"]},
+          {"type": "object", "properties": {"c": {"type": "string"}}, "required": ["c"]}
+        ],
+        "unevaluatedProperties": false
+      }
+    ],
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {"type": "object", "required": ["a", "b"], "properties": {"a": {"type": "integer"}, "b": {"type": "boolean"}}, "propertyNames": {"enum": ["a", "b"]}},
+        {"type": "object", "required": ["a", "b", "c"], "properties": {"a": {"type": "integer"}, "b": {"type": "boolean"}, "c": {"type": "string"}}, "propertyNames": {"enum": ["a", "b", "c"]}},
+        {"type": "object", "required": ["a", "c"], "properties": {"a": {"type": "integer"}, "c": {"type": "string"}}, "propertyNames": {"enum": ["a", "c"]}}
+      ]
+    },
+    "tests": [
+      {"data": {"a": 1, "b": true, "c": "x"}, "valid": true},
+      {"data": {"a": 1, "b": true}, "valid": true},
+      {"data": {"a": 1, "c": "x"}, "valid": true},
+      {"data": {"a": 1, "b": true, "c": 1}, "valid": false},
+      {"data": {"a": 1}, "valid": false},
+      {"data": {"b": true, "c": "x"}, "valid": false},
+      {"data": 1, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: the node's own keys join every case of a sibling oneOf",
+    "schema": {
+      "properties": {"a": {"type": "integer"}},
+      "required": ["a"],
+      "oneOf": [
+        {"type": "object", "properties": {"b": {"type": "boolean"}}, "required": ["b"]},
+        {"type": "object", "properties": {"c": {"type": "string"}}, "required": ["c"]}
+      ],
+      "unevaluatedProperties": false
+    },
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {"type": "object", "required": ["a", "b"], "properties": {"a": {"type": "integer"}, "b": {"type": "boolean"}}, "propertyNames": {"enum": ["a", "b"]}},
+        {"type": "object", "required": ["a", "c"], "properties": {"a": {"type": "integer"}, "c": {"type": "string"}}, "propertyNames": {"enum": ["a", "c"]}}
+      ]
+    },
+    "tests": [
+      {"data": {"a": 1, "b": true}, "valid": true},
+      {"data": {"a": 1, "c": "x"}, "valid": true},
+      {"data": {"a": 1, "b": true, "c": "x"}, "valid": false},
+      {"data": {"b": true}, "valid": false},
+      {"data": {"a": 1, "b": true, "d": 1}, "valid": false},
+      {"data": 1, "valid": false},
+      {"data": "x", "valid": false}
+    ]
+  },
+  {
+    "description": "ir: oneOf branches every object matches leave no object with exactly one",
+    "schema": {
+      "type": "object",
+      "oneOf": [{"properties": {"b": true}}, {"properties": {"c": true}}],
+      "unevaluatedProperties": false
+    },
+    "satisfiable": false,
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "not": {}
+    },
+    "tests": [
+      {"data": {}, "valid": false},
+      {"data": {"b": 1}, "valid": false},
+      {"data": {"b": 1, "c": 1}, "valid": false},
+      {"data": 1, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: anyOf branches every object matches close over the union of their keys",
+    "schemas": [
+      {
+        "type": "object",
+        "anyOf": [{"properties": {"b": true}}, {"properties": {"c": true}}],
+        "unevaluatedProperties": false
+      },
+      {"type": "object", "properties": {"b": true, "c": true}, "additionalProperties": false}
+    ],
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "propertyNames": {"enum": ["b", "c"]}
+    },
+    "tests": [
+      {"data": {}, "valid": true},
+      {"data": {"b": 1}, "valid": true},
+      {"data": {"b": 1, "c": 1}, "valid": true},
+      {"data": {"d": 1}, "valid": false},
+      {"data": 1, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: untyped oneOf branches both pass a non-object, which fails the choice",
+    "schema": {
+      "oneOf": [
+        {"properties": {"b": {}}, "required": ["b"]},
+        {"properties": {"c": {}}, "required": ["c"]}
+      ],
+      "unevaluatedProperties": false
+    },
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {"type": "object", "required": ["b"], "propertyNames": {"const": "b"}},
+        {"type": "object", "required": ["c"], "propertyNames": {"const": "c"}}
+      ]
+    },
+    "tests": [
+      {"data": 1, "valid": false},
+      {"data": "x", "valid": false},
+      {"data": null, "valid": false},
+      {"data": [], "valid": false},
+      {"data": {"b": 1}, "valid": true},
+      {"data": {"c": 1}, "valid": true},
+      {"data": {"b": 1, "c": 1}, "valid": false},
+      {"data": {}, "valid": false},
+      {"data": {"b": 1, "d": 1}, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: untyped anyOf branches both pass a non-object, which the choice admits",
+    "schema": {
+      "anyOf": [
+        {"properties": {"b": {}}, "required": ["b"]},
+        {"properties": {"c": {}}, "required": ["c"]}
+      ],
+      "unevaluatedProperties": false
+    },
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {"type": ["null", "boolean", "number", "string", "array"]},
+        {"type": "object", "required": ["b"], "propertyNames": {"const": "b"}},
+        {"type": "object", "required": ["b", "c"], "propertyNames": {"enum": ["b", "c"]}},
+        {"type": "object", "required": ["c"], "propertyNames": {"const": "c"}}
+      ]
+    },
+    "tests": [
+      {"data": 1, "valid": true},
+      {"data": "x", "valid": true},
+      {"data": null, "valid": true},
+      {"data": [], "valid": true},
+      {"data": {"b": 1}, "valid": true},
+      {"data": {"c": 1}, "valid": true},
+      {"data": {"b": 1, "c": 1}, "valid": true},
+      {"data": {}, "valid": false},
+      {"data": {"b": 1, "d": 1}, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: a branch pattern names the keys its cases evaluate",
+    "schema": {
+      "type": "object",
+      "anyOf": [
+        {"patternProperties": {"^x": {"type": "integer"}}, "required": ["x1"]},
+        {"properties": {"c": {"type": "string"}}, "required": ["c"]}
+      ],
+      "unevaluatedProperties": false
+    },
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {"type": "object", "required": ["c"], "properties": {"c": {"type": "string"}}, "propertyNames": {"const": "c"}},
+        {"type": "object", "required": ["c", "x1"], "properties": {"c": {"type": "string"}}, "patternProperties": {"^x": {"type": "integer"}}, "propertyNames": {"anyOf": [{"type": "string", "pattern": "^x"}, {"const": "c"}]}},
+        {"type": "object", "required": ["x1"], "patternProperties": {"^x": {"type": "integer"}}, "propertyNames": {"type": "string", "pattern": "^x"}}
+      ]
+    },
+    "tests": [
+      {"data": {"x1": 1}, "valid": true},
+      {"data": {"x1": 1, "xy": 2}, "valid": true},
+      {"data": {"c": "s"}, "valid": true},
+      {"data": {"x1": 1, "c": "s"}, "valid": true},
+      {"data": {"x1": 1, "d": 1}, "valid": false},
+      {"data": {"c": "s", "x1": "no"}, "valid": false},
+      {"data": {"c": "s", "xy": 1}, "valid": false},
+      {"data": {}, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: a branch additionalProperties reaches every key in its cases",
+    "schema": {
+      "type": "object",
+      "oneOf": [
+        {"additionalProperties": {"type": "integer"}, "required": ["n"]},
+        {"properties": {"c": {"type": "string"}}, "required": ["c"]}
+      ],
+      "unevaluatedProperties": false
+    },
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {"type": "object", "required": ["c"], "properties": {"c": {"type": "string"}}, "propertyNames": {"const": "c"}},
+        {"type": "object", "required": ["n"], "properties": {"c": {"type": "integer"}}, "additionalProperties": {"type": "integer"}}
+      ]
+    },
+    "tests": [
+      {"data": {"n": 1}, "valid": true},
+      {"data": {"n": 1, "z": 2}, "valid": true},
+      {"data": {"c": "s"}, "valid": true},
+      {"data": {"c": "s", "z": 1}, "valid": false},
+      {"data": {"n": 1, "c": "s"}, "valid": false},
+      {"data": {"n": 1, "c": 2}, "valid": true},
+      {"data": {}, "valid": false},
+      {"data": {"n": "s"}, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: oneOf branches with different tuple lengths split into one case per branch",
+    "schema": {
+      "type": "array",
+      "oneOf": [
+        {"prefixItems": [{"type": "integer"}], "minItems": 1},
+        {"prefixItems": [{"type": "integer"}, {"type": "integer"}], "minItems": 2}
+      ],
+      "unevaluatedItems": false
+    },
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "array",
+      "prefixItems": [{"type": "integer"}],
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "tests": [
+      {"data": [1], "valid": true},
+      {"data": [1, 2], "valid": false},
+      {"data": [1, "x"], "valid": false},
+      {"data": [], "valid": false},
+      {"data": [1, 2, 3], "valid": false},
+      {"data": {}, "valid": false},
+      {"data": 1, "valid": false}
+    ]
+  },
+  {
+    "description": "raw: an anyOf past the case budget keeps the document raw",
+    "schema": {
+      "type": "object",
+      "anyOf": [
+        {"properties": {"p1": {}}, "required": ["p1"]},
+        {"properties": {"p2": {}}, "required": ["p2"]},
+        {"properties": {"p3": {}}, "required": ["p3"]},
+        {"properties": {"p4": {}}, "required": ["p4"]},
+        {"properties": {"p5": {}}, "required": ["p5"]},
+        {"properties": {"p6": {}}, "required": ["p6"]},
+        {"properties": {"p7": {}}, "required": ["p7"]},
+        {"properties": {"p8": {}}, "required": ["p8"]}
+      ],
+      "unevaluatedProperties": false
+    },
+    "kind": "raw",
+    "expected": {
+      "type": "object",
+      "anyOf": [
+        {"properties": {"p1": {}}, "required": ["p1"]},
+        {"properties": {"p2": {}}, "required": ["p2"]},
+        {"properties": {"p3": {}}, "required": ["p3"]},
+        {"properties": {"p4": {}}, "required": ["p4"]},
+        {"properties": {"p5": {}}, "required": ["p5"]},
+        {"properties": {"p6": {}}, "required": ["p6"]},
+        {"properties": {"p7": {}}, "required": ["p7"]},
+        {"properties": {"p8": {}}, "required": ["p8"]}
+      ],
+      "unevaluatedProperties": false
+    },
+    "tests": [
+      {"data": {"p1": 1}, "valid": true},
+      {"data": {"p1": 1, "p8": 1}, "valid": true},
+      {"data": {"x": 1}, "valid": false},
+      {"data": {}, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: an agreeing alternative inside an allOf branch contributes its shared keys",
+    "schemas": [
+      {
+        "type": "object",
+        "allOf": [{"anyOf": [{"properties": {"a": {"type": "integer"}}}, {"properties": {"a": {"type": "boolean"}}}]}],
+        "unevaluatedProperties": false
+      },
+      {
+        "type": "object",
+        "anyOf": [{"properties": {"a": {"type": "integer"}}}, {"properties": {"a": {"type": "boolean"}}}],
+        "unevaluatedProperties": false
+      }
+    ],
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {"a": {"type": ["boolean", "integer"]}},
+      "propertyNames": {"const": "a"},
+      "type": "object"
+    },
+    "tests": [
+      {"data": {"a": 1}, "valid": true},
+      {"data": {"a": true}, "valid": true},
+      {"data": {}, "valid": true},
+      {"data": {"b": 1}, "valid": false},
+      {"data": {"a": "x"}, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: an alternative nested in a passing branch splits too",
+    "schema": {
+      "type": "object",
+      "anyOf": [
+        {
+          "properties": {"b": {"type": "boolean"}},
+          "required": ["b"],
+          "oneOf": [
+            {"properties": {"d": {"type": "integer"}}, "required": ["d"]},
+            {"properties": {"e": {"type": "integer"}}, "required": ["e"]}
+          ]
+        },
+        {"properties": {"c": {"type": "string"}}, "required": ["c"]}
+      ],
+      "unevaluatedProperties": false
+    },
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {"type": "object", "required": ["b", "c", "d"], "properties": {"b": {"type": "boolean"}, "c": {"type": "string"}, "d": {"type": "integer"}}, "propertyNames": {"enum": ["b", "c", "d"]}},
+        {"type": "object", "required": ["b", "c", "e"], "properties": {"b": {"type": "boolean"}, "c": {"type": "string"}, "e": {"type": "integer"}}, "propertyNames": {"enum": ["b", "c", "e"]}},
+        {"type": "object", "required": ["b", "d"], "properties": {"b": {"type": "boolean"}, "d": {"type": "integer"}}, "propertyNames": {"enum": ["b", "d"]}},
+        {"type": "object", "required": ["b", "e"], "properties": {"b": {"type": "boolean"}, "e": {"type": "integer"}}, "propertyNames": {"enum": ["b", "e"]}},
+        {"type": "object", "required": ["c"], "properties": {"c": {"type": "string"}}, "propertyNames": {"const": "c"}}
+      ]
+    },
+    "tests": [
+      {"data": {"b": true, "d": 1}, "valid": true},
+      {"data": {"b": true, "e": 1}, "valid": true},
+      {"data": {"b": true, "d": 1, "e": 1}, "valid": false},
+      {"data": {"c": "s"}, "valid": true},
+      {"data": {"b": true, "d": 1, "c": "s"}, "valid": true},
+      {"data": {"b": true, "c": "s"}, "valid": false},
+      {"data": {"c": "s", "d": 1}, "valid": false},
+      {"data": {"b": true, "d": "x"}, "valid": false},
+      {"data": {}, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: a split conditional beside an agreeing alternative keeps the alternative's keys",
+    "schema": {
+      "type": "object",
+      "properties": {"k": {}},
+      "anyOf": [{"properties": {"a": {"type": "integer"}}}, {"properties": {"a": {"type": "boolean"}}}],
+      "if": {"required": ["k"]},
+      "then": {"properties": {"t": {}}},
+      "unevaluatedProperties": false
+    },
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {"type": "object", "properties": {"a": {"type": ["boolean", "integer"]}}, "propertyNames": {"enum": ["a", "k"]}},
+        {"type": "object", "required": ["k"], "properties": {"a": {"type": ["boolean", "integer"]}}, "propertyNames": {"enum": ["a", "k", "t"]}}
+      ]
+    },
+    "tests": [
+      {"data": {"k": 1, "t": 1, "a": 1}, "valid": true},
+      {"data": {"t": 1}, "valid": false},
+      {"data": {"a": true}, "valid": true},
+      {"data": {"a": "x"}, "valid": false},
+      {"data": {"k": 1, "a": 1, "t": 1, "z": 1}, "valid": false},
+      {"data": {}, "valid": true}
+    ]
+  },
+  {
+    "description": "ir: an allOf of one object branch beside unevaluatedProperties closes over its keys",
+    "schemas": [
+      {"allOf": [{"type": "object", "properties": {"a": {"type": "integer"}}, "required": ["a"]}], "unevaluatedProperties": false},
+      {"type": "object", "properties": {"a": {"type": "integer"}}, "required": ["a"], "additionalProperties": false}
+    ],
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "required": ["a"],
+      "properties": {"a": {"type": "integer"}},
+      "propertyNames": {"const": "a"}
+    },
+    "tests": [
+      {"data": {"a": 1}, "valid": true},
+      {"data": {"a": 1, "b": 1}, "valid": false},
+      {"data": {}, "valid": false},
+      {"data": 1, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: an allOf of two object branches beside unevaluatedProperties closes over both",
+    "schemas": [
+      {
+        "allOf": [
+          {"type": "object", "properties": {"a": {"type": "integer"}}, "required": ["a"]},
+          {"type": "object", "properties": {"b": {"type": "boolean"}}, "required": ["b"]}
+        ],
+        "unevaluatedProperties": false
+      },
+      {"type": "object", "properties": {"a": {"type": "integer"}, "b": {"type": "boolean"}}, "required": ["a", "b"], "additionalProperties": false}
+    ],
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "required": ["a", "b"],
+      "properties": {"a": {"type": "integer"}, "b": {"type": "boolean"}},
+      "propertyNames": {"enum": ["a", "b"]}
+    },
+    "tests": [
+      {"data": {"a": 1, "b": true}, "valid": true},
+      {"data": {"a": 1}, "valid": false},
+      {"data": {"a": 1, "b": true, "c": 1}, "valid": false},
+      {"data": 1, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: a conditional branch after an agreeing alternative branch still splits",
+    "schema": {
+      "type": "object",
+      "allOf": [
+        {"anyOf": [{"properties": {"a": {"type": "integer"}}}, {"properties": {"a": {"type": "boolean"}}}]},
+        {"if": {"required": ["a"]}, "then": {"properties": {"t": {}}}}
+      ],
+      "unevaluatedProperties": false
+    },
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {"type": "object", "required": ["a"], "properties": {"a": {"type": ["boolean", "integer"]}}, "propertyNames": {"enum": ["a", "t"]}},
+        {"const": {}}
+      ]
+    },
+    "tests": [
+      {"data": {"a": 1, "t": 1}, "valid": true},
+      {"data": {"a": true}, "valid": true},
+      {"data": {"a": "x"}, "valid": false},
+      {"data": {"t": 1}, "valid": false},
+      {"data": {}, "valid": true},
+      {"data": {"a": 1, "z": 1}, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: alternatives reaching only keys the node names need no case",
+    "schema": {
+      "type": "object",
+      "properties": {"a": {}, "b": {}},
+      "anyOf": [
+        {"properties": {"a": {"type": "integer"}}, "required": ["a"]},
+        {"properties": {"b": {"type": "integer"}}, "required": ["b"]}
+      ],
+      "unevaluatedProperties": false
+    },
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {"type": "object", "required": ["a"], "properties": {"a": {"type": "integer"}}, "propertyNames": {"enum": ["a", "b"]}},
+        {"type": "object", "required": ["b"], "properties": {"b": {"type": "integer"}}, "propertyNames": {"enum": ["a", "b"]}}
+      ]
+    },
+    "tests": [
+      {"data": {"a": 1}, "valid": true},
+      {"data": {"b": 1}, "valid": true},
+      {"data": {"a": 1, "b": "x"}, "valid": true},
+      {"data": {"a": "x", "b": "x"}, "valid": false},
+      {"data": {"a": 1, "c": 1}, "valid": false},
+      {"data": {}, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: an agreeing alternative whose branch declares an anchor reads in place",
+    "schema": {"anyOf": [{"$anchor": "x", "properties": {"b": true}}, {"properties": {"b": true}}], "unevaluatedProperties": false},
+    "expected": {"$schema": "https://json-schema.org/draft/2020-12/schema", "anyOf": [{"type": ["null", "boolean", "number", "string", "array"]}, {"type": "object", "propertyNames": {"const": "b"}}]},
+    "tests": [
+      {"data": {"b": 1}, "valid": true},
+      {"data": {}, "valid": true},
+      {"data": {"c": 1}, "valid": false},
+      {"data": 1, "valid": true}
+    ]
+  },
+  {
+    "description": "ir: an agreeing alternative whose branch declares an identifier reads in place",
+    "schema": {"oneOf": [{"$id": "https://example.com/branch", "properties": {"b": true}, "required": ["b"]}, {"properties": {"b": true}, "required": ["c"]}], "unevaluatedProperties": false},
+    "expected": {"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object", "required": ["b"], "propertyNames": {"const": "b"}},
+    "tests": [
+      {"data": {"b": 1}, "valid": true},
+      {"data": {"b": 1, "c": 1}, "valid": false},
+      {"data": {}, "valid": false},
+      {"data": 1, "valid": false}
+    ]
+  },
+  {
+    "description": "raw: disagreeing alternatives whose branch declares an anchor keep the document raw",
+    "schema": {"oneOf": [{"type": "object", "properties": {"b": {"type": "boolean"}}, "required": ["b"], "$anchor": "x"}, {"type": "object", "properties": {"c": {"type": "string"}}, "required": ["c"]}], "unevaluatedProperties": false},
+    "kind": "raw",
+    "expected": {"oneOf": [{"type": "object", "properties": {"b": {"type": "boolean"}}, "required": ["b"], "$anchor": "x"}, {"type": "object", "properties": {"c": {"type": "string"}}, "required": ["c"]}], "unevaluatedProperties": false},
+    "tests": [
+      {"data": {"b": true}, "valid": true},
+      {"data": {"c": "x"}, "valid": true},
+      {"data": {"b": true, "z": 1}, "valid": false},
+      {"data": {"b": true, "c": "x"}, "valid": false}
+    ]
+  },
+  {
+    "description": "raw: a split branch referencing a target of another draft keeps the document raw",
+    "schema": {"type": "object", "$defs": {"old": {"$id": "https://example.com/old", "$schema": "http://json-schema.org/draft-07/schema#", "properties": {"b": {}}, "required": ["b"]}}, "oneOf": [{"$ref": "https://example.com/old"}, {"type": "object", "properties": {"c": {"type": "string"}}, "required": ["c"]}], "unevaluatedProperties": false},
+    "kind": "raw",
+    "expected": {"type": "object", "$defs": {"old": {"$id": "https://example.com/old", "$schema": "http://json-schema.org/draft-07/schema#", "properties": {"b": {}}, "required": ["b"]}}, "oneOf": [{"$ref": "https://example.com/old"}, {"type": "object", "properties": {"c": {"type": "string"}}, "required": ["c"]}], "unevaluatedProperties": false},
+    "tests": [
+      {"data": {"b": 1}, "valid": true},
+      {"data": {"c": "x"}, "valid": true},
+      {"data": {"b": 1, "z": 1}, "valid": false},
+      {"data": {"b": 1, "c": "x"}, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: a branch closing over alternatives of its own splits the outer choice",
+    "schema": {"oneOf": [{"oneOf": [{"type": "object", "properties": {"b": {"type": "boolean"}}, "required": ["b"]}, {"type": "object", "properties": {"c": {"type": "string"}}, "required": ["c"]}], "unevaluatedProperties": false}, {"type": "object", "required": ["d"], "properties": {"d": true}}], "unevaluatedProperties": false},
+    "expected": {"$schema": "https://json-schema.org/draft/2020-12/schema", "anyOf": [{"type": "object", "required": ["b"], "properties": {"b": {"type": "boolean"}}, "propertyNames": {"const": "b"}}, {"type": "object", "required": ["c"], "properties": {"c": {"type": "string"}}, "propertyNames": {"const": "c"}}, {"type": "object", "required": ["d"], "propertyNames": {"const": "d"}}]},
+    "tests": [
+      {"data": {"b": true}, "valid": true},
+      {"data": {"c": "x"}, "valid": true},
+      {"data": {"d": 1}, "valid": true},
+      {"data": {"b": true, "d": 1}, "valid": false},
+      {"data": {"b": 1}, "valid": false},
+      {"data": {}, "valid": false},
+      {"data": 1, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: a branch closing over tuples of its own splits the outer choice",
+    "schema": {"type": "array", "oneOf": [{"oneOf": [{"prefixItems": [true], "minItems": 1, "maxItems": 1}, {"prefixItems": [true, true], "minItems": 2, "maxItems": 2}], "unevaluatedItems": false}, {"prefixItems": [true, true, true], "minItems": 3}], "unevaluatedItems": false},
+    "expected": {"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "array", "minItems": 1, "maxItems": 3},
+    "tests": [
+      {"data": [1], "valid": true},
+      {"data": [1, 2], "valid": true},
+      {"data": [1, 2, 3], "valid": true},
+      {"data": [], "valid": false},
+      {"data": [1, 2, 3, 4], "valid": false},
+      {"data": "x", "valid": false}
+    ]
+  },
+  {
+    "description": "ir: a oneOf with more branches than an anyOf could split takes one case per branch",
+    "schema": {"oneOf": [{"type": "object", "required": ["k0"], "properties": {"k0": true}}, {"type": "object", "required": ["k1"], "properties": {"k1": true}}, {"type": "object", "required": ["k2"], "properties": {"k2": true}}, {"type": "object", "required": ["k3"], "properties": {"k3": true}}, {"type": "object", "required": ["k4"], "properties": {"k4": true}}, {"type": "object", "required": ["k5"], "properties": {"k5": true}}, {"type": "object", "required": ["k6"], "properties": {"k6": true}}, {"type": "object", "required": ["k7"], "properties": {"k7": true}}, {"type": "object", "required": ["k8"], "properties": {"k8": true}}, {"type": "object", "required": ["k9"], "properties": {"k9": true}}, {"type": "object", "required": ["k10"], "properties": {"k10": true}}, {"type": "object", "required": ["k11"], "properties": {"k11": true}}, {"type": "object", "required": ["k12"], "properties": {"k12": true}}, {"type": "object", "required": ["k13"], "properties": {"k13": true}}, {"type": "object", "required": ["k14"], "properties": {"k14": true}}, {"type": "object", "required": ["k15"], "properties": {"k15": true}}, {"type": "object", "required": ["k16"], "properties": {"k16": true}}, {"type": "object", "required": ["k17"], "properties": {"k17": true}}, {"type": "object", "required": ["k18"], "properties": {"k18": true}}, {"type": "object", "required": ["k19"], "properties": {"k19": true}}, {"type": "object", "required": ["k20"], "properties": {"k20": true}}, {"type": "object", "required": ["k21"], "properties": {"k21": true}}, {"type": "object", "required": ["k22"], "properties": {"k22": true}}, {"type": "object", "required": ["k23"], "properties": {"k23": true}}, {"type": "object", "required": ["k24"], "properties": {"k24": true}}, {"type": "object", "required": ["k25"], "properties": {"k25": true}}, {"type": "object", "required": ["k26"], "properties": {"k26": true}}, {"type": "object", "required": ["k27"], "properties": {"k27": true}}, {"type": "object", "required": ["k28"], "properties": {"k28": true}}, {"type": "object", "required": ["k29"], "properties": {"k29": true}}, {"type": "object", "required": ["k30"], "properties": {"k30": true}}, {"type": "object", "required": ["k31"], "properties": {"k31": true}}, {"type": "object", "required": ["k32"], "properties": {"k32": true}}, {"type": "object", "required": ["k33"], "properties": {"k33": true}}, {"type": "object", "required": ["k34"], "properties": {"k34": true}}, {"type": "object", "required": ["k35"], "properties": {"k35": true}}, {"type": "object", "required": ["k36"], "properties": {"k36": true}}, {"type": "object", "required": ["k37"], "properties": {"k37": true}}, {"type": "object", "required": ["k38"], "properties": {"k38": true}}, {"type": "object", "required": ["k39"], "properties": {"k39": true}}, {"type": "object", "required": ["k40"], "properties": {"k40": true}}, {"type": "object", "required": ["k41"], "properties": {"k41": true}}, {"type": "object", "required": ["k42"], "properties": {"k42": true}}, {"type": "object", "required": ["k43"], "properties": {"k43": true}}, {"type": "object", "required": ["k44"], "properties": {"k44": true}}, {"type": "object", "required": ["k45"], "properties": {"k45": true}}, {"type": "object", "required": ["k46"], "properties": {"k46": true}}, {"type": "object", "required": ["k47"], "properties": {"k47": true}}, {"type": "object", "required": ["k48"], "properties": {"k48": true}}, {"type": "object", "required": ["k49"], "properties": {"k49": true}}, {"type": "object", "required": ["k50"], "properties": {"k50": true}}, {"type": "object", "required": ["k51"], "properties": {"k51": true}}, {"type": "object", "required": ["k52"], "properties": {"k52": true}}, {"type": "object", "required": ["k53"], "properties": {"k53": true}}, {"type": "object", "required": ["k54"], "properties": {"k54": true}}, {"type": "object", "required": ["k55"], "properties": {"k55": true}}, {"type": "object", "required": ["k56"], "properties": {"k56": true}}, {"type": "object", "required": ["k57"], "properties": {"k57": true}}, {"type": "object", "required": ["k58"], "properties": {"k58": true}}, {"type": "object", "required": ["k59"], "properties": {"k59": true}}, {"type": "object", "required": ["k60"], "properties": {"k60": true}}, {"type": "object", "required": ["k61"], "properties": {"k61": true}}, {"type": "object", "required": ["k62"], "properties": {"k62": true}}, {"type": "object", "required": ["k63"], "properties": {"k63": true}}, {"type": "object", "required": ["k64"], "properties": {"k64": true}}], "unevaluatedProperties": false},
+    "expected": {"$schema": "https://json-schema.org/draft/2020-12/schema", "anyOf": [{"type": "object", "required": ["k0"], "propertyNames": {"const": "k0"}}, {"type": "object", "required": ["k1"], "propertyNames": {"const": "k1"}}, {"type": "object", "required": ["k10"], "propertyNames": {"const": "k10"}}, {"type": "object", "required": ["k11"], "propertyNames": {"const": "k11"}}, {"type": "object", "required": ["k12"], "propertyNames": {"const": "k12"}}, {"type": "object", "required": ["k13"], "propertyNames": {"const": "k13"}}, {"type": "object", "required": ["k14"], "propertyNames": {"const": "k14"}}, {"type": "object", "required": ["k15"], "propertyNames": {"const": "k15"}}, {"type": "object", "required": ["k16"], "propertyNames": {"const": "k16"}}, {"type": "object", "required": ["k17"], "propertyNames": {"const": "k17"}}, {"type": "object", "required": ["k18"], "propertyNames": {"const": "k18"}}, {"type": "object", "required": ["k19"], "propertyNames": {"const": "k19"}}, {"type": "object", "required": ["k2"], "propertyNames": {"const": "k2"}}, {"type": "object", "required": ["k20"], "propertyNames": {"const": "k20"}}, {"type": "object", "required": ["k21"], "propertyNames": {"const": "k21"}}, {"type": "object", "required": ["k22"], "propertyNames": {"const": "k22"}}, {"type": "object", "required": ["k23"], "propertyNames": {"const": "k23"}}, {"type": "object", "required": ["k24"], "propertyNames": {"const": "k24"}}, {"type": "object", "required": ["k25"], "propertyNames": {"const": "k25"}}, {"type": "object", "required": ["k26"], "propertyNames": {"const": "k26"}}, {"type": "object", "required": ["k27"], "propertyNames": {"const": "k27"}}, {"type": "object", "required": ["k28"], "propertyNames": {"const": "k28"}}, {"type": "object", "required": ["k29"], "propertyNames": {"const": "k29"}}, {"type": "object", "required": ["k3"], "propertyNames": {"const": "k3"}}, {"type": "object", "required": ["k30"], "propertyNames": {"const": "k30"}}, {"type": "object", "required": ["k31"], "propertyNames": {"const": "k31"}}, {"type": "object", "required": ["k32"], "propertyNames": {"const": "k32"}}, {"type": "object", "required": ["k33"], "propertyNames": {"const": "k33"}}, {"type": "object", "required": ["k34"], "propertyNames": {"const": "k34"}}, {"type": "object", "required": ["k35"], "propertyNames": {"const": "k35"}}, {"type": "object", "required": ["k36"], "propertyNames": {"const": "k36"}}, {"type": "object", "required": ["k37"], "propertyNames": {"const": "k37"}}, {"type": "object", "required": ["k38"], "propertyNames": {"const": "k38"}}, {"type": "object", "required": ["k39"], "propertyNames": {"const": "k39"}}, {"type": "object", "required": ["k4"], "propertyNames": {"const": "k4"}}, {"type": "object", "required": ["k40"], "propertyNames": {"const": "k40"}}, {"type": "object", "required": ["k41"], "propertyNames": {"const": "k41"}}, {"type": "object", "required": ["k42"], "propertyNames": {"const": "k42"}}, {"type": "object", "required": ["k43"], "propertyNames": {"const": "k43"}}, {"type": "object", "required": ["k44"], "propertyNames": {"const": "k44"}}, {"type": "object", "required": ["k45"], "propertyNames": {"const": "k45"}}, {"type": "object", "required": ["k46"], "propertyNames": {"const": "k46"}}, {"type": "object", "required": ["k47"], "propertyNames": {"const": "k47"}}, {"type": "object", "required": ["k48"], "propertyNames": {"const": "k48"}}, {"type": "object", "required": ["k49"], "propertyNames": {"const": "k49"}}, {"type": "object", "required": ["k5"], "propertyNames": {"const": "k5"}}, {"type": "object", "required": ["k50"], "propertyNames": {"const": "k50"}}, {"type": "object", "required": ["k51"], "propertyNames": {"const": "k51"}}, {"type": "object", "required": ["k52"], "propertyNames": {"const": "k52"}}, {"type": "object", "required": ["k53"], "propertyNames": {"const": "k53"}}, {"type": "object", "required": ["k54"], "propertyNames": {"const": "k54"}}, {"type": "object", "required": ["k55"], "propertyNames": {"const": "k55"}}, {"type": "object", "required": ["k56"], "propertyNames": {"const": "k56"}}, {"type": "object", "required": ["k57"], "propertyNames": {"const": "k57"}}, {"type": "object", "required": ["k58"], "propertyNames": {"const": "k58"}}, {"type": "object", "required": ["k59"], "propertyNames": {"const": "k59"}}, {"type": "object", "required": ["k6"], "propertyNames": {"const": "k6"}}, {"type": "object", "required": ["k60"], "propertyNames": {"const": "k60"}}, {"type": "object", "required": ["k61"], "propertyNames": {"const": "k61"}}, {"type": "object", "required": ["k62"], "propertyNames": {"const": "k62"}}, {"type": "object", "required": ["k63"], "propertyNames": {"const": "k63"}}, {"type": "object", "required": ["k64"], "propertyNames": {"const": "k64"}}, {"type": "object", "required": ["k7"], "propertyNames": {"const": "k7"}}, {"type": "object", "required": ["k8"], "propertyNames": {"const": "k8"}}, {"type": "object", "required": ["k9"], "propertyNames": {"const": "k9"}}]},
+    "tests": [
+      {"data": {"k0": 1}, "valid": true},
+      {"data": {"k64": 1}, "valid": true},
+      {"data": {"k0": 1, "k1": 1}, "valid": false},
+      {"data": {}, "valid": false},
+      {"data": 1, "valid": false}
+    ]
+  },
+  {
+    "description": "ir: alternatives whose branches split tuples of their own split too",
+    "schema": {"type": "array", "anyOf": [{"oneOf": [{"prefixItems": [true], "minItems": 1, "maxItems": 1}, {"prefixItems": [true, true], "minItems": 2, "maxItems": 2}]}, {"oneOf": [{"prefixItems": [true], "minItems": 1, "maxItems": 1}, {"prefixItems": [true, true], "minItems": 2, "maxItems": 2}]}], "unevaluatedItems": false},
+    "expected": {"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "array", "minItems": 1, "maxItems": 2},
+    "tests": [
+      {"data": [1], "valid": true},
+      {"data": [1, 2], "valid": true},
+      {"data": [], "valid": false},
+      {"data": [1, 2, 3], "valid": false},
+      {"data": "x", "valid": false}
+    ]
+  },
+  {
+    "description": "ir: alternatives whose branches split keys of their own split too",
+    "schema": {"anyOf": [{"oneOf": [{"type": "object", "properties": {"b": {"type": "boolean"}}, "required": ["b"]}, {"type": "object", "properties": {"c": {"type": "string"}}, "required": ["c"]}]}, {"oneOf": [{"type": "object", "properties": {"b": {"type": "boolean"}}, "required": ["b"]}, {"type": "object", "properties": {"c": {"type": "string"}}, "required": ["c"]}]}], "unevaluatedProperties": false},
+    "expected": {"$schema": "https://json-schema.org/draft/2020-12/schema", "anyOf": [{"type": "object", "required": ["b"], "properties": {"b": {"type": "boolean"}}, "propertyNames": {"const": "b"}}, {"type": "object", "required": ["c"], "properties": {"c": {"type": "string"}}, "propertyNames": {"const": "c"}}]},
+    "tests": [
+      {"data": {"b": true}, "valid": true},
+      {"data": {"c": "x"}, "valid": true},
+      {"data": {"b": true, "c": "x"}, "valid": false},
+      {"data": {"b": true, "z": 1}, "valid": false},
+      {"data": {}, "valid": false}
     ]
   }
 ]
