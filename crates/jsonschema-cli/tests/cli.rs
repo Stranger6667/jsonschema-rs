@@ -60,18 +60,6 @@ fn normalize_numbered_errors(output: &str) -> String {
 }
 
 #[test]
-fn test_version() {
-    let mut cmd = cli();
-    cmd.arg("--version");
-    let output = cmd.output().unwrap();
-    assert!(output.status.success());
-    assert_eq!(
-        String::from_utf8_lossy(&output.stdout),
-        concat!("Version: ", env!("CARGO_PKG_VERSION"), "\n")
-    );
-}
-
-#[test]
 fn test_offline_refuses_remote_reference() {
     let dir = tempdir().unwrap();
     let schema = create_temp_file(
@@ -90,7 +78,7 @@ fn test_offline_refuses_remote_reference() {
     let output = cmd.output().unwrap();
     assert!(!output.status.success());
     let sanitized = sanitize_output(
-        String::from_utf8_lossy(&output.stdout).to_string(),
+        String::from_utf8_lossy(&output.stderr).to_string(),
         &[&schema, &instance],
     );
     assert_snapshot!(sanitized);
@@ -175,8 +163,8 @@ fn test_invalid_schema() {
     let output = cmd.output().unwrap();
     assert!(!output.status.success());
     let sanitized = sanitize_output(
-        String::from_utf8_lossy(&output.stdout).to_string(),
-        &[&instance],
+        String::from_utf8_lossy(&output.stderr).to_string(),
+        &[&schema, &instance],
     );
     assert_snapshot!(sanitized);
 }
@@ -778,10 +766,10 @@ fn test_output_text_invalid_yaml_syntax() {
     assert!(!output.status.success());
 
     let sanitized = sanitize_output(
-        String::from_utf8_lossy(&output.stdout).to_string(),
+        String::from_utf8_lossy(&output.stderr).to_string(),
         &[&invalid],
     );
-    assert!(sanitized.contains("Error: failed to read YAML from {FILE_1}:"));
+    assert!(sanitized.contains("error: failed to read YAML from {FILE_1}:"));
 }
 
 #[test]
@@ -1095,10 +1083,10 @@ fn test_validate_schema_with_json_parse_error() {
     assert!(!output.status.success());
 
     let sanitized = sanitize_output(
-        String::from_utf8_lossy(&output.stdout).to_string(),
+        String::from_utf8_lossy(&output.stderr).to_string(),
         &[&schema],
     );
-    assert!(sanitized.contains("Error: failed to parse JSON from {FILE_1}:"));
+    assert!(sanitized.contains("error: failed to parse JSON from {FILE_1}:"));
 }
 
 #[test]
@@ -1117,10 +1105,10 @@ fn test_validate_instance_with_json_parse_error() {
     assert!(!output.status.success());
 
     let sanitized = sanitize_output(
-        String::from_utf8_lossy(&output.stdout).to_string(),
+        String::from_utf8_lossy(&output.stderr).to_string(),
         &[&instance],
     );
-    assert!(sanitized.contains("Error: failed to read JSON from {FILE_1}:"));
+    assert!(sanitized.contains("error: failed to read JSON from {FILE_1}:"));
 }
 
 #[test]
@@ -1241,8 +1229,8 @@ fn test_validate_schema_with_invalid_ref_structured_output() {
     assert!(!output.status.success());
 
     // Should get an error message (not structured output since build fails before we can output)
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Error:"));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("error:"));
 }
 
 #[test]
@@ -1362,9 +1350,9 @@ fn test_http_cacert_nonexistent_file() {
         .arg("/nonexistent/path/to/cert.pem");
     let output = cmd.output().unwrap();
     assert!(!output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Error:"));
-    assert!(stdout.contains("/nonexistent/path/to/cert.pem"));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("error:"));
+    assert!(stderr.contains("/nonexistent/path/to/cert.pem"));
 }
 
 #[test]
@@ -1563,7 +1551,7 @@ fn test_no_args_prints_help_hint_and_fails() {
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(
-        stderr.contains("A schema argument is required"),
+        stderr.contains("a schema argument is required"),
         "expected usage hint on stderr, got: {stderr}"
     );
 }
@@ -2280,9 +2268,9 @@ fn test_self_describing_missing_schema_property() {
         .output()
         .unwrap();
     assert!(!output.status.success());
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("no `$schema` property"), "{stdout}");
-    assert!(stdout.contains("jsonschema validate SCHEMA -i"), "{stdout}");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("no `$schema` property"), "{stderr}");
+    assert!(stderr.contains("jsonschema validate SCHEMA -i"), "{stderr}");
 }
 
 #[test]
@@ -2297,7 +2285,7 @@ fn test_self_describing_non_object_instance() {
         .output()
         .unwrap();
     assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stdout).contains("no `$schema` property"));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("no `$schema` property"));
 }
 
 /// One unusable instance must not stop the rest of the batch.
@@ -2323,8 +2311,9 @@ fn test_self_describing_mixed_batch() {
         !output.status.success(),
         "a missing $schema must fail the run"
     );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("no `$schema` property"), "{stderr}");
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("no `$schema` property"), "{stdout}");
     assert!(stdout.contains(&format!("{good} - VALID")), "{stdout}");
 }
 
@@ -2596,8 +2585,9 @@ fn test_self_describing_unresolvable_schema() {
         .unwrap();
     assert!(!output.status.success());
 
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("failed to retrieve"), "{stderr}");
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("failed to retrieve"), "{stdout}");
     assert!(stdout.contains(&format!("{good} - VALID")), "{stdout}");
 }
 
@@ -2747,7 +2737,11 @@ fn test_vocabulary_flag_declares_support(args: &[&str], snapshot: &str) {
     let output = cli().arg("validate").args(&args).output().unwrap();
     assert!(!output.status.success());
     let out = sanitize_output(
-        String::from_utf8_lossy(&output.stdout).to_string(),
+        format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ),
         &[&schema, &instance],
     );
     assert_snapshot!(snapshot, out);
@@ -2764,4 +2758,243 @@ fn test_vocabulary_flag_declares_support(args: &[&str], snapshot: &str) {
         "{}",
         String::from_utf8_lossy(&output.stdout)
     );
+}
+
+// 1 means a negative verdict, 2 a usage error, 3 that the run could not reach a verdict.
+#[test_case(&["validate", "{schema}", "-i", "{valid}"], 0; "valid instance")]
+#[test_case(&["validate", "{schema}", "-i", "{invalid}"], 1; "invalid instance")]
+#[test_case(&["validate", "{bad_schema}"], 1; "invalid schema alone")]
+#[test_case(&["validate"], 2; "no schema and no instance")]
+#[test_case(&[], 2; "no subcommand and no schema")]
+#[test_case(&["validate", "{schema}", "-i", "{missing}"], 3; "missing instance")]
+#[test_case(&["validate", "{schema}", "-i", "{unparsable}"], 3; "unparsable instance")]
+#[test_case(&["validate", "{missing}", "-i", "{valid}"], 3; "missing schema")]
+#[test_case(&["validate", "{bad_schema}", "-i", "{valid}"], 3; "invalid schema with instance")]
+#[test_case(&["validate", "{bad_schema}", "-i", "{valid}", "--output", "flag"], 3; "invalid schema with instance flag")]
+#[test_case(&["validate", "-i", "{valid}"], 3; "instance without schema property")]
+#[test_case(&["validate", "-i", "{valid}", "{invalid}"], 3; "error outranks invalid")]
+#[test_case(&["bundle", "{missing}"], 3; "bundle missing schema")]
+#[test_case(&["dereference", "{missing}"], 3; "dereference missing schema")]
+#[test_case(&["canonicalize", "{missing}"], 3; "canonicalize missing schema")]
+fn test_exit_code(args: &[&str], expected: i32) {
+    let dir = tempdir().unwrap();
+    let schema = create_temp_file(&dir, "schema.json", r#"{"type": "integer"}"#);
+    let bad_schema = create_temp_file(&dir, "bad.json", r#"{"type": "invalid"}"#);
+    let valid = create_temp_file(&dir, "valid.json", "1");
+    let invalid = create_temp_file(&dir, "invalid.json", r#""x""#);
+    let unparsable = create_temp_file(&dir, "unparsable.json", "{");
+    let missing = dir
+        .path()
+        .join("missing.json")
+        .to_str()
+        .unwrap()
+        .to_string();
+    let args: Vec<String> = args
+        .iter()
+        .map(|arg| {
+            arg.replace("{schema}", &schema)
+                .replace("{bad_schema}", &bad_schema)
+                .replace("{valid}", &valid)
+                .replace("{invalid}", &invalid)
+                .replace("{unparsable}", &unparsable)
+                .replace("{missing}", &missing)
+        })
+        .collect();
+
+    let output = cli().args(&args).output().unwrap();
+    assert_eq!(
+        output.status.code(),
+        Some(expected),
+        "stdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test_case("text"; "text")]
+#[test_case("flag"; "flag")]
+fn test_missing_instance_error_goes_to_stderr(output_format: &str) {
+    let dir = tempdir().unwrap();
+    let schema = create_temp_file(&dir, "schema.json", r#"{"type": "integer"}"#);
+    let missing = dir
+        .path()
+        .join("missing.json")
+        .to_str()
+        .unwrap()
+        .to_string();
+
+    let output = cli()
+        .arg("validate")
+        .arg(&schema)
+        .arg("-i")
+        .arg(&missing)
+        .arg("--output")
+        .arg(output_format)
+        .output()
+        .unwrap();
+    assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+    assert_eq!(
+        String::from_utf8_lossy(&output.stderr),
+        format!(
+            "error: failed to read {missing}: {}\n",
+            std::io::Error::from_raw_os_error(2)
+        )
+    );
+}
+
+#[test]
+fn test_invalid_schema_with_instance_goes_to_stderr() {
+    let dir = tempdir().unwrap();
+    let schema = create_temp_file(&dir, "schema.json", r#"{"type": "invalid"}"#);
+    let instance = create_temp_file(&dir, "instance.json", "{}");
+
+    let output = cli()
+        .arg("validate")
+        .arg(&schema)
+        .arg("-i")
+        .arg(&instance)
+        .output()
+        .unwrap();
+    assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+    assert_eq!(
+        String::from_utf8_lossy(&output.stderr),
+        "error: schema is invalid: \"invalid\" is not valid under any of the schemas listed in the 'anyOf' keyword\n"
+    );
+}
+
+#[test]
+fn test_instance_error_goes_to_stderr_in_text_mode() {
+    let dir = tempdir().unwrap();
+    let instance = create_temp_file(&dir, "instance.json", "{}");
+
+    let output = cli()
+        .arg("validate")
+        .arg("-i")
+        .arg(&instance)
+        .output()
+        .unwrap();
+    assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+    assert_eq!(
+        sanitize_output(
+            String::from_utf8_lossy(&output.stderr).to_string(),
+            &[&instance]
+        ),
+        "{FILE_1} - ERROR: no `$schema` property; pass a schema explicitly:\n  jsonschema validate SCHEMA -i {FILE_1}\n"
+    );
+}
+
+fn validate_stdin_instance(output_format: &str) -> (String, std::process::Output) {
+    let dir = tempdir().unwrap();
+    let schema = create_temp_file(&dir, "schema.json", r#"{"type": "integer"}"#);
+    let output = cli()
+        .arg("validate")
+        .arg(&schema)
+        .arg("-i")
+        .arg("-")
+        .arg("--output")
+        .arg(output_format)
+        .write_stdin("1")
+        .output()
+        .unwrap();
+    (schema, output)
+}
+
+#[test]
+fn test_instance_from_stdin_text() {
+    let (_, output) = validate_stdin_instance("text");
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(String::from_utf8_lossy(&output.stdout), "<stdin> - VALID\n");
+}
+
+// Compared as parsed JSON: the record escapes the backslashes of a Windows path.
+#[test]
+fn test_instance_from_stdin_flag() {
+    let (schema, output) = validate_stdin_instance("flag");
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(
+        parse_ndjson(&String::from_utf8_lossy(&output.stdout)),
+        vec![serde_json::json!({
+            "instance": "<stdin>",
+            "output": "flag",
+            "payload": {"valid": true},
+            "schema": schema,
+        })]
+    );
+}
+
+// A schema read from stdin resolves relative references against the working directory.
+#[test]
+fn test_schema_from_stdin() {
+    let dir = tempdir().unwrap();
+    create_temp_file(&dir, "integer.json", r#"{"type": "integer"}"#);
+    let invalid = create_temp_file(&dir, "invalid.json", r#""x""#);
+
+    let output = cli()
+        .current_dir(dir.path())
+        .arg("validate")
+        .arg("-")
+        .arg("-i")
+        .arg(&invalid)
+        .write_stdin(r#"{"$ref": "integer.json"}"#)
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(
+        sanitize_output(
+            String::from_utf8_lossy(&output.stdout).to_string(),
+            &[&invalid]
+        ),
+        "{FILE_1} - INVALID. Errors:\n1. \"x\" is not of type \"integer\"\n"
+    );
+}
+
+#[test_case("bundle"; "bundle")]
+#[test_case("dereference"; "dereference")]
+#[test_case("canonicalize"; "canonicalize")]
+fn test_schema_from_stdin_for_transforms(subcommand: &str) {
+    let output = cli()
+        .arg(subcommand)
+        .arg("-")
+        .write_stdin(r#"{"type": "integer"}"#)
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(0));
+    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(value["type"], serde_json::json!("integer"));
+}
+
+#[test_case("-V"; "short")]
+#[test_case("-v"; "legacy short")]
+#[test_case("--version"; "long")]
+fn test_version_flags(flag: &str) {
+    let output = cli().arg(flag).output().unwrap();
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        concat!("jsonschema ", env!("CARGO_PKG_VERSION"), "\n")
+    );
+}
+
+// A reader that stops early (`| head`) ends the run like it ends any Unix tool: by SIGPIPE's status.
+#[cfg(unix)]
+#[test]
+fn test_closed_stdout_does_not_panic() {
+    let dir = tempdir().unwrap();
+    let schema = create_temp_file(&dir, "schema.json", r#"{"type": "integer"}"#);
+    let instance = create_temp_file(&dir, "instance.json", "1");
+
+    // Enough output to overflow the pipe buffer, so writes hit the closed end.
+    let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_jsonschema-cli"))
+        .arg("validate")
+        .arg(&schema)
+        .arg("-i")
+        .args(std::iter::repeat_n(&instance, 5000))
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    drop(child.stdout.take());
+    let output = child.wait_with_output().unwrap();
+    assert_eq!(String::from_utf8_lossy(&output.stderr), "");
+    assert_eq!(output.status.code(), Some(141));
 }

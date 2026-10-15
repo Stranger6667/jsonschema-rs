@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Added
+
+- **CLI**: `-` as a path reads the schema or an instance from stdin.
+- **CLI**: `-V` as the version flag; `-v` stays as an alias.
+
+### Changed
+
+- **CLI**: Exit status `3` for errors that prevent a verdict and `2` for usage errors, so `1` always means an invalid instance or schema.
+- **CLI**: Errors print to stderr instead of stdout.
+- **CLI**: `--version` prints `jsonschema <VERSION>` instead of `Version: <VERSION>`.
+
+### Fixed
+
+- **CLI**: Panic when stdout is closed early, as in `jsonschema validate ... | head`.
+- **CLI**: Missing file path in the error for an unreadable instance in text output.
+
 ## [0.58.6] - 2026-10-06
 
 ### Fixed

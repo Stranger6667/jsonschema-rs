@@ -3,6 +3,7 @@ use std::{
     borrow::Cow,
     collections::{HashMap, HashSet},
     fs,
+    io::{self, Read, Write},
     path::{Path, PathBuf},
     process::ExitCode,
     time::Duration,
@@ -15,6 +16,71 @@ use jsonschema::{
 };
 use percent_encoding::{percent_encode, AsciiSet, CONTROLS};
 use serde_json::{json, Value};
+
+// A reader that stops early (`| head`) ends the run with the status SIGPIPE would give it.
+macro_rules! out {
+    ($($arg:tt)*) => {
+        if let Err(error) = writeln!(io::stdout(), $($arg)*) {
+            if error.kind() == io::ErrorKind::BrokenPipe {
+                #[allow(clippy::exit)]
+                std::process::exit(141);
+            }
+            panic!("failed printing to stdout: {error}");
+        }
+    };
+}
+
+/// Ordered by precedence: a run reports the worst outcome among its inputs.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Verdict {
+    Valid,
+    Invalid,
+    Error,
+}
+
+const EXIT_USAGE: u8 = 2;
+
+impl From<Verdict> for ExitCode {
+    fn from(verdict: Verdict) -> ExitCode {
+        match verdict {
+            Verdict::Valid => ExitCode::SUCCESS,
+            Verdict::Invalid => ExitCode::from(1),
+            Verdict::Error => ExitCode::from(3),
+        }
+    }
+}
+
+impl From<bool> for Verdict {
+    fn from(valid: bool) -> Verdict {
+        if valid {
+            Verdict::Valid
+        } else {
+            Verdict::Invalid
+        }
+    }
+}
+
+fn is_stdin(path: &Path) -> bool {
+    path == Path::new("-")
+}
+
+fn display_path(path: &Path) -> Cow<'_, str> {
+    if is_stdin(path) {
+        Cow::Borrowed("<stdin>")
+    } else {
+        path.to_string_lossy()
+    }
+}
+
+fn read_bytes(path: &Path) -> io::Result<Vec<u8>> {
+    if is_stdin(path) {
+        let mut bytes = Vec::new();
+        io::stdin().read_to_end(&mut bytes)?;
+        Ok(bytes)
+    } else {
+        fs::read(path)
+    }
+}
 
 fn parse_non_negative_timeout(s: &str) -> Result<f64, String> {
     let value: f64 = s
@@ -34,7 +100,7 @@ fn parse_resource_pair(s: &str) -> Result<(String, PathBuf), String> {
 }
 
 #[derive(Parser)]
-#[command(name = "jsonschema")]
+#[command(name = "jsonschema", version, disable_version_flag = true)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
@@ -62,9 +128,9 @@ struct Cli {
     no_assert_format: Option<bool>,
     #[arg(hide = true, long = "output", value_enum, default_value_t = Output::Text)]
     output: Output,
-    /// Show program's version number and exit.
-    #[arg(short = 'v', long = "version")]
-    version: bool,
+    /// Print version
+    #[arg(short = 'V', long = "version", short_alias = 'v', action = ArgAction::Version)]
+    version: Option<bool>,
     #[arg(hide = true, long = "errors-only")]
     errors_only: bool,
     #[arg(
@@ -389,11 +455,11 @@ impl std::fmt::Display for ReadJsonError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::Io { file, err } => {
-                f.write_fmt(format_args!("failed to read {}: {err}", file.display()))
+                f.write_fmt(format_args!("failed to read {}: {err}", display_path(file)))
             }
             Self::Json { file, err } => f.write_fmt(format_args!(
                 "failed to parse JSON from {}: {err}",
-                file.display()
+                display_path(file)
             )),
         }
     }
@@ -409,7 +475,7 @@ impl std::error::Error for ReadJsonError {
 }
 
 fn read_json(path: &Path) -> Result<Value, ReadJsonError> {
-    let bytes = fs::read(path).map_err(|err| ReadJsonError::Io {
+    let bytes = read_bytes(path).map_err(|err| ReadJsonError::Io {
         file: path.into(),
         err,
     })?;
@@ -421,27 +487,34 @@ fn read_json(path: &Path) -> Result<Value, ReadJsonError> {
 
 #[derive(Debug)]
 enum ReadJsonOrYamlError {
+    Io {
+        file: PathBuf,
+        err: io::Error,
+    },
     Json {
         file: PathBuf,
         err: serde_json::Error,
     },
     Yaml {
         file: PathBuf,
-        err: serde_saphyr::Error,
+        err: Box<serde_saphyr::Error>,
     },
 }
 
 impl std::fmt::Display for ReadJsonOrYamlError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            Self::Io { file, err } => {
+                f.write_fmt(format_args!("failed to read {}: {err}", display_path(file)))
+            }
             Self::Json { file, err } => f.write_fmt(format_args!(
                 "failed to read JSON from {}: {}",
-                file.display(),
+                display_path(file),
                 err
             )),
             Self::Yaml { file, err } => f.write_fmt(format_args!(
                 "failed to read YAML from {}: {}",
-                file.display(),
+                display_path(file),
                 err
             )),
         }
@@ -451,32 +524,30 @@ impl std::fmt::Display for ReadJsonOrYamlError {
 impl std::error::Error for ReadJsonOrYamlError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
+            Self::Io { file: _, err } => Some(err),
             Self::Json { file: _, err } => Some(err),
             Self::Yaml { file: _, err } => Some(err),
         }
     }
 }
 
-fn read_json_or_yaml(
-    path: &Path,
-) -> Result<Result<Value, ReadJsonOrYamlError>, Box<dyn std::error::Error>> {
-    let bytes = fs::read(path)?;
+fn read_json_or_yaml(path: &Path) -> Result<Value, ReadJsonOrYamlError> {
+    let bytes = read_bytes(path).map_err(|err| ReadJsonOrYamlError::Io {
+        file: path.into(),
+        err,
+    })?;
     if let Some(ext) = path.extension() {
         if ext == "yaml" || ext == "yml" {
-            return Ok(
-                serde_saphyr::from_slice(&bytes).map_err(|err| ReadJsonOrYamlError::Yaml {
-                    file: path.into(),
-                    err,
-                }),
-            );
+            return serde_saphyr::from_slice(&bytes).map_err(|err| ReadJsonOrYamlError::Yaml {
+                file: path.into(),
+                err: Box::new(err),
+            });
         }
     }
-    Ok(
-        serde_json::from_slice(&bytes).map_err(|err| ReadJsonOrYamlError::Json {
-            file: path.into(),
-            err,
-        }),
-    )
+    serde_json::from_slice(&bytes).map_err(|err| ReadJsonOrYamlError::Json {
+        file: path.into(),
+        err,
+    })
 }
 
 fn path_to_uri(path: &std::path::Path) -> String {
@@ -557,6 +628,11 @@ fn options_for_base_uri<'a>(
 }
 
 fn file_uri(path: &Path) -> Result<referencing::Uri<String>, Box<dyn std::error::Error>> {
+    if is_stdin(path) {
+        // Relative references in stdin resolve against the working directory.
+        let directory = path_to_uri(&std::env::current_dir()?);
+        return Ok(referencing::uri::from_str(&format!("{directory}/"))?);
+    }
     Ok(referencing::uri::from_str(&path_to_uri(path))?)
 }
 
@@ -727,7 +803,7 @@ fn output_schema_validation(
     output: Output,
     errors_only: bool,
     retrieval: Retrieval<'_>,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<Verdict, Box<dyn std::error::Error>> {
     // First validate against meta-schema
     let meta_validator = jsonschema::meta::validator_for(schema_json)?;
     let evaluation = meta_validator.evaluate(schema_json);
@@ -743,7 +819,7 @@ fn output_schema_validation(
 
     // Skip valid schemas if errors_only is enabled
     if !(errors_only && flag_output.valid) {
-        let schema_display = schema_path.to_string_lossy().to_string();
+        let schema_display = display_path(schema_path);
         let output_format = output.as_str();
 
         let payload = match output {
@@ -758,10 +834,10 @@ fn output_schema_validation(
             "schema": &schema_display,
             "payload": payload,
         });
-        println!("{}", serde_json::to_string(&record)?);
+        out!("{}", serde_json::to_string(&record)?);
     }
 
-    Ok(flag_output.valid)
+    Ok(flag_output.valid.into())
 }
 
 fn validate_schema_meta(
@@ -770,15 +846,15 @@ fn validate_schema_meta(
     output: Output,
     errors_only: bool,
     retrieval: Retrieval<'_>,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<Verdict, Box<dyn std::error::Error>> {
     let schema_json = read_json(schema_path)?;
 
     if matches!(output, Output::Text) {
         // Text output mode
         // First validate the schema structure against its meta-schema
         if let Err(error) = jsonschema::meta::validate(&schema_json) {
-            println!("Schema is invalid. Error: {error}");
-            return Ok(false);
+            out!("Schema is invalid. Error: {error}");
+            return Ok(Verdict::Invalid);
         }
 
         // Then try to build a validator to check that all referenced schemas are also valid
@@ -786,13 +862,13 @@ fn validate_schema_meta(
         match options.build(&schema_json) {
             Ok(_) => {
                 if !errors_only {
-                    println!("Schema is valid");
+                    out!("Schema is valid");
                 }
-                Ok(true)
+                Ok(Verdict::Valid)
             }
             Err(error) => {
-                println!("Schema is invalid. Error: {error}");
-                Ok(false)
+                out!("Schema is invalid. Error: {error}");
+                Ok(Verdict::Invalid)
             }
         }
     } else {
@@ -811,7 +887,7 @@ fn validate_schema_meta(
 // Text mode accepts YAML instances, the structured modes do not.
 fn read_instance(path: &Path, output: Output) -> Result<Value, Box<dyn std::error::Error>> {
     if matches!(output, Output::Text) {
-        Ok(read_json_or_yaml(path)??)
+        Ok(read_json_or_yaml(path)?)
     } else {
         Ok(read_json(path)?)
     }
@@ -825,20 +901,20 @@ fn report_instance(
     output: Output,
     errors_only: bool,
 ) -> Result<bool, Box<dyn std::error::Error>> {
-    let filename = instance.to_string_lossy();
+    let filename = display_path(instance);
 
     if matches!(output, Output::Text) {
         let mut errors = validator.iter_errors(instance_json);
         if let Some(first) = errors.next() {
-            println!("{filename} - INVALID. Errors:");
-            println!("1. {first}");
+            out!("{filename} - INVALID. Errors:");
+            out!("1. {first}");
             for (i, error) in errors.enumerate() {
-                println!("{}. {error}", i + 2);
+                out!("{}. {error}", i + 2);
             }
             return Ok(false);
         }
         if !errors_only {
-            println!("{filename} - VALID");
+            out!("{filename} - VALID");
         }
         return Ok(true);
     }
@@ -864,7 +940,7 @@ fn report_instance(
         "instance": filename,
         "payload": payload,
     });
-    println!("{}", serde_json::to_string(&record)?);
+    out!("{}", serde_json::to_string(&record)?);
 
     Ok(valid)
 }
@@ -876,14 +952,14 @@ fn report_instance_error(
     output: Output,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if matches!(output, Output::Text) {
-        println!("{} - ERROR: {message}", instance.to_string_lossy());
+        eprintln!("{} - ERROR: {message}", display_path(instance));
     } else {
         let record = json!({
             "output": output.as_str(),
-            "instance": instance.to_string_lossy(),
+            "instance": display_path(instance),
             "error": message,
         });
-        println!("{}", serde_json::to_string(&record)?);
+        out!("{}", serde_json::to_string(&record)?);
     }
     Ok(())
 }
@@ -900,7 +976,7 @@ fn resolve_instance_schema_uri(
         .ok_or_else(|| {
             format!(
                 "no `$schema` property; pass a schema explicitly:\n  jsonschema validate SCHEMA -i {}",
-                instance.to_string_lossy()
+                display_path(instance)
             )
         })?;
     let base = file_uri(instance).map_err(|error| error.to_string())?;
@@ -987,8 +1063,8 @@ fn validate_self_describing_instances(
     output: Output,
     errors_only: bool,
     retrieval: Retrieval<'_>,
-) -> Result<bool, Box<dyn std::error::Error>> {
-    let mut success = true;
+) -> Result<Verdict, Box<dyn std::error::Error>> {
+    let mut verdict = Verdict::Valid;
     let mut validators: HashMap<String, jsonschema::Validator> = HashMap::new();
 
     for instance in instances {
@@ -998,7 +1074,7 @@ fn validate_self_describing_instances(
             Ok(uri) => uri,
             Err(message) => {
                 report_instance_error(instance, &message, output)?;
-                success = false;
+                verdict = Verdict::Error;
                 continue;
             }
         };
@@ -1011,25 +1087,24 @@ fn validate_self_describing_instances(
                 }
                 Err(error) => {
                     report_instance_error(instance, &error.to_string(), output)?;
-                    success = false;
+                    verdict = Verdict::Error;
                     continue;
                 }
             }
         }
 
-        if !report_instance(
+        let valid = report_instance(
             &validators[&key],
             instance,
             &instance_json,
             &key,
             output,
             errors_only,
-        )? {
-            success = false;
-        }
+        )?;
+        verdict = verdict.max(valid.into());
     }
 
-    Ok(success)
+    Ok(verdict)
 }
 
 fn validate_instances(
@@ -1039,31 +1114,31 @@ fn validate_instances(
     output: Output,
     errors_only: bool,
     retrieval: Retrieval<'_>,
-) -> Result<bool, Box<dyn std::error::Error>> {
-    let mut success = true;
-
+) -> Result<Verdict, Box<dyn std::error::Error>> {
     let schema_json = read_json(schema_path)?;
     let options = schema_options.apply(options_for_schema(schema_path, retrieval)?);
     match options.build(&schema_json) {
         Ok(validator) => {
-            let schema_display = schema_path.to_string_lossy().to_string();
+            let schema_display = display_path(schema_path);
+            let mut verdict = Verdict::Valid;
             for instance in instances {
                 let instance_json = read_instance(instance, output)?;
-                if !report_instance(
+                let valid = report_instance(
                     &validator,
                     instance,
                     &instance_json,
                     &schema_display,
                     output,
                     errors_only,
-                )? {
-                    success = false;
-                }
+                )?;
+                verdict = verdict.max(valid.into());
             }
+            Ok(verdict)
         }
         Err(error) => {
+            // The instances never reached a verdict, so the schema is a diagnostic here.
             if matches!(output, Output::Text) {
-                println!("Schema is invalid. Error: {error}");
+                eprintln!("error: schema is invalid: {error}");
             } else {
                 // Schema compilation failed - validate the schema itself to get structured output
                 output_schema_validation(
@@ -1075,26 +1150,26 @@ fn validate_instances(
                     retrieval,
                 )?;
             }
-            success = false;
+            Ok(Verdict::Error)
         }
     }
-    Ok(success)
 }
 
-fn validation_result_to_exit(result: Result<bool, Box<dyn std::error::Error>>) -> ExitCode {
+fn validation_result_to_exit(result: Result<Verdict, Box<dyn std::error::Error>>) -> ExitCode {
     match result {
-        Ok(true) => ExitCode::SUCCESS,
-        Ok(false) => ExitCode::FAILURE,
-        Err(error) => {
-            println!("Error: {error}");
-            ExitCode::FAILURE
-        }
+        Ok(verdict) => verdict.into(),
+        Err(error) => fail_with_error(error),
     }
 }
 
 fn fail_with_error(error: impl std::fmt::Display) -> ExitCode {
     eprintln!("error: {error}");
-    ExitCode::FAILURE
+    Verdict::Error.into()
+}
+
+fn fail_with_usage(message: &str) -> ExitCode {
+    eprintln!("error: {message}");
+    ExitCode::from(EXIT_USAGE)
 }
 
 fn run_validate(args: ValidateArgs) -> ExitCode {
@@ -1146,7 +1221,7 @@ fn run_validate(args: ValidateArgs) -> ExitCode {
                 retrieval,
             ))
         }
-        (None, None) => fail_with_error(
+        (None, None) => fail_with_usage(
             "either a SCHEMA argument or `--instance` is required. See `jsonschema validate --help`.",
         ),
     }
@@ -1194,7 +1269,7 @@ fn run_bundle(args: BundleArgs) -> ExitCode {
                     }
                 }
                 None => {
-                    println!("{json}");
+                    out!("{json}");
                 }
             }
             ExitCode::SUCCESS
@@ -1245,7 +1320,7 @@ fn run_dereference(args: DereferenceArgs) -> ExitCode {
                     }
                 }
                 None => {
-                    println!("{json}");
+                    out!("{json}");
                 }
             }
             ExitCode::SUCCESS
@@ -1264,8 +1339,7 @@ fn run_canonicalize(args: CanonicalizeArgs) -> ExitCode {
     } = args;
 
     let schema_json = match read_json_or_yaml(&schema) {
-        Ok(Ok(value)) => value,
-        Ok(Err(error)) => return fail_with_error(error),
+        Ok(value) => value,
         Err(error) => return fail_with_error(error),
     };
 
@@ -1327,18 +1401,13 @@ fn run_canonicalize(args: CanonicalizeArgs) -> ExitCode {
                 return fail_with_error(format!("{}: {error}", path.display()));
             }
         }
-        None => println!("{json}"),
+        None => out!("{json}"),
     }
     ExitCode::SUCCESS
 }
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
-
-    if cli.version {
-        println!(concat!("Version: ", env!("CARGO_PKG_VERSION")));
-        return ExitCode::SUCCESS;
-    }
 
     match cli.command {
         Some(Command::Validate(args)) => run_validate(args),
@@ -1372,8 +1441,7 @@ fn main() -> ExitCode {
                     },
                 })
             } else {
-                eprintln!("A schema argument is required. Use `jsonschema validate --help`, `jsonschema bundle --help`, or `jsonschema dereference --help`.");
-                ExitCode::FAILURE
+                fail_with_usage("a schema argument is required. Use `jsonschema validate --help`, `jsonschema bundle --help`, or `jsonschema dereference --help`.")
             }
         }
     }
