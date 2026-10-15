@@ -17,7 +17,7 @@ use crate::{
             ExcludedDivisors, IntegerLeaf, LengthBounds, NumberLeaf, ObjectLeaf, PropertyMap,
             Schema, SchemaKind, Side, StringFormat, StringLeaf,
         },
-        negate, CanonicalizationError, DefinitionMap, CANONICAL_REFERENCE_PREFIX,
+        negate, rename, CanonicalizationError, DefinitionMap, CANONICAL_REFERENCE_PREFIX,
         ROOT_DEFINITION_KEY,
     },
     JsonType, JsonTypeSet,
@@ -66,44 +66,138 @@ impl ParseOutput {
 /// of the reads a caller asks for, so holding it costs no parse of its own.
 pub(crate) struct Seed {
     definitions: DefinitionMap,
+    /// Each key mapped to the bodies pointing at it, so a read finds what reaches its own root
+    /// without walking every body.
+    referrers: Referrers,
     /// Addresses, never read through: a source is only ever compared for identity, and keeping
     /// them as references would tie the seed to the borrow that produced it.
     sources: AHashMap<Arc<str>, usize>,
 }
 
+type Referrers = AHashMap<Arc<str>, Vec<Arc<str>>>;
+
 impl Seed {
-    /// What `seed` becomes once a parse that reached `definitions` is folded in; `None` when that
-    /// parse reached no body the seed does not already hold.
+    /// What `seed` becomes once a parse of `root` that reached `definitions` is folded in; `None`
+    /// when that parse reached no body the seed does not already hold.
     fn grown(
         seed: Option<&Seed>,
+        root: &Value,
+        parsed_root: &Schema,
         definitions: &DefinitionMap,
         sources: AHashMap<Arc<str>, usize>,
     ) -> Option<Seed> {
+        // Only bodies the seed lacks: the ones it holds point at no `#`.
+        let mut added: DefinitionMap = definitions
+            .iter()
+            .filter(|(key, _)| seed.is_none_or(|seed| !seed.definitions.contains_key(*key)))
+            .map(|(key, body)| (Arc::clone(key), body.clone()))
+            .collect();
+        // `#` names the root of this read, a different subschema in a later one. Pointing it at the
+        // root's own key, with the root kept as that key's body, keeps every body valid in any read.
+        let root_key = sole_key(&sources, root);
+        if let Some(key) = &root_key {
+            let renames = AHashMap::from_iter([(Arc::from(ROOT_DEFINITION_KEY), Arc::clone(key))]);
+            for body in added.values_mut() {
+                *body = rename::rename_references(body, &renames);
+            }
+            if seed.is_none_or(|seed| !seed.definitions.contains_key(key)) {
+                added.insert(
+                    Arc::clone(key),
+                    rename::rename_references(parsed_root, &renames),
+                );
+            }
+        }
+        let mut referrers = Referrers::default();
+        for (key, reached) in emptiness::reference_edges(&Schema::truthy(), &added) {
+            for (target, _) in reached {
+                referrers.entry(target).or_default().push(Arc::clone(&key));
+            }
+        }
+        if root_key.is_none() {
+            let tied = reaching(&referrers, [Arc::from(ROOT_DEFINITION_KEY)].into());
+            added.retain(|key, _| !tied.contains(key));
+            for keys in referrers.values_mut() {
+                keys.retain(|key| !tied.contains(key));
+            }
+        }
         let Some(seed) = seed else {
             return Some(Seed {
-                definitions: definitions.clone(),
+                definitions: added,
+                referrers,
                 sources,
             });
         };
         // A seeded parse carries the seed's own keys back out, so equal counts mean nothing new.
-        let grew = sources.len() > seed.sources.len()
-            || definitions
-                .keys()
-                .any(|key| !seed.definitions.contains_key(key));
-        if !grew {
+        if sources.len() <= seed.sources.len() && added.is_empty() {
             return None;
         }
         let mut merged = seed.definitions.clone();
-        for (key, body) in definitions {
-            merged
-                .entry(Arc::clone(key))
-                .or_insert_with(|| body.clone());
+        merged.extend(added);
+        let mut merged_referrers = seed.referrers.clone();
+        for (target, keys) in referrers {
+            merged_referrers.entry(target).or_default().extend(keys);
         }
         Some(Seed {
             definitions: merged,
+            referrers: merged_referrers,
             sources,
         })
     }
+
+    /// The bodies a read starting at `root` can reuse, with what points at `root` pointing at `#`,
+    /// as that read writes it.
+    fn definitions_for(&self, root: &Value) -> DefinitionMap {
+        let address = std::ptr::from_ref(root) as usize;
+        let keys: AHashSet<Arc<str>> = self
+            .sources
+            .iter()
+            .filter(|(_, source)| **source == address)
+            .map(|(key, _)| Arc::clone(key))
+            .collect();
+        if keys.is_empty() {
+            return self.definitions.clone();
+        }
+        if let Some(key) = sole_key(&self.sources, root) {
+            let mut definitions = self.definitions.clone();
+            let renames = AHashMap::from_iter([(Arc::clone(&key), Arc::from(ROOT_DEFINITION_KEY))]);
+            for referrer in self.referrers.get(&key).into_iter().flatten() {
+                if let Some(body) = definitions.get_mut(referrer) {
+                    *body = rename::rename_references(body, &renames);
+                }
+            }
+            return definitions;
+        }
+        // Several keys name `root`, or a dynamic scope specializes one, and only some of them read
+        // as `#`: parse again whatever reaches any.
+        let tied = reaching(&self.referrers, keys);
+        self.definitions
+            .iter()
+            .filter(|(key, _)| !tied.contains(*key))
+            .map(|(key, body)| (Arc::clone(key), body.clone()))
+            .collect()
+    }
+}
+
+/// The key a read rooted at `root` writes as `#`: the only one naming it, unspecialized.
+fn sole_key(sources: &AHashMap<Arc<str>, usize>, root: &Value) -> Option<Arc<str>> {
+    let address = std::ptr::from_ref(root) as usize;
+    let mut keys = sources.iter().filter(|(_, source)| **source == address);
+    let (key, _) = keys.next()?;
+    (keys.next().is_none() && !key.contains("|dyn=")).then(|| Arc::clone(key))
+}
+
+/// `targets` plus every key whose body reaches one of them, directly or through other bodies.
+fn reaching(referrers: &Referrers, targets: AHashSet<Arc<str>>) -> AHashSet<Arc<str>> {
+    let mut pending: Vec<Arc<str>> = targets.iter().cloned().collect();
+    let mut tied = targets;
+    while let Some(key) = pending.pop() {
+        for referrer in referrers.get(&key).into_iter().flatten() {
+            if tied.insert(Arc::clone(referrer)) {
+                pending.push(Arc::clone(referrer));
+            }
+        }
+    }
+    tied
 }
 
 /// Parse a document into structural IR when every construct is modeled; `Ok((None, _))` keeps it
@@ -131,7 +225,7 @@ pub(crate) fn parse<'a>(
     )?;
     let grown = output
         .as_ref()
-        .and_then(|output| Seed::grown(seed, &output.definitions, sources));
+        .and_then(|output| Seed::grown(seed, value, &output.root, &output.definitions, sources));
     Ok((output, grown))
 }
 
@@ -628,7 +722,7 @@ impl<'a, 'b> ParseState<'a, 'b> {
         seed: Option<&Seed>,
     ) -> Self {
         let (definitions, sources) = match seed {
-            Some(seed) => (seed.definitions.clone(), seed.sources.clone()),
+            Some(seed) => (seed.definitions_for(root), seed.sources.clone()),
             None => (DefinitionMap::new(), AHashMap::default()),
         };
         Self {
