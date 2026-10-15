@@ -371,19 +371,15 @@ fn test_nested_ref_resolution_with_different_path_formats() {
     let rel_schema_path = "folderA/schema.json";
     let rel_instance_path = "instance.json";
 
-    let original_dir = std::env::current_dir().unwrap();
-    std::env::set_current_dir(temp_dir.path()).unwrap();
-
     let mut cmd = cli();
-    cmd.arg(rel_schema_path)
+    cmd.current_dir(temp_dir.path())
+        .arg(rel_schema_path)
         .arg("--instance")
         .arg(rel_instance_path);
 
     let output = cmd.output().unwrap();
 
     assert!(output.status.success());
-
-    std::env::set_current_dir(original_dir).unwrap();
 }
 
 #[test]
