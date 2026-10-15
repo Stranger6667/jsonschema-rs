@@ -1,0 +1,17 @@
+[package]
+name = "canonical-ecosystem"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[dependencies]
+# `resolve-http` disabled: a network `$ref` would make the run depend on the network.
+jsonschema = { path = "../crates/jsonschema", default-features = false, features = ["arbitrary-precision"] }
+referencing = { path = "../crates/jsonschema-referencing" }
+serde_json = "1"
+
+[profile.release]
+debug = "line-tables-only"
+
+# Built at two commits from one copy of this directory, so it stays out of the root workspace.
+[workspace]
