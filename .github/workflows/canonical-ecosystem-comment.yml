@@ -1,0 +1,53 @@
+name: Canonical ecosystem comment
+
+# Runs in the base repository's context so fork PRs get a comment too. It checks out no code and
+# reads only the report artifact, which it posts as text.
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers]
+    workflows: ["Canonical ecosystem"]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  comment:
+    name: Post the report on the PR
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion != 'cancelled'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: canonical-ecosystem
+          path: report
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Post or update the comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          pr="$(cat report/pr-number)"
+          if ! [[ "$pr" =~ ^[0-9]+$ ]]; then
+            echo "::error::Invalid PR number in the artifact"
+            exit 1
+          fi
+          # A fork's run writes the artifact, so only trust the number if that PR is the one the run tested.
+          if [ "$(gh api "repos/${REPOSITORY}/pulls/${pr}" --jq .head.sha)" != "$HEAD_SHA" ]; then
+            echo "::warning::PR #${pr} is not at ${HEAD_SHA}; not commenting"
+            exit 0
+          fi
+          # `--paginate` runs the filter per page, so `first` alone could still print one id per page.
+          ids="$(gh api "repos/${REPOSITORY}/issues/${pr}/comments" --paginate \
+            --jq 'first(.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- canonical-ecosystem -->")))) | .id')"
+          existing="${ids%%$'\n'*}"
+          if [ -n "$existing" ]; then
+            gh api --method PATCH "repos/${REPOSITORY}/issues/comments/${existing}" -F body=@report/comment.md > /dev/null
+          else
+            gh api "repos/${REPOSITORY}/issues/${pr}/comments" -F body=@report/comment.md > /dev/null
+          fi
