@@ -1,6 +1,8 @@
 use assert_cmd::{cargo::cargo_bin_cmd, Command};
 use insta::assert_snapshot;
 use serde_json::Value;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::{collections::HashMap, fs};
 use tempfile::tempdir;
 use test_case::test_case;
@@ -2997,4 +2999,78 @@ fn test_closed_stdout_does_not_panic() {
     let output = child.wait_with_output().unwrap();
     assert_eq!(String::from_utf8_lossy(&output.stderr), "");
     assert_eq!(output.status.code(), Some(141));
+}
+
+// A file-size limit makes the write fail partway, as a full disk or exhausted quota does.
+#[cfg(unix)]
+#[test_case("bundle"; "bundle")]
+#[test_case("dereference"; "dereference")]
+#[test_case("canonicalize"; "canonicalize")]
+fn test_output_file_survives_failed_write(command: &str) {
+    let dir = tempdir().unwrap();
+    let schema = create_temp_file(
+        &dir,
+        "schema.json",
+        &serde_json::json!({"const": "x".repeat(16 * 1024)}).to_string(),
+    );
+    let target = create_temp_file(&dir, "out.json", "ORIGINAL");
+
+    let output = std::process::Command::new("sh")
+        .arg("-c")
+        .arg(r#"trap "" XFSZ; ulimit -f 1; exec "$0" "$@""#)
+        .arg(env!("CARGO_BIN_EXE_jsonschema-cli"))
+        .args([command, &schema, "--output", &target])
+        // The limit would also truncate a coverage profile written at exit; a device file escapes it.
+        .env("LLVM_PROFILE_FILE", "/dev/null")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert_eq!(fs::read_to_string(&target).unwrap(), "ORIGINAL");
+    let mut entries: Vec<_> = fs::read_dir(dir.path())
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+        .collect();
+    entries.sort_unstable();
+    assert_eq!(entries, ["out.json", "schema.json"]);
+}
+
+#[cfg(unix)]
+#[test_case("bundle"; "bundle")]
+#[test_case("dereference"; "dereference")]
+#[test_case("canonicalize"; "canonicalize")]
+fn test_output_file_has_default_permissions(command: &str) {
+    let dir = tempdir().unwrap();
+    let schema = create_temp_file(&dir, "schema.json", r#"{"type":"integer"}"#);
+    let reference = create_temp_file(&dir, "reference.json", "");
+    let target = dir.path().join("out.json");
+
+    cli()
+        .args([command, &schema, "--output", target.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let mode = |path: &std::path::Path| fs::metadata(path).unwrap().permissions().mode();
+    assert_eq!(mode(&target), mode(std::path::Path::new(&reference)));
+}
+
+#[cfg(unix)]
+#[test_case("bundle"; "bundle")]
+#[test_case("dereference"; "dereference")]
+#[test_case("canonicalize"; "canonicalize")]
+fn test_output_file_keeps_existing_permissions(command: &str) {
+    let dir = tempdir().unwrap();
+    let schema = create_temp_file(&dir, "schema.json", r#"{"type":"integer"}"#);
+    let target = create_temp_file(&dir, "out.json", "ORIGINAL");
+    fs::set_permissions(&target, fs::Permissions::from_mode(0o640)).unwrap();
+
+    cli()
+        .args([command, &schema, "--output", &target])
+        .assert()
+        .success();
+
+    assert_eq!(
+        fs::metadata(&target).unwrap().permissions().mode() & 0o777,
+        0o640
+    );
 }
