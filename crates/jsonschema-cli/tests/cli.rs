@@ -61,6 +61,20 @@ fn normalize_numbered_errors(output: &str) -> String {
     normalized
 }
 
+#[test_case(&[], "help_top_level"; "top level")]
+#[test_case(&["validate"], "help_validate"; "validate")]
+#[test_case(&["bundle"], "help_bundle"; "bundle")]
+#[test_case(&["dereference"], "help_dereference"; "dereference")]
+#[test_case(&["canonicalize"], "help_canonicalize"; "canonicalize")]
+fn test_help(subcommand: &[&str], snapshot: &str) {
+    let output = cli().args(subcommand).arg("--help").output().unwrap();
+    assert!(output.status.success());
+    // clap takes the usage name from argv[0], which carries `.exe` on Windows
+    let help =
+        String::from_utf8_lossy(&output.stdout).replace("jsonschema-cli.exe", "jsonschema-cli");
+    assert_snapshot!(snapshot, help);
+}
+
 #[test]
 fn test_offline_refuses_remote_reference() {
     let dir = tempdir().unwrap();

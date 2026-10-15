@@ -1,0 +1,18 @@
+---
+source: crates/jsonschema-cli/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stdout)"
+---
+Canonicalize a JSON Schema to its simplified canonical form
+
+Usage: jsonschema-cli canonicalize [OPTIONS] <SCHEMA>
+
+Arguments:
+  <SCHEMA>  Path to the JSON Schema file to canonicalize
+
+Options:
+      --at <POINTER>      Canonicalize only the subschema at this JSON Pointer, e.g. `/$defs/Pet`. A leading `#` is accepted, so a `$ref` can be pasted as-is
+  -d, --draft <DRAFT>     Which JSON Schema draft to enforce (else auto-detected from $schema) [possible values: 4, 6, 7, 2019, 2020]
+      --assert-format     Turn ON format validation
+      --no-assert-format  Turn OFF format validation
+  -o, --output <OUTPUT>   Write canonical output to FILE instead of stdout
+  -h, --help              Print help
