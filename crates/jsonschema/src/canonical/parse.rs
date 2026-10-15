@@ -2289,10 +2289,12 @@ impl Covers {
     }
 }
 
-/// The keys and indices `body` evaluates with nothing inside it split; `None` where the instance
-/// decides them, as under a conditional of its own.
+/// The keys and indices `body` evaluates with nothing inside it split, left empty where `base`
+/// already reaches all of them; `None` where the instance decides them, as under a conditional of
+/// its own.
 fn body_covers(
     body: &Value,
+    base: &Covers,
     ctx: &CanonicalizationContext,
     resolver: &Resolver<'_>,
     walk: &mut ReferenceWalk,
@@ -2301,8 +2303,13 @@ fn body_covers(
     walk.hoisted = false;
     let mut property = PropertyCover::default();
     let mut item = ItemCover::default();
-    let properties = property_cover(body, ctx, resolver, walk, &mut property);
+    let properties = if base.property.everything {
+        Ok(Some(()))
+    } else {
+        property_cover(body, ctx, resolver, walk, &mut property)
+    };
     let items = match &properties {
+        Ok(Some(())) if base.item.everything => Ok(Some(())),
         Ok(Some(())) => item_cover(body, ctx.draft(), ctx, resolver, walk, &mut item),
         _ => Ok(None),
     };
@@ -2324,7 +2331,7 @@ fn reaches_nothing_new(
     resolver: &Resolver<'_>,
     walk: &mut ReferenceWalk,
 ) -> Result<bool, CanonicalizationError> {
-    Ok(body_covers(body, ctx, resolver, walk)?
+    Ok(body_covers(body, base, ctx, resolver, walk)?
         .is_some_and(|(property, item)| base.already_reaches(&property, &item)))
 }
 
@@ -2409,7 +2416,7 @@ fn applied_conditionals(
         };
         let mut covers = Vec::with_capacity(branches.len());
         for branch in branches {
-            covers.push(body_covers(branch, ctx, resolver, walk)?);
+            covers.push(body_covers(branch, base, ctx, resolver, walk)?);
         }
         // Branches reaching the same keys and indices leave the covers to read them in place.
         let agreeing =
@@ -2421,7 +2428,8 @@ fn applied_conditionals(
                 .is_some_and(|(property, item)| base.already_reaches(property, item))
         });
         if agreeing || neutral {
-            skipped.any |= !agreeing;
+            // Agreement leaves out a side the node already reaches, so read past it whenever neutral.
+            skipped.any |= neutral;
             if node_level {
                 let mut kept = Map::new();
                 kept.insert(keyword.to_string(), Value::Array(branches.clone()));
@@ -2807,6 +2815,9 @@ fn split_conditionals(
             base.item.absorb(&cover);
         }
     }
+    // Without its `unevaluated*` a side has nothing left over, so no case changes it.
+    base.property.everything |= !map.contains_key("unevaluatedProperties");
+    base.item.everything |= !map.contains_key("unevaluatedItems");
     base.property.normalize();
     let mut conditionals = Vec::new();
     let mut skipped = Skipped::default();
