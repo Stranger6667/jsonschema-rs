@@ -65,14 +65,15 @@ Four subcommands are available: `validate`, `bundle`, `dereference` and `canonic
 jsonschema validate [OPTIONS] [SCHEMA]
 ```
 
-`SCHEMA` may be omitted when every instance names its own schema — see
+`SCHEMA` may be `-` to read it from stdin; its relative `$ref`s then resolve against the working
+directory. `SCHEMA` may be omitted when every instance names its own schema — see
 [Self-describing instances](#self-describing-instances) below.
 
 ### Options
 
 | Flag | Description |
 |---|---|
-| `-i, --instance <FILE>` | Instance(s) to validate (repeatable) |
+| `-i, --instance <FILE>` | Instance(s) to validate (repeatable; `-` reads stdin) |
 | `-d, --draft <DRAFT>` | Enforce a specific draft (`4`, `6`, `7`, `2019`, `2020`) |
 | `--assert-format` / `--no-assert-format` | Enable/disable `format` keyword validation |
 | `--vocabulary <URI>` | Declare support for a vocabulary the meta-schema requires (repeatable) |
@@ -115,7 +116,7 @@ jsonschema validate -i tsconfig.json
 - A relative `$schema` (`"./schema.json"`) resolves against the **instance file**, not the
   working directory. A JSON pointer fragment (`"./schemas.json#/$defs/Config"`) is honored.
 - An instance without a usable `$schema` is reported as an error; the remaining instances are
-  still validated and the run exits `1`.
+  still validated and the run exits `3`.
 - Passing `SCHEMA` explicitly always wins — the instance's `$schema` is then ignored.
 - In structured output modes the `schema` field holds the resolved URI, which varies per
   instance.
@@ -234,7 +235,7 @@ $ jsonschema canonicalize empty.json
 }
 ```
 
-A schema the canonical form cannot model exactly is printed unchanged, with exit status 0, so output identical to the input marks it. An error, such as an unresolvable `$ref` or a pointer that selects nothing, prints `error: ...` to stderr and exits with status 1.
+A schema the canonical form cannot model exactly is printed unchanged, with exit status 0, so output identical to the input marks it. An error, such as an unresolvable `$ref` or a pointer that selects nothing, prints `error: ...` to stderr and exits with status 3.
 
 ### Selecting a subschema
 
@@ -276,7 +277,12 @@ Structured modes emit newline-delimited JSON records:
 ## Exit Codes
 
 - `0` — all instances valid (or no instances provided)
-- `1` — one or more instances invalid, or an error occurred
+- `1` — one or more instances invalid, or the schema invalid when validated alone
+- `2` — invalid command-line usage
+- `3` — an error prevented a verdict: unreadable or unparsable input, a schema that fails to
+  build, an unresolvable reference. Wins over `1` when both occur in one run.
+
+Errors go to stderr; verdicts and structured records go to stdout.
 
 ## License
 
