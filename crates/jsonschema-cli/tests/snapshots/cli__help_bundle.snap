@@ -10,11 +10,11 @@ Arguments:
   <SCHEMA>  Path to the root JSON Schema file to bundle
 
 Options:
-      --resource <RESOURCES>       Register an external schema resource: URI=FILE (may be repeated)
-  -o, --output <OUTPUT>            Write bundled output to FILE instead of stdout
+      --resource <URI=FILE>        Register an external schema resource (may be repeated)
+  -o, --output <FILE>              Write bundled output to FILE instead of stdout
       --connect-timeout <SECONDS>  Timeout for establishing connections (in seconds)
       --timeout <SECONDS>          Total timeout for HTTP requests (in seconds)
   -k, --insecure                   Skip TLS certificate verification (dangerous!)
       --cacert <FILE>              Path to a custom CA certificate file (PEM format)
-      --offline                    Refuse to fetch references outside --resource
+      --offline                    Refuse to fetch remote references
   -h, --help                       Print help

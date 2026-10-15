@@ -18,6 +18,7 @@
 - **CLI**: Panic when stdout is closed early, as in `jsonschema validate ... | head`.
 - **CLI**: Missing file path in the error for an unreadable instance in text output.
 - **CLI**: `jsonschema bundle`, `jsonschema dereference` and `jsonschema canonicalize` truncating the `--output` file when the write fails partway.
+- **CLI**: `jsonschema validate --help` describing `--offline` in terms of `--resource`, which `validate` does not accept.
 
 ## [0.58.6] - 2026-10-06
 
