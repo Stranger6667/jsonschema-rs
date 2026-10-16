@@ -9,6 +9,7 @@
 - `canonicalize` giving a different form for a `oneOf` depending on the order of its branches.
 - `canonicalize` output changing when canonicalized again, for a `not` over a `$ref` it cannot fully negate.
 - `canonicalize` output changing when canonicalized again, for a `oneOf` whose branches reduce to the same `$ref`.
+- `canonicalize` leaving an `anyOf` over many overlapping objects raw.
 
 ## [0.58.6] - 2026-10-06
 
