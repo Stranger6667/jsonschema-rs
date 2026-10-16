@@ -2884,5 +2884,37 @@
         "valid": false
       }
     ]
+  },
+  {
+    "description": "a oneOf with an always-true branch expands the same wherever that branch sits",
+    "schemas": [
+      {"oneOf": [true, {"properties": {"a": {"type": "integer"}, "c": {"type": "integer"}}}, {"properties": {"b": {"const": 1}, "a": {"const": 1}}, "additionalProperties": {"type": "integer"}}]},
+      {"oneOf": [{"properties": {"a": {"type": "integer"}, "c": {"type": "integer"}}}, {"properties": {"b": {"const": 1}, "a": {"const": 1}}, "additionalProperties": {"type": "integer"}}, true]}
+    ],
+    "expected": {"$schema": "https://json-schema.org/draft/2020-12/schema", "anyOf": [{"allOf": [{"not": {"additionalProperties": {"type": "integer"}, "properties": {"a": true, "b": true}}}, {"not": {"additionalProperties": {"type": "integer"}, "properties": {"a": true, "b": true, "c": true}}}], "properties": {"a": {"anyOf": [{"type": ["null", "boolean", "string", "array", "object"]}, {"not": {"multipleOf": 1}, "type": "number"}]}}, "required": ["a"], "type": "object"}, {"properties": {"a": {"anyOf": [{"type": ["null", "boolean", "string", "array", "object"]}, {"exclusiveMaximum": 1, "not": {"multipleOf": 1}, "type": "number"}, {"exclusiveMinimum": 1, "not": {"multipleOf": 1}, "type": "number"}]}}, "required": ["a"], "type": "object"}, {"properties": {"a": {"anyOf": [{"type": ["null", "boolean", "string", "array", "object"]}, {"not": {"multipleOf": 1}, "type": "number"}]}, "b": {"anyOf": [{"type": ["null", "boolean", "string", "array", "object"]}, {"exclusiveMaximum": 1, "type": "number"}, {"exclusiveMinimum": 1, "type": "number"}]}}, "required": ["a", "b"], "type": "object"}, {"properties": {"a": {"anyOf": [{"type": ["null", "boolean", "string", "array", "object"]}, {"exclusiveMaximum": 1, "type": "number"}, {"exclusiveMinimum": 1, "type": "number"}]}, "c": {"anyOf": [{"type": ["null", "boolean", "string", "array", "object"]}, {"not": {"multipleOf": 1}, "type": "number"}]}}, "required": ["a", "c"], "type": "object"}, {"properties": {"b": {"anyOf": [{"type": ["null", "boolean", "string", "array", "object"]}, {"exclusiveMaximum": 1, "type": "number"}, {"exclusiveMinimum": 1, "type": "number"}]}, "c": {"anyOf": [{"type": ["null", "boolean", "string", "array", "object"]}, {"not": {"multipleOf": 1}, "type": "number"}]}}, "required": ["b", "c"], "type": "object"}, {"not": {"additionalProperties": {"type": "integer"}, "properties": {"a": true, "b": true}}, "properties": {"c": {"anyOf": [{"type": ["null", "boolean", "string", "array", "object"]}, {"not": {"multipleOf": 1}, "type": "number"}]}}, "required": ["c"], "type": "object"}]},
+    "tests": [
+      {"data": {}, "valid": false},
+      {"data": {"a": 1.5}, "valid": true},
+      {"data": {"a": 1}, "valid": false},
+      {"data": {"a": 2, "b": 2}, "valid": false},
+      {"data": {"c": "x", "b": 1}, "valid": true},
+      {"data": {"c": "x", "x": "y"}, "valid": true},
+      {"data": 1, "valid": false}
+    ]
+  },
+  {
+    "description": "a oneOf too wide to expand keeps one branch order however it was written",
+    "schemas": [
+      {"oneOf": [{"properties": {"a": {"type": "integer"}, "b": {"type": "string"}}}, {"properties": {"b": {"type": "integer"}, "c": {"type": "string"}}}, {"properties": {"c": {"type": "integer"}, "a": {"type": "string"}}}]},
+      {"oneOf": [{"properties": {"c": {"type": "integer"}, "a": {"type": "string"}}}, {"properties": {"b": {"type": "integer"}, "c": {"type": "string"}}}, {"properties": {"a": {"type": "integer"}, "b": {"type": "string"}}}]}
+    ],
+    "expected": {"$schema": "https://json-schema.org/draft/2020-12/schema", "oneOf": [{"anyOf": [{"type": ["null", "boolean", "number", "string", "array"]}, {"properties": {"a": {"type": "integer"}, "b": {"type": "string"}}, "type": "object"}]}, {"anyOf": [{"type": ["null", "boolean", "number", "string", "array"]}, {"properties": {"a": {"type": "string"}, "c": {"type": "integer"}}, "type": "object"}]}, {"anyOf": [{"type": ["null", "boolean", "number", "string", "array"]}, {"properties": {"b": {"type": "integer"}, "c": {"type": "string"}}, "type": "object"}]}]},
+    "tests": [
+      {"data": {}, "valid": false},
+      {"data": {"a": 1, "b": 1}, "valid": true},
+      {"data": {"a": 1, "c": 1}, "valid": true},
+      {"data": {"a": "x", "b": 1, "c": 1}, "valid": true},
+      {"data": 1, "valid": false}
+    ]
   }
 ]

@@ -833,11 +833,13 @@ fn value_types(values: &[CanonicalJson]) -> JsonTypeSet {
 /// overlap does, so only the overlaps need negations — a branch overlapping nothing is never
 /// negated. `None` when an overlap's negation is inexpressible.
 pub(crate) fn concrete_one_of(
-    branches: Vec<Schema>,
+    mut branches: Vec<Schema>,
     definitions: &DefinitionMap,
     ctx: &CanonicalizationContext,
 ) -> Option<Schema> {
-    let mut as_one_of = branches.clone();
+    // Every spelling of the choice expands, or stays as written, the same way.
+    branches.sort();
+    let as_one_of = branches.clone();
     // Bounded: branches sharing a wide region take an expansion whose cost has nothing to do with
     // the rest of the document, and spending the document's whole allowance on it leaves every
     // later node approximate. Out of allowance the choice keeps the form it was written in, which
@@ -846,7 +848,6 @@ pub(crate) fn concrete_one_of(
         ctx.probe(|| expand_exclusivity(branches, definitions, ctx))
     });
     if outgrew {
-        as_one_of.sort();
         return Some(Schema::new(SchemaKind::OneOf(as_one_of)));
     }
     if inexact {
@@ -864,25 +865,40 @@ fn expand_exclusivity(
     definitions: &DefinitionMap,
     ctx: &CanonicalizationContext,
 ) -> Option<Schema> {
-    let overlaps = pairwise_overlaps(&branches, ctx);
-    let mut as_one_of = branches.clone();
+    let mut removals = pairwise_overlaps(&branches, ctx)
+        .iter()
+        .map(|overlap| negate::negate_in_place(overlap, definitions, ctx))
+        .collect::<Option<Vec<_>>>()?;
+    let as_one_of = branches.clone();
     let mut result = union(branches, ctx);
-    for overlap in overlaps {
-        let removed = negate::negate_in_place(&overlap, definitions, ctx)?;
-        // Every shared region removed widens the union again, and the widths multiply, so their
-        // product bounds the intersection before it runs. Past the budget the choice keeps the
-        // exactly-one form, and the intersection would only have been discarded.
-        if negate::union_width(&result) * negate::union_width(&removed) > negate::UNION_WIDTH_BUDGET
-        {
-            as_one_of.sort();
-            return Some(Schema::new(SchemaKind::OneOf(as_one_of)));
+    // Each round removes the shared region leaving the narrowest union, so how far the expansion
+    // gets before the budget does not depend on the order the branches were written in.
+    while !removals.is_empty() {
+        let mut narrowest: Option<(usize, Schema)> = None;
+        for (index, removed) in removals.iter().enumerate() {
+            // Every shared region removed widens the union again, and the widths multiply, so
+            // their product bounds the intersection before it runs.
+            if negate::union_width(&result) * negate::union_width(removed)
+                > negate::UNION_WIDTH_BUDGET
+            {
+                continue;
+            }
+            let narrowed = intersect(result.clone(), removed.clone(), ctx);
+            if narrowest
+                .as_ref()
+                .is_none_or(|(_, best)| negate::union_width(&narrowed) < negate::union_width(best))
+            {
+                narrowest = Some((index, narrowed));
+            }
         }
-        result = intersect(result, removed, ctx);
-        // Pruning only narrows the product, so the exact width still decides the round after.
-        if negate::union_width(&result) > negate::UNION_WIDTH_BUDGET {
-            as_one_of.sort();
+        // Past the budget the choice keeps the exactly-one form.
+        let Some((index, narrowed)) = narrowest
+            .filter(|(_, narrowed)| negate::union_width(narrowed) <= negate::UNION_WIDTH_BUDGET)
+        else {
             return Some(Schema::new(SchemaKind::OneOf(as_one_of)));
-        }
+        };
+        removals.remove(index);
+        result = narrowed;
     }
     Some(result)
 }

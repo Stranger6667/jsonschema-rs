@@ -47,6 +47,16 @@ struct NegationWalk<'a> {
     /// Resolutions left before the walk declines.
     budget: usize,
     inexpressible: Inexpressible,
+    resolution: Resolution<'a>,
+}
+
+/// How the walk opens a reference.
+#[derive(Clone, Copy)]
+enum Resolution<'a> {
+    /// Through the walk's own definitions, one part at a time.
+    Partial,
+    /// Whole or not at all, as a negation written against the target alone would be.
+    Whole(&'a DefinitionMap),
 }
 
 /// What the walk does where the negation has no structural form: either the exact `Not` re-wrap,
@@ -64,9 +74,30 @@ enum Inexpressible {
 /// default direction, so every arm is exact or declines.
 ///
 /// A walk reaching every target it needs through `definitions` inlines their negations; one that
-/// cannot keeps the whole node symbolic rather than resolving the part it reached, so the form
-/// follows the document's reference graph and not the order its targets were canonicalized in.
+/// cannot keeps the node symbolic, resolving each target only whole, so the form follows the
+/// document's reference graph and not the order its targets were canonicalized in.
 pub(crate) fn negate_in_place(
+    schema: &Schema,
+    definitions: &DefinitionMap,
+    ctx: &CanonicalizationContext,
+) -> Option<Schema> {
+    if let Some(negation) = negate_resolving(schema, definitions, ctx) {
+        return Some(negation);
+    }
+    let detached = DefinitionMap::new();
+    let mut walk = NegationWalk {
+        definitions: &detached,
+        in_place_cycles: AHashSet::new(),
+        active: Vec::new(),
+        budget: RESOLUTION_BUDGET,
+        inexpressible: Inexpressible::KeepUnderNot,
+        resolution: Resolution::Whole(definitions),
+    };
+    negate_within(schema, &mut walk, ctx)
+}
+
+/// The negation of a node with every target it reaches resolved, or `None`.
+fn negate_resolving(
     schema: &Schema,
     definitions: &DefinitionMap,
     ctx: &CanonicalizationContext,
@@ -77,26 +108,16 @@ pub(crate) fn negate_in_place(
         active: Vec::new(),
         budget: RESOLUTION_BUDGET,
         inexpressible: Inexpressible::Decline,
+        resolution: Resolution::Partial,
     };
-    // `probe` leaves the flag as it found it, so what the abandoned walk approximated does not
-    // travel into the re-walk below.
-    let (first, inexact) = ctx.probe(|| negate_within(schema, &mut walk, ctx));
-    if let Some(negation) = first {
-        // This walk produced a result, so what it reached counts again.
-        if inexact {
-            ctx.record_inexact_intersection();
-        }
-        return Some(negation);
+    // `probe` leaves the flag as it found it, so what an abandoned walk approximated does not
+    // travel into the symbolic re-walk.
+    let (negation, inexact) = ctx.probe(|| negate_within(schema, &mut walk, ctx));
+    // This walk produced a result, so what it reached counts again.
+    if negation.is_some() && inexact {
+        ctx.record_inexact_intersection();
     }
-    let detached = DefinitionMap::new();
-    let mut walk = NegationWalk {
-        definitions: &detached,
-        in_place_cycles: AHashSet::new(),
-        active: Vec::new(),
-        budget: RESOLUTION_BUDGET,
-        inexpressible: Inexpressible::KeepUnderNot,
-    };
-    negate_within(schema, &mut walk, ctx)
+    negation
 }
 
 /// [`negate_in_place`], for a negation that replaces the document root instead. A negation
@@ -113,6 +134,7 @@ pub(crate) fn negate_with_definitions(
         active: Vec::new(),
         budget: RESOLUTION_BUDGET,
         inexpressible: Inexpressible::KeepUnderNot,
+        resolution: Resolution::Partial,
     };
     let negation = negate_within(schema, &mut walk, ctx)?;
     // Reached through a target as well as written directly: a negation referring to `#/$defs/x`
@@ -305,6 +327,9 @@ fn negate_reference(
     walk: &mut NegationWalk<'_>,
     ctx: &CanonicalizationContext,
 ) -> Option<Schema> {
+    if let Resolution::Whole(definitions) = walk.resolution {
+        return negate_resolving(schema, definitions, ctx).or_else(|| keep_under_not(schema, walk));
+    }
     if walk.active.iter().any(|name| name == uri) {
         return keep_under_not(schema, walk);
     }

@@ -4859,5 +4859,38 @@
       {"data": {"a": 1}, "valid": false},
       {"data": "s", "valid": false}
     ]
+  },
+  {
+    "description": "a negation kept symbolic still resolves a reference to an accept-everything definition",
+    "schema": {"not": {"prefixItems": [true], "allOf": [{"$ref": "#/$defs/d"}], "unevaluatedItems": {"type": "integer"}}, "$defs": {"d": {}}},
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$defs": {"d": true},
+      "allOf": [{"type": "array"}, {"not": {"allOf": [{"items": {"type": "integer"}, "prefixItems": [true], "type": "array"}, {"$ref": "#/$defs/d"}]}}]
+    },
+    "tests": [
+      {"data": [], "valid": false},
+      {"data": [1, 2], "valid": false},
+      {"data": [1, "x"], "valid": true},
+      {"data": ["x", "y"], "valid": true},
+      {"data": 1, "valid": false},
+      {"data": {}, "valid": false}
+    ]
+  },
+  {
+    "description": "a negation kept symbolic resolves a reference whose negation has a structural form",
+    "schema": {"not": {"prefixItems": [true], "allOf": [{"$ref": "#/$defs/d"}], "unevaluatedItems": {"type": "integer"}}, "$defs": {"d": {"minItems": 1}}},
+    "expected": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$defs": {"d": {"anyOf": [{"type": ["null", "boolean", "number", "string", "object"]}, {"minItems": 1, "type": "array"}]}},
+      "allOf": [{"type": "array"}, {"not": {"allOf": [{"items": {"type": "integer"}, "prefixItems": [true], "type": "array"}, {"$ref": "#/$defs/d"}]}}]
+    },
+    "tests": [
+      {"data": [], "valid": true},
+      {"data": [1, 2], "valid": false},
+      {"data": [1, "x"], "valid": true},
+      {"data": 1, "valid": false},
+      {"data": {}, "valid": false}
+    ]
   }
 ]
