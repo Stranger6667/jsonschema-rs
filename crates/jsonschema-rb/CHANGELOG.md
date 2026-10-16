@@ -8,6 +8,7 @@
 - `canonicalize` leaving `unevaluatedProperties` or `unevaluatedItems` beside `anyOf` or `oneOf` raw.
 - `canonicalize` giving a different form for a `oneOf` depending on the order of its branches.
 - `canonicalize` output changing when canonicalized again, for a `not` over a `$ref` it cannot fully negate.
+- `canonicalize` output changing when canonicalized again, for a `oneOf` whose branches reduce to the same `$ref`.
 
 ## [0.58.6] - 2026-10-06
 

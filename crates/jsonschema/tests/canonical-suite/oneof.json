@@ -2916,5 +2916,25 @@
       {"data": {"a": "x", "b": 1, "c": 1}, "valid": true},
       {"data": 1, "valid": false}
     ]
+  },
+  {
+    "description": "a oneOf whose branches resolve to the same reference matches nothing",
+    "schema": {"oneOf": [{"maxItems": 1, "allOf": [{"$ref": "#/$defs/d"}]}, {"$ref": "#/$defs/d"}], "$defs": {"d": {"type": "object", "properties": {"c": false}}}},
+    "expected": {"$schema": "https://json-schema.org/draft/2020-12/schema", "not": {}},
+    "satisfiable": false,
+    "tests": [
+      {"data": {}, "valid": false},
+      {"data": [], "valid": false}
+    ]
+  },
+  {
+    "description": "a oneOf whose branches resolve to the same reference keeps only the other branches",
+    "schema": {"oneOf": [{"maxItems": 1, "allOf": [{"$ref": "#/$defs/d"}]}, {"$ref": "#/$defs/d"}, {"type": "integer"}], "$defs": {"d": {"type": "object", "properties": {"c": false}}}},
+    "expected": {"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "integer"},
+    "tests": [
+      {"data": 1, "valid": true},
+      {"data": {}, "valid": false},
+      {"data": [], "valid": false}
+    ]
   }
 ]

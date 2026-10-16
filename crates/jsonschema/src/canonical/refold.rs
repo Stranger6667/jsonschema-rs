@@ -244,33 +244,17 @@ fn folded(
             algebra::union(union, plain)
         }
         SchemaKind::OneOf(branches) => {
-            let mut choice = each(branches, definitions, ctx, plain);
-            // Once no branch holds a reference, this is the same route the parse takes; skipping it
-            // would emit a form that re-parses to something else.
-            if !choice.iter().any(algebra::contains_reference) {
-                if let Some(expanded) = algebra::concrete_one_of(choice.clone(), definitions, ctx) {
-                    return expanded;
-                }
-            }
-            // Asked again now the branches are settled: the fold can prove two of them disjoint
-            // where the parse could not, and disjoint branches make `oneOf` an `anyOf`.
-            if algebra::choice_folds(&choice, definitions, ctx) {
-                return algebra::union(choice, ctx);
-            }
-            if choice == *branches {
-                return schema.clone();
-            }
-            // A branch matching nothing can never be the one that matches. Duplicates stay: with
-            // `oneOf`, two identical branches mean no value can match exactly one.
-            choice.retain(|branch| !matches!(branch.kind(), SchemaKind::False));
-            choice.sort();
-            // Fewer than two left means every pair was disjoint (nothing overlaps an empty branch),
-            // so `choice_folds` above already returned the union.
-            debug_assert!(
-                choice.len() > 1,
-                "a choice this thin degrades to a union above"
-            );
-            Schema::new(SchemaKind::OneOf(choice))
+            let choice = each(branches, definitions, ctx, plain);
+            // The parse's own route: settling can leave branches repeated or disjoint where the
+            // parse saw neither, and the output must reduce as its re-parse would.
+            algebra::one_of(
+                choice,
+                definitions,
+                &DefinitionMap::new(),
+                &mut Vec::new(),
+                ctx,
+            )
+            .unwrap_or_else(|| schema.clone())
         }
         SchemaKind::Not(inner) => {
             let body = folded(inner, definitions, ctx, plain);
