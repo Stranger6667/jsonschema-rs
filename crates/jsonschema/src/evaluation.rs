@@ -356,8 +356,7 @@ impl Evaluation {
         Evaluation { arena, root }
     }
 
-    #[cfg(test)]
-    fn with_root(mut arena: EvaluationArena, root: EvaluationNode) -> Self {
+    pub(crate) fn with_root(mut arena: EvaluationArena, root: EvaluationNode) -> Self {
         let root = arena.push(root);
         Evaluation::new(arena, root)
     }

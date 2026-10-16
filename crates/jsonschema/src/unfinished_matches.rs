@@ -303,7 +303,7 @@ mod tests {
     const MISSES: &str = "(?<=x)c";
     const UNDECIDED: &str = "Error executing regex: Max limit for backtracking count exceeded";
 
-    type Outcomes = (bool, Result<(), String>, Vec<String>);
+    type Outcomes = (bool, Result<(), String>, Vec<String>, (bool, Vec<String>));
 
     fn validator(schema: &Value) -> crate::Validator {
         crate::options()
@@ -314,6 +314,7 @@ mod tests {
 
     fn outcomes(schema: &Value, instance: &Value) -> Outcomes {
         let validator = validator(schema);
+        let evaluation = validator.evaluate(instance);
         (
             validator.is_valid(instance),
             validator
@@ -323,15 +324,73 @@ mod tests {
                 .iter_errors(instance)
                 .map(|error| error.to_string())
                 .collect(),
+            (
+                evaluation.is_valid(),
+                evaluation
+                    .iter_errors()
+                    .map(|entry| entry.error.to_string())
+                    .collect(),
+            ),
         )
     }
 
     fn undecided() -> Outcomes {
-        (false, Err(UNDECIDED.to_owned()), vec![UNDECIDED.to_owned()])
+        (
+            false,
+            Err(UNDECIDED.to_owned()),
+            vec![UNDECIDED.to_owned()],
+            (false, vec![UNDECIDED.to_owned()]),
+        )
     }
 
     fn valid() -> Outcomes {
-        (true, Ok(()), Vec::new())
+        (true, Ok(()), Vec::new(), (true, Vec::new()))
+    }
+
+    #[test_case(
+        &json!({"not": {"pattern": MATCHES}}),
+        &json!({"valid": false, "details": [
+            {"valid": false, "evaluationPath": "", "schemaLocation": "", "instanceLocation": ""},
+            {
+                "valid": false,
+                "evaluationPath": "/not/pattern",
+                "schemaLocation": "/not/pattern",
+                "instanceLocation": "",
+                "errors": {"pattern": UNDECIDED}
+            }
+        ]}) ;
+        "undecided"
+    )]
+    #[test_case(
+        &json!({"pattern": MATCHES, "maxLength": 1}),
+        &json!({"valid": false, "details": [
+            {"valid": false, "evaluationPath": "", "schemaLocation": "", "instanceLocation": ""},
+            {
+                "valid": false,
+                "evaluationPath": "/maxLength",
+                "schemaLocation": "/maxLength",
+                "instanceLocation": "",
+                "errors": {"maxLength": "\"abc\" is longer than 1 character"}
+            }
+        ]}) ;
+        "shared error"
+    )]
+    #[test_case(
+        &json!({"anyOf": [{"pattern": MATCHES}, {"type": "string"}]}),
+        &json!({"valid": true, "details": [
+            {"valid": true, "evaluationPath": "", "schemaLocation": "", "instanceLocation": ""}
+        ]}) ;
+        "valid under every outcome"
+    )]
+    fn unfinished_match_evaluation_keeps_only_what_every_outcome_shares(
+        schema: &Value,
+        expected: &Value,
+    ) {
+        let evaluation = validator(schema).evaluate(&json!("abc"));
+        assert_eq!(
+            &serde_json::to_value(evaluation.list()).expect("serializes"),
+            expected
+        );
     }
 
     #[test_case(&json!({"not": {"pattern": MATCHES}}), &json!("abc") ; "not over a match")]
@@ -358,7 +417,12 @@ mod tests {
         let error = r#""abc" is longer than 1 character"#.to_owned();
         assert_eq!(
             outcomes(&schema, &json!("abc")),
-            (false, Err(error.clone()), vec![error])
+            (
+                false,
+                Err(error.clone()),
+                vec![error.clone()],
+                (false, vec![error])
+            )
         );
     }
 
