@@ -673,8 +673,64 @@ impl<F: Json> Validator<F> {
         let root = self
             .root
             .evaluate_instance(&instance, &LazyLocation::new(), None, &mut ctx);
-        let root = ctx.arena.push(root);
-        Evaluation::new(std::mem::take(&mut ctx.arena), root)
+        match ctx.matches.take() {
+            None => {
+                let root = ctx.arena.push(root);
+                Evaluation::new(std::mem::take(&mut ctx.arena), root)
+            }
+            // What the instance evaluates to depends on the unfinished matches; only the errors
+            // shared by every outcome are known.
+            Some(first) => {
+                Self::evaluation_from_errors(self.errors_under_every_outcome(&instance, *first))
+            }
+        }
+    }
+
+    /// A root with one child per error and no annotations.
+    #[cold]
+    fn evaluation_from_errors(errors: Vec<ValidationError<'_>>) -> Evaluation {
+        let root_location = crate::evaluation::format_keyword_location(&Location::new(), None);
+        let mut arena = EvaluationArena::default();
+        if errors.is_empty() {
+            return Evaluation::with_root(
+                arena,
+                EvaluationNode::valid(
+                    Location::new(),
+                    None,
+                    root_location,
+                    Location::new(),
+                    None,
+                    ChildList::default(),
+                ),
+            );
+        }
+        let mut children = ChildList::default();
+        for error in &errors {
+            children.push(
+                &mut arena,
+                EvaluationNode::invalid(
+                    error.evaluation_path().clone(),
+                    None,
+                    crate::evaluation::format_keyword_location(error.schema_path(), None),
+                    error.instance_path().clone(),
+                    None,
+                    vec![ErrorDescription::from_validation_error(error)],
+                    ChildList::default(),
+                ),
+            );
+        }
+        Evaluation::with_root(
+            arena,
+            EvaluationNode::invalid(
+                Location::new(),
+                None,
+                root_location,
+                Location::new(),
+                None,
+                Vec::new(),
+                children,
+            ),
+        )
     }
     /// The [`Draft`] this validator applies: the one set via `with_draft`, else the one `$schema`
     /// declares, else the default.
