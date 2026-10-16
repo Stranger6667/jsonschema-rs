@@ -437,6 +437,11 @@ mod tests {
         &json!({"abc": 1}) ;
         "undeclared property with additionalProperties schema"
     )]
+    #[test_case(
+        &json!({"patternProperties": {MATCHES: true}, "unevaluatedProperties": false}),
+        &json!({"abc": 1}) ;
+        "unevaluatedProperties excludes the key"
+    )]
     fn unfinished_match_that_decides_the_outcome_is_an_error(schema: &Value, instance: &Value) {
         assert_eq!(outcomes(schema, instance), undecided());
     }
@@ -511,6 +516,17 @@ mod tests {
             json!({"abc": 1}),
         ) ;
         "additionalProperties"
+    )]
+    #[test_case(
+        &json!({"properties": {"o": {"patternProperties": {MATCHES: true}, "unevaluatedProperties": false}}}),
+        &json!({"o": {"abc": 1}}),
+        (
+            "/properties/o/patternProperties/(?<=ab)c",
+            "/properties/o/patternProperties/(?<=ab)c",
+            "/o",
+            json!({"abc": 1}),
+        ) ;
+        "unevaluatedProperties"
     )]
     fn unfinished_match_error_points_at_the_match(
         schema: &Value,
