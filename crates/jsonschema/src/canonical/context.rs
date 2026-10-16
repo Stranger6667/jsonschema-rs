@@ -30,12 +30,11 @@ pub(crate) enum CompiledMatcher {
 }
 
 impl CompiledMatcher {
-    /// A match error (e.g. `fancy_regex` hitting its backtrack limit) counts as no match, matching
-    /// the runtime `pattern` validator's `is_valid`.
-    pub(crate) fn is_match(&self, text: &str) -> bool {
+    /// `None` where the engine cannot finish the match, e.g. on reaching the backtrack limit.
+    fn is_match(&self, text: &str) -> Option<bool> {
         match self {
-            Self::Regex(regex) => regex.is_match(text),
-            Self::FancyRegex(regex) => regex.is_match(text).unwrap_or(false),
+            Self::Regex(regex) => Some(regex.is_match(text)),
+            Self::FancyRegex(regex) => regex.is_match(text).ok(),
         }
     }
 }
@@ -188,6 +187,15 @@ impl CanonicalizationContext {
 
     pub(crate) fn saw_inexact_intersection(&self) -> bool {
         self.inexact_intersection.get()
+    }
+
+    /// Whether `matcher` matches `text`. A match the engine cannot finish may go either way, so the
+    /// run is discarded as an approximated one is, and the `false` returned decides nothing.
+    pub(crate) fn matches(&self, matcher: &CompiledMatcher, text: &str) -> bool {
+        matcher.is_match(text).unwrap_or_else(|| {
+            self.record_inexact_intersection();
+            false
+        })
     }
 
     /// Run `probe`, reporting whether it reached an intersection the canonical form cannot express
