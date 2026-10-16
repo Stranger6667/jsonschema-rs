@@ -2,5 +2,5 @@
 source: crates/jsonschema-cli/tests/cli.rs
 expression: sanitized
 ---
-warning: flat invocation is deprecated. Use `jsonschema validate {FILE_1}` instead.
+warning: flat invocation is deprecated. Use `jsonschema-cli validate {FILE_1}` instead.
 error: schema is invalid: "invalid" is not valid under any of the schemas listed in the 'anyOf' keyword

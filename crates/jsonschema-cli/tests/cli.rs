@@ -1550,22 +1550,19 @@ fn test_flat_invocation_still_works() {
     assert!(!output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("INVALID"));
-    let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(
-        stderr.contains("deprecated"),
-        "expected deprecation warning on stderr"
+    let stderr = sanitize_output(String::from_utf8(output.stderr).unwrap(), &[&schema]);
+    assert_eq!(
+        stderr,
+        "warning: flat invocation is deprecated. Use `jsonschema-cli validate {FILE_1}` instead.\n"
     );
 }
 
-#[test]
-fn test_no_args_prints_help_hint_and_fails() {
-    let output = cli().output().unwrap();
-    assert!(!output.status.success());
-    let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(
-        stderr.contains("a schema argument is required"),
-        "expected usage hint on stderr, got: {stderr}"
-    );
+#[test_case(&[], "error: a schema argument is required. Use `jsonschema-cli validate --help`, `jsonschema-cli bundle --help`, or `jsonschema-cli dereference --help`.\n"; "no arguments")]
+#[test_case(&["validate"], "error: either a SCHEMA argument or `--instance` is required. See `jsonschema-cli validate --help`.\n"; "validate without schema or instance")]
+fn test_missing_arguments_print_usage_hint(args: &[&str], expected: &str) {
+    let output = cli().args(args).output().unwrap();
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(String::from_utf8(output.stderr).unwrap(), expected);
 }
 
 #[test]
@@ -2282,7 +2279,10 @@ fn test_self_describing_missing_schema_property() {
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("no `$schema` property"), "{stderr}");
-    assert!(stderr.contains("jsonschema validate SCHEMA -i"), "{stderr}");
+    assert!(
+        stderr.contains("jsonschema-cli validate SCHEMA -i"),
+        "{stderr}"
+    );
 }
 
 #[test]
@@ -2891,7 +2891,7 @@ fn test_instance_error_goes_to_stderr_in_text_mode() {
             String::from_utf8_lossy(&output.stderr).to_string(),
             &[&instance]
         ),
-        "{FILE_1} - ERROR: no `$schema` property; pass a schema explicitly:\n  jsonschema validate SCHEMA -i {FILE_1}\n"
+        "{FILE_1} - ERROR: no `$schema` property; pass a schema explicitly:\n  jsonschema-cli validate SCHEMA -i {FILE_1}\n"
     );
 }
 
@@ -2983,7 +2983,7 @@ fn test_version_flags(flag: &str) {
     assert_eq!(output.status.code(), Some(0));
     assert_eq!(
         String::from_utf8_lossy(&output.stdout),
-        concat!("jsonschema ", env!("CARGO_PKG_VERSION"), "\n")
+        concat!("jsonschema-cli ", env!("CARGO_PKG_VERSION"), "\n")
     );
 }
 

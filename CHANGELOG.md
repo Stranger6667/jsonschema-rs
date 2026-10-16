@@ -11,14 +11,15 @@
 
 - **CLI**: Exit status `3` for errors that prevent a verdict and `2` for usage errors, so `1` always means an invalid instance or schema.
 - **CLI**: Errors print to stderr instead of stdout.
-- **CLI**: `--version` prints `jsonschema <VERSION>` instead of `Version: <VERSION>`.
+- **CLI**: `--version` prints `jsonschema-cli <VERSION>` instead of `Version: <VERSION>`.
 
 ### Fixed
 
-- **CLI**: Panic when stdout is closed early, as in `jsonschema validate ... | head`.
+- **CLI**: Panic when stdout is closed early, as in `jsonschema-cli validate ... | head`.
 - **CLI**: Missing file path in the error for an unreadable instance in text output.
-- **CLI**: `jsonschema bundle`, `jsonschema dereference` and `jsonschema canonicalize` truncating the `--output` file when the write fails partway.
-- **CLI**: `jsonschema validate --help` describing `--offline` in terms of `--resource`, which `validate` does not accept.
+- **CLI**: `jsonschema-cli bundle`, `jsonschema-cli dereference` and `jsonschema-cli canonicalize` truncating the `--output` file when the write fails partway.
+- **CLI**: `jsonschema-cli validate --help` describing `--offline` in terms of `--resource`, which `validate` does not accept.
+- **CLI**: Error and warning messages suggesting `jsonschema` commands instead of the installed `jsonschema-cli` binary.
 - Canonicalizing several subschemas of one prepared document, where a `$ref` in a later output could point at another subschema.
 - `canonicalize` leaving `unevaluatedProperties` or `unevaluatedItems` beside `anyOf` or `oneOf` raw.
 - `canonicalize` giving a different form for a `oneOf` depending on the order of its branches.
