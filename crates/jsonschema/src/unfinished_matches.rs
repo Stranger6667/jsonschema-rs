@@ -403,6 +403,40 @@ mod tests {
         &json!({"abc": "x"}) ;
         "patternProperties with several patterns"
     )]
+    #[test_case(
+        &json!({"patternProperties": {MATCHES: true}, "additionalProperties": false}),
+        &json!({"abc": 1}) ;
+        "additionalProperties excludes the key"
+    )]
+    #[test_case(
+        &json!({"patternProperties": {MATCHES: {"type": "integer"}}, "additionalProperties": {"type": "string"}}),
+        &json!({"abc": 1}) ;
+        "additionalProperties schema"
+    )]
+    #[test_case(
+        &json!({"properties": {"abc": true}, "patternProperties": {MATCHES: {"type": "integer"}}, "additionalProperties": false}),
+        &json!({"abc": "x"}) ;
+        "patternProperties over a declared property with additionalProperties false"
+    )]
+    #[test_case(
+        &json!({"properties": {"abc": true}, "patternProperties": {MATCHES: {"type": "integer"}}, "additionalProperties": {}}),
+        &json!({"abc": "x"}) ;
+        "patternProperties over a declared property with additionalProperties schema"
+    )]
+    #[test_case(
+        &json!({"properties": {"q": true}, "patternProperties": {MATCHES: true}, "additionalProperties": false}),
+        &json!({"abc": 1}) ;
+        "undeclared property with additionalProperties false"
+    )]
+    #[test_case(
+        &json!({
+            "properties": {"q": true},
+            "patternProperties": {MATCHES: {"type": "integer"}},
+            "additionalProperties": {"type": "string"}
+        }),
+        &json!({"abc": 1}) ;
+        "undeclared property with additionalProperties schema"
+    )]
     fn unfinished_match_that_decides_the_outcome_is_an_error(schema: &Value, instance: &Value) {
         assert_eq!(outcomes(schema, instance), undecided());
     }
@@ -466,6 +500,17 @@ mod tests {
             json!({"abc": "x"}),
         ) ;
         "patternProperties"
+    )]
+    #[test_case(
+        &json!({"properties": {"o": {"patternProperties": {MATCHES: true}, "additionalProperties": false}}}),
+        &json!({"o": {"abc": 1}}),
+        (
+            "/properties/o/patternProperties/(?<=ab)c",
+            "/properties/o/patternProperties/(?<=ab)c",
+            "/o",
+            json!({"abc": 1}),
+        ) ;
+        "additionalProperties"
     )]
     fn unfinished_match_error_points_at_the_match(
         schema: &Value,
