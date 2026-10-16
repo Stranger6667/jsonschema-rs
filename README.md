@@ -61,7 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 You also can use it from the command line via the [jsonschema-cli](https://github.com/Stranger6667/jsonschema/tree/master/crates/jsonschema-cli) crate.
 
 ```console
-$ jsonschema-cli schema.json -i instance.json
+$ jsonschema-cli validate schema.json -i instance.json
 ```
 
 See more usage examples in the [documentation](https://docs.rs/jsonschema).
