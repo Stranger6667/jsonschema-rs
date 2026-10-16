@@ -181,6 +181,15 @@ fn intersect_pair(left: &Schema, right: &Schema, ctx: &CanonicalizationContext) 
         (SchemaKind::AnyOf(left_branches), SchemaKind::AnyOf(right_branches)) => {
             let left_branches = left_branches.as_slice();
             let right_branches = right_branches.as_slice();
+            // Checked before any branch is crossed: a product wider than what the run may still
+            // spend would exhaust the allowance partway through and leave the document `Raw`.
+            let width = left_branches.len() as u64 * right_branches.len() as u64;
+            if !ctx.take_product(width) {
+                // Out of allowance, the run reads as given up wherever it asks.
+                debug_assert!(ctx.outgrew_distribution());
+                ctx.record_inexact_intersection();
+                return Schema::truthy();
+            }
             let mut out = Vec::with_capacity(left_branches.len() * right_branches.len());
             for left in left_branches {
                 for right in right_branches {

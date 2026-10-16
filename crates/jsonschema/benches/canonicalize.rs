@@ -190,6 +190,14 @@ mod bench {
             json!({"type": "object", "dependentRequired": dependencies})
         };
 
+        // Every union doubles the branches, so the run gives up on the product it cannot carry.
+        let all_of_two_way_unions = json!({"allOf": (0..24_usize)
+            .map(|i| json!({"anyOf": [
+                {"required": [format!("a{i}")]},
+                {"required": [format!("b{i}")]},
+            ]}))
+            .collect::<Vec<_>>()});
+
         let open_api = read_json(OPEN_API);
         let swagger = read_json(SWAGGER);
         let geojson = read_json(GEOJSON);
@@ -213,6 +221,7 @@ mod bench {
             ),
             ("overlapping_open_objects", &overlapping_open_objects),
             ("dependency_chain", &dependency_chain),
+            ("all_of_two_way_unions", &all_of_two_way_unions),
             ("wide_numeric_grid", &wide_numeric_grid),
             ("object_with_properties", &object_with_properties),
             ("chained_refs", &chained_refs),
