@@ -5370,3 +5370,49 @@ unfinished_match_location!(
     r##"{"$defs":{"s":{"pattern":"(?<=ab)c"}},"properties":{"x":{"$ref":"#/$defs/s"}}}"##,
     serde_json::json!({"x":"abc"})
 );
+
+#[jsonschema::validator(
+    schema = r#"{"properties":{"o":{"patternProperties":{"(?<=ab)c":{"type":"integer"}}}}}"#,
+    pattern_options = {
+        engine = fancy_regex,
+        backtrack_limit = 1,
+    }
+)]
+struct UnfinishedNestedPatternPropertiesValidator;
+
+#[jsonschema::validator(
+    schema = r#"{"properties":{"o":{"patternProperties":{"(?<=ab)c":true},"additionalProperties":false}}}"#,
+    pattern_options = {
+        engine = fancy_regex,
+        backtrack_limit = 1,
+    }
+)]
+struct UnfinishedNestedAdditionalPropertiesValidator;
+
+#[jsonschema::validator(
+    schema = r#"{"properties":{"o":{"patternProperties":{"(?<=ab)c":true},"unevaluatedProperties":false}}}"#,
+    pattern_options = {
+        engine = fancy_regex,
+        backtrack_limit = 1,
+    }
+)]
+struct UnfinishedNestedUnevaluatedPropertiesValidator;
+
+unfinished_match_location!(
+    test_unfinished_match_location_pattern_properties,
+    UnfinishedNestedPatternPropertiesValidator,
+    r#"{"properties":{"o":{"patternProperties":{"(?<=ab)c":{"type":"integer"}}}}}"#,
+    serde_json::json!({"o":{"abc":"x"}})
+);
+unfinished_match_location!(
+    test_unfinished_match_location_additional_properties,
+    UnfinishedNestedAdditionalPropertiesValidator,
+    r#"{"properties":{"o":{"patternProperties":{"(?<=ab)c":true},"additionalProperties":false}}}"#,
+    serde_json::json!({"o":{"abc":1}})
+);
+unfinished_match_location!(
+    test_unfinished_match_location_unevaluated_properties,
+    UnfinishedNestedUnevaluatedPropertiesValidator,
+    r#"{"properties":{"o":{"patternProperties":{"(?<=ab)c":true},"unevaluatedProperties":false}}}"#,
+    serde_json::json!({"o":{"abc":1}})
+);

@@ -102,7 +102,7 @@ mod __validator_impl {
                             key.as_str(),
                             "/patternProperties/^[a-z]{2,}$",
                             None,
-                            None,
+                            Some(__path),
                         )
                     } {
                         let instance = value;
@@ -155,7 +155,7 @@ mod __validator_impl {
                             key.as_str(),
                             "/patternProperties/^[a-z]{2,}$",
                             None,
-                            None,
+                            Some(__path),
                         )
                     } {
                         let instance = value;
