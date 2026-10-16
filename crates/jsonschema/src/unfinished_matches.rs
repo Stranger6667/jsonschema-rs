@@ -397,6 +397,12 @@ mod tests {
     #[test_case(&json!({"not": {"pattern": MISSES}}), &json!("abc") ; "not over a miss")]
     #[test_case(&json!({"if": {"pattern": MATCHES}, "then": {"maxLength": 1}}), &json!("abc") ; "if picks the branch")]
     #[test_case(&json!({"oneOf": [{"pattern": MATCHES}, {"type": "string"}]}), &json!("abc") ; "oneOf counts the branch")]
+    #[test_case(&json!({"patternProperties": {MATCHES: {"type": "integer"}}}), &json!({"abc": "x"}) ; "patternProperties applies the subschema")]
+    #[test_case(
+        &json!({"patternProperties": {MATCHES: {"type": "integer"}, "^z": true}}),
+        &json!({"abc": "x"}) ;
+        "patternProperties with several patterns"
+    )]
     fn unfinished_match_that_decides_the_outcome_is_an_error(schema: &Value, instance: &Value) {
         assert_eq!(outcomes(schema, instance), undecided());
     }
@@ -449,6 +455,17 @@ mod tests {
         &json!({"x": "abc"}),
         ("/$defs/s/pattern", "/properties/x/$ref/pattern", "/x", json!("abc")) ;
         "pattern behind a reference"
+    )]
+    #[test_case(
+        &json!({"properties": {"o": {"patternProperties": {MATCHES: {"type": "integer"}}}}}),
+        &json!({"o": {"abc": "x"}}),
+        (
+            "/properties/o/patternProperties/(?<=ab)c",
+            "/properties/o/patternProperties/(?<=ab)c",
+            "/o",
+            json!({"abc": "x"}),
+        ) ;
+        "patternProperties"
     )]
     fn unfinished_match_error_points_at_the_match(
         schema: &Value,
