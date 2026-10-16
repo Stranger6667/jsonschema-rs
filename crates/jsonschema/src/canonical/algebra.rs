@@ -1995,8 +1995,99 @@ fn keys_beside(leaves: &[ObjectLeaf], index: usize) -> Vec<Arc<str>> {
 }
 
 /// Whether some leaf admits the whole piece, or both halves of a key-presence split do
-/// recursively. The key list shrinks with each split, which bounds the recursion.
+/// recursively.
 fn split_piece_is_covered(
+    piece: ObjectLeaf,
+    leaves: &[Schema],
+    keys: &[Arc<str>],
+    ctx: &CanonicalizationContext,
+) -> bool {
+    // The split ends on the piece holding every key, and when no leaf can admit that one, every
+    // piece on the way to it is uncovered too: the walk would read each leaf at each key to get there.
+    if every_leaf_misses_the_piece_holding_every_key(&piece, leaves, keys, ctx) {
+        return false;
+    }
+    split_piece_is_covered_by_halves(piece, leaves, keys, ctx)
+}
+
+/// Whether the piece, made to hold every key it does not bar, still admits an object and no leaf
+/// admits all of them: each leaf constrains the value at a key the piece holds and leaves free.
+/// ```text
+/// e.g.  the piece {"type": "object", "properties": {"p0": {"type": "integer"}}} split by `p1`, `p2`
+///       against the leaves
+///         {"type": "object", "properties": {"p1": {"type": "integer"}}},
+///         {"type": "object", "properties": {"p2": {"type": "integer"}}}
+///       =>  every leaf misses {"p0": 0, "p1": "x", "p2": "x"}
+/// ```
+fn every_leaf_misses_the_piece_holding_every_key(
+    piece: &ObjectLeaf,
+    leaves: &[Schema],
+    keys: &[Arc<str>],
+    ctx: &CanonicalizationContext,
+) -> bool {
+    let mut holding = piece.clone();
+    for key in keys {
+        if matches!(
+            holding.properties.get(key).map(Schema::kind),
+            Some(SchemaKind::False)
+        ) {
+            continue;
+        }
+        if let Err(position) = holding.required.binary_search(key) {
+            holding.required.insert(position, Arc::clone(key));
+        }
+    }
+    let every_leaf_misses = leaves.iter().all(|leaf| match leaf.kind() {
+        SchemaKind::Object(leaf) => constrains_a_free_required_key(leaf.get(), &holding),
+        SchemaKind::False => true,
+        // Read off the property maps alone; a leaf packed into anything else may admit it.
+        SchemaKind::MultiType(_)
+        | SchemaKind::TypedGroup { .. }
+        | SchemaKind::String(_)
+        | SchemaKind::Integer(_)
+        | SchemaKind::Number(_)
+        | SchemaKind::Array(_)
+        | SchemaKind::Const(_)
+        | SchemaKind::Enum(_)
+        | SchemaKind::Not(_)
+        | SchemaKind::AllOf(_)
+        | SchemaKind::AnyOf(_)
+        | SchemaKind::OneOf(_)
+        | SchemaKind::Reference(_)
+        | SchemaKind::True
+        | SchemaKind::Raw(_) => false,
+    });
+    // A piece admitting nothing is covered by any leaf.
+    every_leaf_misses && !matches!(object_leaf(holding, ctx).kind(), SchemaKind::False)
+}
+
+/// Whether the schema rejects at least one value, read off its kind alone. Symbolic kinds answer
+/// `false`: what they reject depends on what they name.
+fn rejects_some_value(schema: &Schema) -> bool {
+    match schema.kind() {
+        SchemaKind::False
+        | SchemaKind::MultiType(_)
+        | SchemaKind::TypedGroup { .. }
+        | SchemaKind::String(_)
+        | SchemaKind::Integer(_)
+        | SchemaKind::Number(_)
+        | SchemaKind::Array(_)
+        | SchemaKind::Object(_)
+        | SchemaKind::Const(_)
+        | SchemaKind::Enum(_) => true,
+        SchemaKind::Not(_)
+        | SchemaKind::AllOf(_)
+        | SchemaKind::AnyOf(_)
+        | SchemaKind::OneOf(_)
+        | SchemaKind::Reference(_)
+        | SchemaKind::True
+        | SchemaKind::Raw(_) => false,
+    }
+}
+
+/// [`split_piece_is_covered`] past its shortcut. The key list shrinks with each split, which bounds
+/// the recursion.
+fn split_piece_is_covered_by_halves(
     piece: ObjectLeaf,
     leaves: &[Schema],
     keys: &[Arc<str>],
@@ -2036,8 +2127,8 @@ fn split_piece_is_covered(
     }
     let mut missing = piece;
     missing.properties.insert(Arc::clone(key), Schema::falsy());
-    split_piece_is_covered(holding, leaves, rest, ctx)
-        && split_piece_is_covered(missing, leaves, rest, ctx)
+    split_piece_is_covered_by_halves(holding, leaves, rest, ctx)
+        && split_piece_is_covered_by_halves(missing, leaves, rest, ctx)
 }
 
 /// Whether the piece demands every key the leaf does, both already packed by [`object_leaf`].
@@ -2064,6 +2155,23 @@ fn demands_every_key_of(piece: &ObjectLeaf, leaf: &ObjectLeaf) -> bool {
     leaf.required
         .iter()
         .all(|key| piece.required.binary_search(key).is_ok())
+}
+
+/// Whether `leaf` rejects a value at a key every object of `piece` holds and the piece says nothing
+/// about, so that `leaf` cannot admit every object of a `piece` that admits any. Reads the property
+/// maps alone, where deciding it by intersection would merge them.
+fn constrains_a_free_required_key(leaf: &ObjectLeaf, piece: &ObjectLeaf) -> bool {
+    // Any of these could constrain the value at a required key beyond what the entries say.
+    let entries_say_it_all = piece.additional.is_none()
+        && piece.property_names.is_none()
+        && piece.pattern_properties.is_empty()
+        && piece.violations.is_empty();
+    entries_say_it_all
+        && leaf.properties.iter().any(|(key, entry)| {
+            rejects_some_value(entry)
+                && piece.properties.get(key).is_none()
+                && piece.required.binary_search(key).is_ok()
+        })
 }
 
 /// Whether barring any of these keys leaves the piece saying the same thing about its required

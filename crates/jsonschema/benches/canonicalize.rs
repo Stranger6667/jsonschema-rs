@@ -176,6 +176,11 @@ mod bench {
             }})
         };
 
+        // Every branch admits the empty object, so each one overlaps all the others.
+        let overlapping_open_objects = json!({"type": "array", "items": {"anyOf": (0..64_usize)
+            .map(|i| json!({"type": "object", "properties": {format!("p{i}"): {"type": "integer"}}}))
+            .collect::<Vec<_>>()}});
+
         let open_api = read_json(OPEN_API);
         let swagger = read_json(SWAGGER);
         let geojson = read_json(GEOJSON);
@@ -197,6 +202,7 @@ mod bench {
                 "negated_closed_object_of_unions",
                 &negated_closed_object_of_unions,
             ),
+            ("overlapping_open_objects", &overlapping_open_objects),
             ("wide_numeric_grid", &wide_numeric_grid),
             ("object_with_properties", &object_with_properties),
             ("chained_refs", &chained_refs),

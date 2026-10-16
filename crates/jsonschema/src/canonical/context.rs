@@ -69,6 +69,9 @@ pub(crate) struct CanonicalizationContext {
     intersections_left: Cell<u64>,
     /// Variants the conditional splits of this run may still produce. Nesting multiplies them.
     variants_left: Cell<u64>,
+    /// Intersections this run has taken, which a run that gives up early leaves short of the budget.
+    #[cfg(test)]
+    intersections_taken: Cell<u64>,
     /// Set where a conditional split asked for more cases than were left.
     outgrew_cases: Cell<bool>,
     /// Address of the first subschema whose parse declined, for the pointer naming it. Compared
@@ -102,6 +105,8 @@ impl CanonicalizationContext {
             inexact_intersection: Cell::new(false),
             intersections_left: Cell::new(INTERSECTION_BUDGET),
             variants_left: Cell::new(VARIANT_BUDGET),
+            #[cfg(test)]
+            intersections_taken: Cell::new(0),
             outgrew_cases: Cell::new(false),
             declined_at: Cell::new(None),
             definitions: None,
@@ -204,6 +209,9 @@ impl CanonicalizationContext {
             return false;
         }
         self.intersections_left.set(left - 1);
+        #[cfg(test)]
+        self.intersections_taken
+            .set(self.intersections_taken.get() + 1);
         true
     }
 
@@ -240,6 +248,11 @@ impl CanonicalizationContext {
         let (answer, _) = self.probe(work);
         self.intersections_left.set(budget);
         answer
+    }
+
+    #[cfg(test)]
+    pub(crate) fn intersections_taken(&self) -> u64 {
+        self.intersections_taken.get()
     }
 
     pub(crate) fn outgrew_distribution(&self) -> bool {

@@ -712,8 +712,39 @@ fn family_keywords(kind: parse::PartKind, value: &Value) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{options, PreparedDocument};
+    use super::{options, parse, CanonicalizationContext, PreparedDocument};
     use serde_json::{json, Value};
+
+    /// Whether the parse of `document` modeled it, and how many intersections it took.
+    fn parse_cost(document: &Value) -> (bool, u64) {
+        let prepared = options().prepare(document).expect("prepares");
+        let (registry, base_uri) = prepared.resolution.as_ref().expect("a known dialect");
+        let resolver = registry.resolver(base_uri.clone());
+        let context = CanonicalizationContext::new(
+            prepared.draft,
+            prepared.pattern_options,
+            prepared.validate_formats,
+        );
+        let (parsed, _) = parse::parse(document, &context, &resolver, None).expect("parses");
+        (parsed.is_some(), context.intersections_taken())
+    }
+
+    fn overlapping_open_objects(count: usize) -> Value {
+        json!({"type": "array", "items": {"anyOf": (0..count)
+            .map(|index| json!({
+                "type": "object",
+                "properties": {format!("p{index}"): {"type": "integer"}}
+            }))
+            .collect::<Vec<_>>()}})
+    }
+
+    // Each branch admits the empty object, so every branch overlaps every other.
+    #[test]
+    fn overlapping_open_object_branches_are_minimized_in_quadratic_work() {
+        let (modeled, spent) = parse_cost(&overlapping_open_objects(64));
+        assert!(modeled);
+        assert!(spent < 64 * 64 * 8, "spent {spent} intersections");
+    }
 
     /// Every pointer in `document`, deepest first.
     fn every_pointer(document: &Value) -> Vec<String> {
