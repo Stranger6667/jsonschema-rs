@@ -2577,27 +2577,48 @@ fn widen_entry_covered_by_sibling(
         if leaves[index].additional.is_some() {
             continue;
         }
+        // The gained leaf requires this leaf's keys and the one being widened; a sibling requiring
+        // any other key accepts nothing it accepts. Read once per pair rather than per key: each
+        // sibling comes with the one key it requires beyond this leaf's, if any.
+        let reachable: Vec<(usize, Option<Arc<str>>)> = (0..leaves.len())
+            .filter(|&sibling| sibling != index && leaves[sibling].additional.is_none())
+            .filter_map(|sibling| {
+                let mut beyond = leaves[sibling]
+                    .required
+                    .iter()
+                    .filter(|demanded| leaves[index].required.binary_search(demanded).is_err());
+                let first = beyond.next().cloned();
+                beyond.next().is_none().then_some((sibling, first))
+            })
+            .collect();
         let keys: Vec<Arc<str>> = leaves[index].properties.keys().cloned().collect();
         for key in keys {
-            for sibling in (0..leaves.len()).filter(|&sibling| sibling != index) {
-                if leaves[sibling].additional.is_some() {
-                    continue;
-                }
-                // The gained leaf requires this leaf's keys and the one being widened; a
-                // sibling requiring any other key accepts nothing it accepts.
-                if !leaves[sibling].required.iter().all(|demanded| {
-                    *demanded == key || leaves[index].required.binary_search(demanded).is_ok()
-                }) {
-                    continue;
-                }
+            let candidates: Vec<usize> = reachable
+                .iter()
+                .filter(|(_, beyond)| beyond.as_ref().is_none_or(|beyond| *beyond == key))
+                .map(|(sibling, _)| *sibling)
+                .collect();
+            // The pairs read once answer as the required lists at this key do.
+            debug_assert_eq!(
+                candidates,
+                (0..leaves.len())
+                    .filter(|&sibling| sibling != index && leaves[sibling].additional.is_none())
+                    .filter(|&sibling| leaves[sibling].required.iter().all(|demanded| {
+                        *demanded == key || leaves[index].required.binary_search(demanded).is_ok()
+                    }))
+                    .collect::<Vec<_>>()
+            );
+            for sibling in candidates {
                 let entry = leaves[index]
                     .properties
                     .get(&key)
                     .expect("the key came from this leaf");
                 let sibling_entry = leaves[sibling].properties.get(&key);
+                if sibling_entry == Some(entry) {
+                    continue;
+                }
                 let mut widened = leaves[index].clone();
                 match sibling_entry {
-                    Some(other) if other == entry => continue,
                     Some(other) => {
                         // Every pattern matching the key checks it too, and the constructor keeps
                         // a named entry intersected with those. The union is narrowed the same
