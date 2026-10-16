@@ -13,7 +13,7 @@ use crate::{
 /// Runs past which the outcome of unfinished regex matches is reported as undecided.
 const MAX_ASSUMED_RUNS: usize = 64;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 struct UnfinishedMatch {
     /// The compiled pattern, so every keyword sharing it assumes the same outcome.
     pattern: Box<str>,
@@ -134,6 +134,9 @@ impl MatchFailure {
 pub(crate) struct MatchAssumptions {
     assumed: Vec<AssumedMatch>,
     unassumed: Option<Unassumed>,
+    /// The match the error reports, and where this run met it with its instance location.
+    reported: Option<UnfinishedMatch>,
+    reported_site: Option<MatchSite>,
 }
 
 struct Unassumed {
@@ -155,6 +158,12 @@ impl MatchAssumptions {
             &*assumed.unfinished.pattern == error.pattern()
                 && &*assumed.unfinished.subject == subject
         }) {
+            if self.reported_site.is_none() && self.reported.as_ref() == Some(&assumed.unfinished) {
+                let site = site();
+                if site.instance_path.is_some() {
+                    self.reported_site = Some(site);
+                }
+            }
             return assumed.matches;
         }
         match &mut self.unassumed {
@@ -207,7 +216,7 @@ pub(crate) fn assume_each_outcome<T>(
 ) -> Outcomes<T> {
     let Unassumed {
         unfinished,
-        failure,
+        mut failure,
     } = first
         .unassumed
         .expect("assumptions exist once a run meets an unfinished match");
@@ -220,12 +229,18 @@ pub(crate) fn assume_each_outcome<T>(
             return Outcomes::Undecided(failure);
         }
         runs += 1;
+        // A run may meet the match with its instance location where the first run met it only
+        // through `is_valid`, e.g. when `validate` returned an earlier error first.
         let mut slot = Some(Box::new(MatchAssumptions {
             assumed,
-            unassumed: None,
+            reported: Some(unfinished.clone()),
+            ..MatchAssumptions::default()
         }));
         let result = run(&mut slot);
         let mut matches = slot.expect("a run keeps its assumptions");
+        if let Some(site) = matches.reported_site.take() {
+            failure.site.prefer_located(site);
+        }
         match matches.unassumed.take() {
             None => results.push(result),
             Some(next) => push_both_outcomes(&mut pending, &matches.assumed, &next.unfinished),
@@ -527,6 +542,17 @@ mod tests {
             json!({"abc": 1}),
         ) ;
         "unevaluatedProperties"
+    )]
+    #[test_case(
+        &json!({"properties": {"a": {"not": {"not": {"pattern": MATCHES}}}, "b": {"pattern": MATCHES}}}),
+        &json!({"a": "abc", "b": "abc"}),
+        (
+            "/properties/b/pattern",
+            "/properties/b/pattern",
+            "/b",
+            json!("abc"),
+        ) ;
+        "pattern met with its instance only under an assumed outcome"
     )]
     fn unfinished_match_error_points_at_the_match(
         schema: &Value,
