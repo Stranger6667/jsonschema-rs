@@ -29,6 +29,7 @@
 - `canonicalize` leaving `dependencies` or `dependentRequired` raw when their keys form a long chain or cycle.
 - `canonicalize` treating `-0` as a value distinct from `0` under `arbitrary-precision`.
 - Regex matches the engine cannot finish, such as on reaching the backtrack limit, counted as non-matches, letting `not` or `patternProperties` accept invalid instances. [#1715](https://github.com/Stranger6667/jsonschema/issues/1715)
+- `canonicalize` treating regex matches the engine cannot finish as non-matches.
 
 ### Performance
 

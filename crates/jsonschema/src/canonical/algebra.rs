@@ -4502,9 +4502,10 @@ fn key_schema(leaf: &ObjectLeaf, key: &str, ctx: &CanonicalizationContext) -> Sc
 
 /// Whether the pattern reaches `key`; a pattern matches anywhere in it, as `pattern` does.
 pub(crate) fn matches_key(pattern: &Arc<str>, key: &str, ctx: &CanonicalizationContext) -> bool {
-    ctx.compile_regex(pattern)
-        .expect("pattern validated during parsing")
-        .is_match(key)
+    let matcher = ctx
+        .compile_regex(pattern)
+        .expect("pattern validated during parsing");
+    ctx.matches(&matcher, key)
 }
 
 /// Restrict a key constraint to the string domain: keys are always strings, so the branches a bare
@@ -5788,13 +5789,14 @@ fn patterns_conflict(leaf: &StringLeaf) -> bool {
 }
 
 /// A leaf's compiled patterns, built once so a scan over many members compiles nothing per member.
-struct StringMatchers {
+struct StringMatchers<'c> {
     required: Vec<Arc<CompiledMatcher>>,
     barred: Vec<Arc<CompiledMatcher>>,
+    ctx: &'c CanonicalizationContext,
 }
 
-impl StringMatchers {
-    fn compile(leaf: &StringLeaf, ctx: &CanonicalizationContext) -> Self {
+impl<'c> StringMatchers<'c> {
+    fn compile(leaf: &StringLeaf, ctx: &'c CanonicalizationContext) -> Self {
         let compile_all = |patterns: &[Arc<str>]| {
             patterns
                 .iter()
@@ -5807,6 +5809,7 @@ impl StringMatchers {
         Self {
             required: compile_all(&leaf.patterns),
             barred: compile_all(&leaf.excluded_patterns),
+            ctx,
         }
     }
 }
@@ -5835,8 +5838,14 @@ fn string_leaf_admits_text(
 ) -> Verdict {
     let length = BoundCardinality::from(bytecount::num_chars(text.as_bytes()) as u64);
     if !leaf.lengths.contains(&length)
-        || !matchers.required.iter().all(|regex| regex.is_match(text))
-        || matchers.barred.iter().any(|regex| regex.is_match(text))
+        || !matchers
+            .required
+            .iter()
+            .all(|regex| matchers.ctx.matches(regex, text))
+        || matchers
+            .barred
+            .iter()
+            .any(|regex| matchers.ctx.matches(regex, text))
         || leaf.excluded.iter().any(|value| value.as_ref() == text)
     {
         return Verdict::Rejects;

@@ -115,6 +115,34 @@ fn a_product_past_the_intersection_allowance_reports_it() {
     assert_eq!(raw.pointer, None);
 }
 
+// With `backtrack_limit(1)` the engine cannot finish matching `(?<=ab)c` against "abc", which it
+// matches, so the run commits to neither outcome and keeps the document as written.
+#[test_case(&json!({"const": "abc", "pattern": "(?<=ab)c"}), &json!("abc"); "const under a pattern")]
+#[test_case(&json!({"enum": ["abc", 1], "pattern": "(?<=ab)c"}), &json!("abc"); "enum under a pattern")]
+#[test_case(&json!({"const": "abc", "not": {"pattern": "(?<=ab)c"}}), &json!("abc"); "const under a barred pattern")]
+#[test_case(
+    &json!({"required": ["abc"], "patternProperties": {"(?<=ab)c": {}}, "additionalProperties": false}),
+    &json!({"abc": 1});
+    "required key under a pattern property"
+)]
+fn an_unfinished_regex_match_keeps_the_document_raw(schema: &Value, instance: &Value) {
+    let canonical = options()
+        .with_pattern_options(PatternOptions::fancy_regex().backtrack_limit(1))
+        .canonicalize(schema)
+        .expect("canonicalizes");
+    let emitted = canonical.to_json_schema();
+    let finishing = |schema: &Value| {
+        jsonschema::options()
+            .with_pattern_options(PatternOptions::fancy_regex())
+            .build(schema)
+            .expect("schema compiles")
+            .is_valid(instance)
+    };
+    assert_eq!(finishing(&emitted), finishing(schema));
+    assert_eq!(&emitted, schema);
+    assert!(matches!(canonical.view(), CanonicalView::Raw(_)));
+}
+
 const PET_DOCUMENT: &str = r##"{
     "$defs": {
         "Named": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]},
