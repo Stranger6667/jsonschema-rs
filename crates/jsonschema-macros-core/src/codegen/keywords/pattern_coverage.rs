@@ -29,9 +29,11 @@ impl PatternCoverage {
 
 /// Build the coverage checks for `patternProperties`, or `Err` with the first
 /// invalid-regex diagnostic.
+/// `located` emits the checks into `validate` code, where `__path` is the object's location.
 pub(super) fn build_pattern_coverage<E: ValueEmitter>(
     ctx: &mut CompileContext<'_, E>,
     pattern_properties: Option<&Value>,
+    located: bool,
 ) -> Result<PatternCoverage, CompiledExpr> {
     let Some(obj) = pattern_properties.and_then(Value::as_object) else {
         return Ok(PatternCoverage {
@@ -99,7 +101,7 @@ pub(super) fn build_pattern_coverage<E: ValueEmitter>(
                 let site = RegexSite {
                     schema_path: &schema_path,
                     pattern: None,
-                    located: false,
+                    located,
                 };
                 compile_regex_match(ctx, regex, &quote! { key_str }, &site)
             })
