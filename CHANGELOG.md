@@ -27,6 +27,7 @@
 - `canonicalize` output changing when canonicalized again, for a `oneOf` whose branches reduce to the same `$ref`.
 - `canonicalize` leaving an `anyOf` over many overlapping objects raw.
 - `canonicalize` leaving `dependencies` or `dependentRequired` raw when their keys form a long chain or cycle.
+- `canonicalize` treating `-0` as a value distinct from `0` under `arbitrary-precision`.
 - `pattern` matches the engine cannot finish, such as on reaching the backtrack limit, counted as non-matches under `not`, `if`, `oneOf` and `anyOf`. [#1715](https://github.com/Stranger6667/jsonschema/issues/1715)
 
 ### Performance

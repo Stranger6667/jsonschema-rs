@@ -1730,5 +1730,19 @@
       {"data": 9007199254740993, "valid": false},
       {"data": 1, "valid": false}
     ]
+  },
+  {
+    "description": "negative zero is zero",
+    "schemas": [
+      {"const": -0},
+      {"const": 0},
+      {"allOf": [{"const": -0}, {"type": "number", "minimum": 0, "maximum": 0}]}
+    ],
+    "expected": {"$schema": "https://json-schema.org/draft/2020-12/schema", "const": 0},
+    "tests": [
+      {"data": 0, "valid": true},
+      {"data": 0.0, "valid": true},
+      {"data": 1, "valid": false}
+    ]
   }
 ]
