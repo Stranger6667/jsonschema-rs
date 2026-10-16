@@ -513,6 +513,32 @@ mod tests {
     #[cfg(all(not(target_arch = "wasm32"), feature = "resolve-file"))]
     use std::io::Write;
 
+    /// Serve `body` as JSON to one request on a local port and return the URL it answers on.
+    #[cfg(all(feature = "resolve-http", not(target_arch = "wasm32")))]
+    fn serve_once(body: &serde_json::Value) -> String {
+        use std::io::{BufRead, BufReader, Write};
+
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("binds a local port");
+        let address = listener.local_addr().expect("has an address");
+        let body = body.to_string();
+        std::thread::spawn(move || {
+            let (stream, _) = listener.accept().expect("accepts a connection");
+            let mut reader = BufReader::new(stream);
+            let mut line = String::new();
+            // The request ends with an empty line; the retriever sends no body.
+            while reader.read_line(&mut line).expect("reads the request") > 2 {
+                line.clear();
+            }
+            write!(
+                reader.get_mut(),
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            )
+            .expect("writes the response");
+        });
+        format!("http://{address}/schema.json")
+    }
+
     #[test]
     #[cfg(all(not(target_arch = "wasm32"), feature = "resolve-file"))]
     fn test_retrieve_from_file() {
@@ -666,16 +692,11 @@ mod tests {
         use referencing::Retrieve;
         use std::time::Duration;
 
+        let schema = json!({"$id": "https://example.com/schema.json", "type": "string"});
         let options = HttpOptions::new().timeout(Duration::from_secs(30));
         let retriever = HttpRetriever::new(&options).unwrap();
-        let uri =
-            referencing::uri::from_str("https://json-schema.org/draft/2020-12/schema").unwrap();
-        let result = retriever.retrieve(&uri);
-        assert!(result.is_ok());
-        let schema = result.unwrap();
-        // The meta-schema should be an object with $schema and $id
-        assert!(schema.is_object());
-        assert!(schema.get("$schema").is_some());
+        let uri = referencing::uri::from_str(&serve_once(&schema)).unwrap();
+        assert_eq!(retriever.retrieve(&uri).expect("retrieves"), schema);
     }
 
     #[test]
@@ -743,16 +764,12 @@ mod tests {
         use serde_json::Value;
         use std::time::Duration;
 
+        let schema = json!({"$id": "https://example.com/schema.json", "type": "string"});
         let options = HttpOptions::new().timeout(Duration::from_secs(30));
         let retriever = AsyncHttpRetriever::new(&options).unwrap();
-        let uri =
-            referencing::uri::from_str("https://json-schema.org/draft/2020-12/schema").unwrap();
-        let result: Result<Value, _> = retriever.retrieve(&uri).await;
-        assert!(result.is_ok());
-        let schema = result.unwrap();
-        // The meta-schema should be an object with $schema and $id
-        assert!(schema.is_object());
-        assert!(schema.get("$schema").is_some());
+        let uri = referencing::uri::from_str(&serve_once(&schema)).unwrap();
+        let retrieved: Value = retriever.retrieve(&uri).await.expect("retrieves");
+        assert_eq!(retrieved, schema);
     }
 
     #[tokio::test]
