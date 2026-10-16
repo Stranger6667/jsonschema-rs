@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- macOS `arm64` wheel replaces the `universal2` wheel.
+
 ### Fixed
 
 - Canonicalizing several subschemas of one prepared document, where a `$ref` in a later output could point at another subschema.
