@@ -59,6 +59,17 @@ impl MatchSite {
         }
     }
 
+    /// A site in generated code, whose schema path arrives escaped.
+    #[cfg(feature = "macros")]
+    pub(crate) fn escaped(schema_path: &str, instance_path: Option<Location>) -> Self {
+        MatchSite {
+            schema_path: Location::from_escaped(schema_path),
+            evaluation_path: LazyEvaluationPath::SameAsSchemaPath,
+            instance_path,
+            pattern: None,
+        }
+    }
+
     pub(crate) fn pattern(mut self, pattern: &str) -> Self {
         self.pattern = Some(pattern.to_owned());
         self

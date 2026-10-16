@@ -1,7 +1,7 @@
 use super::{
     super::{
         compile_regex_match, errors::invalid_schema_type_expression, expr::ValidateBlock,
-        translate_and_validate_regex, CompileContext, CompiledExpr,
+        translate_and_validate_regex, CompileContext, CompiledExpr, RegexSite,
     },
     object_pass::ClusterSubschemas,
 };
@@ -107,7 +107,16 @@ pub(crate) fn key_match_expr<E: ValueEmitter>(
         }
         None => match translate_and_validate_regex(ctx, "patternProperties", pattern) {
             Ok(translated) => {
-                let regex_check = compile_regex_match(ctx, &translated, &quote! { #key_as_str });
+                let schema_path = ctx.with_schema_path_segment("patternProperties", |ctx| {
+                    ctx.schema_path_for_keyword(pattern)
+                });
+                let site = RegexSite {
+                    schema_path: &schema_path,
+                    pattern: None,
+                    located: false,
+                };
+                let regex_check =
+                    compile_regex_match(ctx, &translated, &quote! { #key_as_str }, &site);
                 Ok(quote! { { #regex_check } })
             }
             Err(error_expr) => Err(error_expr),

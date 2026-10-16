@@ -3530,6 +3530,143 @@ pub mod __private {
         pub use jsonschema_regex::contains_ecma_whitespace;
         pub use regex::{Regex, RegexBuilder};
     }
+    /// Regex matching for generated code: a match the engine cannot finish is resolved by running
+    /// validation under each of its outcomes, as the runtime validator does.
+    pub mod unfinished_matches {
+        use std::cell::{Cell, RefCell};
+
+        use crate::{
+            paths::LazyLocation,
+            regex::FancyRegexError,
+            unfinished_matches::{
+                assume_each_outcome, errors, validity, MatchAssumptions, MatchSite, Outcomes,
+            },
+            LazyInstance, ValidationError,
+        };
+
+        std::thread_local! {
+            static MATCHES: RefCell<Option<Box<MatchAssumptions>>> = const { RefCell::new(None) };
+            /// Whether `MATCHES` holds a record, for the one check an entry makes after its run.
+            static MET: Cell<bool> = const { Cell::new(false) };
+        }
+
+        /// Whether a run on this thread met a regex match the engine could not finish.
+        #[inline]
+        #[must_use]
+        pub fn met() -> bool {
+            MET.get()
+        }
+
+        /// Whether `regex` matches `subject`. A match the engine cannot finish is recorded at
+        /// `schema_path` with the `pattern` keyword's source pattern and the instance location
+        /// when the caller tracks one.
+        #[inline]
+        #[must_use]
+        pub fn fancy_is_match(
+            regex: &fancy_regex::Regex,
+            subject: &str,
+            schema_path: &str,
+            pattern: Option<&str>,
+            instance_path: Option<&LazyLocation>,
+        ) -> bool {
+            match regex.is_match(subject) {
+                Ok(matches) => matches,
+                Err(error) => resolve(regex, subject, error, schema_path, pattern, instance_path),
+            }
+        }
+
+        #[cold]
+        fn resolve(
+            regex: &fancy_regex::Regex,
+            subject: &str,
+            error: fancy_regex::Error,
+            schema_path: &str,
+            pattern: Option<&str>,
+            instance_path: Option<&LazyLocation>,
+        ) -> bool {
+            let error = FancyRegexError::Engine {
+                error,
+                pattern: regex.as_str().into(),
+            };
+            MET.set(true);
+            MATCHES.with_borrow_mut(|matches| {
+                matches
+                    .get_or_insert_with(Box::default)
+                    .resolve(subject, error, || {
+                        let site = MatchSite::escaped(schema_path, instance_path.map(Into::into));
+                        match pattern {
+                            Some(pattern) => site.pattern(pattern),
+                            None => site,
+                        }
+                    })
+            })
+        }
+
+        fn swap(matches: &mut Option<Box<MatchAssumptions>>) {
+            MATCHES.with_borrow_mut(|current| std::mem::swap(current, matches));
+            MET.set(MATCHES.with_borrow(Option::is_some));
+        }
+
+        /// Runs `run` under each combination of outcomes for the unfinished matches it meets,
+        /// starting from a state of its own: the record the entry's run left may belong to an
+        /// enclosing run. `Err` carries the result of a run that met none.
+        #[cold]
+        fn under_each_outcome<T>(mut run: impl FnMut() -> T) -> Result<Outcomes<T>, T> {
+            let mut swapped = |matches: &mut Option<Box<MatchAssumptions>>| {
+                swap(matches);
+                let result = run();
+                swap(matches);
+                result
+            };
+            let mut first = None;
+            let result = swapped(&mut first);
+            match first {
+                Some(first) => Ok(assume_each_outcome(swapped, *first)),
+                None => Err(result),
+            }
+        }
+
+        /// `is_valid` for an entry whose run met an unfinished match. `run` is the generated
+        /// function itself, taken by pointer so the entry's own call to it stays inlinable.
+        #[cold]
+        #[must_use]
+        pub fn is_valid<N: Copy>(run: fn(N) -> bool, node: N) -> bool {
+            match under_each_outcome(|| run(node)) {
+                Ok(outcomes) => validity(outcomes),
+                Err(valid) => valid,
+            }
+        }
+
+        /// `validate` for an entry whose run met an unfinished match.
+        #[cold]
+        #[must_use]
+        pub fn validate<'i, N: Copy>(
+            instance: impl FnOnce() -> LazyInstance<'i>,
+            collect: fn(N, &LazyLocation, &mut Vec<ValidationError<'i>>),
+            node: N,
+        ) -> Option<ValidationError<'i>> {
+            collect_errors(instance, collect, node).into_iter().next()
+        }
+
+        /// `collect_errors` for an entry whose run met an unfinished match.
+        #[cold]
+        #[must_use]
+        pub fn collect_errors<'i, N: Copy>(
+            instance: impl FnOnce() -> LazyInstance<'i>,
+            collect: fn(N, &LazyLocation, &mut Vec<ValidationError<'i>>),
+            node: N,
+        ) -> Vec<ValidationError<'i>> {
+            let run = || {
+                let mut errors = Vec::new();
+                collect(node, &LazyLocation::new(), &mut errors);
+                errors
+            };
+            match under_each_outcome(run) {
+                Ok(outcomes) => errors(outcomes, instance),
+                Err(errors) => errors,
+            }
+        }
+    }
     pub mod unique_items {
         pub use crate::unique::is_unique;
     }
