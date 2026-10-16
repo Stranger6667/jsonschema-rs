@@ -718,16 +718,68 @@ mod tests {
 
     /// Whether the parse of `document` modeled it, and how many intersections it took.
     fn parse_cost(document: &Value) -> (bool, u64) {
+        parse_cost_within(document, None)
+    }
+
+    /// [`parse_cost`] with the run allowed `budget` intersections in place of a whole document's.
+    fn parse_cost_within(document: &Value, budget: Option<u64>) -> (bool, u64) {
         let prepared = options().prepare(document).expect("prepares");
         let (registry, base_uri) = prepared.resolution.as_ref().expect("a known dialect");
         let resolver = registry.resolver(base_uri.clone());
-        let context = CanonicalizationContext::new(
+        let mut context = CanonicalizationContext::new(
             prepared.draft,
             prepared.pattern_options,
             prepared.validate_formats,
         );
+        if let Some(budget) = budget {
+            context = context.within(budget);
+        }
         let (parsed, _) = parse::parse(document, &context, &resolver, None).expect("parses");
         (parsed.is_some(), context.intersections_taken())
+    }
+
+    fn all_of_two_way_unions(count: usize) -> Value {
+        json!({"allOf": (0..count)
+            .map(|index| json!({"anyOf": [
+                {"required": [format!("a{index}")]},
+                {"required": [format!("b{index}")]}
+            ]}))
+            .collect::<Vec<_>>()})
+    }
+
+    fn all_of_conditionals(count: usize) -> Value {
+        json!({"allOf": (0..count)
+            .map(|index| json!({
+                "if": {"required": [format!("a{index}")]},
+                "then": {"required": [format!("b{index}")]},
+                "else": {"required": [format!("c{index}")]}
+            }))
+            .collect::<Vec<_>>()})
+    }
+
+    // Allowed 20,000 intersections, a row of 12 two-way unions fits and a row of 13 does not. The
+    // product that would outrun the allowance is refused before any of it is taken, so the longer
+    // row gives up having spent what the shorter one did, rather than the whole allowance.
+    #[test]
+    fn a_product_too_wide_to_carry_gives_up_early() {
+        let (modeled, fitting) = parse_cost_within(&all_of_two_way_unions(12), Some(20_000));
+        assert!(modeled);
+        let (modeled, spent) = parse_cost_within(&all_of_two_way_unions(13), Some(20_000));
+        assert!(!modeled);
+        assert!(
+            spent < fitting + 100,
+            "spent {spent} intersections, {fitting} fit"
+        );
+    }
+
+    // A conditional row runs out inside the products it can still afford, so it ends where it did.
+    #[test]
+    fn a_row_of_conditionals_still_canonicalizes_up_to_the_allowance() {
+        assert!(parse_cost_within(&all_of_conditionals(7), Some(50_000)).0);
+        assert_eq!(
+            parse_cost_within(&all_of_conditionals(8), Some(50_000)),
+            (false, 50_000)
+        );
     }
 
     fn overlapping_open_objects(count: usize) -> Value {

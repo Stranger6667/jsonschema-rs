@@ -12,6 +12,10 @@
 - `canonicalize` leaving an `anyOf` over many overlapping objects raw.
 - `canonicalize` leaving `dependencies` or `dependentRequired` raw when their keys form a long chain or cycle.
 
+### Performance
+
+- `canonicalize` giving up sooner on an `allOf` over unions too wide to model.
+
 ## [0.58.6] - 2026-10-06
 
 ### Fixed

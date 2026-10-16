@@ -215,6 +215,17 @@ impl CanonicalizationContext {
         true
     }
 
+    /// Whether a product of unions with `width` branches fits in what this run may still spend. One
+    /// that does not would exhaust the allowance partway through, so it spends what is left now and
+    /// the run gives up exactly as it would had it taken the product's intersections one by one.
+    pub(crate) fn take_product(&self, width: u64) -> bool {
+        if width <= self.intersections_left.get() {
+            return true;
+        }
+        self.intersections_left.set(0);
+        false
+    }
+
     /// Take `count` conditional-split variants from what this run may still spend, reporting
     /// whether it had them.
     pub(crate) fn take_variants(&self, count: u64) -> bool {
