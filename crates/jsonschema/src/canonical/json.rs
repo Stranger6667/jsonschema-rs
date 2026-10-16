@@ -308,7 +308,8 @@ pub fn canonical_number(raw: &str) -> Option<Cow<'_, str>> {
     let fraction_within_cap = fraction_end - fraction_start <= MAX_EXPANDED_INTEGER_DIGITS;
 
     if !has_fraction && !has_exponent && integer_within_cap {
-        return Some(Cow::Borrowed(raw));
+        // `-0` is the one integer text with a second spelling.
+        return Some(Cow::Borrowed(if raw == "-0" { "0" } else { raw }));
     }
 
     // In-cap plain decimal with a non-zero last digit is already canonical: nothing is left to strip,
