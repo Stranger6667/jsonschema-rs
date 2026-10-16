@@ -13,21 +13,34 @@ pub(crate) enum RegexFailureReason {
 }
 
 pub(crate) trait RegexError {
+    /// The compiled pattern that failed.
+    fn pattern(&self) -> &str;
     fn into_failure_reason(self) -> RegexFailureReason;
 }
 
 /// Failure mode for the `fancy-regex` backend: either a real engine error or a recovered panic.
 #[derive(Debug)]
 pub(crate) enum FancyRegexError {
-    Engine(fancy_regex::Error),
-    Panicked,
+    Engine {
+        error: fancy_regex::Error,
+        pattern: Box<str>,
+    },
+    Panicked {
+        pattern: Box<str>,
+    },
 }
 
 impl RegexError for FancyRegexError {
+    fn pattern(&self) -> &str {
+        match self {
+            Self::Engine { pattern, .. } | Self::Panicked { pattern } => pattern,
+        }
+    }
+
     fn into_failure_reason(self) -> RegexFailureReason {
         match self {
-            Self::Engine(e) => RegexFailureReason::FancyRegex(e),
-            Self::Panicked => RegexFailureReason::Panicked,
+            Self::Engine { error, .. } => RegexFailureReason::FancyRegex(error),
+            Self::Panicked { .. } => RegexFailureReason::Panicked,
         }
     }
 }
@@ -41,17 +54,28 @@ impl RegexEngine for fancy_regex::Regex {
             fancy_regex::Regex::is_match(self, text)
         })) {
             Ok(Ok(matched)) => Ok(matched),
-            Ok(Err(e)) => Err(FancyRegexError::Engine(e)),
-            Err(_) => Err(FancyRegexError::Panicked),
+            Ok(Err(error)) => Err(FancyRegexError::Engine {
+                error,
+                pattern: self.as_str().into(),
+            }),
+            Err(_) => Err(FancyRegexError::Panicked {
+                pattern: self.as_str().into(),
+            }),
         }
     }
 }
 
 /// Marker error for `regex::Regex::is_match` panics. The underlying `is_match` is otherwise infallible.
 #[derive(Debug)]
-pub(crate) struct RegexBackendPanic;
+pub(crate) struct RegexBackendPanic {
+    pattern: Box<str>,
+}
 
 impl RegexError for RegexBackendPanic {
+    fn pattern(&self) -> &str {
+        &self.pattern
+    }
+
     fn into_failure_reason(self) -> RegexFailureReason {
         RegexFailureReason::Panicked
     }
@@ -65,7 +89,9 @@ impl RegexEngine for regex::Regex {
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             regex::Regex::is_match(self, text)
         }))
-        .map_err(|_| RegexBackendPanic)
+        .map_err(|_| RegexBackendPanic {
+            pattern: self.as_str().into(),
+        })
     }
 }
 
@@ -74,6 +100,10 @@ impl RegexEngine for regex::Regex {
 pub(crate) enum LiteralMatchError {}
 
 impl RegexError for LiteralMatchError {
+    fn pattern(&self) -> &str {
+        match *self {}
+    }
+
     fn into_failure_reason(self) -> RegexFailureReason {
         match self {}
     }
