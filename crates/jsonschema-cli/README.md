@@ -50,19 +50,19 @@ cargo install jsonschema-cli
 ## Usage
 
 ```
-jsonschema <COMMAND>
+jsonschema-cli <COMMAND>
 ```
 
 Four subcommands are available: `validate`, `bundle`, `dereference` and `canonicalize`.
 
-> ⚠️ **Deprecation notice:** The flat invocation `jsonschema schema.json -i instance.json` still works but is deprecated. Migrate to `jsonschema validate schema.json -i instance.json`.
+> ⚠️ **Deprecation notice:** The flat invocation `jsonschema-cli schema.json -i instance.json` still works but is deprecated. Migrate to `jsonschema-cli validate schema.json -i instance.json`.
 
 ---
 
-## `jsonschema validate` — validate instances
+## `jsonschema-cli validate` — validate instances
 
 ```
-jsonschema validate [OPTIONS] [SCHEMA]
+jsonschema-cli validate [OPTIONS] [SCHEMA]
 ```
 
 `SCHEMA` may be `-` to read it from stdin; its relative `$ref`s then resolve against the working
@@ -89,12 +89,12 @@ directory. `SCHEMA` may be omitted when every instance names its own schema — 
 
 Validate a single instance:
 ```
-jsonschema validate schema.json -i instance.json
+jsonschema-cli validate schema.json -i instance.json
 ```
 
 Validate multiple instances and emit structured output:
 ```
-jsonschema validate schema.json -i a.json -i b.json --output list
+jsonschema-cli validate schema.json -i a.json -i b.json --output list
 {"output":"list","schema":"schema.json","instance":"a.json","payload":{"valid":true,...}}
 {"output":"list","schema":"schema.json","instance":"b.json","payload":{"valid":false,...}}
 ```
@@ -105,7 +105,7 @@ Omit `SCHEMA` and each instance is validated against the schema named in its own
 property — the convention editors follow for `tsconfig.json`, `renovate.json` and friends:
 
 ```
-jsonschema validate -i tsconfig.json
+jsonschema-cli validate -i tsconfig.json
 ```
 
 > **Note:** this is *not* JSON Schema's `$schema`, which declares the dialect of a **schema**
@@ -123,7 +123,7 @@ jsonschema validate -i tsconfig.json
 
 ---
 
-## `jsonschema bundle` — embed external resources
+## `jsonschema-cli bundle` — embed external resources
 
 Embeds all `$ref` targets into a draft-appropriate container:
 - `definitions` for Draft 4/6/7
@@ -133,7 +133,7 @@ Embeds all `$ref` targets into a draft-appropriate container:
 `$ref` values are preserved unchanged ([Appendix B](https://json-schema.org/draft/2020-12/json-schema-core#appendix-B)).
 
 ```
-jsonschema bundle [OPTIONS] <SCHEMA>
+jsonschema-cli bundle [OPTIONS] <SCHEMA>
 ```
 
 ### Options
@@ -149,34 +149,34 @@ jsonschema bundle [OPTIONS] <SCHEMA>
 
 With a locally registered resource:
 ```
-jsonschema bundle root.json --resource https://example.com/address.json=address.json
+jsonschema-cli bundle root.json --resource https://example.com/address.json=address.json
 ```
 
 Write to file:
 ```
-jsonschema bundle root.json -o bundled.json
+jsonschema-cli bundle root.json -o bundled.json
 ```
 
 ---
 
-## `jsonschema dereference` — inline `$ref` targets
+## `jsonschema-cli dereference` — inline `$ref` targets
 
 Replaces each `$ref` with the schema it points to. Circular references are left in place.
 
 ```
-jsonschema dereference [OPTIONS] <SCHEMA>
+jsonschema-cli dereference [OPTIONS] <SCHEMA>
 ```
 
 Takes the same options as `bundle`.
 
 ---
 
-## `jsonschema canonicalize` — reduce a schema to a normal form
+## `jsonschema-cli canonicalize` — reduce a schema to a normal form
 
 Rewrites a schema to a normal form that accepts the same values. `allOf` branches merge into one schema, `$ref` targets are resolved, and a schema proven to accept nothing becomes `false`. Schemas that accept the same values reduce to the same form, so you can compare two outputs directly.
 
 ```
-jsonschema canonicalize [OPTIONS] <SCHEMA>
+jsonschema-cli canonicalize [OPTIONS] <SCHEMA>
 ```
 
 `SCHEMA` may be JSON or YAML (`.yaml`/`.yml`).
@@ -205,7 +205,7 @@ allOf:
   - type: object
     properties: {age: {type: integer, minimum: 0}}
 
-$ jsonschema canonicalize pet.yaml
+$ jsonschema-cli canonicalize pet.yaml
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
@@ -228,7 +228,7 @@ A schema no value can satisfy collapses to `false`, written `{"not": {}}`:
 
 ```console
 $ echo '{"type": "integer", "minimum": 10, "maximum": 5}' > empty.json
-$ jsonschema canonicalize empty.json
+$ jsonschema-cli canonicalize empty.json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "not": {}
@@ -243,7 +243,7 @@ A schema the canonical form cannot model exactly is printed unchanged, with exit
 still resolve:
 
 ```console
-$ jsonschema canonicalize openapi.yaml --at /components/schemas/Adult
+$ jsonschema-cli canonicalize openapi.yaml --at /components/schemas/Adult
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {

@@ -103,7 +103,7 @@ fn parse_resource_pair(s: &str) -> Result<(String, PathBuf), String> {
 }
 
 #[derive(Parser)]
-#[command(name = "jsonschema", version, disable_version_flag = true)]
+#[command(name = "jsonschema-cli", version, disable_version_flag = true)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
@@ -969,7 +969,7 @@ fn resolve_instance_schema_uri(
         .and_then(Value::as_str)
         .ok_or_else(|| {
             format!(
-                "no `$schema` property; pass a schema explicitly:\n  jsonschema validate SCHEMA -i {}",
+                "no `$schema` property; pass a schema explicitly:\n  jsonschema-cli validate SCHEMA -i {}",
                 display_path(instance)
             )
         })?;
@@ -1242,7 +1242,7 @@ fn run_validate(args: ValidateArgs) -> ExitCode {
             ))
         }
         (None, None) => fail_with_usage(
-            "either a SCHEMA argument or `--instance` is required. See `jsonschema validate --help`.",
+            "either a SCHEMA argument or `--instance` is required. See `jsonschema-cli validate --help`.",
         ),
     }
 }
@@ -1419,7 +1419,7 @@ fn main() -> ExitCode {
             // Flat invocation is deprecated — emit a warning, then proceed as `validate`
             if let Some(schema) = cli.schema {
                 eprintln!(
-                    "warning: flat invocation is deprecated. Use `jsonschema validate {}` instead.",
+                    "warning: flat invocation is deprecated. Use `jsonschema-cli validate {}` instead.",
                     schema.display()
                 );
                 run_validate(ValidateArgs {
@@ -1442,7 +1442,7 @@ fn main() -> ExitCode {
                     },
                 })
             } else {
-                fail_with_usage("a schema argument is required. Use `jsonschema validate --help`, `jsonschema bundle --help`, or `jsonschema dereference --help`.")
+                fail_with_usage("a schema argument is required. Use `jsonschema-cli validate --help`, `jsonschema-cli bundle --help`, or `jsonschema-cli dereference --help`.")
             }
         }
     }
