@@ -10,6 +10,7 @@
 - `canonicalize` output changing when canonicalized again, for a `not` over a `$ref` it cannot fully negate.
 - `canonicalize` output changing when canonicalized again, for a `oneOf` whose branches reduce to the same `$ref`.
 - `canonicalize` leaving an `anyOf` over many overlapping objects raw.
+- `canonicalize` leaving `dependencies` or `dependentRequired` raw when their keys form a long chain or cycle.
 
 ## [0.58.6] - 2026-10-06
 

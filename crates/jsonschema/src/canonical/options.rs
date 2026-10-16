@@ -713,7 +713,8 @@ fn family_keywords(kind: parse::PartKind, value: &Value) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::{options, parse, CanonicalizationContext, PreparedDocument};
-    use serde_json::{json, Value};
+    use serde_json::{json, Map, Value};
+    use test_case::test_case;
 
     /// Whether the parse of `document` modeled it, and how many intersections it took.
     fn parse_cost(document: &Value) -> (bool, u64) {
@@ -744,6 +745,34 @@ mod tests {
         let (modeled, spent) = parse_cost(&overlapping_open_objects(64));
         assert!(modeled);
         assert!(spent < 64 * 64 * 8, "spent {spent} intersections");
+    }
+
+    fn dependency_chain(count: usize) -> Value {
+        let mut dependencies = Map::new();
+        for index in 0..count {
+            dependencies.insert(format!("f{index}"), json!([format!("f{}", index + 1)]));
+        }
+        json!({"type": "object", "dependentRequired": dependencies})
+    }
+
+    fn dependency_cycle(count: usize) -> Value {
+        let mut dependencies = Map::new();
+        for index in 0..count {
+            dependencies.insert(
+                format!("f{index}"),
+                json!([format!("f{}", (index + 1) % count)]),
+            );
+        }
+        json!({"type": "object", "dependentRequired": dependencies})
+    }
+
+    // Taken along the links, the dependencies stay as wide as the chain is long.
+    #[test_case(&dependency_chain(48); "a chain")]
+    #[test_case(&dependency_cycle(48); "a cycle")]
+    fn linked_dependencies_stay_modeled(document: &Value) {
+        let (modeled, spent) = parse_cost(document);
+        assert!(modeled);
+        assert!(spent < 48 * 48 * 48 * 2, "spent {spent} intersections");
     }
 
     /// Every pointer in `document`, deepest first.
