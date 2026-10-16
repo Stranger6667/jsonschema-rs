@@ -10,7 +10,9 @@ use crate::{
     },
     node::SchemaNode,
     paths::{LazyLocation, Location, RefTracker},
-    Draft, Json, NodeIdentity, SerdeJson, ValidationError, ValidationOptions,
+    regex::{RegexEngine, RegexError},
+    unfinished_matches::{self, assume_each_outcome, MatchAssumptions, MatchSite},
+    Draft, Json, Node, NodeIdentity, SerdeJson, ValidationError, ValidationOptions,
 };
 use ahash::AHashMap;
 use referencing::Uri;
@@ -78,6 +80,24 @@ pub struct ValidationContext {
     instance_location: Option<Location>,
     /// Holds every node of the tree the `evaluate` path builds.
     pub(crate) arena: EvaluationArena,
+    /// Outcomes this run assumes for regex matches the engine could not finish; boxed and only
+    /// created once one is met, so validation without them carries a single null pointer.
+    matches: Option<Box<MatchAssumptions>>,
+}
+
+/// Runs `run` in a fresh context that assumes the outcomes in `matches`.
+#[inline]
+fn in_context<T>(
+    matches: &mut Option<Box<MatchAssumptions>>,
+    run: impl FnOnce(&mut ValidationContext) -> T,
+) -> T {
+    let mut ctx = ValidationContext {
+        matches: matches.take(),
+        ..ValidationContext::default()
+    };
+    let result = run(&mut ctx);
+    *matches = ctx.matches.take();
+    result
 }
 
 /// Evaluation paths are only cached once this many have been built.
@@ -88,6 +108,32 @@ const EVALUATION_PATH_CACHE_THRESHOLD: u32 = 4096;
 impl ValidationContext {
     pub(crate) fn new() -> Self {
         Self::default()
+    }
+
+    /// Whether `regex` matches `subject`; `site` reports a match the engine cannot finish.
+    #[inline]
+    pub(crate) fn is_match<R: RegexEngine>(
+        &mut self,
+        regex: &R,
+        subject: &str,
+        site: impl FnOnce() -> MatchSite,
+    ) -> bool {
+        match regex.is_match(subject) {
+            Ok(matches) => matches,
+            Err(error) => self.unfinished_match(subject, error, site),
+        }
+    }
+
+    #[cold]
+    fn unfinished_match(
+        &mut self,
+        subject: &str,
+        error: impl RegexError,
+        site: impl FnOnce() -> MatchSite,
+    ) -> bool {
+        self.matches
+            .get_or_insert_with(Box::default)
+            .resolve(subject, error, site)
     }
 
     #[inline]
@@ -548,8 +594,17 @@ impl<F: Json> Validator<F> {
     #[inline]
     pub fn validate<'i>(&self, instance: F::Node<'i>) -> Result<(), ValidationError<'i>> {
         let mut ctx = ValidationContext::new();
-        self.root
-            .validate(&instance, &LazyLocation::new(), None, &mut ctx)
+        let result = self
+            .root
+            .validate(&instance, &LazyLocation::new(), None, &mut ctx);
+        match ctx.matches {
+            None => result,
+            Some(first) => self
+                .errors_under_every_outcome(&instance, *first)
+                .into_iter()
+                .next()
+                .map_or(Ok(()), Err),
+        }
     }
     /// Run validation against `instance` and return an iterator over [`ValidationError`] in the error case.
     #[inline]
@@ -559,6 +614,9 @@ impl<F: Json> Validator<F> {
         let mut errors = Vec::new();
         self.root
             .collect_errors(&instance, &LazyLocation::new(), None, &mut ctx, &mut errors);
+        if let Some(first) = ctx.matches {
+            errors = self.errors_under_every_outcome(&instance, *first);
+        }
         ErrorIterator::from_iterator(errors.into_iter())
     }
     /// Run validation against `instance` but return a boolean result instead of an iterator.
@@ -568,7 +626,44 @@ impl<F: Json> Validator<F> {
     #[inline]
     pub fn is_valid(&self, instance: F::Node<'_>) -> bool {
         let mut ctx = ValidationContext::new();
-        self.root.is_valid(&instance, &mut ctx)
+        let valid = self.root.is_valid(&instance, &mut ctx);
+        match ctx.matches {
+            None => valid,
+            Some(first) => self.valid_under_every_outcome(&instance, *first),
+        }
+    }
+
+    #[cold]
+    fn valid_under_every_outcome(&self, instance: &F::Node<'_>, first: MatchAssumptions) -> bool {
+        unfinished_matches::validity(assume_each_outcome(
+            |matches| in_context(matches, |ctx| self.root.is_valid(instance, ctx)),
+            first,
+        ))
+    }
+
+    #[cold]
+    fn errors_under_every_outcome<'i>(
+        &self,
+        instance: &F::Node<'i>,
+        first: MatchAssumptions,
+    ) -> Vec<ValidationError<'i>> {
+        let outcomes = assume_each_outcome(
+            |matches| {
+                in_context(matches, |ctx| {
+                    let mut errors = Vec::new();
+                    self.root.collect_errors(
+                        instance,
+                        &LazyLocation::new(),
+                        None,
+                        ctx,
+                        &mut errors,
+                    );
+                    errors
+                })
+            },
+            first,
+        );
+        unfinished_matches::errors(outcomes, || instance.lazy_value())
     }
     /// Evaluate the schema and expose structured output formats.
     #[must_use]
