@@ -1563,7 +1563,7 @@ fn parse_schema_in_scope<'a>(
             // more required keys in the array form, a whole-value schema in the schema form. Every
             // draft validates `dependencies`, 2019-09 onward also under its split keywords.
             ("dependencies", Value::Object(entries)) => {
-                for (key, entry) in entries {
+                for (key, entry) in linked_order(entries) {
                     match entry {
                         Value::Array(names) if names.iter().all(Value::is_string) => {
                             parts.push((
@@ -1591,7 +1591,7 @@ fn parse_schema_in_scope<'a>(
             ("dependentRequired", Value::Object(entries))
                 if ctx.draft().is_known_keyword("dependentRequired") =>
             {
-                for (key, entry) in entries {
+                for (key, entry) in linked_order(entries) {
                     match entry {
                         Value::Array(names) if names.iter().all(Value::is_string) => {
                             parts.push((
@@ -3820,6 +3820,41 @@ pub(crate) fn prune_unreachable_definitions(root: &Schema, definitions: &mut Def
             );
         }
     }
+}
+
+/// The dependencies in an order that takes each one right after a dependency demanding its key.
+///
+/// The keywords of a node combine by intersection, and each dependency is a union over holding
+/// its key or not. Intersecting two dependencies on unrelated keys multiplies their branches, while
+/// one whose key the other demands rules out half of them. Taken in key order, a chain `a -> b`,
+/// `b -> c`, ... runs through unrelated pairs and grows exponentially before the links shrink it
+/// again; taken along the links, it stays as wide as the chain is long. The value set is the same
+/// either way.
+fn linked_order(entries: &Map<String, Value>) -> Vec<(&String, &Value)> {
+    let mut order = Vec::with_capacity(entries.len());
+    let mut visited: AHashSet<&str> = AHashSet::with_capacity(entries.len());
+    let mut stack: Vec<(&String, &Value)> = Vec::new();
+    for root in entries {
+        stack.push(root);
+        while let Some((key, entry)) = stack.pop() {
+            if !visited.insert(key.as_str()) {
+                continue;
+            }
+            order.push((key, entry));
+            if let Value::Array(names) = entry {
+                // Reversed, so the first listed name is the next one taken.
+                for name in names.iter().rev().filter_map(Value::as_str) {
+                    if let Some(linked) = entries.get_key_value(name) {
+                        if !visited.contains(name) {
+                            stack.push(linked);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    debug_assert_eq!(order.len(), entries.len(), "every dependency is taken once");
+    order
 }
 
 /// The array-form dependency on `key`: holding it demands the listed keys too.

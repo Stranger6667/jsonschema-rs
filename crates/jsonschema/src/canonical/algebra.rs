@@ -2161,17 +2161,30 @@ fn demands_every_key_of(piece: &ObjectLeaf, leaf: &ObjectLeaf) -> bool {
 /// about, so that `leaf` cannot admit every object of a `piece` that admits any. Reads the property
 /// maps alone, where deciding it by intersection would merge them.
 fn constrains_a_free_required_key(leaf: &ObjectLeaf, piece: &ObjectLeaf) -> bool {
+    free_required_keys_constrained_by(leaf, piece)
+        .next()
+        .is_some()
+}
+
+/// The keys [`constrains_a_free_required_key`] finds, in `leaf`'s order.
+fn free_required_keys_constrained_by<'a>(
+    leaf: &'a ObjectLeaf,
+    piece: &'a ObjectLeaf,
+) -> impl Iterator<Item = &'a Arc<str>> {
     // Any of these could constrain the value at a required key beyond what the entries say.
     let entries_say_it_all = piece.additional.is_none()
         && piece.property_names.is_none()
         && piece.pattern_properties.is_empty()
         && piece.violations.is_empty();
-    entries_say_it_all
-        && leaf.properties.iter().any(|(key, entry)| {
-            rejects_some_value(entry)
+    leaf.properties
+        .iter()
+        .filter(move |(key, entry)| {
+            entries_say_it_all
+                && rejects_some_value(entry)
                 && piece.properties.get(key).is_none()
                 && piece.required.binary_search(key).is_ok()
         })
+        .map(|(key, _)| key)
 }
 
 /// Whether barring any of these keys leaves the piece saying the same thing about its required
@@ -2357,16 +2370,52 @@ fn drop_required_covered_by_sibling(
         if leaves[index].additional.is_some() {
             continue;
         }
+        // Which siblings may cover a weakened leaf reads the key lists alone, and dropping a
+        // required key changes them only at that key, so each pair is read once rather than per
+        // key: a sibling comes with the one key whose drop it waits for, if any.
+        let reachable: Vec<(usize, Option<Arc<str>>)> = (0..leaves.len())
+            .filter(|&sibling| sibling != index)
+            .filter(|&sibling| demands_every_key_of(&leaves[index], &leaves[sibling]))
+            .filter_map(|sibling| {
+                let mut blocking =
+                    free_required_keys_constrained_by(&leaves[sibling], &leaves[index]);
+                let first = blocking.next().cloned();
+                // Two keys rule the sibling out whichever one is dropped.
+                blocking.next().is_none().then_some((sibling, first))
+            })
+            .collect();
         for key_index in 0..leaves[index].required.len() {
             let implied_floor = BoundCardinality::from(leaves[index].required.len() as u64);
+            let key = Arc::clone(&leaves[index].required[key_index]);
+            // Siblings ruled out by their key lists alone, before the weakened leaf is built: most
+            // pairs end here, and building it costs a copy of the leaf per key.
+            let candidates: Vec<usize> = reachable
+                .iter()
+                .filter(|(sibling, blocking)| {
+                    leaves[*sibling].required.binary_search(&key).is_err()
+                        && blocking.as_ref().is_none_or(|blocking| *blocking == key)
+                })
+                .map(|(sibling, _)| *sibling)
+                .collect();
+            // The pairs read once answer as the leaf without the key does.
+            debug_assert_eq!(candidates, {
+                let mut weakened = leaves[index].clone();
+                weakened.required.remove(key_index);
+                (0..leaves.len())
+                    .filter(|&sibling| sibling != index)
+                    .filter(|&sibling| demands_every_key_of(&weakened, &leaves[sibling]))
+                    .filter(|&sibling| !constrains_a_free_required_key(&leaves[sibling], &weakened))
+                    .collect::<Vec<_>>()
+            });
+            if candidates.is_empty() {
+                continue;
+            }
             for keep_floor in [false, true] {
                 // An explicit minimum survives the bare drop, so the fallback adds nothing.
                 if keep_floor && leaves[index].sizes.minimum.is_some() {
                     break;
                 }
-                let leaf = &leaves[index];
-                let key = Arc::clone(&leaf.required[key_index]);
-                let mut weakened = leaf.clone();
+                let mut weakened = leaves[index].clone();
                 weakened.required.remove(key_index);
                 if keep_floor {
                     weakened.sizes.minimum = Some(implied_floor.clone());
@@ -2382,18 +2431,15 @@ fn drop_required_covered_by_sibling(
                 // Probed one sibling at a time: a sibling whose intersection this run could only
                 // approximate says nothing, and wrapping the whole search in one probe would let
                 // it bury a later sibling that covers exactly.
-                let covered = (0..leaves.len())
-                    .filter(|&sibling| sibling != index)
-                    .filter(|&sibling| demands_every_key_of(&weakened, &leaves[sibling]))
-                    .any(|sibling| {
-                        holds_exactly(ctx, || {
-                            intersect(
-                                gained.clone(),
-                                object_leaf(leaves[sibling].clone(), ctx),
-                                ctx,
-                            ) == gained
-                        })
-                    });
+                let covered = candidates.iter().any(|&sibling| {
+                    holds_exactly(ctx, || {
+                        intersect(
+                            gained.clone(),
+                            object_leaf(leaves[sibling].clone(), ctx),
+                            ctx,
+                        ) == gained
+                    })
+                });
                 if covered {
                     leaves[index] = weakened;
                     return true;
