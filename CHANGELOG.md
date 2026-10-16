@@ -21,6 +21,8 @@
 - **CLI**: `jsonschema validate --help` describing `--offline` in terms of `--resource`, which `validate` does not accept.
 - Canonicalizing several subschemas of one prepared document, where a `$ref` in a later output could point at another subschema.
 - `canonicalize` leaving `unevaluatedProperties` or `unevaluatedItems` beside `anyOf` or `oneOf` raw.
+- `canonicalize` giving a different form for a `oneOf` depending on the order of its branches.
+- `canonicalize` output changing when canonicalized again, for a `not` over a `$ref` it cannot fully negate.
 
 ## [0.58.6] - 2026-10-06
 
