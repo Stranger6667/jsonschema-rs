@@ -28,7 +28,17 @@ match instance {
                             true
                         });
                     __object_pass
-                }) && (obj.keys().all(|s| { __jsonschema_regex_0(s) }))
+                })
+                    && (obj
+                        .keys()
+                        .all(|s| {
+                            __jsonschema_regex_0(
+                                s,
+                                "/propertyNames/pattern",
+                                Some("^[ab]"),
+                                None,
+                            )
+                        }))
             }
             _ => false,
         }

@@ -26,6 +26,7 @@ mod __validator_impl {
     use jsonschema::__private::serde_json as __sj;
     use jsonschema::__private::types as __types;
     use jsonschema::__private::unique_items as __uniq;
+    use jsonschema::__private::unfinished_matches as __unfinished;
     use jsonschema::paths as __paths;
     use jsonschema::JsonType as __JT;
     use jsonschema::JsonTypeSet as __JTS;
@@ -35,12 +36,27 @@ mod __validator_impl {
     use std::sync::LazyLock as __Lazy;
     type __Map = __sj::Map<String, __Value>;
     #[inline]
-    fn __jsonschema_regex_0(subject: &str) -> bool {
+    fn __jsonschema_regex_0(
+        subject: &str,
+        schema_path: &str,
+        pattern: Option<&str>,
+        instance_path: Option<&__paths::LazyLocation>,
+    ) -> bool {
         static REGEX: __Lazy<Option<__fancy::Regex>> = __Lazy::new(|| {
             let mut builder = __fancy::RegexBuilder::new("^[a-z]{2,}$");
             builder.build().ok()
         });
-        REGEX.as_ref().is_some_and(|re| re.is_match(subject).unwrap_or(false))
+        REGEX
+            .as_ref()
+            .is_some_and(|re| {
+                __unfinished::fancy_is_match(
+                    re,
+                    subject,
+                    schema_path,
+                    pattern,
+                    instance_path,
+                )
+            })
     }
     pub(super) fn is_valid(instance: &__Value) -> bool {
         match instance {
@@ -49,7 +65,14 @@ mod __validator_impl {
                     .iter()
                     .all(|(key, instance)| {
                         let mut covered = false;
-                        if { __jsonschema_regex_0(key.as_str()) } {
+                        if {
+                            __jsonschema_regex_0(
+                                key.as_str(),
+                                "/patternProperties/^[a-z]{2,}$",
+                                None,
+                                None,
+                            )
+                        } {
                             if !(instance.is_string()) {
                                 return false;
                             }
@@ -74,7 +97,14 @@ mod __validator_impl {
                 for (key, value) in obj.iter() {
                     let key_str = key.as_str();
                     let mut covered = false;
-                    if { __jsonschema_regex_0(key.as_str()) } {
+                    if {
+                        __jsonschema_regex_0(
+                            key.as_str(),
+                            "/patternProperties/^[a-z]{2,}$",
+                            None,
+                            None,
+                        )
+                    } {
                         let instance = value;
                         let __path = &__path.push(key_str);
                         if !(instance.is_string()) {
@@ -120,7 +150,14 @@ mod __validator_impl {
                 for (key, value) in obj.iter() {
                     let key_str = key.as_str();
                     let mut covered = false;
-                    if { __jsonschema_regex_0(key.as_str()) } {
+                    if {
+                        __jsonschema_regex_0(
+                            key.as_str(),
+                            "/patternProperties/^[a-z]{2,}$",
+                            None,
+                            None,
+                        )
+                    } {
                         let instance = value;
                         let __path = &__path.push(key_str);
                         if !(instance.is_string()) {
@@ -165,21 +202,52 @@ mod __validator_impl {
             }
         }
     }
+    pub(super) fn run_is_valid(instance: &__Value) -> bool {
+        let valid = is_valid(instance);
+        if !__unfinished::met() {
+            return valid;
+        }
+        __unfinished::is_valid(is_valid, instance)
+    }
+    pub(super) fn run_validate<'__i>(instance: &'__i __Value) -> Option<__VE<'__i>> {
+        let error = validate(instance, &__paths::LazyLocation::new());
+        if !__unfinished::met() {
+            return error;
+        }
+        __unfinished::validate(
+            || ::core::convert::Into::into(instance),
+            collect_errors,
+            instance,
+        )
+    }
+    pub(super) fn run_collect_errors<'__i>(instance: &'__i __Value) -> Vec<__VE<'__i>> {
+        let errors = {
+            let mut errors = Vec::new();
+            collect_errors(instance, &__paths::LazyLocation::new(), &mut errors);
+            errors
+        };
+        if !__unfinished::met() {
+            return errors;
+        }
+        __unfinished::collect_errors(
+            || ::core::convert::Into::into(instance),
+            collect_errors,
+            instance,
+        )
+    }
     pub(super) fn entry_is_valid(instance: &__Value) -> bool {
-        is_valid(instance)
+        run_is_valid(instance)
     }
     pub(super) fn entry_validate<'__i>(
         instance: &'__i __Value,
     ) -> ::std::result::Result<(), __VE<'__i>> {
-        match validate(instance, &__paths::LazyLocation::new()) {
+        match run_validate(instance) {
             Some(e) => Err(e),
             None => Ok(()),
         }
     }
     pub(super) fn entry_iter_errors<'__i>(instance: &'__i __Value) -> __EI<'__i> {
-        let mut errors = Vec::new();
-        collect_errors(instance, &__paths::LazyLocation::new(), &mut errors);
-        __err::iterator_from(errors)
+        __err::iterator_from(run_collect_errors(instance))
     }
 }
 impl Validator {
