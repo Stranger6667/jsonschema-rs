@@ -64,9 +64,12 @@ impl AdditionalPropertiesValidator {
 impl<F: Json> Validate<F> for AdditionalPropertiesValidator<F> {
     fn is_valid(&self, instance: &F::Node<'_>, ctx: &mut ValidationContext) -> bool {
         if let Some(object) = instance.as_object() {
-            object
-                .members()
-                .all(|(_, value)| self.node.is_valid(&value, ctx))
+            let mut values = object.members();
+            if let Some(validator) = self.node.single_validator() {
+                values.all(|(_, value)| validator.is_valid(&value, ctx))
+            } else {
+                values.all(|(_, value)| self.node.is_valid(&value, ctx))
+            }
         } else {
             true
         }
@@ -638,9 +641,15 @@ impl<F: Json, M: PropertiesValidatorsMap<F>> Validate<F>
 {
     fn is_valid(&self, instance: &F::Node<'_>, ctx: &mut ValidationContext) -> bool {
         if let Some(object) = instance.as_object() {
-            are_properties_valid(&self.properties, &object, ctx, |instance, ctx| {
-                self.node.is_valid(instance, ctx)
-            })
+            if let Some(validator) = self.node.single_validator() {
+                are_properties_valid(&self.properties, &object, ctx, |instance, ctx| {
+                    validator.is_valid(instance, ctx)
+                })
+            } else {
+                are_properties_valid(&self.properties, &object, ctx, |instance, ctx| {
+                    self.node.is_valid(instance, ctx)
+                })
+            }
         } else {
             true
         }

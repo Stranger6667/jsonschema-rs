@@ -107,6 +107,32 @@ enum NodeValidators<F: Json> {
     },
 }
 
+impl<F: Json> NodeValidators<F> {
+    #[allow(clippy::inline_always)]
+    #[inline(always)]
+    fn is_valid(&self, instance: &F::Node<'_>, ctx: &mut ValidationContext) -> bool {
+        match self {
+            // Single validator fast path
+            NodeValidators::Keyword(kvs) if kvs.validators.len() == 1 => {
+                kvs.validators[0].validator.is_valid(instance, ctx)
+            }
+            NodeValidators::Keyword(kvs) => {
+                for entry in &kvs.validators {
+                    if !entry.validator.is_valid(instance, ctx) {
+                        return false;
+                    }
+                }
+                true
+            }
+            NodeValidators::Array { validators } => validators
+                .iter()
+                .all(|entry| entry.validator.is_valid(instance, ctx)),
+            NodeValidators::Boolean { validator: Some(_) } => false,
+            NodeValidators::Boolean { validator: None } => true,
+        }
+    }
+}
+
 impl<F: Json> fmt::Debug for NodeValidators<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -249,7 +275,12 @@ impl<F: Json> Validate<F> for PendingSchemaNode<F> {
         let result = if let Some(cached) = ctx.get_cached_result(node_id, container_identity) {
             cached
         } else {
-            let computed = target.materialize().is_valid(instance, ctx);
+            // Only the validators run; the location and absolute path stay unshared.
+            let inner = target
+                .inner
+                .upgrade()
+                .expect("pending schema target dropped");
+            let computed = inner.validators.is_valid(instance, ctx);
             // Cache result for recursive schemas
             ctx.cache_result(node_id, container_identity, computed);
             computed
@@ -723,6 +754,17 @@ fn stamp_absolute_location(errors: &mut [ValidationError<'_>], uri: Option<&Arc<
 }
 
 impl<F: Json> SchemaNode<F> {
+    /// The node's only validator, for loops that run the node on many values.
+    #[inline]
+    pub(crate) fn single_validator(&self) -> Option<&dyn Validate<F>> {
+        match &self.inner.validators {
+            NodeValidators::Keyword(kvs) if kvs.validators.len() == 1 => {
+                Some(&*kvs.validators[0].validator)
+            }
+            _ => None,
+        }
+    }
+
     #[cold]
     #[inline(never)]
     fn false_schema_error<'i>(
@@ -744,25 +786,7 @@ impl<F: Json> SchemaNode<F> {
 impl<F: Json> Validate<F> for SchemaNode<F> {
     #[inline]
     fn is_valid(&self, instance: &F::Node<'_>, ctx: &mut ValidationContext) -> bool {
-        match &self.inner.validators {
-            // Single validator fast path
-            NodeValidators::Keyword(kvs) if kvs.validators.len() == 1 => {
-                kvs.validators[0].validator.is_valid(instance, ctx)
-            }
-            NodeValidators::Keyword(kvs) => {
-                for entry in &kvs.validators {
-                    if !entry.validator.is_valid(instance, ctx) {
-                        return false;
-                    }
-                }
-                true
-            }
-            NodeValidators::Array { validators } => validators
-                .iter()
-                .all(|entry| entry.validator.is_valid(instance, ctx)),
-            NodeValidators::Boolean { validator: Some(_) } => false,
-            NodeValidators::Boolean { validator: None } => true,
-        }
+        self.inner.validators.is_valid(instance, ctx)
     }
 
     #[allow(clippy::inline_always)]
