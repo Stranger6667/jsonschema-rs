@@ -140,7 +140,11 @@ impl ItemsObjectValidator {
 impl<F: Json> Validate<F> for ItemsObjectValidator<F> {
     fn is_valid(&self, instance: &F::Node<'_>, ctx: &mut ValidationContext) -> bool {
         if let Some(array) = instance.as_array() {
-            array.elements().all(|item| self.node.is_valid(&item, ctx))
+            if let Some(validator) = self.node.single_validator() {
+                array.elements().all(|item| validator.is_valid(&item, ctx))
+            } else {
+                array.elements().all(|item| self.node.is_valid(&item, ctx))
+            }
         } else {
             true
         }
@@ -214,10 +218,12 @@ impl ItemsObjectSkipPrefixValidator {
 impl<F: Json> Validate<F> for ItemsObjectSkipPrefixValidator<F> {
     fn is_valid(&self, instance: &F::Node<'_>, ctx: &mut ValidationContext) -> bool {
         if let Some(array) = instance.as_array() {
-            array
-                .elements()
-                .skip(self.skip_prefix)
-                .all(|item| self.node.is_valid(&item, ctx))
+            let mut items = array.elements().skip(self.skip_prefix);
+            if let Some(validator) = self.node.single_validator() {
+                items.all(|item| validator.is_valid(&item, ctx))
+            } else {
+                items.all(|item| self.node.is_valid(&item, ctx))
+            }
         } else {
             true
         }
@@ -853,7 +859,13 @@ impl<F: Json> Validate<F> for ArrayShapeValidator<F> {
             FusedItems::IntegerDraft4(_) => array
                 .elements()
                 .all(|item| IntegerItemsDraft4::matches::<F>(&item)),
-            FusedItems::Generic(node) => array.elements().all(|item| node.is_valid(&item, ctx)),
+            FusedItems::Generic(node) => {
+                if let Some(validator) = node.single_validator() {
+                    array.elements().all(|item| validator.is_valid(&item, ctx))
+                } else {
+                    array.elements().all(|item| node.is_valid(&item, ctx))
+                }
+            }
         }
     }
 
