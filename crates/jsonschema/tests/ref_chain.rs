@@ -126,3 +126,19 @@ fn ref_cycle_entered_from_deferred_targets_validates() {
     assert_eq!(errors(&validator, &instance), Vec::<String>::new());
     assert!(validator.evaluate(&instance).flag().valid);
 }
+
+// Every level validates its child twice, so without memoization the work doubles per level.
+#[test_case(&json!([]), true; "valid")]
+#[test_case(&json!(1), false; "invalid")]
+fn repeated_ref_to_the_same_target_stays_linear(innermost: &Value, expected: bool) {
+    let validator = jsonschema::validator_for(&json!({
+        "$defs": {"t": {"type": "array", "items": {"allOf": [{"$ref": "#/$defs/t"}, {"$ref": "#/$defs/t"}]}}},
+        "$ref": "#/$defs/t"
+    }))
+    .expect("Invalid schema");
+    let mut instance = innermost.clone();
+    for _ in 0..64 {
+        instance = json!([instance]);
+    }
+    assert_eq!(validator.is_valid(&instance), expected);
+}
