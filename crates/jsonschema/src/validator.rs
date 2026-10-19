@@ -72,6 +72,8 @@ pub struct ValidationContext {
     marking: Vec<(usize, NodeIdentity)>,
     /// Lazy-initialized cache for recursive schema validation.
     is_valid_cache: Option<AHashMap<(usize, NodeIdentity), bool>>,
+    /// Visits to `$ref` targets so far; a visit's share of it decides whether its result is cached.
+    ref_visits: u32,
     /// Lazy-initialized cache for ECMA regex transformation results during format "regex" validation.
     ecma_regex_cache: Option<AHashMap<String, bool>>,
     evaluation_path_cache: Option<Box<EvaluationPathCache>>,
@@ -99,6 +101,12 @@ fn in_context<T>(
     *matches = ctx.matches.take();
     result
 }
+
+/// A `$ref` target's result is only cached when validating it visited this many targets.
+///
+/// Cheaper results cost less to recompute than to store, and a subtree that is validated again and
+/// again reaches the threshold within a few levels, so repeated work stays bounded.
+const MEMO_MIN_VISITS: u32 = 16;
 
 /// Evaluation paths are only cached once this many have been built.
 ///
@@ -217,6 +225,14 @@ impl ValidationContext {
         cache.get(&(node_id, identity?)).copied()
     }
 
+    /// Counts a visit to a `$ref` target; the returned mark goes to `cache_result`.
+    #[inline]
+    pub(crate) fn start_ref_visit(&mut self) -> u32 {
+        let mark = self.ref_visits;
+        self.ref_visits = mark.wrapping_add(1);
+        mark
+    }
+
     /// Containers only: the cache outlives them, and only they promise an identity no later node
     /// reuses.
     #[inline]
@@ -225,10 +241,14 @@ impl ValidationContext {
         node_id: usize,
         identity: Option<NodeIdentity>,
         result: bool,
+        visit: u32,
     ) {
         let Some(identity) = identity else {
             return;
         };
+        if self.ref_visits.wrapping_sub(visit) < MEMO_MIN_VISITS {
+            return;
+        }
         self.is_valid_cache
             .get_or_insert_with(AHashMap::new)
             .insert((node_id, identity), result);

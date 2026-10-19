@@ -275,14 +275,14 @@ impl<F: Json> Validate<F> for PendingSchemaNode<F> {
         let result = if let Some(cached) = ctx.get_cached_result(node_id, container_identity) {
             cached
         } else {
+            let visit = ctx.start_ref_visit();
             // Only the validators run; the location and absolute path stay unshared.
             let inner = target
                 .inner
                 .upgrade()
                 .expect("pending schema target dropped");
             let computed = inner.validators.is_valid(instance, ctx);
-            // Cache result for recursive schemas
-            ctx.cache_result(node_id, container_identity, computed);
+            ctx.cache_result(node_id, container_identity, computed, visit);
             computed
         };
         ctx.exit(node_id, identity);

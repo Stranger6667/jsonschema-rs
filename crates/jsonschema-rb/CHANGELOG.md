@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Performance
+
+- `items` and `additionalProperties` looking up a single-keyword subschema once per array or object instead of once per value.
+- `is_valid` on recursive schemas caching only `$ref` results that took many steps to compute, instead of every one.
+
 ## [0.59.0] - 2026-10-16
 
 ### Fixed
