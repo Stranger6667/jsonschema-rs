@@ -3569,10 +3569,37 @@ pub mod __private {
             pattern: Option<&str>,
             instance_path: Option<&LazyLocation>,
         ) -> bool {
+            if MET.get() {
+                if let Some(matches) =
+                    resolve_unfinished(regex, subject, schema_path, pattern, instance_path)
+                {
+                    return matches;
+                }
+            }
             match regex.is_match(subject) {
                 Ok(matches) => matches,
                 Err(error) => resolve(regex, subject, error, schema_path, pattern, instance_path),
             }
+        }
+
+        /// The outcome for a match a run could not finish, without the engine, which would only
+        /// fail again.
+        #[cold]
+        fn resolve_unfinished(
+            regex: &fancy_regex::Regex,
+            subject: &str,
+            schema_path: &str,
+            pattern: Option<&str>,
+            instance_path: Option<&LazyLocation>,
+        ) -> Option<bool> {
+            MATCHES.with_borrow_mut(|matches| {
+                let matches = matches.as_mut()?;
+                matches.is_unfinished(regex.as_str(), subject).then(|| {
+                    matches.resolve_unfinished(regex.as_str(), subject, || {
+                        site(schema_path, pattern, instance_path)
+                    })
+                })
+            })
         }
 
         #[cold]
@@ -3592,14 +3619,20 @@ pub mod __private {
             MATCHES.with_borrow_mut(|matches| {
                 matches
                     .get_or_insert_with(Box::default)
-                    .resolve(subject, error, || {
-                        let site = MatchSite::escaped(schema_path, instance_path.map(Into::into));
-                        match pattern {
-                            Some(pattern) => site.pattern(pattern),
-                            None => site,
-                        }
-                    })
+                    .resolve(subject, error, || site(schema_path, pattern, instance_path))
             })
+        }
+
+        fn site(
+            schema_path: &str,
+            pattern: Option<&str>,
+            instance_path: Option<&LazyLocation>,
+        ) -> MatchSite {
+            let site = MatchSite::escaped(schema_path, instance_path.map(Into::into));
+            match pattern {
+                Some(pattern) => site.pattern(pattern),
+                None => site,
+            }
         }
 
         fn swap(matches: &mut Option<Box<MatchAssumptions>>) {

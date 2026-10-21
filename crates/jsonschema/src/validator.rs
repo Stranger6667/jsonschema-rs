@@ -126,9 +126,37 @@ impl ValidationContext {
         subject: &str,
         site: impl FnOnce() -> MatchSite,
     ) -> bool {
+        if self.matches.is_some() {
+            return self.is_match_under_assumptions(regex, subject, site);
+        }
         match regex.is_match(subject) {
             Ok(matches) => matches,
             Err(error) => self.unfinished_match(subject, error, site),
+        }
+    }
+
+    /// [`Self::is_match`] once a run met an unfinished match: a match a run could not finish
+    /// skips the engine, which would only fail again.
+    #[cold]
+    fn is_match_under_assumptions<R: RegexEngine>(
+        &mut self,
+        regex: &R,
+        subject: &str,
+        site: impl FnOnce() -> MatchSite,
+    ) -> bool {
+        let matches = self
+            .matches
+            .as_mut()
+            .expect("the caller checked for assumptions");
+        if let Some(pattern) = regex
+            .pattern()
+            .filter(|pattern| matches.is_unfinished(pattern, subject))
+        {
+            return matches.resolve_unfinished(pattern, subject, site);
+        }
+        match regex.is_match(subject) {
+            Ok(matches) => matches,
+            Err(error) => matches.resolve(subject, error, site),
         }
     }
 

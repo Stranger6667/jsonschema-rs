@@ -5371,6 +5371,31 @@ unfinished_match_location!(
     serde_json::json!({"x":"abc"})
 );
 
+// 30 `a`s and a `!` need more than 5,000 backtracking steps for this pattern.
+#[jsonschema::validator(
+    schema = r#"{"items":{"pattern":"^(a|a)*\\1b"}}"#,
+    pattern_options = {
+        engine = fancy_regex,
+        backtrack_limit = 5_000,
+    }
+)]
+struct UnfinishedCostlyItemsValidator;
+
+// Matching each costly string again in every run hits the backtrack limit once per run.
+#[test]
+fn test_unfinished_matches_are_not_matched_again_in_later_runs() {
+    let instance: serde_json::Value = (0..300)
+        .map(|index| serde_json::Value::String(format!("{}!", "a".repeat(30 + index))))
+        .collect();
+    let errors: Vec<String> = UnfinishedCostlyItemsValidator::iter_errors(&instance)
+        .map(|error| error.to_string())
+        .collect();
+    assert_eq!(
+        errors,
+        vec!["Error executing regex: Max limit for backtracking count exceeded".to_owned()]
+    );
+}
+
 #[jsonschema::validator(
     schema = r#"{"properties":{"o":{"patternProperties":{"(?<=ab)c":{"type":"integer"}}}}}"#,
     pattern_options = {
