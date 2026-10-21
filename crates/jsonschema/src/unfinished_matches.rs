@@ -4,6 +4,8 @@
 //! each combination of outcomes, and only what every combination agrees on is reported.
 use std::borrow::Cow;
 
+use ahash::{AHashMap, AHashSet};
+
 use crate::{
     paths::{LazyEvaluationPath, LazyLocation, Location, RefTracker},
     regex::{RegexError, RegexFailureReason},
@@ -148,14 +150,24 @@ pub(crate) struct MatchAssumptions {
     /// The match the error reports, and where this run met it with its instance location.
     reported: Option<UnfinishedMatch>,
     reported_site: Option<MatchSite>,
+    /// Patterns the engine could not finish, by subject, kept across runs so later runs skip it.
+    known_unfinished: AHashMap<Box<str>, Vec<Box<str>>>,
 }
 
 struct Unassumed {
     unfinished: UnfinishedMatch,
-    failure: MatchFailure,
+    /// `None` when met without the engine, in a later run whose failure goes unreported.
+    failure: Option<MatchFailure>,
 }
 
 impl MatchAssumptions {
+    /// Whether a run could not finish matching `pattern` against `subject`.
+    pub(crate) fn is_unfinished(&self, pattern: &str, subject: &str) -> bool {
+        self.known_unfinished
+            .get(subject)
+            .is_some_and(|patterns| patterns.iter().any(|known| &**known == pattern))
+    }
+
     /// The outcome this run assumes for a match the engine could not finish, or `false` while
     /// recording it for the next run to assume.
     #[cold]
@@ -165,9 +177,36 @@ impl MatchAssumptions {
         error: impl RegexError,
         site: impl FnOnce() -> MatchSite,
     ) -> bool {
+        let pattern: Box<str> = error.pattern().into();
+        if !self.is_unfinished(&pattern, subject) {
+            self.known_unfinished
+                .entry(subject.into())
+                .or_default()
+                .push(pattern.clone());
+        }
+        self.outcome(&pattern, subject, Some(error.into_failure_reason()), site)
+    }
+
+    /// [`Self::resolve`] for a match an earlier run could not finish, without the engine.
+    #[cold]
+    pub(crate) fn resolve_unfinished(
+        &mut self,
+        pattern: &str,
+        subject: &str,
+        site: impl FnOnce() -> MatchSite,
+    ) -> bool {
+        self.outcome(pattern, subject, None, site)
+    }
+
+    fn outcome(
+        &mut self,
+        pattern: &str,
+        subject: &str,
+        reason: Option<RegexFailureReason>,
+        site: impl FnOnce() -> MatchSite,
+    ) -> bool {
         if let Some(assumed) = self.assumed.iter().find(|assumed| {
-            &*assumed.unfinished.pattern == error.pattern()
-                && &*assumed.unfinished.subject == subject
+            &*assumed.unfinished.pattern == pattern && &*assumed.unfinished.subject == subject
         }) {
             if self.reported_site.is_none() && self.reported.as_ref() == Some(&assumed.unfinished) {
                 let site = site();
@@ -181,23 +220,25 @@ impl MatchAssumptions {
             None => {
                 self.unassumed = Some(Unassumed {
                     unfinished: UnfinishedMatch {
-                        pattern: error.pattern().into(),
+                        pattern: pattern.into(),
                         subject: subject.into(),
                     },
-                    failure: MatchFailure {
-                        compiled: error.pattern().into(),
-                        reason: error.into_failure_reason(),
+                    failure: reason.map(|reason| MatchFailure {
+                        compiled: pattern.into(),
+                        reason,
                         site: site(),
-                    },
+                    }),
                 });
             }
             // `is_valid` may meet the match before `validate` meets it again with its instance.
-            Some(unassumed)
-                if unassumed.failure.site.instance_path.is_none()
-                    && &*unassumed.unfinished.pattern == error.pattern()
-                    && &*unassumed.unfinished.subject == subject =>
+            Some(Unassumed {
+                unfinished,
+                failure: Some(failure),
+            }) if failure.site.instance_path.is_none()
+                && &*unfinished.pattern == pattern
+                && &*unfinished.subject == subject =>
             {
-                unassumed.failure.site.prefer_located(site());
+                failure.site.prefer_located(site());
             }
             Some(_) => {}
         }
@@ -225,12 +266,17 @@ pub(crate) fn assume_each_outcome<T>(
     mut run: impl FnMut(&mut Option<Box<MatchAssumptions>>) -> T,
     first: MatchAssumptions,
 ) -> Outcomes<T> {
+    let MatchAssumptions {
+        unassumed,
+        mut known_unfinished,
+        ..
+    } = first;
     let Unassumed {
         unfinished,
-        mut failure,
-    } = first
-        .unassumed
-        .expect("assumptions exist once a run meets an unfinished match");
+        failure,
+    } = unassumed.expect("assumptions exist once a run meets an unfinished match");
+    let mut failure =
+        failure.expect("the first run meets its first unfinished match in the engine");
     let mut pending = Vec::new();
     push_both_outcomes(&mut pending, &[], &unfinished);
     let mut results = Vec::new();
@@ -245,10 +291,12 @@ pub(crate) fn assume_each_outcome<T>(
         let mut slot = Some(Box::new(MatchAssumptions {
             assumed,
             reported: Some(unfinished.clone()),
+            known_unfinished: std::mem::take(&mut known_unfinished),
             ..MatchAssumptions::default()
         }));
         let result = run(&mut slot);
         let mut matches = slot.expect("a run keeps its assumptions");
+        known_unfinished = std::mem::take(&mut matches.known_unfinished);
         if let Some(site) = matches.reported_site.take() {
             failure.site.prefer_located(site);
         }
@@ -302,19 +350,27 @@ fn shared_errors(mut results: Vec<Vec<ValidationError<'_>>>) -> Option<Vec<Valid
     if shared.is_empty() {
         return results.iter().all(Vec::is_empty).then_some(shared);
     }
+    let others: Vec<AHashSet<ErrorKey>> = results
+        .iter()
+        .map(|errors| errors.iter().map(error_key).collect())
+        .collect();
     shared.retain(|error| {
-        results
-            .iter()
-            .all(|errors| errors.iter().any(|other| same_error(error, other)))
+        let key = error_key(error);
+        others.iter().all(|errors| errors.contains(&key))
     });
     (!shared.is_empty()).then_some(shared)
 }
 
-fn same_error(left: &ValidationError<'_>, right: &ValidationError<'_>) -> bool {
-    left.instance_path() == right.instance_path()
-        && left.schema_path() == right.schema_path()
-        && left.evaluation_path() == right.evaluation_path()
-        && left.to_string() == right.to_string()
+/// What makes two runs' errors the same error.
+type ErrorKey = (Location, Location, Location, String);
+
+fn error_key(error: &ValidationError<'_>) -> ErrorKey {
+    (
+        error.instance_path().clone(),
+        error.schema_path().clone(),
+        error.evaluation_path().clone(),
+        error.to_string(),
+    )
 }
 
 #[cfg(test)]
@@ -587,5 +643,41 @@ mod tests {
                 UNDECIDED.to_owned(),
             )
         );
+    }
+
+    // 30 `a`s and a `!` need more than 5,000 backtracking steps for `^(a|a)*\1b`.
+    fn costly(index: usize) -> Value {
+        Value::String(format!("{}!", "a".repeat(30 + index)))
+    }
+
+    fn costly_items_validator() -> crate::Validator {
+        crate::options()
+            .with_pattern_options(PatternOptions::fancy_regex().backtrack_limit(5_000))
+            .build(&json!({"items": {"pattern": "^(a|a)*\\1b"}}))
+            .expect("schema compiles")
+    }
+
+    // Comparing every error of one run with every error of another takes minutes at this size.
+    #[test]
+    fn errors_beside_an_unfinished_match_are_matched_across_runs_in_linear_time() {
+        const FAILING: usize = 100_000;
+        let instance: Value = std::iter::once(costly(0))
+            .chain((0..FAILING).map(|index| json!(format!("x{index}"))))
+            .collect();
+        assert_eq!(
+            costly_items_validator().iter_errors(&instance).count(),
+            FAILING
+        );
+    }
+
+    // Matching each costly string again in every run hits the backtrack limit once per run.
+    #[test]
+    fn unfinished_matches_are_not_matched_again_in_later_runs() {
+        let instance: Value = (0..300).map(costly).collect();
+        let errors: Vec<String> = costly_items_validator()
+            .iter_errors(&instance)
+            .map(|error| error.to_string())
+            .collect();
+        assert_eq!(errors, vec![UNDECIDED.to_owned()]);
     }
 }

@@ -8,6 +8,7 @@
 
 ### Performance
 
+- Validation with unfinished regex matches running each such match once instead of once per run, and comparing errors across runs in linear time instead of quadratic. [#1784](https://github.com/Stranger6667/jsonschema/issues/1784)
 - `items` and `additionalProperties` looking up a single-keyword subschema once per array or object instead of once per value.
 - `is_valid` and `validate` reading fewer cache lines per subschema, by keeping error locations apart from validators.
 - `is_valid` on recursive schemas caching only `$ref` results that took many steps to compute, instead of every one.

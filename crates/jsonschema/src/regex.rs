@@ -1,6 +1,10 @@
 pub(crate) trait RegexEngine: Sized + Send + Sync {
     type Error: RegexError;
     fn is_match(&self, text: &str) -> Result<bool, Self::Error>;
+    /// The compiled pattern its errors name, for engines that can fail.
+    fn pattern(&self) -> Option<&str> {
+        None
+    }
 }
 
 /// Reason a regex match failed, distinguishing real engine errors from recovered panics.
@@ -48,6 +52,10 @@ impl RegexError for FancyRegexError {
 impl RegexEngine for fancy_regex::Regex {
     type Error = FancyRegexError;
 
+    fn pattern(&self) -> Option<&str> {
+        Some(self.as_str())
+    }
+
     fn is_match(&self, text: &str) -> Result<bool, Self::Error> {
         // `regex-automata` 0.4 panics on some patterns (https://github.com/rust-lang/regex/issues/1344); catch to surface a regular error instead of aborting the host process.
         match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -83,6 +91,10 @@ impl RegexError for RegexBackendPanic {
 
 impl RegexEngine for regex::Regex {
     type Error = RegexBackendPanic;
+
+    fn pattern(&self) -> Option<&str> {
+        Some(self.as_str())
+    }
 
     fn is_match(&self, text: &str) -> Result<bool, Self::Error> {
         // Same panic as fancy-regex (https://github.com/rust-lang/regex/issues/1344); see that impl for context.
