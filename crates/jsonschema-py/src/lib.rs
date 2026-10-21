@@ -229,28 +229,24 @@ impl PyEvaluation {
     }
 
     /// Return the flag output representation as a Python object.
-    #[pyo3(text_signature = "()")]
     fn flag(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let flag = self.inner.flag();
         evaluation_output_to_python(py, &flag)
     }
 
     /// Return the list output representation as a Python object.
-    #[pyo3(text_signature = "()")]
     fn list(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let list_output = self.inner.list();
         evaluation_output_to_python(py, &list_output)
     }
 
     /// Return the hierarchical output representation as a Python object.
-    #[pyo3(text_signature = "()")]
     fn hierarchical(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let hierarchical_output = self.inner.hierarchical();
         evaluation_output_to_python(py, &hierarchical_output)
     }
 
     /// Return collected annotations for all evaluated nodes.
-    #[pyo3(text_signature = "()")]
     fn annotations(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let entries = PyList::empty(py);
         for entry in self.inner.iter_annotations() {
@@ -260,7 +256,6 @@ impl PyEvaluation {
     }
 
     /// Return collected errors for all evaluated nodes.
-    #[pyo3(text_signature = "()")]
     fn errors(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let entries = PyList::empty(py);
         for entry in self.inner.iter_errors() {
@@ -322,7 +317,7 @@ pub(crate) fn referencing_error_pyerr(py: Python<'_>, message: String) -> PyResu
 }
 
 /// Type of validation failure with its contextual data.
-#[pyclass]
+#[pyclass(module = "jsonschema_rs")]
 #[derive(Debug)]
 enum ValidationErrorKind {
     AdditionalItems { limit: usize },
@@ -1987,7 +1982,6 @@ impl Validator {
     ///     False
     ///
     /// The output is a boolean value, that indicates whether the instance is valid or not.
-    #[pyo3(text_signature = "(instance)")]
     fn is_valid(&self, instance: &Bound<'_, PyAny>) -> PyResult<bool> {
         surface_pending_errors(instance, self.holding, || {
             panic::catch_unwind(AssertUnwindSafe(|| {
@@ -2006,7 +2000,6 @@ impl Validator {
     ///     ValidationError: 3 is less than the minimum of 5
     ///
     /// If the input instance is invalid, only the first occurred error is raised.
-    #[pyo3(text_signature = "(instance)")]
     fn validate(&self, py: Python<'_>, instance: &Bound<'_, PyAny>) -> PyResult<()> {
         raise_on_error(
             py,
@@ -2024,7 +2017,6 @@ impl Validator {
     ///     >>> next(validator.iter_errors(3))
     ///     ...
     ///     ValidationError: 3 is less than the minimum of 5
-    #[pyo3(text_signature = "(instance)")]
     fn iter_errors(
         &self,
         py: Python<'_>,
@@ -2077,7 +2069,6 @@ impl Validator {
     ///         ]
     ///     }
     /// ```
-    #[pyo3(text_signature = "(instance)")]
     fn evaluate(&self, instance: &Bound<'_, PyAny>) -> PyResult<PyEvaluation> {
         surface_pending_errors(instance, self.holding, || {
             let _scope = KeywordCauseScope::enter();

@@ -514,8 +514,13 @@ jobs:
       - run: uvx ruff check python tests-py
         working-directory: crates/jsonschema-py
 
-      - run: uvx mypy python
+      - run: uvx mypy --strict python
         working-directory: crates/jsonschema-py
+
+      - run: uvx mypy --strict tests-py/typing_checks.py
+        working-directory: crates/jsonschema-py
+        env:
+          MYPYPATH: python
 
   test-python:
     strategy:

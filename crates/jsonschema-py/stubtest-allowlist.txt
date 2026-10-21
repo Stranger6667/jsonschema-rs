@@ -1,0 +1,11 @@
+# Native extension module; its public surface is re-exported and stubbed in `jsonschema_rs`.
+jsonschema_rs.jsonschema_rs
+# Typing-only helpers that exist only in the stubs.
+jsonschema_rs.(JSONType|JsonValue|JSONPrimitive|PatternOptionsType|RetrieverProtocol|KeywordValidator)
+jsonschema_rs.(EvaluationAnnotation|EvaluationErrorEntry|FlagOutput|OutputUnit|ListOutput)
+# Error kinds and unsatisfiable reasons are produced by the library, never constructed by callers.
+jsonschema_rs.ValidationErrorKind.\w+.__new__
+jsonschema_rs.canonical.UnsatisfiableReason.\w+.__new__
+# Disjoint bases at runtime; marking them needs `@disjoint_base`, which older type checkers lack.
+jsonschema_rs.ValidationErrorKind
+jsonschema_rs.canonical.UnsatisfiableReason

@@ -9,6 +9,14 @@
 ### Changed
 
 - Update `pyo3` to `0.30`.
+- `canonicalize` and `canonical.find_unsatisfiable` take `schema` positionally only, like `bundle` and `dereference`.
+
+### Fixed
+
+- Type stubs rejecting valid usage: `dict | bool` schemas, `ReferencingError` in `except`, `match` on error kinds.
+- `import jsonschema_rs.canonical.json` and `import jsonschema_rs.canonical.schema` raising `ModuleNotFoundError`.
+- `inspect.signature` of validator and `Evaluation` methods missing `self`.
+- `ValidationErrorKind` reporting `builtins` as its module.
 
 ### Performance
 

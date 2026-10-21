@@ -1,6 +1,10 @@
-from .. import JSONType
+from typing import TypeVar
 
-def clone(object: JSONType) -> JSONType:
+__all__ = ["clone"]
+
+_T = TypeVar("_T")
+
+def clone(object: _T) -> _T:
     """Deep-clone a JSON-compatible Python object.
 
     Only ``dict`` and ``list`` are copied. All other values (str, int, float,
