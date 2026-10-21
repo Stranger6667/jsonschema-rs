@@ -295,24 +295,6 @@ impl<'a> RefTracker<'a> {
     /// Computed once on first access, then cached.
     #[inline]
     pub(crate) fn prefix(&self) -> &Location {
-        if let Some(prefix) = self.cached_prefix.get() {
-            return prefix;
-        }
-        // Fill uncached ancestors root-first, so a long `$ref` chain joins in a loop, not a recursion.
-        let mut uncached = Vec::new();
-        let mut ancestor = self.parent;
-        while let Some(tracker) = ancestor {
-            if tracker.cached_prefix.get().is_some() {
-                break;
-            }
-            uncached.push(tracker);
-            ancestor = tracker.parent;
-        }
-        for tracker in uncached.into_iter().rev() {
-            tracker
-                .cached_prefix
-                .get_or_init(|| tracker.compute_prefix());
-        }
         self.cached_prefix.get_or_init(|| self.compute_prefix())
     }
 
@@ -369,11 +351,30 @@ impl<'a> RefTracker<'a> {
         self.cached_prefix_identifier.set(identifier);
     }
 
+    // Joins the suffixes up to the nearest cached ancestor without caching the ones in between:
+    // a prefix per level would hold memory quadratic in the `$ref` chain depth.
     fn compute_prefix(&self) -> Location {
-        match self.parent {
-            None => self.suffix.clone(),
-            Some(parent) => parent.prefix().join_raw_suffix(self.suffix.as_str()),
+        let Some(parent) = self.parent else {
+            return self.suffix.clone();
+        };
+        let mut suffixes = vec![self.suffix.as_str()];
+        let mut base = "";
+        let mut ancestor = Some(parent);
+        while let Some(tracker) = ancestor {
+            if let Some(prefix) = tracker.cached_prefix.get() {
+                base = prefix.as_str();
+                break;
+            }
+            suffixes.push(tracker.suffix.as_str());
+            ancestor = tracker.parent;
         }
+        let capacity = base.len() + suffixes.iter().map(|suffix| suffix.len()).sum::<usize>();
+        build_location(capacity, |buffer| {
+            buffer.push_str(base);
+            for suffix in suffixes.iter().rev() {
+                buffer.push_str(suffix);
+            }
+        })
     }
 
     /// Capture evaluation path state at error creation time.
