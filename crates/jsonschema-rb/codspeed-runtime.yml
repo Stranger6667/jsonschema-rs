@@ -1,25 +1,25 @@
 benchmarks:
   - name: "ruby-openapi"
-    exec: bundle exec ruby bench/codspeed_bench.rb openapi
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb openapi valid 20
   - name: "ruby-swagger"
-    exec: bundle exec ruby bench/codspeed_bench.rb swagger
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb swagger valid 10
   - name: "ruby-geojson"
-    exec: bundle exec ruby bench/codspeed_bench.rb geojson
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb geojson valid 80
   - name: "ruby-citm"
-    exec: bundle exec ruby bench/codspeed_bench.rb citm
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb citm valid 20
   - name: "ruby-fhir"
-    exec: bundle exec ruby bench/codspeed_bench.rb fhir
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb fhir valid 50000
   - name: "ruby-recursive"
-    exec: bundle exec ruby bench/codspeed_bench.rb recursive
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb recursive valid 700
   - name: "ruby-validate-openapi"
-    exec: bundle exec ruby bench/codspeed_bench.rb openapi validate
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb openapi validate 20
   - name: "ruby-validate-swagger"
-    exec: bundle exec ruby bench/codspeed_bench.rb swagger validate
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb swagger validate 10
   - name: "ruby-validate-geojson"
-    exec: bundle exec ruby bench/codspeed_bench.rb geojson validate
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb geojson validate 80
   - name: "ruby-validate-citm"
-    exec: bundle exec ruby bench/codspeed_bench.rb citm validate
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb citm validate 20
   - name: "ruby-validate-fhir"
-    exec: bundle exec ruby bench/codspeed_bench.rb fhir validate
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb fhir validate 50000
   - name: "ruby-validate-recursive"
-    exec: bundle exec ruby bench/codspeed_bench.rb recursive validate
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb recursive validate 700
