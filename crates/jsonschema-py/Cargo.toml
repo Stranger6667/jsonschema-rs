@@ -18,7 +18,7 @@ crate-type = ["cdylib"]
 [dependencies]
 ahash.workspace = true
 jsonschema = { path = "../jsonschema/", features = ["arbitrary-precision", "macros", "pyo3"] }
-pyo3 = { version = "0.29", features = ["extension-module", "abi3-py310"] }
+pyo3 = { version = "0.30", features = ["extension-module", "abi3-py310"] }
 pyo3-built = "0.6"
 serde.workspace = true
 serde_json.workspace = true
@@ -26,7 +26,7 @@ zmij = "1.0.23"
 
 [build-dependencies]
 built = { version = "=0.8.1", features = ["cargo-lock", "chrono"] }
-pyo3-build-config = { version = "0.29", features = ["resolve-config"] }
+pyo3-build-config = { version = "0.30", features = ["resolve-config"] }
 
 [lints]
 workspace = true

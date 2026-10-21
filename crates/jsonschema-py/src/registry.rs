@@ -14,7 +14,7 @@ pub(crate) struct Registry {
     retriever: Option<Py<PyAny>>,
 }
 
-#[pyclass(module = "jsonschema_rs", skip_from_py_object)]
+#[pyclass(module = "jsonschema_rs")]
 #[derive(Clone)]
 pub(crate) struct Resolver {
     registry: Arc<jsonschema::Registry<'static>>,
@@ -22,7 +22,7 @@ pub(crate) struct Resolver {
     dynamic_scope: Vec<jsonschema::Uri<String>>,
 }
 
-#[pyclass(module = "jsonschema_rs", skip_from_py_object)]
+#[pyclass(module = "jsonschema_rs")]
 pub(crate) struct Resolved {
     contents: Py<PyAny>,
     resolver: Resolver,
