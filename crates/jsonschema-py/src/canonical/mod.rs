@@ -26,7 +26,6 @@ macro_rules! label_enum {
             eq,
             hash,
             frozen,
-            skip_from_py_object,
             module = "jsonschema_rs.canonical",
             name = $name
         )]
@@ -1014,12 +1013,7 @@ impl From<Cause> for PyCause {
 }
 
 /// Why a subschema admits no value.
-#[pyclass(
-    eq,
-    skip_from_py_object,
-    name = "UnsatisfiableReason",
-    module = "jsonschema_rs.canonical"
-)]
+#[pyclass(eq, name = "UnsatisfiableReason", module = "jsonschema_rs.canonical")]
 #[derive(Clone, PartialEq)]
 pub(crate) enum PyUnsatisfiableReason {
     /// Written as `false`.

@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Added
+
+- Support for Python 3.15.
+
+### Changed
+
+- Update `pyo3` to `0.30`.
+
 ### Performance
 
 - `items` and `additionalProperties` looking up a single-keyword subschema once per array or object instead of once per value.

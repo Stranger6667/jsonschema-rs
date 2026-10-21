@@ -523,14 +523,14 @@ jobs:
       matrix:
         include:
           - os: ubuntu-24.04
-            python-versions: '["3.10", "3.11", "3.12", "3.13", "3.14"]'
+            python-versions: '["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]'
           - os: macos-15
-            python-versions: '["3.10", "3.11", "3.12", "3.13", "3.14"]'
+            python-versions: '["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]'
           - os: windows-2025
-            python-versions: '["3.10", "3.11", "3.12", "3.13", "3.14"]'
+            python-versions: '["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]'
           # CPython does not have a Windows ARM64 release before 3.11.
           - os: windows-11-arm
-            python-versions: '["3.11", "3.12", "3.13", "3.14"]'
+            python-versions: '["3.11", "3.12", "3.13", "3.14", "3.15"]'
 
     name: Test Python on ${{ matrix.os }}
     uses: ./.github/workflows/python-tests.yml
