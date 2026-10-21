@@ -17,6 +17,7 @@
 - `import jsonschema_rs.canonical.json` and `import jsonschema_rs.canonical.schema` raising `ModuleNotFoundError`.
 - `inspect.signature` of validator and `Evaluation` methods missing `self`.
 - `ValidationErrorKind` reporting `builtins` as its module.
+- `validator_for` returning instances that fail `isinstance` checks against `Validator` and draft classes.
 
 ### Performance
 

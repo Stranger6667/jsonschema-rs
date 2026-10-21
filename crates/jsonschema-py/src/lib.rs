@@ -1614,6 +1614,21 @@ struct ValidatorMap {
     holding: bool,
 }
 
+impl ValidatorMap {
+    fn entry<'py>(
+        &self,
+        py: Python<'py>,
+        validator: &jsonschema::Validator<Pyo3>,
+    ) -> PyResult<Bound<'py, Validator>> {
+        Validator {
+            validator: validator.clone(),
+            mask: self.mask.clone(),
+            holding: self.holding,
+        }
+        .into_draft_instance(py)
+    }
+}
+
 #[pymethods]
 impl ValidatorMap {
     /// get(pointer)
@@ -1623,21 +1638,16 @@ impl ValidatorMap {
     ///     >>> m = validator_map_for({"$defs": {"T": {"type": "string"}}})
     ///     >>> v = m.get("#/$defs/T")
     ///
-    fn get(&self, pointer: &str) -> Option<Validator> {
-        self.inner.get(pointer).map(|v| Validator {
-            validator: v.clone(),
-            mask: self.mask.clone(),
-            holding: self.holding,
-        })
+    fn get<'py>(&self, py: Python<'py>, pointer: &str) -> PyResult<Option<Bound<'py, Validator>>> {
+        self.inner
+            .get(pointer)
+            .map(|v| self.entry(py, v))
+            .transpose()
     }
 
-    fn __getitem__(&self, pointer: &str) -> PyResult<Validator> {
+    fn __getitem__<'py>(&self, py: Python<'py>, pointer: &str) -> PyResult<Bound<'py, Validator>> {
         match self.inner.get(pointer) {
-            Some(v) => Ok(Validator {
-                validator: v.clone(),
-                mask: self.mask.clone(),
-                holding: self.holding,
-            }),
+            Some(v) => self.entry(py, v),
             None => Err(PyKeyError::new_err(pointer.to_owned())),
         }
     }
@@ -1668,8 +1678,8 @@ impl ValidatorMap {
 ///
 #[pyfunction]
 #[pyo3(signature = (schema, formats=None, validate_formats=None, ignore_unknown_formats=true, retriever=None, registry=None, mask=None, base_uri=None, pattern_options=None, email_options=None, http_options=None, keywords=None, vocabularies=None, offline=None))]
-fn validator_for(
-    py: Python<'_>,
+fn validator_for<'py>(
+    py: Python<'py>,
     schema: &Bound<'_, PyAny>,
     formats: Option<&Bound<'_, PyDict>>,
     validate_formats: Option<bool>,
@@ -1684,7 +1694,7 @@ fn validator_for(
     keywords: Option<&Bound<'_, PyDict>>,
     vocabularies: Option<Vec<String>>,
     offline: Option<bool>,
-) -> PyResult<Validator> {
+) -> PyResult<Bound<'py, Validator>> {
     validator_for_impl(
         py,
         schema,
@@ -1702,7 +1712,8 @@ fn validator_for(
         keywords,
         vocabularies,
         offline,
-    )
+    )?
+    .into_draft_instance(py)
 }
 
 /// validator_map_for(schema, formats=None, validate_formats=None, ignore_unknown_formats=True, retriever=None, registry=None, mask=None, base_uri=None, pattern_options=None, email_options=None, http_options=None, keywords=None, vocabularies=None, offline=None)
@@ -1934,12 +1945,37 @@ fn validator_for_impl(
     }
 }
 
+impl Validator {
+    /// Wrap the validator in the Python class of its draft, so `isinstance` checks against draft classes hold.
+    fn into_draft_instance(self, py: Python<'_>) -> PyResult<Bound<'_, Validator>> {
+        let draft = self.validator.draft();
+        let initializer = PyClassInitializer::from(self);
+        Ok(match draft {
+            Draft::Draft4 => {
+                Bound::new(py, initializer.add_subclass(Draft4Validator))?.into_super()
+            }
+            Draft::Draft6 => {
+                Bound::new(py, initializer.add_subclass(Draft6Validator))?.into_super()
+            }
+            Draft::Draft7 => {
+                Bound::new(py, initializer.add_subclass(Draft7Validator))?.into_super()
+            }
+            Draft::Draft201909 => {
+                Bound::new(py, initializer.add_subclass(Draft201909Validator))?.into_super()
+            }
+            Draft::Draft202012 | _ => {
+                Bound::new(py, initializer.add_subclass(Draft202012Validator))?.into_super()
+            }
+        })
+    }
+}
+
 #[pymethods]
 impl Validator {
     #[new]
     #[pyo3(signature = (schema, formats=None, validate_formats=None, ignore_unknown_formats=true, retriever=None, registry = None, mask=None, base_uri=None, pattern_options=None, email_options=None, http_options=None, keywords=None, vocabularies=None, offline=None))]
-    fn new(
-        py: Python<'_>,
+    fn new<'py>(
+        py: Python<'py>,
         schema: &Bound<'_, PyAny>,
         formats: Option<&Bound<'_, PyDict>>,
         validate_formats: Option<bool>,
@@ -1954,7 +1990,7 @@ impl Validator {
         keywords: Option<&Bound<'_, PyDict>>,
         vocabularies: Option<Vec<String>>,
         offline: Option<bool>,
-    ) -> PyResult<Self> {
+    ) -> PyResult<Bound<'py, Self>> {
         validator_for(
             py,
             schema,
@@ -2542,6 +2578,7 @@ fn jsonschema_rs(py: Python<'_>, module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_wrapped(wrap_pyfunction!(bundle))?;
     module.add_wrapped(wrap_pyfunction!(dereference))?;
     module.add_wrapped(wrap_pyfunction!(validator_cls_for))?;
+    module.add_class::<Validator>()?;
     module.add_class::<Draft4Validator>()?;
     module.add_class::<Draft6Validator>()?;
     module.add_class::<Draft7Validator>()?;
