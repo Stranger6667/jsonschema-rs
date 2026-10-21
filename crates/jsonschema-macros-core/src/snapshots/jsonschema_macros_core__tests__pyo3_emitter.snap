@@ -139,15 +139,19 @@ mod __validator_impl {
                                             _ => false,
                                         }
                                     }) {
-                                        static CONST_EXPECTED: __Lazy<__sj::Value> = __Lazy::new(|| {
-                                            __sj::from_str("1").expect("Failed to parse const value")
+                                        static CONST_EXPECTED: __Lazy<
+                                            ::std::sync::Arc<__sj::Value>,
+                                        > = __Lazy::new(|| {
+                                            ::std::sync::Arc::new(
+                                                __sj::from_str("1").expect("Failed to parse const value"),
+                                            )
                                         });
                                         return Some(
                                             __err::constant(
                                                 "/properties/code/oneOf/0/properties/code/const",
                                                 __path.into(),
                                                 __NodeExt::lazy_value(&instance),
-                                                CONST_EXPECTED.clone(),
+                                                &*CONST_EXPECTED,
                                             ),
                                         );
                                     }
@@ -254,15 +258,19 @@ mod __validator_impl {
                                             _ => false,
                                         }
                                     }) {
-                                        static CONST_EXPECTED: __Lazy<__sj::Value> = __Lazy::new(|| {
-                                            __sj::from_str("2").expect("Failed to parse const value")
+                                        static CONST_EXPECTED: __Lazy<
+                                            ::std::sync::Arc<__sj::Value>,
+                                        > = __Lazy::new(|| {
+                                            ::std::sync::Arc::new(
+                                                __sj::from_str("2").expect("Failed to parse const value"),
+                                            )
                                         });
                                         return Some(
                                             __err::constant(
                                                 "/properties/code/oneOf/1/properties/code/const",
                                                 __path.into(),
                                                 __NodeExt::lazy_value(&instance),
-                                                CONST_EXPECTED.clone(),
+                                                &*CONST_EXPECTED,
                                             ),
                                         );
                                     }
@@ -335,15 +343,19 @@ mod __validator_impl {
                             .extend(
                                 (|| -> Option<__VE<'_>> {
                                     if !(__NodeExt::as_boolean(&instance) == Some(true)) {
-                                        static CONST_EXPECTED: __Lazy<__sj::Value> = __Lazy::new(|| {
-                                            __sj::from_str("true").expect("Failed to parse const value")
+                                        static CONST_EXPECTED: __Lazy<
+                                            ::std::sync::Arc<__sj::Value>,
+                                        > = __Lazy::new(|| {
+                                            ::std::sync::Arc::new(
+                                                __sj::from_str("true").expect("Failed to parse const value"),
+                                            )
                                         });
                                         return Some(
                                             __err::constant(
                                                 "/properties/flag/oneOf/0/properties/on/const",
                                                 __path.into(),
                                                 __NodeExt::lazy_value(&instance),
-                                                CONST_EXPECTED.clone(),
+                                                &*CONST_EXPECTED,
                                             ),
                                         );
                                     }
@@ -416,16 +428,20 @@ mod __validator_impl {
                             .extend(
                                 (|| -> Option<__VE<'_>> {
                                     if !(__NodeExt::as_boolean(&instance) == Some(false)) {
-                                        static CONST_EXPECTED: __Lazy<__sj::Value> = __Lazy::new(|| {
-                                            __sj::from_str("false")
-                                                .expect("Failed to parse const value")
+                                        static CONST_EXPECTED: __Lazy<
+                                            ::std::sync::Arc<__sj::Value>,
+                                        > = __Lazy::new(|| {
+                                            ::std::sync::Arc::new(
+                                                __sj::from_str("false")
+                                                    .expect("Failed to parse const value"),
+                                            )
                                         });
                                         return Some(
                                             __err::constant(
                                                 "/properties/flag/oneOf/1/properties/on/const",
                                                 __path.into(),
                                                 __NodeExt::lazy_value(&instance),
-                                                CONST_EXPECTED.clone(),
+                                                &*CONST_EXPECTED,
                                             ),
                                         );
                                     }
@@ -505,16 +521,20 @@ mod __validator_impl {
                                     if !(__NodeExt::as_string(&instance).as_deref()
                                         == Some("circle"))
                                     {
-                                        static CONST_EXPECTED: __Lazy<__sj::Value> = __Lazy::new(|| {
-                                            __sj::from_str("\"circle\"")
-                                                .expect("Failed to parse const value")
+                                        static CONST_EXPECTED: __Lazy<
+                                            ::std::sync::Arc<__sj::Value>,
+                                        > = __Lazy::new(|| {
+                                            ::std::sync::Arc::new(
+                                                __sj::from_str("\"circle\"")
+                                                    .expect("Failed to parse const value"),
+                                            )
                                         });
                                         return Some(
                                             __err::constant(
                                                 "/properties/shape/oneOf/0/properties/kind/const",
                                                 __path.into(),
                                                 __NodeExt::lazy_value(&instance),
-                                                CONST_EXPECTED.clone(),
+                                                &*CONST_EXPECTED,
                                             ),
                                         );
                                     }
@@ -614,16 +634,20 @@ mod __validator_impl {
                                     if !(__NodeExt::as_string(&instance).as_deref()
                                         == Some("square"))
                                     {
-                                        static CONST_EXPECTED: __Lazy<__sj::Value> = __Lazy::new(|| {
-                                            __sj::from_str("\"square\"")
-                                                .expect("Failed to parse const value")
+                                        static CONST_EXPECTED: __Lazy<
+                                            ::std::sync::Arc<__sj::Value>,
+                                        > = __Lazy::new(|| {
+                                            ::std::sync::Arc::new(
+                                                __sj::from_str("\"square\"")
+                                                    .expect("Failed to parse const value"),
+                                            )
                                         });
                                         return Some(
                                             __err::constant(
                                                 "/properties/shape/oneOf/1/properties/kind/const",
                                                 __path.into(),
                                                 __NodeExt::lazy_value(&instance),
-                                                CONST_EXPECTED.clone(),
+                                                &*CONST_EXPECTED,
                                             ),
                                         );
                                     }
@@ -1114,9 +1138,13 @@ mod __validator_impl {
                                 }
                                 _ => false,
                             }) {
-                                static ENUM_OPTIONS: __Lazy<__sj::Value> = __Lazy::new(|| {
-                                    __sj::from_str("[1,\"a\",true,null,{\"o\":[1]}]")
-                                        .expect("Failed to parse enum options")
+                                static ENUM_OPTIONS: __Lazy<
+                                    ::std::sync::Arc<__sj::Value>,
+                                > = __Lazy::new(|| {
+                                    ::std::sync::Arc::new(
+                                        __sj::from_str("[1,\"a\",true,null,{\"o\":[1]}]")
+                                            .expect("Failed to parse enum options"),
+                                    )
                                 });
                                 return Some(
                                     __err::enumeration(
@@ -1690,16 +1718,20 @@ mod __validator_impl {
                                 });
                                 __NodeExt::equals_value(&instance, &*EXPECTED)
                             }) {
-                                static CONST_EXPECTED: __Lazy<__sj::Value> = __Lazy::new(|| {
-                                    __sj::from_str("{\"o\":true}")
-                                        .expect("Failed to parse const value")
+                                static CONST_EXPECTED: __Lazy<
+                                    ::std::sync::Arc<__sj::Value>,
+                                > = __Lazy::new(|| {
+                                    ::std::sync::Arc::new(
+                                        __sj::from_str("{\"o\":true}")
+                                            .expect("Failed to parse const value"),
+                                    )
                                 });
                                 return Some(
                                     __err::constant(
                                         "/properties/structured/const",
                                         __path.into(),
                                         __NodeExt::lazy_value(&instance),
-                                        CONST_EXPECTED.clone(),
+                                        &*CONST_EXPECTED,
                                     ),
                                 );
                             }
@@ -1884,9 +1916,13 @@ mod __validator_impl {
                                         }
                                         _ => false,
                                     }) {
-                                        static ENUM_OPTIONS: __Lazy<__sj::Value> = __Lazy::new(|| {
-                                            __sj::from_str("[1,\"a\",true,null,{\"o\":[1]}]")
-                                                .expect("Failed to parse enum options")
+                                        static ENUM_OPTIONS: __Lazy<
+                                            ::std::sync::Arc<__sj::Value>,
+                                        > = __Lazy::new(|| {
+                                            ::std::sync::Arc::new(
+                                                __sj::from_str("[1,\"a\",true,null,{\"o\":[1]}]")
+                                                    .expect("Failed to parse enum options"),
+                                            )
                                         });
                                         return Some(
                                             __err::enumeration(
@@ -2816,16 +2852,20 @@ mod __validator_impl {
                                         });
                                         __NodeExt::equals_value(&instance, &*EXPECTED)
                                     }) {
-                                        static CONST_EXPECTED: __Lazy<__sj::Value> = __Lazy::new(|| {
-                                            __sj::from_str("{\"o\":true}")
-                                                .expect("Failed to parse const value")
+                                        static CONST_EXPECTED: __Lazy<
+                                            ::std::sync::Arc<__sj::Value>,
+                                        > = __Lazy::new(|| {
+                                            ::std::sync::Arc::new(
+                                                __sj::from_str("{\"o\":true}")
+                                                    .expect("Failed to parse const value"),
+                                            )
                                         });
                                         return Some(
                                             __err::constant(
                                                 "/properties/structured/const",
                                                 __path.into(),
                                                 __NodeExt::lazy_value(&instance),
-                                                CONST_EXPECTED.clone(),
+                                                &*CONST_EXPECTED,
                                             ),
                                         );
                                     }

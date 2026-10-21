@@ -4351,12 +4351,12 @@ pub mod __private {
             schema_path: &str,
             instance_path: Location,
             instance: impl Into<LazyInstance<'i>>,
-            expected: Value,
+            expected: &std::sync::Arc<Value>,
         ) -> ValidationError<'i> {
             ValidationError::new(
                 instance.into(),
                 crate::error::ValidationErrorKind::Constant {
-                    expected_value: expected,
+                    expected_value: std::sync::Arc::clone(expected),
                 },
                 instance_path,
                 Location::from_escaped(schema_path),
@@ -4370,7 +4370,7 @@ pub mod __private {
             schema_path: &str,
             instance_path: Location,
             instance: impl Into<LazyInstance<'i>>,
-            options: &Value,
+            options: &std::sync::Arc<Value>,
         ) -> ValidationError<'i> {
             ValidationError::enumeration(
                 Location::from_escaped(schema_path),

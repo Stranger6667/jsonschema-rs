@@ -99,7 +99,7 @@ impl From<&ValidationErrorKind> for Kind {
                 message: message.clone(),
             },
             ValidationErrorKind::Constant { expected_value } => Kind::Constant {
-                expected_value: expected_value.clone(),
+                expected_value: Value::clone(expected_value),
             },
             ValidationErrorKind::Contains => Kind::Contains,
             ValidationErrorKind::ContentEncoding { content_encoding } => Kind::ContentEncoding {
@@ -115,7 +115,7 @@ impl From<&ValidationErrorKind> for Kind {
                 message: message.clone(),
             },
             ValidationErrorKind::Enum { options } => Kind::Enum {
-                options: options.clone(),
+                options: Value::clone(options),
             },
             ValidationErrorKind::ExclusiveMaximum { limit } => Kind::ExclusiveMaximum {
                 limit: limit.clone(),
