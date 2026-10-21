@@ -84,3 +84,10 @@ jobs:
           uv pip install "$(ls dist/jsonschema_rs-*.whl)[tests]" dist/jsonschema_testsuite_pyo3-*.whl
           uv run --no-project pytest tests-py
         working-directory: crates/jsonschema-py
+
+      # Compares the stubs with the installed wheel; one interpreter is enough.
+      - if: inputs.os == 'ubuntu-24.04' && matrix.python-version == '3.13'
+        run: |
+          uv pip install mypy
+          uv run --no-project python -m mypy.stubtest jsonschema_rs --allowlist stubtest-allowlist.txt
+        working-directory: crates/jsonschema-py

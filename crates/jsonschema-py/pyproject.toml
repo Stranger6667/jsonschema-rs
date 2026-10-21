@@ -32,6 +32,7 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
     "Programming Language :: Rust",
     "Topic :: File Formats :: JSON :: JSON Schema",
+    "Typing :: Typed",
 ]
 requires-python = ">=3.10"
 

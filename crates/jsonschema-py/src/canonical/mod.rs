@@ -1102,7 +1102,7 @@ fn build_options<'r>(
 /// A pointer left out is not proven satisfiable: a document the canonical form does not model
 /// reports nothing, as :class:`Satisfiability` answers `UNKNOWN`.
 #[pyfunction]
-#[pyo3(signature = (schema, *, draft=None, validate_formats=None, pattern_options=None, retriever=None, registry=None, base_uri=None, offline=None))]
+#[pyo3(signature = (schema, /, *, draft=None, validate_formats=None, pattern_options=None, retriever=None, registry=None, base_uri=None, offline=None))]
 pub(crate) fn find_unsatisfiable(
     schema: &Bound<'_, PyAny>,
     draft: Option<u8>,
@@ -1144,7 +1144,7 @@ pub(crate) fn find_unsatisfiable(
 ///
 /// Returns a :class:`CanonicalSchema` that is semantically equivalent to the input.
 #[pyfunction]
-#[pyo3(signature = (schema, *, draft=None, validate_formats=None, pattern_options=None, retriever=None, registry=None, base_uri=None, offline=None))]
+#[pyo3(signature = (schema, /, *, draft=None, validate_formats=None, pattern_options=None, retriever=None, registry=None, base_uri=None, offline=None))]
 pub(crate) fn canonicalize(
     schema: &Bound<'_, PyAny>,
     draft: Option<u8>,

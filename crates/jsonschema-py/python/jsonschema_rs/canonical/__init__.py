@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 from ..jsonschema_rs import canonical as _canonical
 
 Containment = _canonical.Containment
@@ -54,6 +56,9 @@ CanonicalViewType = (
 
 json = _canonical.json
 schema = _canonical.schema
+# Native submodules are attributes only; registering them makes `import jsonschema_rs.canonical.json` work.
+sys.modules[f"{__name__}.json"] = json
+sys.modules[f"{__name__}.schema"] = schema
 
 
 class CanonicalizationError(ValueError):

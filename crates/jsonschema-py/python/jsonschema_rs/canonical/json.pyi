@@ -1,6 +1,6 @@
-from .. import JSONType
+__all__ = ["to_string"]
 
-def to_string(object: JSONType) -> str:
+def to_string(object: object) -> str:
     """Serialize a Python object to a canonical JSON string.
 
     Main use case: deduplicating equivalent JSON Schemas.

@@ -1,13 +1,16 @@
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from decimal import Decimal
-from typing import Any, Callable, List, Protocol, TypeAlias, TypeVar, TypedDict, Union
+from typing import Any, Callable, List, Protocol, TypeAlias, TypeVar, TypedDict, Union, final
+
+from typing_extensions import Self
 
 from . import canonical as canonical
 
-_SchemaT = TypeVar("_SchemaT", bool, dict[str, Any])
-_FormatFunc = TypeVar("_FormatFunc", bound=Callable[[str], bool])
+_SchemaT = TypeVar("_SchemaT", bound=dict[str, Any] | bool)
+_Schema: TypeAlias = dict[str, Any] | bool
+_FormatFunc: TypeAlias = Callable[..., bool]
 # Loose JSON for inputs the caller supplies
-JSONType: TypeAlias = dict[str, Any] | list | str | int | float | Decimal | bool | None
+JSONType: TypeAlias = dict[str, Any] | list[Any] | tuple[Any, ...] | str | int | float | Decimal | bool | None
 # Precise recursive JSON the library returns
 JsonValue: TypeAlias = dict[str, "JsonValue"] | list["JsonValue"] | str | int | float | Decimal | bool | None
 JSONPrimitive: TypeAlias = str | int | float | Decimal | bool | None
@@ -76,6 +79,7 @@ class ListOutput(TypedDict):
     valid: bool
     details: List[OutputUnit]
 
+@final
 class Evaluation:
     valid: bool
     def flag(self) -> FlagOutput: ...
@@ -85,28 +89,32 @@ class Evaluation:
     def errors(self) -> List[EvaluationErrorEntry]: ...
     def __repr__(self) -> str: ...
 
+@final
 class FancyRegexOptions:
-    def __init__(
-        self, backtrack_limit: int | None = None, size_limit: int | None = None, dfa_size_limit: int | None = None
-    ) -> None: ...
+    def __new__(
+        cls, backtrack_limit: int | None = None, size_limit: int | None = None, dfa_size_limit: int | None = None
+    ) -> Self: ...
     def __repr__(self) -> str: ...
 
+@final
 class RegexOptions:
-    def __init__(self, size_limit: int | None = None, dfa_size_limit: int | None = None) -> None: ...
+    def __new__(cls, size_limit: int | None = None, dfa_size_limit: int | None = None) -> Self: ...
     def __repr__(self) -> str: ...
 
+@final
 class EmailOptions:
     """Configuration for email format validation."""
 
-    def __init__(
-        self,
+    def __new__(
+        cls,
         require_tld: bool = False,
         allow_domain_literal: bool = True,
         allow_display_text: bool = True,
         minimum_sub_domains: int | None = None,
-    ) -> None: ...
+    ) -> Self: ...
     def __repr__(self) -> str: ...
 
+@final
 class HttpOptions:
     """Configuration for HTTP client used in schema retrieval."""
 
@@ -115,24 +123,24 @@ class HttpOptions:
     tls_verify: bool
     ca_cert: str | None
 
-    def __init__(
-        self,
+    def __new__(
+        cls,
         timeout: float | None = None,
         connect_timeout: float | None = None,
         tls_verify: bool = True,
         ca_cert: str | None = None,
-    ) -> None: ...
+    ) -> Self: ...
     def __repr__(self) -> str: ...
-    def __eq__(self, other: object) -> bool: ...
+    def __eq__(self, other: object, /) -> bool: ...
     def __hash__(self) -> int: ...
 
 PatternOptionsType = Union[FancyRegexOptions, RegexOptions]
 
 class RetrieverProtocol(Protocol):
-    def __call__(self, uri: str) -> JsonValue: ...
+    def __call__(self, uri: str, /) -> JSONType: ...
 
 def is_valid(
-    schema: _SchemaT,
+    schema: _Schema,
     instance: Any,
     draft: int | None = None,
     formats: dict[str, _FormatFunc] | None = None,
@@ -146,7 +154,7 @@ def is_valid(
     email_options: EmailOptions | None = None,
     http_options: HttpOptions | None = None,
     keywords: dict[str, type[KeywordValidator]] | None = None,
-    vocabularies: list[str] | None = None,
+    vocabularies: Sequence[str] | None = None,
     offline: bool | None = None,
 ) -> bool:
     """Check if a JSON instance is valid against a schema.
@@ -156,7 +164,7 @@ def is_valid(
     ...
 
 def validate(
-    schema: _SchemaT,
+    schema: _Schema,
     instance: Any,
     draft: int | None = None,
     formats: dict[str, _FormatFunc] | None = None,
@@ -170,7 +178,7 @@ def validate(
     email_options: EmailOptions | None = None,
     http_options: HttpOptions | None = None,
     keywords: dict[str, type[KeywordValidator]] | None = None,
-    vocabularies: list[str] | None = None,
+    vocabularies: Sequence[str] | None = None,
     offline: bool | None = None,
 ) -> None:
     """Validate a JSON instance against a schema.
@@ -180,7 +188,7 @@ def validate(
     ...
 
 def iter_errors(
-    schema: _SchemaT,
+    schema: _Schema,
     instance: Any,
     draft: int | None = None,
     formats: dict[str, _FormatFunc] | None = None,
@@ -194,7 +202,7 @@ def iter_errors(
     email_options: EmailOptions | None = None,
     http_options: HttpOptions | None = None,
     keywords: dict[str, type[KeywordValidator]] | None = None,
-    vocabularies: list[str] | None = None,
+    vocabularies: Sequence[str] | None = None,
     offline: bool | None = None,
 ) -> Iterator[ValidationError]:
     """Iterate over all validation errors.
@@ -204,7 +212,7 @@ def iter_errors(
     ...
 
 def evaluate(
-    schema: _SchemaT,
+    schema: _Schema,
     instance: Any,
     draft: int | None = None,
     formats: dict[str, _FormatFunc] | None = None,
@@ -217,7 +225,7 @@ def evaluate(
     email_options: EmailOptions | None = None,
     http_options: HttpOptions | None = None,
     keywords: dict[str, type[KeywordValidator]] | None = None,
-    vocabularies: list[str] | None = None,
+    vocabularies: Sequence[str] | None = None,
     offline: bool | None = None,
 ) -> Evaluation:
     """Evaluate an instance and return structured output.
@@ -226,8 +234,11 @@ def evaluate(
     """
     ...
 
-class ReferencingError:
+class ReferencingError(Exception):
     message: str
+    def __init__(self, message: str) -> None: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __hash__(self) -> int: ...
 
 class ValidationErrorKind:
     @property
@@ -238,110 +249,182 @@ class ValidationErrorKind:
     def value(self) -> Any: ...
     def as_dict(self) -> dict[str, Any]: ...
 
-    class AdditionalItems:
+    @final
+    class AdditionalItems(ValidationErrorKind):
+        __match_args__ = ("limit",)
         limit: int
 
-    class AdditionalProperties:
+    @final
+    class AdditionalProperties(ValidationErrorKind):
+        __match_args__ = ("unexpected",)
         unexpected: list[str]
 
-    class AnyOf:
+    @final
+    class AnyOf(ValidationErrorKind):
+        __match_args__ = ("context",)
         context: list[list["ValidationError"]]
 
-    class BacktrackLimitExceeded:
+    @final
+    class BacktrackLimitExceeded(ValidationErrorKind):
+        __match_args__ = ("error",)
         error: str
 
-    class RegexEngineFailure:
+    @final
+    class RegexEngineFailure(ValidationErrorKind):
+        __match_args__ = ("message",)
         message: str
 
-    class Constant:
+    @final
+    class Constant(ValidationErrorKind):
+        __match_args__ = ("expected_value",)
         expected_value: JsonValue
 
-    class Contains: ...
+    @final
+    class Contains(ValidationErrorKind):
+        __match_args__ = ()
 
-    class ContentEncoding:
+    @final
+    class ContentEncoding(ValidationErrorKind):
+        __match_args__ = ("content_encoding",)
         content_encoding: str
 
-    class ContentMediaType:
+    @final
+    class ContentMediaType(ValidationErrorKind):
+        __match_args__ = ("content_media_type",)
         content_media_type: str
 
-    class Custom:
+    @final
+    class Custom(ValidationErrorKind):
+        __match_args__ = ("keyword", "message")
         keyword: str
         message: str
 
-    class Enum:
+    @final
+    class Enum(ValidationErrorKind):
+        __match_args__ = ("options",)
         options: list[JsonValue]
 
-    class ExclusiveMaximum:
+    @final
+    class ExclusiveMaximum(ValidationErrorKind):
+        __match_args__ = ("limit",)
         limit: JSONPrimitive
 
-    class ExclusiveMinimum:
+    @final
+    class ExclusiveMinimum(ValidationErrorKind):
+        __match_args__ = ("limit",)
         limit: JSONPrimitive
 
-    class FalseSchema: ...
+    @final
+    class FalseSchema(ValidationErrorKind):
+        __match_args__ = ()
 
-    class Format:
+    @final
+    class Format(ValidationErrorKind):
+        __match_args__ = ("format",)
         format: str
 
-    class FromUtf8:
+    @final
+    class FromUtf8(ValidationErrorKind):
+        __match_args__ = ("error",)
         error: str
 
-    class MaxItems:
+    @final
+    class MaxItems(ValidationErrorKind):
+        __match_args__ = ("limit",)
         limit: int
 
-    class Maximum:
+    @final
+    class Maximum(ValidationErrorKind):
+        __match_args__ = ("limit",)
         limit: JSONPrimitive
 
-    class MaxLength:
+    @final
+    class MaxLength(ValidationErrorKind):
+        __match_args__ = ("limit",)
         limit: int
 
-    class MaxProperties:
+    @final
+    class MaxProperties(ValidationErrorKind):
+        __match_args__ = ("limit",)
         limit: int
 
-    class MinItems:
+    @final
+    class MinItems(ValidationErrorKind):
+        __match_args__ = ("limit",)
         limit: int
 
-    class Minimum:
+    @final
+    class Minimum(ValidationErrorKind):
+        __match_args__ = ("limit",)
         limit: JSONPrimitive
 
-    class MinLength:
+    @final
+    class MinLength(ValidationErrorKind):
+        __match_args__ = ("limit",)
         limit: int
 
-    class MinProperties:
+    @final
+    class MinProperties(ValidationErrorKind):
+        __match_args__ = ("limit",)
         limit: int
 
-    class MultipleOf:
+    @final
+    class MultipleOf(ValidationErrorKind):
+        __match_args__ = ("multiple_of",)
         multiple_of: int | float | Decimal
 
-    class Not:
+    @final
+    class Not(ValidationErrorKind):
+        __match_args__ = ("schema",)
         schema: JsonValue
 
-    class OneOfMultipleValid:
+    @final
+    class OneOfMultipleValid(ValidationErrorKind):
+        __match_args__ = ("context",)
         context: list[list["ValidationError"]]
 
-    class OneOfNotValid:
+    @final
+    class OneOfNotValid(ValidationErrorKind):
+        __match_args__ = ("context",)
         context: list[list["ValidationError"]]
 
-    class Pattern:
+    @final
+    class Pattern(ValidationErrorKind):
+        __match_args__ = ("pattern",)
         pattern: str
 
-    class PropertyNames:
+    @final
+    class PropertyNames(ValidationErrorKind):
+        __match_args__ = ("error",)
         error: "ValidationError"
 
-    class Required:
+    @final
+    class Required(ValidationErrorKind):
+        __match_args__ = ("property",)
         property: str
 
-    class Type:
+    @final
+    class Type(ValidationErrorKind):
+        __match_args__ = ("types",)
         types: list[str]
 
-    class UnevaluatedItems:
+    @final
+    class UnevaluatedItems(ValidationErrorKind):
+        __match_args__ = ("unexpected",)
         unexpected: list[int]
 
-    class UnevaluatedProperties:
+    @final
+    class UnevaluatedProperties(ValidationErrorKind):
+        __match_args__ = ("unexpected",)
         unexpected: list[str]
 
-    class UniqueItems: ...
+    @final
+    class UniqueItems(ValidationErrorKind):
+        __match_args__ = ()
 
-    class Referencing:
+    @final
+    class Referencing(ValidationErrorKind):
+        __match_args__ = ("error",)
         error: ReferencingError
 
 class ValidationError(ValueError):
@@ -353,6 +436,19 @@ class ValidationError(ValueError):
     kind: ValidationErrorKind
     instance: JsonValue
     absolute_keyword_location: str | None
+    def __init__(
+        self,
+        message: str,
+        verbose_message: str,
+        schema_path: list[str | int],
+        instance_path: list[str | int],
+        evaluation_path: list[str | int],
+        kind: ValidationErrorKind,
+        instance: Any,
+        absolute_keyword_location: str | None = None,
+    ) -> None: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __hash__(self) -> int: ...
 
 Draft4: int
 Draft6: int
@@ -361,9 +457,9 @@ Draft201909: int
 Draft202012: int
 
 class Draft4Validator:
-    def __init__(
-        self,
-        schema: _SchemaT | str,
+    def __new__(
+        cls,
+        schema: _Schema | str,
         formats: dict[str, _FormatFunc] | None = None,
         validate_formats: bool | None = None,
         ignore_unknown_formats: bool = True,
@@ -375,9 +471,9 @@ class Draft4Validator:
         email_options: EmailOptions | None = None,
         http_options: HttpOptions | None = None,
         keywords: dict[str, type[KeywordValidator]] | None = None,
-        vocabularies: list[str] | None = None,
+        vocabularies: Sequence[str] | None = None,
         offline: bool | None = None,
-    ) -> None: ...
+    ) -> Self: ...
     def is_valid(self, instance: Any) -> bool: ...
     def validate(self, instance: Any) -> None: ...
     def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
@@ -385,9 +481,9 @@ class Draft4Validator:
     def __repr__(self) -> str: ...
 
 class Draft6Validator:
-    def __init__(
-        self,
-        schema: _SchemaT | str,
+    def __new__(
+        cls,
+        schema: _Schema | str,
         formats: dict[str, _FormatFunc] | None = None,
         validate_formats: bool | None = None,
         ignore_unknown_formats: bool = True,
@@ -399,9 +495,9 @@ class Draft6Validator:
         email_options: EmailOptions | None = None,
         http_options: HttpOptions | None = None,
         keywords: dict[str, type[KeywordValidator]] | None = None,
-        vocabularies: list[str] | None = None,
+        vocabularies: Sequence[str] | None = None,
         offline: bool | None = None,
-    ) -> None: ...
+    ) -> Self: ...
     def is_valid(self, instance: Any) -> bool: ...
     def validate(self, instance: Any) -> None: ...
     def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
@@ -409,9 +505,9 @@ class Draft6Validator:
     def __repr__(self) -> str: ...
 
 class Draft7Validator:
-    def __init__(
-        self,
-        schema: _SchemaT | str,
+    def __new__(
+        cls,
+        schema: _Schema | str,
         formats: dict[str, _FormatFunc] | None = None,
         validate_formats: bool | None = None,
         ignore_unknown_formats: bool = True,
@@ -423,9 +519,9 @@ class Draft7Validator:
         email_options: EmailOptions | None = None,
         http_options: HttpOptions | None = None,
         keywords: dict[str, type[KeywordValidator]] | None = None,
-        vocabularies: list[str] | None = None,
+        vocabularies: Sequence[str] | None = None,
         offline: bool | None = None,
-    ) -> None: ...
+    ) -> Self: ...
     def is_valid(self, instance: Any) -> bool: ...
     def validate(self, instance: Any) -> None: ...
     def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
@@ -433,9 +529,9 @@ class Draft7Validator:
     def __repr__(self) -> str: ...
 
 class Draft201909Validator:
-    def __init__(
-        self,
-        schema: _SchemaT | str,
+    def __new__(
+        cls,
+        schema: _Schema | str,
         formats: dict[str, _FormatFunc] | None = None,
         validate_formats: bool | None = None,
         ignore_unknown_formats: bool = True,
@@ -447,9 +543,9 @@ class Draft201909Validator:
         email_options: EmailOptions | None = None,
         http_options: HttpOptions | None = None,
         keywords: dict[str, type[KeywordValidator]] | None = None,
-        vocabularies: list[str] | None = None,
+        vocabularies: Sequence[str] | None = None,
         offline: bool | None = None,
-    ) -> None: ...
+    ) -> Self: ...
     def is_valid(self, instance: Any) -> bool: ...
     def validate(self, instance: Any) -> None: ...
     def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
@@ -457,9 +553,9 @@ class Draft201909Validator:
     def __repr__(self) -> str: ...
 
 class Draft202012Validator:
-    def __init__(
-        self,
-        schema: _SchemaT | str,
+    def __new__(
+        cls,
+        schema: _Schema | str,
         formats: dict[str, _FormatFunc] | None = None,
         validate_formats: bool | None = None,
         ignore_unknown_formats: bool = True,
@@ -471,9 +567,9 @@ class Draft202012Validator:
         email_options: EmailOptions | None = None,
         http_options: HttpOptions | None = None,
         keywords: dict[str, type[KeywordValidator]] | None = None,
-        vocabularies: list[str] | None = None,
+        vocabularies: Sequence[str] | None = None,
         offline: bool | None = None,
-    ) -> None: ...
+    ) -> Self: ...
     def is_valid(self, instance: Any) -> bool: ...
     def validate(self, instance: Any) -> None: ...
     def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
@@ -483,7 +579,7 @@ class Draft202012Validator:
 Validator: TypeAlias = Draft4Validator | Draft6Validator | Draft7Validator | Draft201909Validator | Draft202012Validator
 
 def validator_for(
-    schema: _SchemaT | str,
+    schema: _Schema | str,
     formats: dict[str, _FormatFunc] | None = None,
     validate_formats: bool | None = None,
     ignore_unknown_formats: bool = True,
@@ -495,7 +591,7 @@ def validator_for(
     email_options: EmailOptions | None = None,
     http_options: HttpOptions | None = None,
     keywords: dict[str, type[KeywordValidator]] | None = None,
-    vocabularies: list[str] | None = None,
+    vocabularies: Sequence[str] | None = None,
     offline: bool | None = None,
 ) -> Validator:
     """Create a validator for the given schema.
@@ -505,6 +601,7 @@ def validator_for(
     """
     ...
 
+@final
 class ValidatorMap:
     """Map of compiled validators keyed by URI-fragment JSON pointer.
 
@@ -516,16 +613,16 @@ class ValidatorMap:
         """Return the validator for *pointer*, or ``None`` if not found."""
         ...
 
-    def __getitem__(self, pointer: str) -> Validator:
+    def __getitem__(self, pointer: str, /) -> Validator:
         """Return the validator for *pointer*, raising ``KeyError`` if not found."""
         ...
 
-    def __contains__(self, pointer: object) -> bool: ...
+    def __contains__(self, pointer: object, /) -> bool: ...
     def keys(self) -> list[str]: ...
     def __len__(self) -> int: ...
 
 def validator_map_for(
-    schema: _SchemaT | str,
+    schema: _Schema | str,
     formats: dict[str, _FormatFunc] | None = None,
     validate_formats: bool | None = None,
     ignore_unknown_formats: bool = True,
@@ -537,7 +634,7 @@ def validator_map_for(
     email_options: EmailOptions | None = None,
     http_options: HttpOptions | None = None,
     keywords: dict[str, type[KeywordValidator]] | None = None,
-    vocabularies: list[str] | None = None,
+    vocabularies: Sequence[str] | None = None,
     offline: bool | None = None,
 ) -> ValidatorMap:
     """Compile all subschemas in *schema* into a map keyed by URI-fragment JSON pointer.
@@ -547,7 +644,7 @@ def validator_map_for(
     ...
 
 def bundle(
-    schema: Any,
+    schema: _SchemaT,
     /,
     *,
     retriever: RetrieverProtocol | None = None,
@@ -555,7 +652,7 @@ def bundle(
     draft: int | None = None,
     base_uri: str | None = None,
     offline: bool | None = None,
-) -> dict[str, Any]:
+) -> _SchemaT:
     """Bundle a JSON Schema into a Compound Schema Document.
 
     All externally-referenced schemas reachable via $ref are embedded in a
@@ -583,23 +680,25 @@ def dereference(
     """
     ...
 
-def validator_cls_for(schema: _SchemaT | str) -> type[Validator]:
+def validator_cls_for(schema: _Schema | str) -> type[Validator]:
     """Detect the JSON Schema draft for a schema and return the corresponding validator class.
 
     Draft is detected automatically from the $schema field. Defaults to Draft202012Validator.
     """
     ...
 
+@final
 class Registry:
-    def __init__(
-        self,
-        resources: list[tuple[str, JSONType]],
+    def __new__(
+        cls,
+        resources: Iterable[tuple[str, JSONType]],
         draft: int | None = None,
         retriever: RetrieverProtocol | None = None,
-    ) -> None: ...
+    ) -> Self: ...
     def resolver(self, base_uri: str) -> Resolver: ...
     def __repr__(self) -> str: ...
 
+@final
 class Resolver:
     @property
     def base_uri(self) -> str: ...
@@ -607,6 +706,7 @@ class Resolver:
     def dynamic_scope(self) -> tuple[str, ...]: ...
     def lookup(self, reference: str) -> Resolved: ...
 
+@final
 class Resolved:
     @property
     def contents(self) -> JsonValue: ...
@@ -616,11 +716,12 @@ class Resolved:
     def draft(self) -> int: ...
 
 class _Meta:
-    def is_valid(self, schema: _SchemaT, registry: Registry | None = None) -> bool: ...
-    def validate(self, schema: _SchemaT, registry: Registry | None = None) -> None: ...
+    def is_valid(self, schema: _Schema, registry: Registry | None = None) -> bool: ...
+    def validate(self, schema: _Schema, registry: Registry | None = None) -> None: ...
 
 meta: _Meta
 
+@final
 class CanonicalSchema:
     """Canonical representation of a JSON Schema, obtained via :func:`canonicalize`."""
 
@@ -698,11 +799,11 @@ class CanonicalSchema:
         ...
 
     def __hash__(self) -> int: ...
-    def __eq__(self, other: object) -> bool: ...
+    def __eq__(self, other: object, /) -> bool: ...
     def __repr__(self) -> str: ...
 
 def canonicalize(
-    schema: _SchemaT,
+    schema: _Schema,
     /,
     *,
     draft: int | None = None,
@@ -719,3 +820,42 @@ def canonicalize(
     :class:`canonical.CanonicalizationError` when the root is not a boolean or an object.
     """
     ...
+
+__all__ = [
+    "ReferencingError",
+    "ValidationError",
+    "CanonicalSchema",
+    "canonical",
+    "canonicalize",
+    "ValidationErrorKind",
+    "Evaluation",
+    "bundle",
+    "dereference",
+    "is_valid",
+    "validate",
+    "iter_errors",
+    "evaluate",
+    "validator_cls_for",
+    "validator_for",
+    "validator_map_for",
+    "ValidatorMap",
+    "Draft4",
+    "Draft6",
+    "Draft7",
+    "Draft201909",
+    "Draft202012",
+    "Draft4Validator",
+    "Draft6Validator",
+    "Draft7Validator",
+    "Draft201909Validator",
+    "Draft202012Validator",
+    "Validator",
+    "Registry",
+    "Resolver",
+    "Resolved",
+    "EmailOptions",
+    "FancyRegexOptions",
+    "HttpOptions",
+    "RegexOptions",
+    "meta",
+]
