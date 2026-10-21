@@ -82,3 +82,26 @@ def test_draft_detection_from_string(schema_str, expected_cls):
 def test_invalid_string_raises():
     with pytest.raises(ValueError, match="Invalid string"):
         validator_cls_for("not valid json")
+
+
+DRAFT_SCHEMAS = [
+    ({"$schema": "http://json-schema.org/draft-04/schema#"}, Draft4Validator),
+    ({"$schema": "http://json-schema.org/draft-06/schema#"}, Draft6Validator),
+    ({"$schema": "http://json-schema.org/draft-07/schema#"}, Draft7Validator),
+    ({"$schema": "https://json-schema.org/draft/2019-09/schema"}, Draft201909Validator),
+    ({"$schema": "https://json-schema.org/draft/2020-12/schema"}, Draft202012Validator),
+    ({}, Draft202012Validator),
+]
+
+
+@pytest.mark.parametrize(["schema", "expected_cls"], DRAFT_SCHEMAS)
+@pytest.mark.parametrize(
+    "build",
+    [jsonschema_rs.validator_for, lambda schema: jsonschema_rs.Validator(schema)],
+    ids=["validator_for", "Validator"],
+)
+def test_validator_is_draft_instance(build, schema, expected_cls):
+    validator = build(schema)
+    assert type(validator) is expected_cls
+    assert isinstance(validator, expected_cls)
+    assert isinstance(validator, jsonschema_rs.Validator)

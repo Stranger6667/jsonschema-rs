@@ -456,7 +456,7 @@ Draft7: int
 Draft201909: int
 Draft202012: int
 
-class Draft4Validator:
+class Validator:
     def __new__(
         cls,
         schema: _Schema | str,
@@ -480,103 +480,11 @@ class Draft4Validator:
     def evaluate(self, instance: Any) -> Evaluation: ...
     def __repr__(self) -> str: ...
 
-class Draft6Validator:
-    def __new__(
-        cls,
-        schema: _Schema | str,
-        formats: dict[str, _FormatFunc] | None = None,
-        validate_formats: bool | None = None,
-        ignore_unknown_formats: bool = True,
-        retriever: RetrieverProtocol | None = None,
-        registry: Registry | None = None,
-        mask: str | None = None,
-        base_uri: str | None = None,
-        pattern_options: PatternOptionsType | None = None,
-        email_options: EmailOptions | None = None,
-        http_options: HttpOptions | None = None,
-        keywords: dict[str, type[KeywordValidator]] | None = None,
-        vocabularies: Sequence[str] | None = None,
-        offline: bool | None = None,
-    ) -> Self: ...
-    def is_valid(self, instance: Any) -> bool: ...
-    def validate(self, instance: Any) -> None: ...
-    def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
-    def evaluate(self, instance: Any) -> Evaluation: ...
-    def __repr__(self) -> str: ...
-
-class Draft7Validator:
-    def __new__(
-        cls,
-        schema: _Schema | str,
-        formats: dict[str, _FormatFunc] | None = None,
-        validate_formats: bool | None = None,
-        ignore_unknown_formats: bool = True,
-        retriever: RetrieverProtocol | None = None,
-        registry: Registry | None = None,
-        mask: str | None = None,
-        base_uri: str | None = None,
-        pattern_options: PatternOptionsType | None = None,
-        email_options: EmailOptions | None = None,
-        http_options: HttpOptions | None = None,
-        keywords: dict[str, type[KeywordValidator]] | None = None,
-        vocabularies: Sequence[str] | None = None,
-        offline: bool | None = None,
-    ) -> Self: ...
-    def is_valid(self, instance: Any) -> bool: ...
-    def validate(self, instance: Any) -> None: ...
-    def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
-    def evaluate(self, instance: Any) -> Evaluation: ...
-    def __repr__(self) -> str: ...
-
-class Draft201909Validator:
-    def __new__(
-        cls,
-        schema: _Schema | str,
-        formats: dict[str, _FormatFunc] | None = None,
-        validate_formats: bool | None = None,
-        ignore_unknown_formats: bool = True,
-        retriever: RetrieverProtocol | None = None,
-        registry: Registry | None = None,
-        mask: str | None = None,
-        base_uri: str | None = None,
-        pattern_options: PatternOptionsType | None = None,
-        email_options: EmailOptions | None = None,
-        http_options: HttpOptions | None = None,
-        keywords: dict[str, type[KeywordValidator]] | None = None,
-        vocabularies: Sequence[str] | None = None,
-        offline: bool | None = None,
-    ) -> Self: ...
-    def is_valid(self, instance: Any) -> bool: ...
-    def validate(self, instance: Any) -> None: ...
-    def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
-    def evaluate(self, instance: Any) -> Evaluation: ...
-    def __repr__(self) -> str: ...
-
-class Draft202012Validator:
-    def __new__(
-        cls,
-        schema: _Schema | str,
-        formats: dict[str, _FormatFunc] | None = None,
-        validate_formats: bool | None = None,
-        ignore_unknown_formats: bool = True,
-        retriever: RetrieverProtocol | None = None,
-        registry: Registry | None = None,
-        mask: str | None = None,
-        base_uri: str | None = None,
-        pattern_options: PatternOptionsType | None = None,
-        email_options: EmailOptions | None = None,
-        http_options: HttpOptions | None = None,
-        keywords: dict[str, type[KeywordValidator]] | None = None,
-        vocabularies: Sequence[str] | None = None,
-        offline: bool | None = None,
-    ) -> Self: ...
-    def is_valid(self, instance: Any) -> bool: ...
-    def validate(self, instance: Any) -> None: ...
-    def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
-    def evaluate(self, instance: Any) -> Evaluation: ...
-    def __repr__(self) -> str: ...
-
-Validator: TypeAlias = Draft4Validator | Draft6Validator | Draft7Validator | Draft201909Validator | Draft202012Validator
+class Draft4Validator(Validator): ...
+class Draft6Validator(Validator): ...
+class Draft7Validator(Validator): ...
+class Draft201909Validator(Validator): ...
+class Draft202012Validator(Validator): ...
 
 def validator_for(
     schema: _Schema | str,

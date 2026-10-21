@@ -126,3 +126,18 @@ def test_mask_propagated_via_get():
     with pytest.raises(jsonschema_rs.ValidationError) as exc_info:
         v.validate(42)
     assert exc_info.value.message == '*** is not of type "object"'
+
+
+@pytest.mark.parametrize(
+    ["schema", "expected_cls"],
+    [
+        ({"$schema": "http://json-schema.org/draft-04/schema#"}, jsonschema_rs.Draft4Validator),
+        ({"$schema": "http://json-schema.org/draft-07/schema#"}, jsonschema_rs.Draft7Validator),
+        (SCHEMA, jsonschema_rs.Draft202012Validator),
+    ],
+)
+def test_entries_are_draft_instances(schema, expected_cls):
+    validator_map = jsonschema_rs.validator_map_for(schema)
+    assert type(validator_map["#"]) is expected_cls
+    assert type(validator_map.get("#")) is expected_cls
+    assert isinstance(validator_map["#"], jsonschema_rs.Validator)

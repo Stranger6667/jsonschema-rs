@@ -7,5 +7,6 @@ jsonschema_rs.(EvaluationAnnotation|EvaluationErrorEntry|FlagOutput|OutputUnit|L
 jsonschema_rs.ValidationErrorKind.\w+.__new__
 jsonschema_rs.canonical.UnsatisfiableReason.\w+.__new__
 # Disjoint bases at runtime; marking them needs `@disjoint_base`, which older type checkers lack.
+jsonschema_rs.Validator
 jsonschema_rs.ValidationErrorKind
 jsonschema_rs.canonical.UnsatisfiableReason

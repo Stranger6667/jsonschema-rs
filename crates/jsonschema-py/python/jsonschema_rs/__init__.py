@@ -27,6 +27,7 @@ try:
         Resolver,
         Resolved,
         ValidationErrorKind,
+        Validator,
         ValidatorMap,
         canonicalize,
         dereference,
@@ -57,8 +58,6 @@ except ModuleNotFoundError as exc:
     raise
 
 from . import canonical
-
-Validator = Draft4Validator | Draft6Validator | Draft7Validator | Draft201909Validator | Draft202012Validator
 
 
 class ValidationError(ValueError):
