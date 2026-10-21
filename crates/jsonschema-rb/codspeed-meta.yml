@@ -1,25 +1,25 @@
 benchmarks:
   - name: "ruby-meta-valid-openapi"
-    exec: bundle exec ruby bench/codspeed_bench.rb openapi meta-valid
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb openapi meta-valid 200
   - name: "ruby-meta-valid-swagger"
-    exec: bundle exec ruby bench/codspeed_bench.rb swagger meta-valid
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb swagger meta-valid 200
   - name: "ruby-meta-valid-geojson"
-    exec: bundle exec ruby bench/codspeed_bench.rb geojson meta-valid
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb geojson meta-valid 700
   - name: "ruby-meta-valid-citm"
-    exec: bundle exec ruby bench/codspeed_bench.rb citm meta-valid
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb citm meta-valid 1300
   - name: "ruby-meta-valid-fhir"
-    exec: bundle exec ruby bench/codspeed_bench.rb fhir meta-valid
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb fhir meta-valid 30
   - name: "ruby-meta-valid-recursive"
-    exec: bundle exec ruby bench/codspeed_bench.rb recursive meta-valid
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb recursive meta-valid 700
   - name: "ruby-meta-validate-openapi"
-    exec: bundle exec ruby bench/codspeed_bench.rb openapi meta-validate
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb openapi meta-validate 200
   - name: "ruby-meta-validate-swagger"
-    exec: bundle exec ruby bench/codspeed_bench.rb swagger meta-validate
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb swagger meta-validate 200
   - name: "ruby-meta-validate-geojson"
-    exec: bundle exec ruby bench/codspeed_bench.rb geojson meta-validate
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb geojson meta-validate 700
   - name: "ruby-meta-validate-citm"
-    exec: bundle exec ruby bench/codspeed_bench.rb citm meta-validate
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb citm meta-validate 1300
   - name: "ruby-meta-validate-fhir"
-    exec: bundle exec ruby bench/codspeed_bench.rb fhir meta-validate
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb fhir meta-validate 30
   - name: "ruby-meta-validate-recursive"
-    exec: bundle exec ruby bench/codspeed_bench.rb recursive meta-validate
+    exec: ruby --disable-gems -Ilib bench/codspeed_bench.rb recursive meta-validate 700
