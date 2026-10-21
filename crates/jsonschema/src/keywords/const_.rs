@@ -7,21 +7,19 @@ use crate::{
     Array, Json, Node,
 };
 use serde_json::{Map, Number, Value};
+use std::sync::Arc;
 
 use crate::paths::{LazyLocation, RefTracker};
 
 struct ConstArrayValidator {
-    value: Vec<Value>,
+    value: Arc<Value>,
     location: Location,
 }
 impl ConstArrayValidator {
     #[inline]
-    pub(crate) fn compile<F: Json>(
-        value: &[Value],
-        location: Location,
-    ) -> CompilationResult<'_, F> {
+    pub(crate) fn compile<F: Json>(value: &Value, location: Location) -> CompilationResult<'_, F> {
         Ok(Box::new(ConstArrayValidator {
-            value: value.to_vec(),
+            value: Arc::new(value.clone()),
             location,
         }))
     }
@@ -37,7 +35,7 @@ impl<F: Json> Validate<F> for ConstArrayValidator {
         if Validate::<F>::is_valid(self, instance, ctx) {
             Ok(())
         } else {
-            Err(ValidationError::constant_array(
+            Err(ValidationError::constant(
                 self.location.clone(),
                 crate::paths::capture_evaluation_path(tracker, &self.location),
                 location.into(),
@@ -49,11 +47,11 @@ impl<F: Json> Validate<F> for ConstArrayValidator {
 
     #[inline]
     fn is_valid(&self, instance: &F::Node<'_>, _ctx: &mut ValidationContext) -> bool {
-        if let Some(items) = instance.as_array() {
-            items.len() == self.value.len()
+        if let (Some(items), Some(expected)) = (instance.as_array(), self.value.as_array()) {
+            items.len() == expected.len()
                 && items
                     .elements()
-                    .zip(&self.value)
+                    .zip(expected)
                     .all(|(item, expected)| item.equals_value(expected))
         } else {
             false
@@ -62,7 +60,7 @@ impl<F: Json> Validate<F> for ConstArrayValidator {
 }
 
 struct ConstBooleanValidator {
-    value: bool,
+    value: Arc<Value>,
     location: Location,
 }
 impl ConstBooleanValidator {
@@ -71,7 +69,10 @@ impl ConstBooleanValidator {
         value: bool,
         location: Location,
     ) -> CompilationResult<'a, F> {
-        Ok(Box::new(ConstBooleanValidator { value, location }))
+        Ok(Box::new(ConstBooleanValidator {
+            value: Arc::new(Value::Bool(value)),
+            location,
+        }))
     }
 }
 impl<F: Json> Validate<F> for ConstBooleanValidator {
@@ -85,29 +86,33 @@ impl<F: Json> Validate<F> for ConstBooleanValidator {
         if Validate::<F>::is_valid(self, instance, ctx) {
             Ok(())
         } else {
-            Err(ValidationError::constant_boolean(
+            Err(ValidationError::constant(
                 self.location.clone(),
                 crate::paths::capture_evaluation_path(tracker, &self.location),
                 location.into(),
                 instance.lazy_value(),
-                self.value,
+                &self.value,
             ))
         }
     }
 
     #[inline]
     fn is_valid(&self, instance: &F::Node<'_>, _ctx: &mut ValidationContext) -> bool {
-        instance.as_boolean() == Some(self.value)
+        instance.as_boolean() == self.value.as_bool()
     }
 }
 
 struct ConstNullValidator {
+    value: Arc<Value>,
     location: Location,
 }
 impl ConstNullValidator {
     #[inline]
     pub(crate) fn compile<'a, F: Json>(location: Location) -> CompilationResult<'a, F> {
-        Ok(Box::new(ConstNullValidator { location }))
+        Ok(Box::new(ConstNullValidator {
+            value: Arc::new(Value::Null),
+            location,
+        }))
     }
 }
 impl<F: Json> Validate<F> for ConstNullValidator {
@@ -121,11 +126,12 @@ impl<F: Json> Validate<F> for ConstNullValidator {
         if Validate::<F>::is_valid(self, instance, ctx) {
             Ok(())
         } else {
-            Err(ValidationError::constant_null(
+            Err(ValidationError::constant(
                 self.location.clone(),
                 crate::paths::capture_evaluation_path(tracker, &self.location),
                 location.into(),
                 instance.lazy_value(),
+                &self.value,
             ))
         }
     }
@@ -136,19 +142,16 @@ impl<F: Json> Validate<F> for ConstNullValidator {
 }
 
 struct ConstNumberValidator {
-    // This is saved in order to ensure that the error message is not altered by precision loss
-    original_value: Number,
+    // The original `Number` keeps the error message free of precision loss
+    value: Arc<Value>,
     location: Location,
 }
 
 impl ConstNumberValidator {
     #[inline]
-    pub(crate) fn compile<F: Json>(
-        original_value: &Number,
-        location: Location,
-    ) -> CompilationResult<'_, F> {
+    pub(crate) fn compile<F: Json>(value: &Number, location: Location) -> CompilationResult<'_, F> {
         Ok(Box::new(ConstNumberValidator {
-            original_value: original_value.clone(),
+            value: Arc::new(Value::Number(value.clone())),
             location,
         }))
     }
@@ -165,20 +168,20 @@ impl<F: Json> Validate<F> for ConstNumberValidator {
         if Validate::<F>::is_valid(self, instance, ctx) {
             Ok(())
         } else {
-            Err(ValidationError::constant_number(
+            Err(ValidationError::constant(
                 self.location.clone(),
                 crate::paths::capture_evaluation_path(tracker, &self.location),
                 location.into(),
                 instance.lazy_value(),
-                &self.original_value,
+                &self.value,
             ))
         }
     }
 
     #[inline]
     fn is_valid(&self, instance: &F::Node<'_>, _ctx: &mut ValidationContext) -> bool {
-        if let Some(item) = instance.as_number() {
-            crate::cmp::equal_numbers(&item, &self.original_value)
+        if let (Some(item), Some(expected)) = (instance.as_number(), self.value.as_number()) {
+            crate::cmp::equal_numbers(&item, expected)
         } else {
             false
         }
@@ -186,18 +189,15 @@ impl<F: Json> Validate<F> for ConstNumberValidator {
 }
 
 pub(crate) struct ConstObjectValidator {
-    value: Value,
+    value: Arc<Value>,
     location: Location,
 }
 
 impl ConstObjectValidator {
     #[inline]
-    pub(crate) fn compile<F: Json>(
-        value: &Map<String, Value>,
-        location: Location,
-    ) -> CompilationResult<'_, F> {
+    pub(crate) fn compile<F: Json>(value: &Value, location: Location) -> CompilationResult<'_, F> {
         Ok(Box::new(ConstObjectValidator {
-            value: Value::Object(value.clone()),
+            value: Arc::new(value.clone()),
             location,
         }))
     }
@@ -214,7 +214,7 @@ impl<F: Json> Validate<F> for ConstObjectValidator {
         if Validate::<F>::is_valid(self, instance, ctx) {
             Ok(())
         } else {
-            Err(ValidationError::constant_object(
+            Err(ValidationError::constant(
                 self.location.clone(),
                 crate::paths::capture_evaluation_path(tracker, &self.location),
                 location.into(),
@@ -231,15 +231,15 @@ impl<F: Json> Validate<F> for ConstObjectValidator {
 }
 
 pub(crate) struct ConstStringValidator {
-    value: String,
+    value: Arc<Value>,
     location: Location,
 }
 
 impl ConstStringValidator {
     #[inline]
-    pub(crate) fn compile<F: Json>(value: &str, location: Location) -> CompilationResult<'_, F> {
+    pub(crate) fn compile<F: Json>(value: &Value, location: Location) -> CompilationResult<'_, F> {
         Ok(Box::new(ConstStringValidator {
-            value: value.to_string(),
+            value: Arc::new(value.clone()),
             location,
         }))
     }
@@ -256,7 +256,7 @@ impl<F: Json> Validate<F> for ConstStringValidator {
         if Validate::<F>::is_valid(self, instance, ctx) {
             Ok(())
         } else {
-            Err(ValidationError::constant_string(
+            Err(ValidationError::constant(
                 self.location.clone(),
                 crate::paths::capture_evaluation_path(tracker, &self.location),
                 location.into(),
@@ -269,7 +269,7 @@ impl<F: Json> Validate<F> for ConstStringValidator {
     #[inline]
     fn is_valid(&self, instance: &F::Node<'_>, _ctx: &mut ValidationContext) -> bool {
         if let Some(item) = instance.as_string() {
-            self.value == item.as_ref()
+            self.value.as_str() == Some(item.as_ref())
         } else {
             false
         }
@@ -284,12 +284,12 @@ pub(crate) fn compile<'a, F: Json>(
 ) -> Option<CompilationResult<'a, F>> {
     let location = ctx.location().join("const");
     match schema {
-        Value::Array(items) => Some(ConstArrayValidator::compile(items, location)),
+        Value::Array(_) => Some(ConstArrayValidator::compile(schema, location)),
         Value::Bool(item) => Some(ConstBooleanValidator::compile(*item, location)),
         Value::Null => Some(ConstNullValidator::compile(location)),
         Value::Number(item) => Some(ConstNumberValidator::compile(item, location)),
-        Value::Object(map) => Some(ConstObjectValidator::compile(map, location)),
-        Value::String(string) => Some(ConstStringValidator::compile(string, location)),
+        Value::Object(_) => Some(ConstObjectValidator::compile(schema, location)),
+        Value::String(_) => Some(ConstStringValidator::compile(schema, location)),
     }
 }
 

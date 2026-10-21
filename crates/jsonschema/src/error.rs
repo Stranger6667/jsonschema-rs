@@ -42,7 +42,7 @@ use crate::{
     LazyInstance,
 };
 use referencing::Uri;
-use serde_json::{Number, Value};
+use serde_json::Value;
 use std::{
     borrow::Cow,
     error,
@@ -265,7 +265,7 @@ pub enum ValidationErrorKind {
     /// [`regex-automata`](https://github.com/rust-lang/regex/issues/1344)).
     RegexEngineFailure { message: String },
     /// The input value doesn't match expected constant.
-    Constant { expected_value: Value },
+    Constant { expected_value: Arc<Value> },
     /// The input array doesn't contain items conforming to the specified schema.
     Contains,
     /// The input value does not respect the defined contentEncoding
@@ -275,7 +275,7 @@ pub enum ValidationErrorKind {
     /// Custom error message for user-defined validation.
     Custom { keyword: String, message: String },
     /// The input value doesn't match any of specified options.
-    Enum { options: Value },
+    Enum { options: Arc<Value> },
     /// Value is too large.
     ExclusiveMaximum { limit: Value },
     /// Value is too small.
@@ -657,101 +657,17 @@ impl<'a> ValidationError<'a> {
             tracker,
         )
     }
-    pub(crate) fn constant_array(
+    pub(crate) fn constant(
         schema_path: Location,
         tracker: impl Into<LazyEvaluationPath>,
         instance_path: Location,
         instance: LazyInstance<'a>,
-        expected_value: &[Value],
+        expected_value: &Arc<Value>,
     ) -> ValidationError<'a> {
         Self::borrowed(
             instance,
             ValidationErrorKind::Constant {
-                expected_value: Value::Array(expected_value.to_vec()),
-            },
-            instance_path,
-            schema_path,
-            tracker,
-        )
-    }
-    pub(crate) fn constant_boolean(
-        schema_path: Location,
-        tracker: impl Into<LazyEvaluationPath>,
-        instance_path: Location,
-        instance: LazyInstance<'a>,
-        expected_value: bool,
-    ) -> ValidationError<'a> {
-        Self::borrowed(
-            instance,
-            ValidationErrorKind::Constant {
-                expected_value: Value::Bool(expected_value),
-            },
-            instance_path,
-            schema_path,
-            tracker,
-        )
-    }
-    pub(crate) fn constant_null(
-        schema_path: Location,
-        tracker: impl Into<LazyEvaluationPath>,
-        instance_path: Location,
-        instance: LazyInstance<'a>,
-    ) -> ValidationError<'a> {
-        Self::borrowed(
-            instance,
-            ValidationErrorKind::Constant {
-                expected_value: Value::Null,
-            },
-            instance_path,
-            schema_path,
-            tracker,
-        )
-    }
-    pub(crate) fn constant_number(
-        schema_path: Location,
-        tracker: impl Into<LazyEvaluationPath>,
-        instance_path: Location,
-        instance: LazyInstance<'a>,
-        expected_value: &Number,
-    ) -> ValidationError<'a> {
-        Self::borrowed(
-            instance,
-            ValidationErrorKind::Constant {
-                expected_value: Value::Number(expected_value.clone()),
-            },
-            instance_path,
-            schema_path,
-            tracker,
-        )
-    }
-    pub(crate) fn constant_object(
-        schema_path: Location,
-        tracker: impl Into<LazyEvaluationPath>,
-        instance_path: Location,
-        instance: LazyInstance<'a>,
-        expected_value: &Value,
-    ) -> ValidationError<'a> {
-        Self::borrowed(
-            instance,
-            ValidationErrorKind::Constant {
-                expected_value: expected_value.clone(),
-            },
-            instance_path,
-            schema_path,
-            tracker,
-        )
-    }
-    pub(crate) fn constant_string(
-        schema_path: Location,
-        tracker: impl Into<LazyEvaluationPath>,
-        instance_path: Location,
-        instance: LazyInstance<'a>,
-        expected_value: &str,
-    ) -> ValidationError<'a> {
-        Self::borrowed(
-            instance,
-            ValidationErrorKind::Constant {
-                expected_value: Value::String(expected_value.to_string()),
+                expected_value: Arc::clone(expected_value),
             },
             instance_path,
             schema_path,
@@ -811,12 +727,12 @@ impl<'a> ValidationError<'a> {
         tracker: impl Into<LazyEvaluationPath>,
         instance_path: Location,
         instance: LazyInstance<'a>,
-        options: &Value,
+        options: &Arc<Value>,
     ) -> ValidationError<'a> {
         Self::borrowed(
             instance,
             ValidationErrorKind::Enum {
-                options: options.clone(),
+                options: Arc::clone(options),
             },
             instance_path,
             schema_path,

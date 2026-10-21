@@ -61,12 +61,14 @@ pub(in super::super) fn compile<E: ValueEmitter>(
     // `serde_json::Value` on the error path.
     let validate_block = quote! {
         if !(#is_valid) {
-            static CONST_EXPECTED: __Lazy<__sj::Value> =
+            static CONST_EXPECTED: __Lazy<::std::sync::Arc<__sj::Value>> =
                 __Lazy::new(|| {
-                    __sj::from_str(#const_json).expect("Failed to parse const value")
+                    ::std::sync::Arc::new(
+                        __sj::from_str(#const_json).expect("Failed to parse const value"),
+                    )
                 });
             return Some(__err::constant(
-                #schema_path, __path.into(), #err_instance, CONST_EXPECTED.clone(),
+                #schema_path, __path.into(), #err_instance, &*CONST_EXPECTED,
             ));
         }
     };

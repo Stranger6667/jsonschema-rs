@@ -8,7 +8,7 @@ use crate::{
     Json, LazyInstance, Node,
 };
 use serde_json::{json, Map, Value};
-use std::{borrow::Cow, str::FromStr};
+use std::{borrow::Cow, str::FromStr, sync::Arc};
 
 pub(crate) struct MultipleTypesValidator {
     types: JsonTypeSet,
@@ -33,9 +33,9 @@ impl MultipleTypesValidator {
                             location,
                             Location::new(),
                             LazyInstance::Ready(Cow::Borrowed(item)),
-                            &json!([
+                            &Arc::new(json!([
                                 "array", "boolean", "integer", "null", "number", "object", "string"
-                            ]),
+                            ])),
                         ));
                     }
                 }

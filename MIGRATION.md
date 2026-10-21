@@ -1,5 +1,23 @@
 # Migration Guide
 
+## Upgrading from 0.59.x to 0.60.0
+
+`ValidationErrorKind::Enum { options }` and `ValidationErrorKind::Constant { expected_value }` are
+`Arc<Value>`, so errors share the validator's values instead of copying them. Reading through them
+needs no change; dereference or clone them where a `Value` is required.
+
+```rust
+// Old (0.59.x)
+if let ValidationErrorKind::Enum { options } = error.kind() {
+    let owned: Value = options.clone();
+}
+
+// New (0.60.0)
+if let ValidationErrorKind::Enum { options } = error.kind() {
+    let owned: Value = Value::clone(options);
+}
+```
+
 ## Upgrading from 0.48.x to 0.49.0
 
 `Keyword` is generic over the instance lifetime and representation (`Keyword<'i, F = SerdeJson>`),

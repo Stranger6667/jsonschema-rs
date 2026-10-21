@@ -9,7 +9,7 @@ use crate::{
     Json, LazyInstance, Node,
 };
 use serde_json::{json, Map, Value};
-use std::{borrow::Cow, str::FromStr};
+use std::{borrow::Cow, str::FromStr, sync::Arc};
 
 use crate::paths::{LazyLocation, RefTracker};
 
@@ -36,9 +36,9 @@ impl MultipleTypesValidator {
                             location,
                             Location::new(),
                             LazyInstance::Ready(Cow::Borrowed(item)),
-                            &json!([
+                            &Arc::new(json!([
                                 "array", "boolean", "integer", "null", "number", "object", "string"
-                            ]),
+                            ])),
                         ));
                     }
                 }

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- `ValidationErrorKind::Enum` and `ValidationErrorKind::Constant` holding their values as `Arc<Value>` shared with the validator, instead of a copy per error. [#1777](https://github.com/Stranger6667/jsonschema/issues/1777)
+
 ### Performance
 
 - `items` and `additionalProperties` looking up a single-keyword subschema once per array or object instead of once per value.

@@ -145,9 +145,11 @@ pub(in super::super) fn compile<E: ValueEmitter>(
         is_valid.clone(),
         quote! {
             if !(#is_valid) {
-                static ENUM_OPTIONS: __Lazy<__sj::Value> =
+                static ENUM_OPTIONS: __Lazy<::std::sync::Arc<__sj::Value>> =
                     __Lazy::new(|| {
-                        __sj::from_str(#enum_json).expect("Failed to parse enum options")
+                        ::std::sync::Arc::new(
+                            __sj::from_str(#enum_json).expect("Failed to parse enum options"),
+                        )
                     });
                 return Some(__err::enumeration(
                     #schema_path, __path.into(), #err_instance, &*ENUM_OPTIONS,

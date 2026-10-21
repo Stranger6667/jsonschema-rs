@@ -11,13 +11,13 @@ use crate::{
 use ahash::AHashSet;
 use jsonschema_value::JsonNumber;
 use serde_json::{Map, Value};
-use std::{borrow::Cow, marker::PhantomData};
+use std::{borrow::Cow, marker::PhantomData, sync::Arc};
 
 const STRING_ENUM_THRESHOLD: usize = 10;
 
 #[derive(Debug)]
 pub(crate) struct EnumValidator {
-    options: Value,
+    options: Arc<Value>,
     // Types that occur in items
     types: JsonTypeSet,
     items: Vec<Value>,
@@ -36,7 +36,7 @@ impl EnumValidator {
             types = types.insert(JsonType::from(item));
         }
         Ok(Box::new(EnumValidator {
-            options: schema.clone(),
+            options: Arc::new(schema.clone()),
             items: items.to_vec(),
             types,
             location,
@@ -80,7 +80,7 @@ impl<F: Json> Validate<F> for EnumValidator {
 #[derive(Debug)]
 pub(crate) struct SingleValueEnumValidator {
     value: Value,
-    options: Value,
+    options: Arc<Value>,
     location: Location,
 }
 
@@ -92,7 +92,7 @@ impl SingleValueEnumValidator {
         location: Location,
     ) -> CompilationResult<'a, F> {
         Ok(Box::new(SingleValueEnumValidator {
-            options: schema.clone(),
+            options: Arc::new(schema.clone()),
             value: value.clone(),
             location,
         }))
@@ -127,7 +127,7 @@ impl<F: Json> Validate<F> for SingleValueEnumValidator {
 
 #[derive(Debug)]
 pub(crate) struct SmallStringEnumValidator<N> {
-    options: Value,
+    options: Arc<Value>,
     items: Vec<PropertyName>,
     location: Location,
     nullability: PhantomData<N>,
@@ -141,7 +141,7 @@ impl<N: Nullability> SmallStringEnumValidator<N> {
         location: Location,
     ) -> CompilationResult<'a, F> {
         Ok(Box::new(SmallStringEnumValidator::<N> {
-            options: schema.clone(),
+            options: Arc::new(schema.clone()),
             items: items
                 .iter()
                 .filter_map(Value::as_str)
@@ -187,7 +187,7 @@ impl<F: Json, N: Nullability> Validate<F> for SmallStringEnumValidator<N> {
 
 #[derive(Debug)]
 pub(crate) struct BigStringEnumValidator<N> {
-    options: Value,
+    options: Arc<Value>,
     items: AHashSet<Box<str>>,
     location: Location,
     nullability: PhantomData<N>,
@@ -201,7 +201,7 @@ impl<N: Nullability> BigStringEnumValidator<N> {
         location: Location,
     ) -> CompilationResult<'a, F> {
         Ok(Box::new(BigStringEnumValidator::<N> {
-            options: schema.clone(),
+            options: Arc::new(schema.clone()),
             items: items
                 .iter()
                 .filter_map(Value::as_str)
@@ -245,7 +245,7 @@ impl<F: Json, N: Nullability> Validate<F> for BigStringEnumValidator<N> {
 
 #[derive(Debug)]
 pub(crate) struct IntegerEnumValidator<N> {
-    options: Value,
+    options: Arc<Value>,
     items: Vec<Value>,
     /// Sorted and deduplicated; answers for instances written as an `i64`.
     integers: Vec<i64>,
@@ -264,7 +264,7 @@ impl<N: Nullability> IntegerEnumValidator<N> {
         integers.sort_unstable();
         integers.dedup();
         Ok(Box::new(IntegerEnumValidator::<N> {
-            options: schema.clone(),
+            options: Arc::new(schema.clone()),
             items: items.iter().filter(|v| !v.is_null()).cloned().collect(),
             integers,
             location,
