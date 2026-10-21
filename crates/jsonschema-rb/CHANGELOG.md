@@ -5,6 +5,7 @@
 ### Performance
 
 - `items` and `additionalProperties` looking up a single-keyword subschema once per array or object instead of once per value.
+- `is_valid` and `validate` reading fewer cache lines per subschema, by keeping error locations apart from validators.
 - `is_valid` on recursive schemas caching only `$ref` results that took many steps to compute, instead of every one.
 - Error evaluation paths taking memory linear in the `$ref` nesting depth, not quadratic. [#1778](https://github.com/Stranger6667/jsonschema/issues/1778)
 
