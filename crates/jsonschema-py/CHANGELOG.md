@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.60.0] - 2026-10-22
+
 ### Added
 
 - Support for Python 3.15.
@@ -1642,7 +1644,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema/compare/python-v0.59.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema/compare/python-v0.60.0...HEAD
+[0.60.0]: https://github.com/Stranger6667/jsonschema/compare/python-v0.59.0...python-v0.60.0
 [0.59.0]: https://github.com/Stranger6667/jsonschema/compare/python-v0.58.6...python-v0.59.0
 [0.58.6]: https://github.com/Stranger6667/jsonschema/compare/python-v0.58.5...python-v0.58.6
 [0.58.5]: https://github.com/Stranger6667/jsonschema/compare/python-v0.58.4...python-v0.58.5
