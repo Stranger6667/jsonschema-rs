@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.60.0] - 2026-10-22
+
 ### Changed
 
 - `ValidationErrorKind::Enum` and `ValidationErrorKind::Constant` holding their values as `Arc<Value>` shared with the validator, instead of a copy per error. [#1777](https://github.com/Stranger6667/jsonschema/issues/1777)
@@ -1981,7 +1983,8 @@ Old names are retained for backward compatibility but will be removed in a futur
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema/compare/rust-v0.59.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema/compare/rust-v0.60.0...HEAD
+[0.60.0]: https://github.com/Stranger6667/jsonschema/compare/rust-v0.59.0...rust-v0.60.0
 [0.59.0]: https://github.com/Stranger6667/jsonschema/compare/rust-v0.58.6...rust-v0.59.0
 [0.58.6]: https://github.com/Stranger6667/jsonschema/compare/rust-v0.58.5...rust-v0.58.6
 [0.58.5]: https://github.com/Stranger6667/jsonschema/compare/rust-v0.58.4...rust-v0.58.5
