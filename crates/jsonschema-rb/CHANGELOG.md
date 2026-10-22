@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.60.0] - 2026-10-22
+
 ### Performance
 
 - Validation with unfinished regex matches running each such match once instead of once per run, and comparing errors across runs in linear time instead of quadratic. [#1784](https://github.com/Stranger6667/jsonschema/issues/1784)
@@ -678,7 +680,8 @@
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema/compare/ruby-v0.59.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema/compare/ruby-v0.60.0...HEAD
+[0.60.0]: https://github.com/Stranger6667/jsonschema/compare/ruby-v0.59.0...ruby-v0.60.0
 [0.59.0]: https://github.com/Stranger6667/jsonschema/compare/ruby-v0.58.6...ruby-v0.59.0
 [0.58.6]: https://github.com/Stranger6667/jsonschema/compare/ruby-v0.58.5...ruby-v0.58.6
 [0.58.5]: https://github.com/Stranger6667/jsonschema/compare/ruby-v0.58.4...ruby-v0.58.5
