@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.60.1] - 2026-10-23
+
 ### Fixed
 
 - Panic on numbers past `f64` in `const`, `enum`, `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` and `type: integer` when another crate in the build enables `serde_json/arbitrary_precision` while the `arbitrary-precision` feature is off. [#1790](https://github.com/Stranger6667/jsonschema/issues/1790)
@@ -1996,7 +1998,8 @@ Old names are retained for backward compatibility but will be removed in a futur
 
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema/compare/rust-v0.60.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema/compare/rust-v0.60.1...HEAD
+[0.60.1]: https://github.com/Stranger6667/jsonschema/compare/rust-v0.60.0...rust-v0.60.1
 [0.60.0]: https://github.com/Stranger6667/jsonschema/compare/rust-v0.59.0...rust-v0.60.0
 [0.59.0]: https://github.com/Stranger6667/jsonschema/compare/rust-v0.58.6...rust-v0.59.0
 [0.58.6]: https://github.com/Stranger6667/jsonschema/compare/rust-v0.58.5...rust-v0.58.6
