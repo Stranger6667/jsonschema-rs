@@ -1709,8 +1709,8 @@ mod tests {
         #[test_case(r#"{"items": {"type": "integer"}}"#, r"[18446744073709551616.5]", false; "huge decimal")]
         #[test_case(r#"{"items": {"type": "integer"}}"#, r"[99999999999999999999.5]", false; "huge float")]
         #[test_case(r#"{"items": {"type": "integer"}}"#, r"[1e1000]", true; "huge scientific notation")]
-        #[test_case(r#"{"items": {"type": "integer"}}"#, r"[1e1000001]", false; "infinity positive")]
-        #[test_case(r#"{"items": {"type": "integer"}}"#, r"[-1e1000001]", false; "infinity negative")]
+        #[test_case(r#"{"items": {"type": "integer"}}"#, r"[1e1000001]", true; "past digit budget positive")]
+        #[test_case(r#"{"items": {"type": "integer"}}"#, r"[-1e1000001]", true; "past digit budget negative")]
         fn items_integer_huge_draft7(schema_json: &str, instance_json: &str, expected: bool) {
             let schema = parse_json(schema_json);
             let instance = parse_json(instance_json);

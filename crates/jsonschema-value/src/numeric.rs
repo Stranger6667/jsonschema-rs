@@ -191,6 +191,11 @@ fn divides_exactly(value: f64, multiple: f64) -> Option<bool> {
 }
 
 pub fn is_multiple_of_float<N: crate::JsonNumber>(value: &N, multiple: f64) -> bool {
+    #[cfg(feature = "arbitrary-precision")]
+    if let Some(decimal) = bignum::past_digit_budget(&value.as_str()) {
+        return bignum::Decimal::of_limit(multiple)
+            .is_some_and(|multiple| decimal.is_multiple_of(&multiple));
+    }
     if let Some(value_f64) = value.as_f64() {
         // Zero is a multiple of any non-zero number, but a magnitude below the smallest
         // subnormal reads as zero without being one.
@@ -274,6 +279,11 @@ pub fn is_multiple_of_integer<N: crate::JsonNumber>(value: &N, multiple: f64) ->
         // An integer past `u64` still divides exactly, and `as_f64` below would answer about the
         // value it rounds to instead.
         #[cfg(feature = "arbitrary-precision")]
+        if let Some(decimal) = bignum::past_digit_budget(&value.as_str()) {
+            return bignum::Decimal::of_limit(multiple)
+                .is_some_and(|multiple| decimal.is_multiple_of(&multiple));
+        }
+        #[cfg(feature = "arbitrary-precision")]
         if let Some(big_value) = bignum::try_parse_bigint(&value.to_number()) {
             let divisor = num_bigint::BigInt::from(multiple as i64);
             return bignum::is_multiple_of_bigint(&big_value, &divisor);
@@ -338,15 +348,244 @@ pub mod bignum {
     use serde_json::Number;
     use std::str::FromStr;
 
-    /// Guardrail for how many decimal shifts we are willing to perform when normalizing
-    /// a JSON number written in scientific notation.
-    ///
-    /// Schema authors (and instances) are untrusted input: a literal like `"1e1000000000"`
-    /// would otherwise force us to append billions of zeros just to materialize the number,
-    /// opening the door to denial-of-service attacks. Limiting the exponent adjustment to
-    /// one million digits keeps conversions deterministic while still covering realistic
-    /// use-cases (`10^1_000_000` is already astronomically large for JSON Schema).
-    const MAX_EXPONENT_ADJUSTMENT: u32 = 1_000_000;
+    /// The most digits `BigInt` and `BigFraction` materialise for one number. Their arithmetic
+    /// grows quadratically with the digit count and a short literal like `1e-1000000` writes a
+    /// million, so numbers past this budget take [`Decimal`], which is linear in the written text.
+    const MAX_DIGITS: u64 = 10_000;
+
+    /// Whether materialising the number written in `text` takes more than `MAX_DIGITS` digits:
+    /// the digits it writes plus the zeros its exponent shifts in.
+    #[inline]
+    pub fn exceeds_digit_budget(text: &str) -> bool {
+        // Without an exponent the text is at least as long as the digits it materialises.
+        if !text.bytes().any(|byte| byte | 0x20 == b'e') {
+            return text.len() as u64 > MAX_DIGITS;
+        }
+        let mut digits: u64 = 0;
+        let mut fraction: i64 = 0;
+        let mut in_fraction = false;
+        let mut exponent: i64 = 0;
+        let mut exponent_negative = false;
+        let mut in_exponent = false;
+        for byte in text.bytes() {
+            match byte {
+                b'0'..=b'9' if in_exponent => {
+                    exponent = exponent
+                        .saturating_mul(10)
+                        .saturating_add(i64::from(byte - b'0'));
+                }
+                b'0'..=b'9' => {
+                    digits += 1;
+                    fraction += i64::from(in_fraction);
+                }
+                b'.' => in_fraction = true,
+                b'e' | b'E' => in_exponent = true,
+                b'-' if in_exponent => exponent_negative = true,
+                _ => {}
+            }
+        }
+        let exponent = if exponent_negative {
+            -exponent
+        } else {
+            exponent
+        };
+        digits.saturating_add(exponent.saturating_sub(fraction).unsigned_abs()) > MAX_DIGITS
+    }
+
+    /// The number written in `text` as a [`Decimal`] when it [`exceeds_digit_budget`].
+    pub fn past_digit_budget(text: &str) -> Option<Decimal> {
+        exceeds_digit_budget(text).then(|| Decimal::parse(text))
+    }
+
+    /// A decimal number, `digits * 10^exponent`, with no leading or trailing zeros in `digits`;
+    /// zero has no digits. Exact at any magnitude, with work linear in the written text.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Decimal {
+        negative: bool,
+        digits: Vec<u8>,
+        exponent: i64,
+    }
+
+    impl Decimal {
+        /// The number written in `text`, a JSON number literal.
+        // ponytail: exponents saturate at `i64`, so numbers written past `1e9223372036854775807`
+        // compare equal to each other.
+        pub fn parse(text: &str) -> Self {
+            let mut negative = false;
+            let mut digits = Vec::new();
+            let mut fraction: i64 = 0;
+            let mut in_fraction = false;
+            let mut exponent: i64 = 0;
+            let mut exponent_negative = false;
+            let mut in_exponent = false;
+            for byte in text.bytes() {
+                match byte {
+                    b'0'..=b'9' if in_exponent => {
+                        exponent = exponent
+                            .saturating_mul(10)
+                            .saturating_add(i64::from(byte - b'0'));
+                    }
+                    b'0'..=b'9' => {
+                        if !(digits.is_empty() && byte == b'0') {
+                            digits.push(byte);
+                        }
+                        fraction += i64::from(in_fraction);
+                    }
+                    b'.' => in_fraction = true,
+                    b'e' | b'E' => in_exponent = true,
+                    b'-' if in_exponent => exponent_negative = true,
+                    b'-' => negative = true,
+                    _ => {}
+                }
+            }
+            let trailing = digits
+                .iter()
+                .rev()
+                .take_while(|&&byte| byte == b'0')
+                .count();
+            digits.truncate(digits.len() - trailing);
+            if digits.is_empty() {
+                return Self {
+                    negative: false,
+                    digits,
+                    exponent: 0,
+                };
+            }
+            let exponent = if exponent_negative {
+                -exponent
+            } else {
+                exponent
+            };
+            Self {
+                negative,
+                digits,
+                exponent: exponent
+                    .saturating_sub(fraction)
+                    .saturating_add(trailing as i64),
+            }
+        }
+
+        /// A primitive limit as the decimal it prints as; `None` for infinities and NaN.
+        pub fn of_limit<T: Copy + ToPrimitive>(limit: T) -> Option<Self> {
+            let float = limit.to_f64()?;
+            if float.fract() == 0.0 {
+                if let Some(integer) = limit.to_i64() {
+                    return Some(Self::parse(&integer.to_string()));
+                }
+                if let Some(integer) = limit.to_u64() {
+                    return Some(Self::parse(&integer.to_string()));
+                }
+            }
+            float
+                .is_finite()
+                .then(|| Self::parse(zmij::Buffer::new().format_finite(float)))
+        }
+
+        pub fn of_integer(value: &BigInt) -> Self {
+            Self::parse(&value.to_string())
+        }
+
+        /// `None` when no finite decimal writes `value`.
+        pub fn of_fraction(value: &BigFraction) -> Option<Self> {
+            use num_bigint::BigUint;
+            use num_traits::One;
+
+            let (numerator, denominator) = (value.numer()?, value.denom()?);
+            // Scaling by ten clears one factor of two and one of five, so a finite decimal exists
+            // exactly when those are the denominator's only prime factors.
+            let twos = denominator.trailing_zeros().unwrap_or(0);
+            let mut rest = denominator >> twos;
+            let five = BigUint::from(5_u8);
+            let mut fives = 0_u64;
+            while (&rest % &five).is_zero() {
+                rest /= &five;
+                fives += 1;
+            }
+            if !rest.is_one() {
+                return None;
+            }
+            let places = twos.max(fives);
+            let digits = numerator
+                * BigUint::from(2_u8).pow(u32::try_from(places - twos).ok()?)
+                * five.pow(u32::try_from(places - fives).ok()?);
+            let sign = if value.is_sign_negative() { "-" } else { "" };
+            Some(Self::parse(&format!("{sign}{digits}e-{places}")))
+        }
+
+        pub fn is_integer(&self) -> bool {
+            self.exponent >= 0
+        }
+
+        pub fn is_multiple_of(&self, multiple: &Self) -> bool {
+            use num_bigint::BigUint;
+
+            if self.digits.is_empty() {
+                return true;
+            }
+            if multiple.digits.is_empty() {
+                return false;
+            }
+            // `self / multiple` is `self.digits / (multiple.digits * 10^-shift)`. A negative shift
+            // asks for `self.digits` to divide by ten, which a value with no trailing zero never does.
+            let Ok(shift) =
+                u64::try_from(i128::from(self.exponent) - i128::from(multiple.exponent))
+            else {
+                return false;
+            };
+            let divisor = digit_chunks(&multiple.digits)
+                .fold(BigUint::zero(), |value, (scale, chunk)| {
+                    value * scale + chunk
+                });
+            let remainder = digit_chunks(&self.digits)
+                .fold(BigUint::zero(), |value, (scale, chunk)| {
+                    (value * scale + chunk) % &divisor
+                });
+            let scale = BigUint::from(10_u8).modpow(&BigUint::from(shift), &divisor);
+            (remainder * scale % &divisor).is_zero()
+        }
+    }
+
+    /// `digits` in chunks of 19, each within `u64`, paired with the power of ten it shifts by.
+    fn digit_chunks(digits: &[u8]) -> impl Iterator<Item = (num_bigint::BigUint, u64)> + '_ {
+        digits.chunks(19).map(|chunk| {
+            let value = chunk
+                .iter()
+                .fold(0_u64, |value, byte| value * 10 + u64::from(byte - b'0'));
+            (
+                num_bigint::BigUint::from(10_u64.pow(chunk.len() as u32)),
+                value,
+            )
+        })
+    }
+
+    impl PartialOrd for Decimal {
+        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+
+    impl Ord for Decimal {
+        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+            let sign = |value: &Self| match (value.digits.is_empty(), value.negative) {
+                (true, _) => 0,
+                (false, true) => -1,
+                (false, false) => 1,
+            };
+            // The position of the leading digit orders magnitudes first; with no trailing zeros,
+            // digit strings sharing that position order lexicographically.
+            let leading = |value: &Self| value.digits.len() as i128 + i128::from(value.exponent);
+            sign(self).cmp(&sign(other)).then_with(|| {
+                let magnitude = leading(self)
+                    .cmp(&leading(other))
+                    .then_with(|| self.digits.cmp(&other.digits));
+                if self.negative {
+                    magnitude.reverse()
+                } else {
+                    magnitude
+                }
+            })
+        }
+    }
 
     #[derive(Debug, Clone)]
     struct DecimalComponents {
@@ -469,23 +708,6 @@ pub mod bignum {
         Some(BigInt::from(10).pow(exp_u32))
     }
 
-    fn shift_exceeds_limit(shift: i64) -> bool {
-        if shift <= 0 {
-            return false;
-        }
-        shift as u64 > u64::from(MAX_EXPONENT_ADJUSTMENT)
-    }
-
-    fn exponent_reduction_exceeds_limit(exponent: i64) -> bool {
-        if exponent >= 0 {
-            return false;
-        }
-        match exponent.checked_abs() {
-            Some(abs) => abs as u64 > u64::from(MAX_EXPONENT_ADJUSTMENT),
-            None => true,
-        }
-    }
-
     /// The rational a whole number denotes. `BigFraction::from` writes the integer out in decimal
     /// and reads it back one digit at a time, while a magnitude over one is already the reduced form.
     pub fn whole(value: BigInt) -> BigFraction {
@@ -515,6 +737,10 @@ pub mod bignum {
             }
         }
 
+        if exceeds_digit_budget(num_str) {
+            return None;
+        }
+
         let has_fraction_or_exponent = num_str.bytes().any(|b| b == b'.' || b == b'e' || b == b'E');
         if !has_fraction_or_exponent {
             return BigInt::from_str(num_str).ok();
@@ -530,9 +756,6 @@ pub mod bignum {
                 components.digits.push('0');
                 shift = 0;
             } else {
-                if exponent_reduction_exceeds_limit(components.exponent) {
-                    return None;
-                }
                 let zeros = trailing_zero_count(&components.digits);
                 if zeros < needed {
                     return None;
@@ -544,9 +767,6 @@ pub mod bignum {
         }
 
         if shift > 0 {
-            if shift_exceeds_limit(shift) {
-                return None;
-            }
             append_zeros(&mut components.digits, shift as usize)?;
         }
 
@@ -596,6 +816,10 @@ pub mod bignum {
             return None;
         }
 
+        if exceeds_digit_budget(num_str) {
+            return None;
+        }
+
         if !has_exponent {
             return BigFraction::from_str(num_str).ok();
         }
@@ -605,10 +829,6 @@ pub mod bignum {
 
         // A number with exponent that still resolves to an integer is handled by BigInt.
         if shift >= 0 {
-            return None;
-        }
-
-        if exponent_reduction_exceeds_limit(components.exponent) {
             return None;
         }
 
@@ -675,6 +895,9 @@ pub mod bignum {
     where
         T: Copy + ToPrimitive,
     {
+        if let Some(value) = past_digit_budget(num.as_str()) {
+            return Some(value.cmp(&Decimal::of_limit(limit)?));
+        }
         if let Some(big) = try_parse_bigint(num) {
             return compare_bigint_to_limit(&big, limit);
         }

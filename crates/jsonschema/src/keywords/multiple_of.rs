@@ -172,6 +172,10 @@ impl<F: Json> Validate<F> for MultipleOfBigIntValidator {
         use num_bigint::BigInt;
         use num_traits::One;
         if let Some(item) = instance.as_number() {
+            if let Some(instance) = numeric::bignum::past_digit_budget(&item.as_str()) {
+                return instance
+                    .is_multiple_of(&numeric::bignum::Decimal::of_integer(&self.multiple_of));
+            }
             if let Some(instance_bigint) = numeric::bignum::try_parse_bigint(&item.to_number()) {
                 numeric::bignum::is_multiple_of_bigint(&instance_bigint, &self.multiple_of)
             } else if let Some(v) = item.as_u64() {
@@ -272,6 +276,11 @@ impl<F: Json> Validate<F> for MultipleOfBigFracValidator {
     fn is_valid(&self, instance: &F::Node<'_>, _ctx: &mut ValidationContext) -> bool {
         use num_traits::ToPrimitive;
         if let Some(item) = instance.as_number() {
+            if let Some(instance) = numeric::bignum::past_digit_budget(&item.as_str()) {
+                if let Some(multiple) = numeric::bignum::Decimal::of_fraction(&self.multiple_of) {
+                    return instance.is_multiple_of(&multiple);
+                }
+            }
             // Try to parse instance as BigFraction for exact precision
             if let Some(instance_bigfrac) =
                 numeric::bignum::try_parse_bigfraction(&item.to_number())
@@ -318,6 +327,42 @@ impl<F: Json> Validate<F> for MultipleOfBigFracValidator {
     }
 }
 
+/// A divisor with more digits than exact arithmetic takes on.
+#[cfg(feature = "arbitrary-precision")]
+pub(crate) struct MultipleOfDecimalValidator {
+    multiple_of: numeric::bignum::Decimal,
+    original_value: serde_json::Number,
+    location: Location,
+}
+
+#[cfg(feature = "arbitrary-precision")]
+impl<F: Json> Validate<F> for MultipleOfDecimalValidator {
+    fn is_valid(&self, instance: &F::Node<'_>, _ctx: &mut ValidationContext) -> bool {
+        instance.as_number().is_none_or(|item| {
+            numeric::bignum::Decimal::parse(&item.as_str()).is_multiple_of(&self.multiple_of)
+        })
+    }
+
+    fn validate<'i>(
+        &self,
+        instance: &F::Node<'i>,
+        location: &LazyLocation,
+        tracker: Option<&RefTracker>,
+        ctx: &mut ValidationContext,
+    ) -> Result<(), ValidationError<'i>> {
+        if !Validate::<F>::is_valid(self, instance, ctx) {
+            return Err(ValidationError::multiple_of(
+                self.location.clone(),
+                crate::paths::capture_evaluation_path(tracker, &self.location),
+                location.into(),
+                instance.lazy_value(),
+                Value::Number(self.original_value.clone()),
+            ));
+        }
+        Ok(())
+    }
+}
+
 #[inline]
 pub(crate) fn compile<'a, F: Json>(
     ctx: &compiler::Context<F>,
@@ -329,6 +374,13 @@ pub(crate) fn compile<'a, F: Json>(
 
         #[cfg(feature = "arbitrary-precision")]
         {
+            if let Some(decimal) = numeric::bignum::past_digit_budget(multiple_of.as_str()) {
+                return Some(Ok(Box::new(MultipleOfDecimalValidator {
+                    multiple_of: decimal,
+                    original_value: multiple_of.clone(),
+                    location,
+                })));
+            }
             // Try BigInt first for large integers
             if let Some(bigint_multiple) = numeric::bignum::try_parse_bigint(multiple_of) {
                 return Some(MultipleOfBigIntValidator::compile(
@@ -681,24 +733,19 @@ mod tests {
             tests_util::is_not_valid(&schema, &instance);
         }
 
-        #[test]
-        fn huge_scientific_notation_else_branch_unparsable() {
-            // This hits the else branch but CANNOT be parsed as BigFraction (scientific notation)
-            // as_f64() returns None (infinity), try_parse_bigfraction returns None (has exponent)
-            let divisor = "18446744073709551616"; // 2^64
-            let schema_json = format!(r#"{{"multipleOf": {divisor}}}"#);
-            let schema = parse_json(&schema_json);
-
-            // Scientific notation that overflows to infinity - cannot be parsed as BigFraction
-            let infinity_positive = parse_json("1e1000001");
-            tests_util::is_not_valid(&schema, &infinity_positive);
-
-            let infinity_negative = parse_json("-1e1000001");
-            tests_util::is_not_valid(&schema, &infinity_negative);
-
-            // Huge scientific notation decimal (not just integer exponent)
-            let huge_scientific = parse_json("1.5e1000002");
-            tests_util::is_not_valid(&schema, &huge_scientific);
+        // Ten to any power past 64 holds 2^64 as a factor.
+        #[test_case("1e1000001", true)]
+        #[test_case("-1e1000001", true)]
+        #[test_case("1.5e1000002", true)]
+        #[test_case("1e-1000001", false)]
+        fn bigint_divisor_past_digit_budget(instance: &str, expected: bool) {
+            let schema = parse_json(r#"{"multipleOf": 18446744073709551616}"#);
+            let instance = parse_json(instance);
+            if expected {
+                tests_util::is_valid(&schema, &instance);
+            } else {
+                tests_util::is_not_valid(&schema, &instance);
+            }
         }
 
         #[test_case(r#"{"multipleOf": 18446744073709551616}"#, "1.0", false; "bigint divisor small float")]

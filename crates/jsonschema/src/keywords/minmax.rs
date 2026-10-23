@@ -87,8 +87,9 @@ pub(crate) mod bigint_validators {
         f64_ge_bigfrac, f64_ge_bigint, f64_gt_bigfrac, f64_gt_bigint, f64_le_bigfrac,
         f64_le_bigint, f64_lt_bigfrac, f64_lt_bigint, i64_ge_bigfrac, i64_ge_bigint,
         i64_gt_bigfrac, i64_gt_bigint, i64_le_bigfrac, i64_le_bigint, i64_lt_bigfrac,
-        i64_lt_bigint, try_parse_bigfraction, u64_ge_bigfrac, u64_ge_bigint, u64_gt_bigfrac,
-        u64_gt_bigint, u64_le_bigfrac, u64_le_bigint, u64_lt_bigfrac, u64_lt_bigint,
+        i64_lt_bigint, past_digit_budget, try_parse_bigfraction, u64_ge_bigfrac, u64_ge_bigint,
+        u64_gt_bigfrac, u64_gt_bigint, u64_le_bigfrac, u64_le_bigint, u64_lt_bigfrac,
+        u64_lt_bigint, Decimal,
     };
     use num_bigint::BigInt;
 
@@ -130,6 +131,9 @@ pub(crate) mod bigint_validators {
 
                 fn is_valid(&self, instance: &F::Node<'_>, _ctx: &mut  ValidationContext) -> bool {
                     if let Some(item) = instance.as_number() {
+                        if let Some(instance) = past_digit_budget(&item.as_str()) {
+                            return instance $bigint_op Decimal::of_integer(&self.limit);
+                        }
                         // Try to parse instance as BigInt first
                         if let Some(instance_bigint) = numeric::bignum::try_parse_bigint(&item.to_number()) {
                             // Both are BigInt - direct comparison
@@ -242,6 +246,11 @@ pub(crate) mod bigint_validators {
 
                 fn is_valid(&self, instance: &F::Node<'_>, _ctx: &mut  ValidationContext) -> bool {
                     if let Some(item) = instance.as_number() {
+                        if let Some(instance) = past_digit_budget(&item.as_str()) {
+                            if let Some(limit) = Decimal::of_fraction(&self.limit) {
+                                return instance $bigfrac_op limit;
+                            }
+                        }
                         // Try to parse instance as BigFraction for exact precision
                         if let Some(instance_bigfrac) = try_parse_bigfraction(&item.to_number()) {
                             // Both are BigFraction - direct comparison
@@ -303,6 +312,57 @@ pub(crate) mod bigint_validators {
         <,
         exclusive_maximum
     );
+
+    // Limits with more digits than exact arithmetic takes on.
+    macro_rules! define_decimal_validator {
+        ($struct_name:ident, $op:tt, $error_fn:ident) => {
+            #[derive(Debug, Clone, PartialEq)]
+            pub(crate) struct $struct_name {
+                pub(super) limit: Decimal,
+                pub(super) limit_val: Value,
+                pub(super) location: Location,
+            }
+
+            impl $struct_name {
+                pub(crate) fn new(limit: Decimal, limit_val: Value, location: Location) -> Self {
+                    Self { limit, limit_val, location }
+                }
+            }
+
+            impl<F: Json> Validate<F> for $struct_name {
+                fn validate<'i>(
+                    &self,
+                    instance: &F::Node<'i>,
+                    location: &LazyLocation,
+                    tracker: Option<&RefTracker>,
+                    ctx: &mut ValidationContext,
+                ) -> Result<(), ValidationError<'i>> {
+                    if Validate::<F>::is_valid(self, instance, ctx) {
+                        Ok(())
+                    } else {
+                        Err(ValidationError::$error_fn(
+                            self.location.clone(),
+                            crate::paths::capture_evaluation_path(tracker, &self.location),
+                            location.into(),
+                            instance.lazy_value(),
+                            self.limit_val.clone(),
+                        ))
+                    }
+                }
+
+                fn is_valid(&self, instance: &F::Node<'_>, _ctx: &mut ValidationContext) -> bool {
+                    instance
+                        .as_number()
+                        .is_none_or(|item| Decimal::parse(&item.as_str()) $op self.limit)
+                }
+            }
+        };
+    }
+
+    define_decimal_validator!(DecimalMinimum, >=, minimum);
+    define_decimal_validator!(DecimalMaximum, <=, maximum);
+    define_decimal_validator!(DecimalExclusiveMinimum, >, exclusive_minimum);
+    define_decimal_validator!(DecimalExclusiveMaximum, <, exclusive_maximum);
 }
 
 #[inline]
@@ -388,7 +448,28 @@ fn create_bigint_validator<F: Json>(
     use bigint_validators::{
         BigFracExclusiveMaximum, BigFracExclusiveMinimum, BigFracMaximum, BigFracMinimum,
         BigIntExclusiveMaximum, BigIntExclusiveMinimum, BigIntMaximum, BigIntMinimum,
+        DecimalExclusiveMaximum, DecimalExclusiveMinimum, DecimalMaximum, DecimalMinimum,
     };
+
+    if let Some(decimal_limit) = numeric::bignum::past_digit_budget(limit.as_str()) {
+        let location = ctx.location().join(keyword);
+        let validator: Box<dyn Validate<F>> = match keyword {
+            "minimum" => Box::new(DecimalMinimum::new(decimal_limit, schema.clone(), location)),
+            "maximum" => Box::new(DecimalMaximum::new(decimal_limit, schema.clone(), location)),
+            "exclusiveMinimum" => Box::new(DecimalExclusiveMinimum::new(
+                decimal_limit,
+                schema.clone(),
+                location,
+            )),
+            "exclusiveMaximum" => Box::new(DecimalExclusiveMaximum::new(
+                decimal_limit,
+                schema.clone(),
+                location,
+            )),
+            _ => return None,
+        };
+        return Some(Ok(validator));
+    }
 
     // Try BigInt first for large integers
     if let Some(bigint_limit) = numeric::bignum::try_parse_bigint(limit) {

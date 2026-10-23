@@ -2,9 +2,14 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Wrong results in `type: integer`, `const`, `enum`, `uniqueItems`, `multipleOf`, `minimum`, `maximum`, `exclusiveMinimum` and `exclusiveMaximum` for numbers with exponents past one million, such as `1e-2000000`.
+
 ### Performance
 
 - Validation of numbers with many digits or large exponents in `const`, `enum`, `uniqueItems`, `type: integer`, `multipleOf`, `minimum`, `maximum`, `exclusiveMinimum` and `exclusiveMaximum` taking time growing faster than the square of the digit count, instead of at most the square.
+- Validation of numbers with more than ten thousand digits, written or implied by their exponent, taking time linear in their written length instead of quadratic in their digit count.
 
 ## [0.60.0] - 2026-10-22
 
