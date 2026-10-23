@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.60.1] - 2026-10-23
+
 ### Fixed
 
 - Wrong results in `type: integer`, `const`, `enum`, `uniqueItems`, `multipleOf`, `minimum`, `maximum`, `exclusiveMinimum` and `exclusiveMaximum` for numbers with exponents past one million, such as `1e-2000000`.
@@ -1653,7 +1655,8 @@
 ## 0.1.0 - 2020-06-09
 - Initial public release
 
-[Unreleased]: https://github.com/Stranger6667/jsonschema/compare/python-v0.60.0...HEAD
+[Unreleased]: https://github.com/Stranger6667/jsonschema/compare/python-v0.60.1...HEAD
+[0.60.1]: https://github.com/Stranger6667/jsonschema/compare/python-v0.60.0...python-v0.60.1
 [0.60.0]: https://github.com/Stranger6667/jsonschema/compare/python-v0.59.0...python-v0.60.0
 [0.59.0]: https://github.com/Stranger6667/jsonschema/compare/python-v0.58.6...python-v0.59.0
 [0.58.6]: https://github.com/Stranger6667/jsonschema/compare/python-v0.58.5...python-v0.58.6
