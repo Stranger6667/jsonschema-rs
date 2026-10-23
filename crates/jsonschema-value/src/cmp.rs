@@ -140,11 +140,22 @@ pub fn equal_arrays(left: &[Value], right: &[Value]) -> bool {
 #[inline]
 #[must_use]
 pub fn equal_objects(left: &Map<String, Value>, right: &Map<String, Value>) -> bool {
-    left.len() == right.len()
-        && left
-            .iter()
-            .zip(right)
-            .all(|((ka, va), (kb, vb))| ka == kb && equal(va, vb))
+    if left.len() != right.len() {
+        return false;
+    }
+    for ((left_key, left_value), (right_key, right_value)) in left.iter().zip(right) {
+        if left_key != right_key {
+            // With `serde_json/preserve_order` the maps keep insertion order, so the same keys
+            // may come in a different order.
+            return left
+                .iter()
+                .all(|(key, value)| right.get(key).is_some_and(|other| equal(value, other)));
+        }
+        if !equal(left_value, right_value) {
+            return false;
+        }
+    }
+    true
 }
 
 #[cfg(test)]
@@ -165,6 +176,7 @@ mod tests {
     #[test_case(&json!([]), &json!(["foo"]))]
     #[test_case(&json!([-3]), &json!([-4.0]))]
     #[test_case(&json!({"a": 1}), &json!({"a": 1.0, "b": 2}))]
+    #[test_case(&json!({"a": 1, "b": 2}), &json!({"a": 1, "c": 2}))]
     fn are_not_equal(left: &Value, right: &Value) {
         assert!(!equal(left, right));
     }

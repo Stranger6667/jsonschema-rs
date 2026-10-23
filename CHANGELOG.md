@@ -6,6 +6,7 @@
 
 - Panic on numbers past `f64` in `const`, `enum`, `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` and `type: integer` when another crate in the build enables `serde_json/arbitrary_precision` while the `arbitrary-precision` feature is off. [#1790](https://github.com/Stranger6667/jsonschema/issues/1790)
 - `#[jsonschema::validator]` panicking during expansion, or generating code that panics, on schema numbers past `f64` when another crate in the build enables `serde_json/arbitrary_precision` while the `arbitrary-precision` feature is off. Such numbers are compile errors, as without that `serde_json` feature. [#1790](https://github.com/Stranger6667/jsonschema/issues/1790)
+- `const`, `enum` and `uniqueItems` treating objects with the same members in a different key order as unequal when another crate in the build enables `serde_json/preserve_order`. [#1791](https://github.com/Stranger6667/jsonschema/issues/1791)
 
 ## [0.60.0] - 2026-10-22
 

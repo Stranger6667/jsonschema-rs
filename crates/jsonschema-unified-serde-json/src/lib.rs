@@ -66,4 +66,22 @@ mod tests {
             quote!(::core::compile_error! { #message }).to_string()
         );
     }
+
+    #[test_case(r#"{"const": {"a": 1, "b": 2}}"#, r#"{"b": 2, "a": 1}"#, true)]
+    #[test_case(r#"{"const": {"a": 1, "b": 2}}"#, r#"{"b": 1, "a": 2}"#, false)]
+    #[test_case(r#"{"enum": [{"a": 1, "b": 2}]}"#, r#"{"b": 2, "a": 1}"#, true)]
+    #[test_case(
+        r#"{"uniqueItems": true}"#,
+        r#"[{"a": 1, "b": 2}, {"b": 2, "a": 1}]"#,
+        false
+    )]
+    #[test_case(
+        r#"{"uniqueItems": true}"#,
+        r#"[{"a": 1, "b": 2}, {"b": 1, "a": 2}]"#,
+        true
+    )]
+    fn object_key_order(schema: &str, instance: &str, expected: bool) {
+        let validator = jsonschema::validator_for(&parse(schema)).expect("valid schema");
+        assert_eq!(validator.is_valid(&parse(instance)), expected);
+    }
 }
