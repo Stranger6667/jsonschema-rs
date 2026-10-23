@@ -34,6 +34,7 @@ getrandom = { version = "0.3.4", features = ["wasm_js"] }
 ahash.workspace = true
 bytecount = { version = "0.6", features = ["runtime-dispatch-simd"], optional = true }
 zmij = "1.0.23"
+memchr = "2"
 fraction = { version = "0.17", default-features = false, features = [
   "with-bigint",
 ] }
