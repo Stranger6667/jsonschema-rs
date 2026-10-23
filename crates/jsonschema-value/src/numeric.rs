@@ -486,6 +486,18 @@ pub mod bignum {
         }
     }
 
+    /// The rational a whole number denotes. `BigFraction::from` writes the integer out in decimal
+    /// and reads it back one digit at a time, while a magnitude over one is already the reduced form.
+    pub fn whole(value: BigInt) -> BigFraction {
+        let (sign, magnitude) = value.into_parts();
+        let fraction = BigFraction::new_raw(magnitude, num_bigint::BigUint::from(1_u8));
+        if sign == num_bigint::Sign::Minus {
+            -fraction
+        } else {
+            fraction
+        }
+    }
+
     /// Try to parse a Number as `BigInt` if it's outside i64 range or for compile-time
     /// schema values that need exact representation
     pub fn try_parse_bigint(num: &Number) -> Option<BigInt> {
@@ -606,7 +618,7 @@ pub mod bignum {
         if components.negative && !numerator.is_zero() {
             numerator = -numerator;
         }
-        Some(BigFraction::from(numerator) / BigFraction::from(denominator))
+        Some(whole(numerator) / whole(denominator))
     }
 
     /// Exact ordering of a big-integer instance against a numeric limit.

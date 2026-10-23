@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Performance
+
+- Validation of numbers with many digits or large exponents in `const`, `enum`, `uniqueItems`, `type: integer`, `multipleOf`, `minimum`, `maximum`, `exclusiveMinimum` and `exclusiveMaximum` taking time growing faster than the square of the digit count, instead of at most the square.
+
 ## [0.60.0] - 2026-10-22
 
 ### Performance

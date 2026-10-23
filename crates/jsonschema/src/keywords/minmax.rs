@@ -129,7 +129,6 @@ pub(crate) mod bigint_validators {
                 }
 
                 fn is_valid(&self, instance: &F::Node<'_>, _ctx: &mut  ValidationContext) -> bool {
-                    use fraction::BigFraction;
                     if let Some(item) = instance.as_number() {
                         // Try to parse instance as BigInt first
                         if let Some(instance_bigint) = numeric::bignum::try_parse_bigint(&item.to_number()) {
@@ -147,7 +146,7 @@ pub(crate) mod bigint_validators {
                             if let Some(instance_bigfrac) = numeric::bignum::try_parse_bigfraction(&item.to_number()) {
                                 // Convert BigInt limit to BigFraction for comparison
                                 // Use clone to avoid truncation through i128
-                                let limit_frac = BigFraction::from(self.limit.clone());
+                                let limit_frac = numeric::bignum::whole(self.limit.clone());
                                 instance_bigfrac $bigint_op limit_frac
                             } else {
                                 // Can't parse as BigFraction - extremely large scientific notation
@@ -254,7 +253,7 @@ pub(crate) mod bigint_validators {
                         } else if let Some(instance_bigint) = numeric::bignum::try_parse_bigint(&item.to_number()) {
                             // An integer past i64 is exact as a BigInt, while f64 rounds it onto
                             // limits only a fractional digit separates it from.
-                            BigFraction::from(instance_bigint) $bigfrac_op self.limit
+                            numeric::bignum::whole(instance_bigint) $bigfrac_op self.limit
                         } else if let Some(v) = item.as_f64() {
                             // Scientific notation or other f64-representable numbers
                             $f64_cmp(v, &self.limit)

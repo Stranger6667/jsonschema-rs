@@ -93,8 +93,6 @@ fn infinity_cmp(op: BoundOp, is_negative: bool) -> bool {
 #[cfg(feature = "arbitrary-precision")]
 #[inline]
 fn check_bigint_bound(op: BoundOp, limit: &num_bigint::BigInt, value: &Number) -> bool {
-    use fraction::BigFraction;
-
     if let Some(instance_bigint) = numeric::bignum::try_parse_bigint(value) {
         return match op {
             BoundOp::Lt => instance_bigint < *limit,
@@ -132,7 +130,7 @@ fn check_bigint_bound(op: BoundOp, limit: &num_bigint::BigInt, value: &Number) -
     }
 
     if let Some(instance_bigfrac) = numeric::bignum::try_parse_bigfraction(value) {
-        let limit_frac = BigFraction::from(limit.clone());
+        let limit_frac = numeric::bignum::whole(limit.clone());
         return match op {
             BoundOp::Lt => instance_bigfrac < limit_frac,
             BoundOp::Lte => instance_bigfrac <= limit_frac,
@@ -177,7 +175,7 @@ fn check_bigfrac_bound(op: BoundOp, limit: &fraction::BigFraction, value: &Numbe
     // An integer past i64 is exact as a BigInt, while `f64` rounds it onto limits a fractional
     // digit separates it from, e.g. `-10000000000000000000000000` against the same with `.1`.
     if let Some(instance_bigint) = numeric::bignum::try_parse_bigint(value) {
-        let instance_frac = fraction::BigFraction::from(instance_bigint);
+        let instance_frac = numeric::bignum::whole(instance_bigint);
         return match op {
             BoundOp::Lt => instance_frac < *limit,
             BoundOp::Lte => instance_frac <= *limit,
@@ -296,7 +294,7 @@ pub fn check_multiple_of(compiled: &CompiledMultipleOf, value: &Number) -> bool 
             }
 
             if let Some(instance_bigint) = numeric::bignum::try_parse_bigint(value) {
-                let value_frac = fraction::BigFraction::from(instance_bigint);
+                let value_frac = numeric::bignum::whole(instance_bigint);
                 return numeric::bignum::is_multiple_of_bigfrac(&value_frac, multiple);
             }
 

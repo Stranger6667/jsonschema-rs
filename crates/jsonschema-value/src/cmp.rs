@@ -17,7 +17,7 @@ macro_rules! num_cmp {
 
                 // Check BigInt/BigFraction BEFORE f64 to avoid precision loss
                 if let Some(right_bigint) = bignum::try_parse_bigint($right) {
-                    let right_frac = BigFraction::from(right_bigint);
+                    let right_frac = bignum::whole(right_bigint);
                     left_frac == right_frac
                 } else if let Some(right_frac) = bignum::try_parse_bigfraction($right) {
                     left_frac == right_frac
@@ -58,9 +58,9 @@ pub fn equal_numbers<L: crate::JsonNumber>(left: &L, right: &serde_json::Number)
             } else if let Some(b) = right.as_i64() {
                 left_bigint == num_bigint::BigInt::from(b)
             } else if let Some(right_frac) = bignum::try_parse_bigfraction(right) {
-                BigFraction::from(left_bigint) == right_frac
+                bignum::whole(left_bigint) == right_frac
             } else if let Some(b) = right.as_f64() {
-                BigFraction::from(left_bigint) == BigFraction::from(b)
+                bignum::whole(left_bigint) == BigFraction::from(b)
             } else {
                 unreachable!("Right is not parseable as any numeric type - should not happen for valid JSON numbers")
             }
@@ -68,7 +68,7 @@ pub fn equal_numbers<L: crate::JsonNumber>(left: &L, right: &serde_json::Number)
             if let Some(right_frac) = bignum::try_parse_bigfraction(right) {
                 left_frac == right_frac
             } else if let Some(right_bigint) = bignum::try_parse_bigint(right) {
-                left_frac == BigFraction::from(right_bigint)
+                left_frac == bignum::whole(right_bigint)
             } else if let Some(b) = right.as_u64() {
                 left_frac == BigFraction::from(b)
             } else if let Some(b) = right.as_i64() {
