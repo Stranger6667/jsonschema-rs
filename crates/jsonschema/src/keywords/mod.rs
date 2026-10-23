@@ -777,4 +777,39 @@ mod tests {
         assert_eq!(errors[0].to_string(), r#""foo" is a required property"#);
         assert_eq!(errors[1].to_string(), r#""bar" is a required property"#);
     }
+
+    #[cfg(feature = "arbitrary-precision")]
+    mod large_numbers {
+        use crate::tests_util;
+        use serde_json::{json, Value};
+        use test_case::test_case;
+
+        fn number(text: &str) -> Value {
+            serde_json::from_str(text).expect("valid JSON")
+        }
+
+        fn digits(count: usize) -> Value {
+            number(&format!("1{}", "0".repeat(count)))
+        }
+
+        #[test_case(&json!({"type": "integer"}), &number("1e-30000"), false)]
+        #[test_case(&json!({"const": 0}), &number("1e-30000"), false)]
+        #[test_case(&json!({"enum": [0, 1]}), &number("1e-30000"), false)]
+        #[test_case(&json!({"uniqueItems": true}), &json!([number("1e-30000"), &number("2e-30000")]), true)]
+        #[test_case(&json!({"multipleOf": 0.5}), &number("1e-30000"), false)]
+        #[test_case(&json!({"multipleOf": 0.5}), &number("1e30000"), true)]
+        #[test_case(&json!({"const": 0.5}), &digits(30000), false)]
+        #[test_case(&json!({"enum": [0.5]}), &digits(30000), false)]
+        #[test_case(&json!({"maximum": 0.5}), &digits(30000), false)]
+        #[test_case(&json!({"exclusiveMinimum": 0.5}), &digits(30000), true)]
+        #[test_case(&json!({"multipleOf": 0.5}), &digits(30000), true)]
+        #[test_case(&json!({"maximum": digits(30000)}), &number("0.5"), true)]
+        fn exact_answer(schema: &Value, instance: &Value, expected: bool) {
+            if expected {
+                tests_util::is_valid(schema, instance);
+            } else {
+                tests_util::is_not_valid(schema, instance);
+            }
+        }
+    }
 }

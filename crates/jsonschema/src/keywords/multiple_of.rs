@@ -280,7 +280,7 @@ impl<F: Json> Validate<F> for MultipleOfBigFracValidator {
             } else if let Some(instance_bigint) =
                 numeric::bignum::try_parse_bigint(&item.to_number())
             {
-                let value_frac = fraction::BigFraction::from(instance_bigint);
+                let value_frac = numeric::bignum::whole(instance_bigint);
                 numeric::bignum::is_multiple_of_bigfrac(&value_frac, &self.multiple_of)
             } else if let Some(v) = item.as_u64() {
                 let v_frac = fraction::BigFraction::from(v);

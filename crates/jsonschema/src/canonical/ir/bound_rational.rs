@@ -307,26 +307,13 @@ fn exact(number: &Number) -> Option<BigFraction> {
     #[cfg(feature = "arbitrary-precision")]
     {
         if let Some(value) = jsonschema_value::numeric::bignum::try_parse_bigint(number) {
-            return Some(whole(value));
+            return Some(jsonschema_value::numeric::bignum::whole(value));
         }
         if let Some(value) = jsonschema_value::numeric::bignum::try_parse_bigfraction(number) {
             return Some(value);
         }
     }
     number.as_f64().map(BigFraction::from)
-}
-
-/// The rational a whole number denotes. `BigFraction::from` writes the integer out in decimal and
-/// reads it back one digit at a time, while a magnitude over one is already the reduced form.
-#[cfg(feature = "arbitrary-precision")]
-fn whole(value: num_bigint::BigInt) -> BigFraction {
-    let (sign, magnitude) = value.into_parts();
-    let fraction = BigFraction::new_raw(magnitude, fraction::BigUint::one());
-    if sign == num_bigint::Sign::Minus {
-        -fraction
-    } else {
-        fraction
-    }
 }
 
 /// `value` written as a decimal JSON number, or `None` when no finite decimal writes it.

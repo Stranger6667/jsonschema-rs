@@ -8,6 +8,10 @@
 - `#[jsonschema::validator]` panicking during expansion, or generating code that panics, on schema numbers past `f64` when another crate in the build enables `serde_json/arbitrary_precision` while the `arbitrary-precision` feature is off. Such numbers are compile errors, as without that `serde_json` feature. [#1790](https://github.com/Stranger6667/jsonschema/issues/1790)
 - `const`, `enum` and `uniqueItems` treating objects with the same members in a different key order as unequal when another crate in the build enables `serde_json/preserve_order`. [#1791](https://github.com/Stranger6667/jsonschema/issues/1791)
 
+### Performance
+
+- Validation of numbers with many digits or large exponents in `const`, `enum`, `uniqueItems`, `type: integer`, `multipleOf`, `minimum`, `maximum`, `exclusiveMinimum` and `exclusiveMaximum` with the `arbitrary-precision` feature taking time growing faster than the square of the digit count, instead of at most the square.
+
 ## [0.60.0] - 2026-10-22
 
 ### Changed
