@@ -357,8 +357,16 @@ pub mod bignum {
     /// the digits it writes plus the zeros its exponent shifts in.
     #[inline]
     pub fn exceeds_digit_budget(text: &str) -> bool {
+        exceeds_digit_budget_with(text, has_exponent(text))
+    }
+
+    fn has_exponent(text: &str) -> bool {
+        memchr::memchr2(b'e', b'E', text.as_bytes()).is_some()
+    }
+
+    fn exceeds_digit_budget_with(text: &str, has_exponent: bool) -> bool {
         // Without an exponent the text is at least as long as the digits it materialises.
-        if !text.bytes().any(|byte| byte | 0x20 == b'e') {
+        if !has_exponent {
             return text.len() as u64 > MAX_DIGITS;
         }
         let mut digits: u64 = 0;
@@ -737,12 +745,12 @@ pub mod bignum {
             }
         }
 
-        if exceeds_digit_budget(num_str) {
+        let has_exponent = has_exponent(num_str);
+        if exceeds_digit_budget_with(num_str, has_exponent) {
             return None;
         }
 
-        let has_fraction_or_exponent = num_str.bytes().any(|b| b == b'.' || b == b'e' || b == b'E');
-        if !has_fraction_or_exponent {
+        if !has_exponent && !num_str.as_bytes().contains(&b'.') {
             return BigInt::from_str(num_str).ok();
         }
 
@@ -800,23 +808,12 @@ pub mod bignum {
 
         let num_str = num.as_str();
 
-        // Check for decimal point and exponent in a single pass
-        let mut has_decimal_point = false;
-        let mut has_exponent = false;
-        for b in num_str.bytes() {
-            if b == b'.' {
-                has_decimal_point = true;
-            } else if b == b'e' || b == b'E' {
-                has_exponent = true;
-                break;
-            }
-        }
-
-        if !has_decimal_point && !has_exponent {
+        let has_exponent = has_exponent(num_str);
+        if !has_exponent && !num_str.as_bytes().contains(&b'.') {
             return None;
         }
 
-        if exceeds_digit_budget(num_str) {
+        if exceeds_digit_budget_with(num_str, has_exponent) {
             return None;
         }
 
