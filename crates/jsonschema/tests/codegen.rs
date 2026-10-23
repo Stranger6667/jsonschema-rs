@@ -2373,6 +2373,55 @@ fn test_arbitrary_precision_codegen_matches_runtime(schema_json: &str, instance_
 }
 
 #[cfg(feature = "arbitrary-precision")]
+#[jsonschema::validator(schema = r#"{"const":0}"#)]
+struct ArbitraryPrecisionConstZeroValidator;
+
+#[cfg(feature = "arbitrary-precision")]
+#[jsonschema::validator(schema = r#"{"maximum":0}"#)]
+struct ArbitraryPrecisionMaximumZeroValidator;
+
+#[cfg(feature = "arbitrary-precision")]
+#[jsonschema::validator(schema = r#"{"multipleOf":2}"#)]
+struct ArbitraryPrecisionMultipleOfTwoValidator;
+
+#[cfg(feature = "arbitrary-precision")]
+#[jsonschema::validator(schema = r#"{"multipleOf":1e-2000000}"#)]
+struct ArbitraryPrecisionTinyMultipleOfValidator;
+
+// Numbers with more digits than exact arithmetic materialises.
+#[cfg(feature = "arbitrary-precision")]
+#[test_case(ArbitraryPrecisionIntegerTypeValidator::is_valid, "1e-2000000", false)]
+#[test_case(ArbitraryPrecisionIntegerTypeValidator::is_valid, "1e2000000", true)]
+#[test_case(ArbitraryPrecisionConstZeroValidator::is_valid, "1e-2000000", false)]
+#[test_case(ArbitraryPrecisionMaximumZeroValidator::is_valid, "1e-2000000", false)]
+#[test_case(ArbitraryPrecisionMaximumZeroValidator::is_valid, "-1e-2000000", true)]
+#[test_case(ArbitraryPrecisionMultipleOfTwoValidator::is_valid, "1e2000000", true)]
+#[test_case(ArbitraryPrecisionTinyMultipleOfValidator::is_valid, "3", true)]
+#[test_case(
+    ArbitraryPrecisionTinyMultipleOfValidator::is_valid,
+    "1e-2000001",
+    false
+)]
+#[test_case(
+    ArbitraryPrecisionTinyExclusiveMinimumValidator::is_valid,
+    "2e-2000000",
+    true
+)]
+#[test_case(
+    ArbitraryPrecisionTinyExclusiveMinimumValidator::is_valid,
+    "0.5e-2000000",
+    false
+)]
+fn test_arbitrary_precision_codegen_past_digit_budget(
+    is_valid: fn(&serde_json::Value) -> bool,
+    instance: &str,
+    expected: bool,
+) {
+    let instance: serde_json::Value = serde_json::from_str(instance).expect("valid instance json");
+    assert_eq!(is_valid(&instance), expected);
+}
+
+#[cfg(feature = "arbitrary-precision")]
 #[test_case(
     r#"{"type":"number","minimum":18446744073709551616}"#,
     ArbitraryPrecisionMinimumValidator::is_valid;

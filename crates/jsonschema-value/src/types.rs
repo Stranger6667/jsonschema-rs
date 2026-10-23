@@ -233,6 +233,9 @@ pub fn number_is_integer(n: &serde_json::Number) -> bool {
             }
         }
 
+        if let Some(decimal) = bignum::past_digit_budget(text) {
+            return decimal.is_integer();
+        }
         // Important: check BigFraction BEFORE as_f64() to avoid precision loss.
         if bignum::try_parse_bigint(n).is_some() {
             true

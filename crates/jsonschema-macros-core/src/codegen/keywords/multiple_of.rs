@@ -87,9 +87,7 @@ fn is_strictly_positive_number(value: &Value) -> bool {
     if let Some(signed) = number.as_i64() {
         return signed > 0;
     }
-    if let Some(float) = number.as_f64() {
-        return float > 0.0;
-    }
+    // The written digits, not `as_f64`: a tiny positive number reads as `0.0` there.
     let raw = number.to_string();
     if raw.starts_with('-') {
         return false;
