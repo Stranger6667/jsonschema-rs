@@ -1,6 +1,6 @@
 [workspace]
 members = ["crates/*", "examples/*"]
-exclude = ["crates/jsonschema-unified-precision"]
+exclude = ["crates/jsonschema-unified-serde-json"]
 resolver = "3"
 
 [workspace.package]
