@@ -252,7 +252,11 @@ pub fn number_is_integer(n: &serde_json::Number) -> bool {
         } else if let Some(f) = n.as_f64() {
             f.fract() == 0.
         } else {
-            unreachable!("Numbers always fit in u64/i64/f64 without arbitrary-precision")
+            // Past `f64`, reachable once another crate in the build enables
+            // `serde_json/arbitrary_precision`. Exponent forms are placed only by
+            // `arbitrary-precision`.
+            crate::numeric::decimal_is_multiple_of(&crate::JsonNumber::as_str(n), 1)
+                .unwrap_or(false)
         }
     }
 }

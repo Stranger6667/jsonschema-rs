@@ -235,7 +235,7 @@ fn decimal_is_zero(text: &str) -> bool {
 /// Whether the plain decimal integer in `text` divides by `divisor`, by long division over its
 /// digits; exact at any width. `None` for anything else.
 #[cfg(not(feature = "arbitrary-precision"))]
-fn decimal_is_multiple_of(text: &str, divisor: u64) -> Option<bool> {
+pub(crate) fn decimal_is_multiple_of(text: &str, divisor: u64) -> Option<bool> {
     if text.contains(['e', 'E']) {
         return None;
     }

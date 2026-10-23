@@ -121,6 +121,10 @@ jobs:
       # digit-based fallbacks instead of the exact arithmetic `arbitrary-precision` brings.
       - run: cargo test --no-fail-fast -p jsonschema-value --features "conformance,macros,jsonb-testkit"
 
+      # `serde_json/arbitrary_precision` enabled by another crate while `jsonschema`'s own
+      # `arbitrary-precision` stays off.
+      - run: cargo test --no-fail-fast --manifest-path crates/jsonschema-unified-precision/Cargo.toml
+
       # Every other job enabling `jsonb` also enables `arbitrary-precision`. The feature set rebuilds
       # `jsonschema` from scratch and nothing in it is platform-specific, so Windows skips it.
       - if: runner.os != 'Windows'
