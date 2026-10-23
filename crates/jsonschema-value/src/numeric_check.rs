@@ -225,20 +225,14 @@ pub fn compile_bound(op: BoundOp, limit: &Number) -> CompiledBound {
         return CompiledBound::F64 { op, limit: value };
     }
 
-    #[cfg(feature = "arbitrary-precision")]
-    {
-        let limit = if limit.as_str().starts_with('-') {
-            f64::NEG_INFINITY
-        } else {
-            f64::INFINITY
-        };
-        CompiledBound::F64 { op, limit }
-    }
-
-    #[cfg(not(feature = "arbitrary-precision"))]
-    {
-        unreachable!("non-arbitrary-precision serde_json::Number always has an f64 representation");
-    }
+    // Past `f64`; reachable without `arbitrary-precision` once another crate in the build enables
+    // `serde_json/arbitrary_precision`.
+    let limit = if crate::JsonNumber::as_str(limit).starts_with('-') {
+        f64::NEG_INFINITY
+    } else {
+        f64::INFINITY
+    };
+    CompiledBound::F64 { op, limit }
 }
 
 pub fn check_bound(compiled: &CompiledBound, value: &Number) -> bool {

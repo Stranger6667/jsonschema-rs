@@ -359,28 +359,21 @@ macro_rules! create_numeric_validator {
                     $ctx, $keyword, limit_f64, $schema,
                 ))
             } else {
-                #[cfg(feature = "arbitrary-precision")]
-                {
-                    // Number is too large for f64 and couldn't be parsed as BigInt/BigFraction
-                    // (e.g., "1e10000" with huge exponent exceeding f64 range)
-                    // Use actual infinity as the comparison limit based on sign
-                    let is_negative = $limit.as_str().starts_with('-');
-                    let infinity_limit = if is_negative {
-                        f64::NEG_INFINITY
-                    } else {
-                        f64::INFINITY
-                    };
-                    Some(create_validator::<_, $validator_type<f64>, _>(
-                        $ctx,
-                        $keyword,
-                        infinity_limit,
-                        $schema,
-                    ))
-                }
-                #[cfg(not(feature = "arbitrary-precision"))]
-                {
-                    unreachable!("as_f64() always returns Some without arbitrary-precision")
-                }
+                // Past `f64` and not placed exactly (e.g. `1e10000`), so the limit becomes the
+                // infinity of its sign. Reachable without `arbitrary-precision` too: another crate
+                // in the build can enable `serde_json/arbitrary_precision`.
+                let is_negative = jsonschema_value::JsonNumber::as_str($limit).starts_with('-');
+                let infinity_limit = if is_negative {
+                    f64::NEG_INFINITY
+                } else {
+                    f64::INFINITY
+                };
+                Some(create_validator::<_, $validator_type<f64>, _>(
+                    $ctx,
+                    $keyword,
+                    infinity_limit,
+                    $schema,
+                ))
             }
         }
     };

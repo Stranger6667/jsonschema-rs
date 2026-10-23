@@ -793,8 +793,10 @@ so the generated methods cannot depend on type parameters",
         }
     };
 
-    let schema =
-        schema.map_err(|err| syn::Error::new_spanned(input, format!("Invalid JSON: {err}")))?;
+    let schema = schema
+        .map_err(|err| err.to_string())
+        .and_then(reject_number_past_f64)
+        .map_err(|err| syn::Error::new_spanned(input, format!("Invalid JSON: {err}")))?;
 
     let name = &input.ident;
 
@@ -815,12 +817,15 @@ so the generated methods cannot depend on type parameters",
 
     for entry in &attr.resources {
         let schema_value: serde_json::Value = match &entry.content {
-            ResourceContent::Schema(s) => serde_json::from_str(s).map_err(|e| {
-                syn::Error::new(
-                    proc_macro2::Span::call_site(),
-                    format!("Invalid JSON for resource '{}': {e}", entry.uri),
-                )
-            })?,
+            ResourceContent::Schema(s) => serde_json::from_str(s)
+                .map_err(|e| e.to_string())
+                .and_then(reject_number_past_f64)
+                .map_err(|e| {
+                    syn::Error::new(
+                        proc_macro2::Span::call_site(),
+                        format!("Invalid JSON for resource '{}': {e}", entry.uri),
+                    )
+                })?,
             ResourceContent::Path(lit) => {
                 let path = resolve_schema_path(lit)?;
                 let file = File::open(&path).map_err(|e| {
@@ -830,12 +835,15 @@ so the generated methods cannot depend on type parameters",
                 recompile_triggers.push(quote! {
                     const _: &str = include_str!(#path_trigger);
                 });
-                serde_json::from_reader(BufReader::new(file)).map_err(|e| {
-                    syn::Error::new_spanned(
-                        lit,
-                        format!("Invalid JSON in '{}': {e}", path.display()),
-                    )
-                })?
+                serde_json::from_reader(BufReader::new(file))
+                    .map_err(|e| e.to_string())
+                    .and_then(reject_number_past_f64)
+                    .map_err(|e| {
+                        syn::Error::new_spanned(
+                            lit,
+                            format!("Invalid JSON in '{}': {e}", path.display()),
+                        )
+                    })?
             }
         };
         resource_pairs.push((entry.uri.clone(), draft.create_resource(schema_value)));
@@ -949,6 +957,33 @@ so the generated methods cannot depend on type parameters",
 
         #tokens
     })
+}
+
+// Without `arbitrary-precision`, a number past `f64` parses only when another crate in the build
+// enables `serde_json/arbitrary_precision`; it is refused as the parse without that feature does.
+fn reject_number_past_f64(document: Value) -> Result<Value, String> {
+    if cfg!(feature = "arbitrary-precision") {
+        return Ok(document);
+    }
+    match number_past_f64(&document) {
+        Some(pointer) => Err(format!("number out of range at {pointer}")),
+        None => Ok(document),
+    }
+}
+
+fn number_past_f64(value: &Value) -> Option<String> {
+    match value {
+        Value::Number(number) if number.as_f64().is_none() => Some(String::new()),
+        Value::Array(items) => items
+            .iter()
+            .enumerate()
+            .find_map(|(idx, item)| number_past_f64(item).map(|rest| format!("/{idx}{rest}"))),
+        Value::Object(members) => members.iter().find_map(|(key, item)| {
+            number_past_f64(item)
+                .map(|rest| format!("/{}{rest}", key.replace('~', "~0").replace('/', "~1")))
+        }),
+        _ => None,
+    }
 }
 
 fn detect_draft(schema: &Value, draft: Option<&syn::Expr>) -> syn::Result<Draft> {

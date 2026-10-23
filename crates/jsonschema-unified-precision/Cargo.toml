@@ -1,0 +1,20 @@
+[package]
+name = "jsonschema-unified-precision"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# `serde_json/arbitrary_precision` arrives from another crate in the build while the `jsonschema`
+# crates' own `arbitrary-precision` stays off, so numbers past `f64` reach their default-feature
+# code. Outside the root workspace: members there turn `arbitrary-precision` on.
+[workspace]
+
+[dependencies]
+jsonschema = { path = "../jsonschema", default-features = false }
+jsonschema-macros-core = { path = "../jsonschema-macros-core" }
+serde_json = { version = "1", features = ["arbitrary_precision"] }
+
+[dev-dependencies]
+proc-macro2 = "1"
+quote = "1"
+test-case = "3"
